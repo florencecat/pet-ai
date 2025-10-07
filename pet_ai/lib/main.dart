@@ -34,11 +34,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    AIChatPage(),
-    CalendarPage(),
-  ];
+  final List<Widget> _pages = const [HomePage(), AIChatPage(), CalendarPage()];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -49,17 +45,13 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pet Health Tracker')),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: Colors.teal,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.pets),
-            label: 'Главная',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'Главная'),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             label: 'AI Чат',
@@ -86,17 +78,29 @@ class HomePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-          Card(
-            elevation: 2,
-            child: ListTile(
-              leading: const Icon(Icons.pets, size: 40, color: Colors.teal),
-              title: const Text('Имя питомца: Барни'),
-              subtitle: const Text('Порода: Вельш-корги кардиган\nВозраст: 1.5 года'),
+          Card.outlined(
+            clipBehavior: Clip.hardEdge,
+            child: InkWell(
+              splashColor: Colors.blue.withAlpha(50),
+              onTap: () {
+                debugPrint('Card tapped.');
+              },
+              child:
+                ListTile(
+                  leading: const Icon(
+                    Icons.pets_outlined,
+                    size: 40,
+                    color: Colors.teal,
+                  ),
+                  title: const Text('Барни'),
+                  subtitle: const Text(
+                    'Вельш-корги кардиган\n1.5 года',
+                  ),
+                ),
             ),
           ),
           const SizedBox(height: 16),
-          Card(
-            elevation: 2,
+          Card.outlined(
             child: ListTile(
               title: const Text('Здоровье'),
               subtitle: Column(
@@ -110,8 +114,7 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Card(
-            elevation: 2,
+          Card.outlined(
             child: ListTile(
               title: const Text('Напоминания'),
               subtitle: const Text('Следующая вакцина: 15.10.2025'),
@@ -327,11 +330,12 @@ class _CalendarPageState extends State<CalendarPage> {
           child: ListView(
             children: [
               if (_selectedDay != null)
-                ...(_events[_selectedDay] ?? [])
-                    .map((e) => ListTile(
-                  leading: const Icon(Icons.event),
-                  title: Text(e),
-                )),
+                ...(_events[_selectedDay] ?? []).map(
+                  (e) => ListTile(
+                    leading: const Icon(Icons.event),
+                    title: Text(e),
+                  ),
+                ),
               TextButton.icon(
                 onPressed: _selectedDay == null
                     ? null
