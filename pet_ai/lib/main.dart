@@ -8,6 +8,11 @@ void main() async {
   runApp(const PetHealthApp());
 }
 
+RoundedRectangleBorder cardBorder = RoundedRectangleBorder(
+  borderRadius: BorderRadiusGeometry.circular(20),
+  side: BorderSide(width: 2, color: Color.fromARGB(255, 59, 128, 123)),
+);
+
 class PetHealthApp extends StatelessWidget {
   const PetHealthApp({super.key});
 
@@ -16,7 +21,9 @@ class PetHealthApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pet Health Tracker',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color.fromARGB(255, 156, 213, 210),
+        ),
         useMaterial3: true,
       ),
       home: const MainPage(),
@@ -72,55 +79,188 @@ class _MainPageState extends State<MainPage> {
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  // void _onItemTapped() {}
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
+          Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: const Icon(
+                  Icons.pets_outlined,
+                  size: 40,
+                  color: Colors.teal,
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Card.outlined(
+                  shape: cardBorder,
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    splashColor: Colors.blue.withAlpha(50),
+                    onTap: () {
+                      debugPrint('Card tapped.');
+                    },
+                    child: Padding(
+                      padding: EdgeInsetsGeometry.all(5),
+                      child: ListTile(
+                        title: Text(
+                          'Барни',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: const Text('Вельш-корги кардиган\n1.5 года'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // --- Карточка со здоровьем (улучшенная) ---
           Card.outlined(
-            clipBehavior: Clip.hardEdge,
+            shape: cardBorder,
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
               splashColor: Colors.blue.withAlpha(50),
               onTap: () {
                 debugPrint('Card tapped.');
               },
-              child:
-                ListTile(
-                  leading: const Icon(
-                    Icons.pets_outlined,
-                    size: 40,
-                    color: Colors.teal,
-                  ),
-                  title: const Text('Барни'),
-                  subtitle: const Text(
-                    'Вельш-корги кардиган\n1.5 года',
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Здоровье',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Последний осмотр: 10.09.2025'),
+                    const Text('Вес: 12.4 кг'),
+                    const Text('Активность: высокая'),
+                  ],
                 ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card.outlined(
-            child: ListTile(
-              title: const Text('Здоровье'),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('Последний осмотр: 10.09.2025'),
-                  Text('Вес: 12.4 кг'),
-                  Text('Активность: высокая'),
-                ],
               ),
             ),
           ),
           const SizedBox(height: 16),
+
+          // --- Кнопки действий ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    // TODO: реализовать обновление веса
+                  },
+                  child: const Text(
+                    'Обновить вес',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    // TODO: первая заглушка
+                  },
+                  child: const Text(
+                    'Добавить заметку',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    // TODO: вторая заглушка
+                  },
+                  child: const Text(
+                    'История веса',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
           Card.outlined(
-            child: ListTile(
-              title: const Text('Напоминания'),
-              subtitle: const Text('Следующая вакцина: 15.10.2025'),
-              trailing: const Icon(Icons.notifications_active_outlined),
+            shape: cardBorder,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              splashColor: Colors.blue.withAlpha(50),
+              onTap: () {
+                debugPrint('Card tapped.');
+              },
+              child: Padding(
+                padding: EdgeInsetsGeometry.all(4),
+                child: ListTile(
+                  title: const Text('Напоминания'),
+                  subtitle: const Text('Следующая вакцина: 15.10.2025'),
+                  trailing: IconButton(onPressed: () { }, icon: Icon(Icons.notifications_active_outlined)),
+                ),
+              ),
             ),
           ),
+          const SizedBox(height: 16),
+
+          Text(
+            textAlign: TextAlign.center,
+            'Ближайшие события',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.teal.shade700,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Card.outlined(
+            shape: cardBorder,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: Icon(Icons.vaccines_outlined, color: Colors.teal),
+                  title: Text('Вакцинация от бешенства'),
+                  subtitle: Text('15 октября 2025'),
+                  trailing: IconButton(onPressed: () { }, icon: Icon(Icons.chevron_right)),
+                ),
+                Divider(height: 0),
+                ListTile(
+                  leading: Icon(Icons.cut_outlined, color: Colors.teal),
+                  title: Text('Стрижка у грумера'),
+                  subtitle: Text('20 октября 2025'),
+                  trailing: IconButton(onPressed: () { }, icon: Icon(Icons.chevron_right)),
+                ),
+                Divider(height: 0),
+                ListTile(
+                  leading: Icon(
+                    Icons.local_hospital_outlined,
+                    color: Colors.teal,
+                  ),
+                  title: Text('Плановый осмотр у ветеринара'),
+                  subtitle: Text('28 октября 2025'),
+                  trailing: IconButton(onPressed: () { }, icon: Icon(Icons.chevron_right)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -202,7 +342,6 @@ class _AIChatPageState extends State<AIChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Чат'),
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
@@ -237,6 +376,11 @@ class _AIChatPageState extends State<AIChatPage> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.attach_file, color: Colors.teal),
+                      onPressed: _sendPrompt,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: _controller,
@@ -307,46 +451,56 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        TableCalendar(
-          locale: 'ru_RU',
-          focusedDay: _focusedDay,
-          firstDay: DateTime.utc(2024),
-          lastDay: DateTime.utc(2030),
-          calendarFormat: _format,
-          selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
-          onDaySelected: (selectedDay, focusedDay) {
-            setState(() {
-              _selectedDay = selectedDay;
-              _focusedDay = focusedDay;
-            });
-          },
-          onFormatChanged: (format) {
-            setState(() => _format = format);
-          },
-        ),
-        Expanded(
-          child: ListView(
-            children: [
-              if (_selectedDay != null)
-                ...(_events[_selectedDay] ?? []).map(
-                  (e) => ListTile(
-                    leading: const Icon(Icons.event),
-                    title: Text(e),
-                  ),
-                ),
-              TextButton.icon(
-                onPressed: _selectedDay == null
-                    ? null
-                    : () => _addEvent(_selectedDay!),
-                icon: const Icon(Icons.add),
-                label: const Text('Добавить событие'),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Card.outlined(
+            shape: cardBorder,
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: TableCalendar(
+                locale: 'ru_RU',
+                focusedDay: _focusedDay,
+                firstDay: DateTime.utc(2024),
+                lastDay: DateTime.utc(2030),
+                calendarFormat: _format,
+                selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
+                },
+                onFormatChanged: (format) {
+                  setState(() => _format = format);
+                },
               ),
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView(
+              children: [
+                if (_selectedDay != null)
+                  ...(_events[_selectedDay] ?? []).map(
+                    (e) => ListTile(
+                      leading: const Icon(Icons.event),
+                      title: Text(e),
+                    ),
+                  ),
+                TextButton.icon(
+                  onPressed: _selectedDay == null
+                      ? null
+                      : () => _addEvent(_selectedDay!),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Добавить событие'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
