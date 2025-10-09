@@ -1,11 +1,8 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
-import '../../../services/event_service.dart';
 
-final RoundedRectangleBorder cardBorder = RoundedRectangleBorder(
-  borderRadius: BorderRadiusGeometry.circular(20),
-  side: BorderSide(width: 2, color: Color.fromARGB(255, 59, 128, 123)),
-);
+import '../../../services/event_service.dart';
+import '../../../theme/app_styles.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;
@@ -202,7 +199,7 @@ class _HomePageState extends State<HomePage> {
                       ListTile(
                         leading: const Icon(Icons.event, color: Colors.teal),
                         title: Text(event.name),
-                        subtitle: Text('${event.category}\n$formattedDate'),
+                        subtitle: Text(formattedDate),
                         trailing: IconButton(
                           onPressed: () {},
                           icon: Icon(Icons.chevron_right),

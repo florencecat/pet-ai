@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/event_service.dart';
+import '../../../theme/app_styles.dart';
 
 class AddEventPage extends StatefulWidget {
   const AddEventPage({super.key});
@@ -28,8 +29,10 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Future<void> _selectTime() async {
-    final picked =
-    await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
@@ -37,9 +40,9 @@ class _AddEventPageState extends State<AddEventPage> {
     if (!_formKey.currentState!.validate() ||
         _selectedDate == null ||
         _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Заполните все поля')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Заполните все поля')));
       return;
     }
 
@@ -75,14 +78,14 @@ class _AddEventPageState extends State<AddEventPage> {
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Наименование'),
                 validator: (v) =>
-                v == null || v.isEmpty ? 'Введите название' : null,
+                    v == null || v.isEmpty ? 'Введите название' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _categoryController,
                 decoration: const InputDecoration(labelText: 'Категория'),
                 validator: (v) =>
-                v == null || v.isEmpty ? 'Введите категорию' : null,
+                    v == null || v.isEmpty ? 'Введите категорию' : null,
               ),
               const SizedBox(height: 16),
               Row(
@@ -90,9 +93,11 @@ class _AddEventPageState extends State<AddEventPage> {
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.calendar_today),
-                      label: Text(_selectedDate == null
-                          ? 'Выбрать дату'
-                          : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}'),
+                      label: Text(
+                        _selectedDate == null
+                            ? 'Выбрать дату'
+                            : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
+                      ),
                       onPressed: _selectDate,
                     ),
                   ),
@@ -100,16 +105,18 @@ class _AddEventPageState extends State<AddEventPage> {
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.access_time),
-                      label: Text(_selectedTime == null
-                          ? 'Выбрать время'
-                          : _selectedTime!.format(context)),
+                      label: Text(
+                        _selectedTime == null
+                            ? 'Выбрать время'
+                            : _selectedTime!.format(context),
+                      ),
                       onPressed: _selectTime,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              ElevatedButton.icon(
+              OutlinedButton.icon(
                 onPressed: _saveEvent,
                 icon: const Icon(Icons.save),
                 label: const Text('Сохранить'),

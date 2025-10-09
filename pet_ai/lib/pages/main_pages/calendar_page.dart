@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../pages/add_event_page.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-final RoundedRectangleBorder cardBorder = RoundedRectangleBorder(
-  borderRadius: BorderRadiusGeometry.circular(20),
-  side: BorderSide(width: 2, color: Color.fromARGB(255, 59, 128, 123)),
-);
+import '../../pages/add_event_page.dart';
+import '../../../services/event_service.dart';
+import '../../../theme/app_styles.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -18,7 +16,8 @@ class _CalendarPageState extends State<CalendarPage> {
   CalendarFormat _format = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  final Map<DateTime, List<String>> _events = {};
+
+  List<PetEvent> _events = [];
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +55,12 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                 ),
                 selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
-                onDaySelected: (selectedDay, focusedDay) {
+                onDaySelected: (selectedDay, focusedDay) async {
                   setState(() {
                     _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
                   });
+                  _events = await EventService().loadEvents();
                 },
                 onFormatChanged: (format) {
                   setState(() => _format = format);
@@ -72,15 +72,8 @@ class _CalendarPageState extends State<CalendarPage> {
           Expanded(
             child: ListView(
               children: [
-                if (_selectedDay != null)
-                  ...(_events[_selectedDay] ?? []).map(
-                        (e) => ListTile(
-                      leading: const Icon(Icons.event),
-                      title: Text(e),
-                    ),
-                  ),
                 TextButton.icon(
-                  onPressed:  () async {
+                  onPressed: () async {
                     final added = await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const AddEventPage()),
@@ -94,6 +87,29 @@ class _CalendarPageState extends State<CalendarPage> {
                   icon: const Icon(Icons.add),
                   label: const Text('Добавить событие'),
                 ),
+
+                if (_selectedDay != null && _events.isNotEmpty)
+                  ...(_events.where(
+                    (e) =>
+                        e.dateTime.year == _selectedDay!.year &&
+                        e.dateTime.month == _selectedDay!.month &&
+                        e.dateTime.day == _selectedDay!.day,
+                  )).map(
+                    (e) => Card.outlined(
+                      clipBehavior: Clip.antiAlias,
+                      shape: cardBorder,
+                      child: InkWell(
+                        splashColor: Colors.blue.withAlpha(50),
+                        onTap: () {
+                          debugPrint('Card tapped.');
+                        },
+                        child: ListTile(
+                          leading: const Icon(Icons.event),
+                          title: Text(e.name),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
