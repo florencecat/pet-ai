@@ -1,0 +1,6 @@
+import 'package:flutter/material.dart';
+
+RoundedRectangleBorder cardBorder = RoundedRectangleBorder(
+  borderRadius: BorderRadiusGeometry.circular(20),
+  side: BorderSide(width: 2, color: Color.fromARGB(255, 59, 128, 123)),
+);
