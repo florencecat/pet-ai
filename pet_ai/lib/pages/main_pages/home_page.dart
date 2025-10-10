@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 
+import '../secondary_pages/profile_page.dart';
 import '../../../services/event_service.dart';
 import '../../../theme/app_styles.dart';
 
@@ -52,8 +53,11 @@ class _HomePageState extends State<HomePage> {
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     splashColor: Colors.blue.withAlpha(50),
-                    onTap: () {
-                      debugPrint('Card tapped.');
+                    onTap: () async {
+                      final added = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PetProfilePage()),
+                      );
                     },
                     child: Padding(
                       padding: EdgeInsetsGeometry.all(5),

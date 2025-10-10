@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/event_service.dart';
-import '../../../theme/app_styles.dart';
+import '../../services/event_service.dart';
+import '../../../../theme/app_styles.dart';
 
 class AddEventPage extends StatefulWidget {
   const AddEventPage({super.key});

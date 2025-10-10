@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../../pages/add_event_page.dart';
+import '../secondary_pages/add_event_page.dart';
 import '../../../services/event_service.dart';
 import '../../../theme/app_styles.dart';
 
