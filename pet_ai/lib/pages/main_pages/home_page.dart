@@ -56,7 +56,6 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-
           Row(
             children: [
               Expanded(
@@ -71,13 +70,15 @@ class _HomePageState extends State<HomePage> {
                 flex: 3,
                 child: Card.outlined(
                   shape: cardBorder,
-                  clipBehavior: Clip.antiAlias,
+                  clipBehavior: Clip.antiAliasWithSaveLayer,
                   child: InkWell(
                     splashColor: Colors.blue.withAlpha(50),
                     onTap: () async {
                       final added = await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const PetProfilePage()),
+                        MaterialPageRoute(
+                          builder: (_) => const PetProfilePage(),
+                        ),
                       );
                     },
                     child: Padding(
@@ -101,7 +102,7 @@ class _HomePageState extends State<HomePage> {
           // --- Карточка со здоровьем (улучшенная) ---
           Card.outlined(
             shape: cardBorder,
-            clipBehavior: Clip.antiAlias,
+            clipBehavior: Clip.antiAliasWithSaveLayer,
             child: InkWell(
               splashColor: Colors.blue.withAlpha(50),
               onTap: () {
@@ -172,7 +173,7 @@ class _HomePageState extends State<HomePage> {
 
           Card.outlined(
             shape: cardBorder,
-            clipBehavior: Clip.antiAlias,
+            clipBehavior: Clip.antiAliasWithSaveLayer,
             child: InkWell(
               splashColor: Colors.blue.withAlpha(50),
               onTap: () {
