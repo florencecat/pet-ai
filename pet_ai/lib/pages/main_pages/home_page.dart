@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:pet_ai/services/profile_service.dart';
+import 'dart:core';
 
 import '../secondary_pages/profile_page.dart';
 import '../../../services/event_service.dart';
@@ -16,17 +18,36 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<PetEvent> _events = [];
+  PetProfile _profile = PetProfile();
 
   @override
   void initState() {
     super.initState();
     _loadEvents();
+    _loadProfile();
   }
 
   Future<void> _loadEvents() async {
     final events = await EventService().loadEvents();
     events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     setState(() => _events = events);
+  }
+
+  Future<void> _loadProfile() async {
+    _profile = await ProfileService().loadProfile();
+  }
+
+  String _profileDescription() {
+    String description = _profile.breed;
+    if (_profile.birthDate != null) {
+      final duration = _profile.birthDate?.difference(DateTime.now());
+      if (duration == null) {
+        return description;
+      } else {
+        return '$description - ${ProfileService().formatAge(duration)}';
+      }
+    }
+    return description;
   }
 
   @override
@@ -63,11 +84,11 @@ class _HomePageState extends State<HomePage> {
                       padding: EdgeInsetsGeometry.all(5),
                       child: ListTile(
                         title: Text(
-                          'Барни',
+                          _profile.name,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.w500),
                         ),
-                        subtitle: const Text('Вельш-корги кардиган\n1.5 года'),
+                        subtitle: Text(_profileDescription()),
                       ),
                     ),
                   ),
@@ -100,7 +121,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 8),
                     const Text('Последний осмотр: 10.09.2025'),
-                    const Text('Вес: 12.4 кг'),
+                    Text('${_profile.weightKg!.toInt().toString()} кг'),
                     const Text('Активность: высокая'),
                   ],
                 ),
