@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/profile_service.dart';
+import '../../theme/widgets/draggable_bottom_sheet.dart';
 
 class PetRegistrationFlow extends StatefulWidget {
   final VoidCallback onComplete;
@@ -22,6 +21,80 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   final _weightCtrl = TextEditingController();
   String _gender = 'Не указан';
   final _notesCtrl = TextEditingController();
+
+  Future<void> _showBreedSelector() async {
+    final List<String> allBreeds = [
+      'Абиссинская',
+      'Акита-ину',
+      'Алабай',
+      'Английский бульдог',
+      'Бигль',
+      'Бишон фризе',
+      'Бордоский дог',
+      'Вельш-корги пемброк',
+      'Вельш-корги кардиган',
+      'Доберман',
+      'Йоркширский терьер',
+      'Кане-корсо',
+      'Лабрадор ретривер',
+      'Мопс',
+      'Немецкая овчарка',
+      'Померанский шпиц',
+      'Ретривер (золотистый)',
+      'Русский той',
+      'Самоед',
+      'Сибирский хаски',
+      'Такса',
+      'Французский бульдог',
+      'Чихуахуа',
+      'Шпиц',
+      'Ши-тцу',
+      'Шнауцер',
+    ];
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor:
+          Colors.transparent, // 👈 чтобы был виден полупрозрачный фон
+      barrierColor: Colors.black54, // 👈 затемнённая подложка
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: DraggableBottomSheet(
+                allItems: allBreeds,
+                hintText: 'Поиск породы...',
+                leadingIcon: Icons.pets,
+                scrollController: scrollController,
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _breedCtrl.text = result;
+      });
+    }
+  }
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
@@ -74,15 +147,29 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
               decoration: const InputDecoration(labelText: 'Имя'),
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              items: const [
-                DropdownMenuItem(value: 'Не указана', child: Text('Не указана')),
-                DropdownMenuItem(value: 'Корги', child: Text('Корги')),
-                DropdownMenuItem(value: 'Сиба-ину', child: Text('Сиба-ину')),
-              ],
-              onChanged: (v) => setState(() => _breedCtrl.text = v ?? 'Не указан'),
-              decoration: const InputDecoration(labelText: 'Порода'),
+
+            GestureDetector(
+              onTap: _showBreedSelector,
+              child: AbsorbPointer(
+                child: TextField(
+                  controller: _breedCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Порода',
+                    suffixIcon: Icon(Icons.arrow_drop_down),
+                  ),
+                ),
+              ),
             ),
+
+            // DropdownButtonFormField<String>(
+            //   items: const [
+            //     DropdownMenuItem(value: 'Не указана', child: Text('Не указана')),
+            //     DropdownMenuItem(value: 'Корги', child: Text('Корги')),
+            //     DropdownMenuItem(value: 'Сиба-ину', child: Text('Сиба-ину')),
+            //   ],
+            //   onChanged: (v) => setState(() => _breedCtrl.text = v ?? 'Не указан'),
+            //   decoration: const InputDecoration(labelText: 'Порода'),
+            // ),
           ],
         ),
         isActive: _currentStep >= 0,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/widgets/draggable_bottom_sheet.dart';
+
 class AIChatPage extends StatefulWidget {
   const AIChatPage({super.key});
 
@@ -11,9 +13,9 @@ class _AIChatPageState extends State<AIChatPage> {
   final TextEditingController _controller = TextEditingController();
   String _response = '';
   final List<String> _history = [
-    '💬 Как часто нужно чистить уши собаке?',
-    '💬 Что делать, если питомец отказывается от еды?',
-    '💬 Как понять, что пора к ветеринару?',
+    'Как часто нужно чистить уши собаке?',
+    'Что делать, если питомец отказывается от еды?',
+    'Как понять, что пора к ветеринару?',
   ];
 
   //void _attachPhoto() {}
@@ -28,42 +30,68 @@ class _AIChatPageState extends State<AIChatPage> {
   }
 
   void _openHistorySheet() {
-    showModalBottomSheet(
+    showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
       isScrollControlled: true,
-      backgroundColor: Colors.grey[50],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor:
+      Colors.transparent, // 👈 чтобы был виден полупрозрачный фон
+      barrierColor: Colors.black54, // 👈 затемнённая подложка
       builder: (context) {
         return DraggableScrollableSheet(
-          expand: false,
           initialChildSize: 0.5,
           minChildSize: 0.3,
-          maxChildSize: 0.9,
+          maxChildSize: 0.6,
+          expand: false,
           builder: (context, scrollController) {
-            return ListView.builder(
-              controller: scrollController,
-              itemCount: _history.length,
-              itemBuilder: (context, index) {
-                final prompt = _history[index];
-                return ListTile(
-                  leading: const Icon(Icons.history),
-                  title: Text(prompt),
-                  subtitle: const Text('Ответ ИИ сохранён (заглушка)'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _response =
-                      '📜 Повтор выбранного запроса:\n\n"$prompt"\n\n(Здесь можно подгрузить сохранённый ответ)';
-                    });
-                  },
-                );
-              },
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: DraggableBottomSheet(
+                allItems: _history,
+                hintText: 'Поиск вопроса...',
+                leadingIcon: Icons.question_answer,
+                scrollController: scrollController,
+              ),
             );
           },
         );
+
+        // return DraggableScrollableSheet(
+        //   expand: false,
+        //   initialChildSize: 0.5,
+        //   minChildSize: 0.3,
+        //   maxChildSize: 0.9,
+        //   builder: (context, scrollController) {
+        //     return ListView.builder(
+        //       controller: scrollController,
+        //       itemCount: _history.length,
+        //       itemBuilder: (context, index) {
+        //         final prompt = _history[index];
+        //         return ListTile(
+        //           leading: const Icon(Icons.history),
+        //           title: Text(prompt),
+        //           subtitle: const Text('Ответ ИИ сохранён (заглушка)'),
+        //           onTap: () {
+        //             Navigator.pop(context);
+        //             setState(() {
+        //               _response =
+        //               '📜 Повтор выбранного запроса:\n\n"$prompt"\n\n(Здесь можно подгрузить сохранённый ответ)';
+        //             });
+        //           },
+        //         );
+        //       },
+        //     );
+        //   },
+        // );
       },
     );
   }

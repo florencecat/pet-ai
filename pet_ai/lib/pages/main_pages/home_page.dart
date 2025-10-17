@@ -74,7 +74,7 @@ class _HomePageState extends State<HomePage> {
                   child: InkWell(
                     splashColor: Colors.blue.withAlpha(50),
                     onTap: () async {
-                      final added = await Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => const PetProfilePage(),
@@ -105,9 +105,7 @@ class _HomePageState extends State<HomePage> {
             clipBehavior: Clip.antiAliasWithSaveLayer,
             child: InkWell(
               splashColor: Colors.blue.withAlpha(50),
-              onTap: () {
-                debugPrint('Card tapped.');
-              },
+              onTap: () {},
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -122,7 +120,11 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 8),
                     const Text('Последний осмотр: 10.09.2025'),
-                    Text('${_profile.weightKg!.toInt().toString()} кг'),
+                    Text(
+                      _profile.weightKg == null
+                          ? ''
+                          : '${_profile.weightKg!.toInt().toString()} кг',
+                    ),
                     const Text('Активность: высокая'),
                   ],
                 ),
