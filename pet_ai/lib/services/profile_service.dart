@@ -59,6 +59,8 @@ class ProfileService {
     return PetProfile();
   }
 
+  Future<void> clearProfile() async => await SharedPreferencesAsync().remove(_key);
+
   Future<bool> hasProfile() async => await SharedPreferencesAsync().containsKey(_key);
 
   Future<void> saveProfile(PetProfile profile) async {

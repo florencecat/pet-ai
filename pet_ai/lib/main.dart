@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:pet_ai/pages/main_pages/settings_page.dart';
 import 'package:pet_ai/services/profile_service.dart';
 
 import '../pages/main_pages/home_page.dart';
@@ -91,6 +92,7 @@ class _MainPageState extends State<MainPage> {
       HomePage(onOpenCalendar: () => _onItemTapped(2)),
       const AIChatPage(),
       const CalendarPage(),
+      const SettingsPage()
     ];
 
     return Scaffold(
@@ -98,16 +100,21 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: Colors.teal,
+        selectedItemColor: Color.fromARGB(255, 59, 128, 123),
+        unselectedItemColor: Color.fromARGB(128, 59, 128, 123),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'Главная'),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
-            label: 'AI Чат',
+            label: 'Чат',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month),
             label: 'Календарь',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Настройки',
           ),
         ],
       ),

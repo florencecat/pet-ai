@@ -4,3 +4,8 @@ RoundedRectangleBorder cardBorder = RoundedRectangleBorder(
   borderRadius: BorderRadiusGeometry.circular(20),
   side: BorderSide(width: 2, color: Color.fromARGB(255, 59, 128, 123)),
 );
+
+RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
+  borderRadius: BorderRadiusGeometry.circular(20),
+  side: BorderSide(width: 2, color: Color.fromARGB(128, 244, 67, 54)),
+);

@@ -39,11 +39,11 @@ class _CalendarPageState extends State<CalendarPage> {
                   headerStyle: HeaderStyle(formatButtonVisible: false),
                   calendarStyle: const CalendarStyle(
                     todayDecoration: BoxDecoration(
-                      color: Colors.tealAccent,
+                      color: Color.fromARGB(128, 59, 128, 123),
                       shape: BoxShape.circle,
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: Colors.teal,
+                      color: Color.fromARGB(255, 59, 128, 123),
                       shape: BoxShape.circle,
                     ),
                     todayTextStyle: TextStyle(
