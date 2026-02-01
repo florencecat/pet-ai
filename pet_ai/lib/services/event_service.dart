@@ -41,4 +41,11 @@ class EventService {
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await prefs.setStringList(_key, encoded);
   }
+
+  Future<void> deleteEvent(PetEvent event) async {
+    final events = await loadEvents();
+    final res = events.remove(event);
+    final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
+    await SharedPreferencesAsync().setStringList(_key, encoded);
+  }
 }

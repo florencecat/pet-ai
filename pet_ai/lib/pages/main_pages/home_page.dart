@@ -6,6 +6,7 @@ import 'dart:core';
 import '../secondary_pages/profile_page.dart';
 import '../../../services/event_service.dart';
 import '../../../theme/app_styles.dart';
+import '../../../theme/widgets/draggable_scrollable_sheet.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;
@@ -48,6 +49,18 @@ class _HomePageState extends State<HomePage> {
       }
     }
     return description;
+  }
+
+  void _openEventSheet(BuildContext context, PetEvent event) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          EventDraggableSheet(mode: EventSheetMode.view, event: event),
+    );
   }
 
   @override
@@ -154,10 +167,7 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     // TODO: первая заглушка
                   },
-                  child: const Text(
-                    'Добавить заметку',
-                    textAlign: TextAlign.center,
-                  ),
+                  child: const Text('Заметка', textAlign: TextAlign.center),
                 ),
               ),
               const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
@@ -229,7 +239,7 @@ class _HomePageState extends State<HomePage> {
                         title: Text(event.name),
                         subtitle: Text(formattedDate),
                         trailing: IconButton(
-                          onPressed: () {},
+                          onPressed: () => _openEventSheet(context, event),
                           icon: Icon(Icons.chevron_right),
                         ),
                       ),

@@ -3,6 +3,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../secondary_pages/add_event_page.dart';
 import '../../../services/event_service.dart';
+import '../../../theme/widgets/draggable_scrollable_sheet.dart';
 import '../../../theme/app_styles.dart';
 
 class CalendarPage extends StatefulWidget {
@@ -10,6 +11,17 @@ class CalendarPage extends StatefulWidget {
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
+}
+
+void _openEventSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    enableDrag: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => EventDraggableSheet(mode: EventSheetMode.create),
+  );
 }
 
 class _CalendarPageState extends State<CalendarPage> {
@@ -74,17 +86,22 @@ class _CalendarPageState extends State<CalendarPage> {
               child: ListView(
                 children: [
                   TextButton.icon(
-                    onPressed: () async {
-                      final added = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AddEventPage()),
-                      );
-                      if (added == true && mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Событие добавлено')),
-                        );
-                      }
-                    },
+                    onPressed: () => _openEventSheet(context),
+                    // onPressed: () async {
+                    //   final added = await Navigator.push(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (_) => const EventDraggableSheet(
+                    //         mode: EventSheetMode.view,
+                    //       ),
+                    //     ),
+                    //   );
+                    //   if (added == true && mounted) {
+                    //     ScaffoldMessenger.of(context).showSnackBar(
+                    //       const SnackBar(content: Text('Событие добавлено')),
+                    //     );
+                    //   }
+                    // },
                     icon: const Icon(Icons.add),
                     label: const Text('Добавить событие'),
                   ),
