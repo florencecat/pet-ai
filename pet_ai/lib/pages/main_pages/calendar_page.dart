@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../secondary_pages/add_event_page.dart';
 import '../../../services/event_service.dart';
 import '../../../theme/widgets/draggable_scrollable_sheet.dart';
 import '../../../theme/app_styles.dart';
@@ -20,7 +19,7 @@ void _openEventSheet(BuildContext context) {
     useSafeArea: true,
     enableDrag: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => EventDraggableSheet(mode: EventSheetMode.create),
+    builder: (_) => EventDraggableSheet.create(mode: EventSheetMode.create),
   );
 }
 

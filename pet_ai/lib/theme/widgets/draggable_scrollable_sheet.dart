@@ -68,13 +68,44 @@ extension EventSheetModeX on EventSheetMode {
   bool get isEditable => isEdit || isCreate;
 }
 
-class EventDraggableSheet extends StatelessWidget {
+class EventDraggableSheet extends StatefulWidget {
   final EventSheetMode mode;
   final PetEvent? event;
 
-  const EventDraggableSheet({super.key, required this.mode, this.event});
+  const EventDraggableSheet({super.key, required this.mode, required this.event});
+  EventDraggableSheet.create({super.key, required this.mode}) : event = PetEvent.empty();
 
-  static const double _deleteButtonHeight = 64;
+  @override
+  State<EventDraggableSheet> createState() => _EventDraggableSheetState();
+}
+
+class _EventDraggableSheetState extends State<EventDraggableSheet> {
+  final _nameController = TextEditingController();
+  final _categoryController = TextEditingController();
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+
+  Future<void> _selectDate(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365 * 2)),
+      locale: const Locale('ru'),
+    );
+    if (picked != null) setState(() { _selectedDate = picked; });
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) setState(() {
+      _selectedTime = picked;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,200 +126,130 @@ class EventDraggableSheet extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              /// SCROLLABLE CONTENT
-              ShowEventSheetContent(
-                mode: mode,
-                event: event,
-                scrollController: scrollController,
-                bottomPadding: _deleteButtonHeight + 16,
+            ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              // DRAG HANDLE
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
 
-              // /// STICKY DELETE BUTTON
-              // _StickyButton(
-              //   onPressed: () {
-              //     // confirm delete
-              //   },
-              // ),
+              SizedBox(
+                height: 48,
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      color: mainColor,
+                      onPressed: () => closeSheet(context),
+                    ),
+                    const Spacer(),
+                    if (EventSheetModeX(widget.mode).isView)
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        color: mainColor,
+                        onPressed: () {},
+                      ),
+                    if (EventSheetModeX(widget.mode).isView)
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        color: dangerColor,
+                        onPressed: () => deleteEvent(context, widget.event!),
+                      ),
+                    if (EventSheetModeX(widget.mode).isEditable)
+                      IconButton(
+                        icon: const Icon(Icons.check),
+                        color: mainColor,
+                        onPressed: () => closeSheet(context),
+                      ),
+                  ],
+                ),
+              ),
+
+              if (EventSheetModeX(widget.mode).isEditable)
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Название'),
+                  validator: (v) =>
+                  v == null || v.isEmpty ? 'Введите название' : null,
+                )
+              else
+                Text(
+                  textAlign: TextAlign.center,
+                  widget.event?.name ?? "",
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+
+              const SizedBox(height: 8),
+
+              if (EventSheetModeX(widget.mode).isEditable)
+                TextFormField(
+                  controller: _categoryController,
+                  decoration: const InputDecoration(labelText: 'Категория'),
+                  validator: (v) =>
+                  v == null || v.isEmpty ? 'Введите категорию' : null,
+                )
+              else
+                Text(
+                  textAlign: TextAlign.center,
+                  widget.event?.name ?? "",
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+
+              const SizedBox(height: 8),
+
+              if (EventSheetModeX(widget.mode).isEditable)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(
+                          _selectedDate == null
+                              ? 'Выбрать дату'
+                              : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
+                        ),
+                        onPressed: () => _selectDate(context),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.access_time),
+                        label: Text(
+                          _selectedTime == null
+                              ? 'Выбрать время'
+                              : _selectedTime!.format(context),
+                        ),
+                        onPressed: () => _selectTime(context),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.event, size: 18, color: Colors.grey.shade600),
+                    const SizedBox(width: 6),
+                    Text(widget.event?.dateTime.toString() ?? ""),
+                  ],
+                ),
+            ],
+          )
             ],
           ),
         );
       },
-    );
-  }
-}
-
-class ShowEventSheetContent extends StatelessWidget {
-  final EventSheetMode mode;
-  final PetEvent? event;
-  final ScrollController scrollController;
-  final double bottomPadding;
-
-  const ShowEventSheetContent({
-    super.key,
-    required this.mode,
-    this.event,
-    required this.scrollController,
-    required this.bottomPadding,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        // DRAG HANDLE
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade400,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-
-        SizedBox(
-          height: 48,
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                color: mainColor,
-                onPressed: () => closeSheet(context),
-              ),
-              const Spacer(),
-              if (EventSheetModeX(mode).isView)
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  color: mainColor,
-                  onPressed: () {},
-                ),
-              if (EventSheetModeX(mode).isView)
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  color: dangerColor,
-                  onPressed: () => deleteEvent(context, event!)
-                ),
-              if (EventSheetModeX(mode).isEditable)
-                IconButton(
-                  icon: const Icon(Icons.check),
-                  color: mainColor,
-                  onPressed: () => closeSheet(context),
-                ),
-            ],
-          ),
-        ),
-
-        if (EventSheetModeX(mode).isEditable)
-          TextFormField(
-            controller: TextEditingController(),
-            decoration: const InputDecoration(labelText: 'Название'),
-            validator: (v) =>
-                v == null || v.isEmpty ? 'Введите название' : null,
-          )
-        else
-          Text(
-            textAlign: TextAlign.center,
-            event?.name ?? "",
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-
-        const SizedBox(height: 8),
-
-        if (EventSheetModeX(mode).isEditable)
-          TextFormField(
-            controller: TextEditingController(),
-            decoration: const InputDecoration(labelText: 'Категория'),
-            validator: (v) =>
-                v == null || v.isEmpty ? 'Введите категорию' : null,
-          )
-        else
-          Text(
-            textAlign: TextAlign.center,
-            event?.name ?? "",
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-
-        const SizedBox(height: 8),
-
-        if (EventSheetModeX(mode).isEditable)
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.calendar_today),
-                  label: Text(
-                    "Выбрать дату",
-                    // _selectedDate == null
-                    //     ? ''
-                    //     : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
-                  ),
-                  onPressed: () {},
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.access_time),
-                  label: Text(
-                    "Выбрать время",
-                    // _selectedTime == null
-                    //     ? 'Выбрать время'
-                    //     : _selectedTime!.format(context),
-                  ),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          )
-        else
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.event, size: 18, color: Colors.grey.shade600),
-              const SizedBox(width: 6),
-              Text(event?.dateTime.toString() ?? ""),
-            ],
-          ),
-
-        // Text(
-        //   event.description ?? 'Без описания',
-        //   style: Theme.of(context).textTheme.bodyMedium,
-        // ),
-      ],
-    );
-  }
-}
-
-class _StickyButton extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _StickyButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: 16,
-      right: 16,
-      bottom: 16 + MediaQuery.of(context).padding.bottom,
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Удалить'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

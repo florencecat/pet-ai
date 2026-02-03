@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
+import 'package:pet_ai/theme/app_styles.dart';
 
 import '../../services/profile_service.dart';
 
@@ -33,14 +34,12 @@ class _PetProfilePageState extends State<PetProfilePage> {
     setState(() => _loading = true);
 
     final profile = await ProfileService().loadProfile();
-    if (profile != null) {
-      _nameController.text = profile.name;
-      _breedController.text = profile.breed;
-      _weightController.text = profile.weightKg?.toString() ?? '';
-      _notesController.text = profile.notes;
-      _birthDate = profile.birthDate;
-      _gender = profile.gender;
-    }
+    _nameController.text = profile.name;
+    _breedController.text = profile.breed;
+    _weightController.text = profile.weightKg?.toString() ?? '';
+    _notesController.text = profile.notes;
+    _birthDate = profile.birthDate;
+    _gender = profile.gender;
     if (mounted) setState(() => _loading = false);
   }
 
@@ -146,6 +145,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                   ),
                                 );
                               },
+                              backgroundColor: secondaryColor,
                               child: const Icon(Icons.edit, size: 18),
                             ),
                           ),
@@ -184,10 +184,8 @@ class _PetProfilePageState extends State<PetProfilePage> {
                             onPressed: _pickBirthDate,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              child: Column(
+                              child: Row(
                                 children: [
-                                  const Text('Дата рождения'),
-                                  const SizedBox(height: 6),
                                   Text(_formatDate(_birthDate)),
                                 ],
                               ),
@@ -223,7 +221,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
                     // --- Gender ---
                     DropdownButtonFormField<String>(
-                      value: _gender,
+                      initialValue: _gender,
                       items: const [
                         DropdownMenuItem(
                           value: 'Не указан',
@@ -258,39 +256,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                       maxLines: 4,
                     ),
 
-                    const SizedBox(height: 20),
-
-                    // --- Buttons ---
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _saveProfile,
-                            icon: const Icon(Icons.save),
-                            label: const Text('Сохранить'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              // Сбросить поля к заглушке
-                              setState(() {
-                                _nameController.clear();
-                                _breedController.clear();
-                                _weightController.clear();
-                                _notesController.clear();
-                                _birthDate = null;
-                                _gender = 'Не указан';
-                              });
-                            },
-                            child: const Text('Сбросить'),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 20)
                   ],
                 ),
               ),

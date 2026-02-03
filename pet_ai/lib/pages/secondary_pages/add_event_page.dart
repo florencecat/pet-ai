@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../services/event_service.dart';
 
 class AddEventPage extends StatefulWidget {
-  const AddEventPage({super.key});
+  const AddEventPage({super.key, required this.date});
+
+  final DateTime? date;
 
   @override
   State<AddEventPage> createState() => _AddEventPageState();

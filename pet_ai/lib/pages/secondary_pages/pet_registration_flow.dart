@@ -56,8 +56,8 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
       context: context,
       isScrollControlled: true,
       backgroundColor:
-          Colors.transparent, // 👈 чтобы был виден полупрозрачный фон
-      barrierColor: Colors.black54, // 👈 затемнённая подложка
+          Colors.transparent,
+      barrierColor: Colors.black54,
       builder: (context) {
         return DraggableScrollableSheet(
           initialChildSize: 0.8,

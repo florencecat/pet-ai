@@ -228,7 +228,10 @@ class _HomePageState extends State<HomePage> {
             Card.outlined(
               shape: cardBorder,
               child: Column(
-                children: _events.take(3).map((event) {
+                children: _events
+                    .where((e) => e.dateTime.isAfter(DateTime.now()) || e.dateTime.isAtSameMomentAs(DateTime.now()))
+                    .take(4)
+                    .map((event) {
                   final formattedDate = DateFormat(
                     'dd.MM.yyyy – HH:mm',
                   ).format(event.dateTime);
