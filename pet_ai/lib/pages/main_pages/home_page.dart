@@ -69,6 +69,7 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
+          // хэдер профиля
           Row(
             children: [
               Expanded(
@@ -112,7 +113,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
 
-          // --- Карточка со здоровьем (улучшенная) ---
+          // блок здоровья
           Card.outlined(
             shape: cardBorder,
             clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -146,7 +147,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
 
-          // --- Кнопки действий ---
+          // быстрые действия
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -183,6 +184,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
 
+          // ближайшее важное напоминание
           Card.outlined(
             shape: cardBorder,
             clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -206,6 +208,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
 
+          // ближайшие события
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -216,40 +219,65 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                onPressed: widget.onOpenCalendar,
-              ),
+              if (_events.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: widget.onOpenCalendar,
+                ),
             ],
           ),
           const SizedBox(height: 8),
-          if (_events.isEmpty) const Text('Нет запланированных событий.'),
+          if (_events.isEmpty)
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.35,
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.pets_sharp, size: 72, color: secondaryColor),
+                    SizedBox(height: 12),
+                    Text(
+                      'Нет запланированных событий',
+                      style: TextStyle(color: secondaryColor, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (_events.isNotEmpty)
             Card.outlined(
               shape: cardBorder,
               child: Column(
                 children: _events
-                    .where((e) => e.dateTime.isAfter(DateTime.now()) || e.dateTime.isAtSameMomentAs(DateTime.now()))
+                    .where(
+                      (e) =>
+                          e.dateTime.isAfter(DateTime.now()) ||
+                          e.dateTime.isAtSameMomentAs(DateTime.now()),
+                    )
                     .take(4)
                     .map((event) {
-                  final formattedDate = DateFormat(
-                    'dd.MM.yyyy – HH:mm',
-                  ).format(event.dateTime);
-                  return Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.event, color: Colors.teal),
-                        title: Text(event.name),
-                        subtitle: Text(formattedDate),
-                        trailing: IconButton(
-                          onPressed: () => _openEventSheet(context, event),
-                          icon: Icon(Icons.chevron_right),
-                        ),
-                      ),
-                      if (event != _events.last) const Divider(height: 0),
-                    ],
-                  );
-                }).toList(),
+                      final formattedDate = DateFormat(
+                        'dd.MM.yyyy – HH:mm',
+                      ).format(event.dateTime);
+                      return Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(
+                              Icons.event,
+                              color: Colors.teal,
+                            ),
+                            title: Text(event.name),
+                            subtitle: Text(formattedDate),
+                            trailing: IconButton(
+                              onPressed: () => _openEventSheet(context, event),
+                              icon: Icon(Icons.chevron_right),
+                            ),
+                          ),
+                          if (event != _events.last) const Divider(height: 0),
+                        ],
+                      );
+                    })
+                    .toList(),
               ),
             ),
         ],
