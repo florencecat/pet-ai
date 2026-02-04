@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_ai/services/event_service.dart';
 import '../../theme/app_styles.dart';
 import '../../services/profile_service.dart';
 
@@ -35,6 +36,40 @@ class SettingsPage extends StatelessWidget {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Данные приложения очищены')),
+      );
+      Navigator.pushReplacementNamed(context, '/registration');
+    }
+  }
+
+  Future<void> _clearEvents(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Очистить данные?'),
+        content: const Text(
+          'Будут удалены все события питомца. '
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Очистить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await EventService().clearEvents();
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('События удалены')),
       );
     }
   }
@@ -104,6 +139,19 @@ class SettingsPage extends StatelessWidget {
               ),
               subtitle: const Text('Сброс SharedPreferences (для отладки)'),
               onTap: () => _clearAppData(context),
+            ),
+          ),
+
+          Card.outlined(
+            shape: dangerCardBorder,
+            child: ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text(
+                'Очистить все события',
+                style: TextStyle(color: Colors.red),
+              ),
+              subtitle: const Text('Удалить все события на устройстве (для отладки)'),
+              onTap: () => _clearEvents(context),
             ),
           ),
 

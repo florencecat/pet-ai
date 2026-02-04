@@ -5,8 +5,7 @@ import '../../services/profile_service.dart';
 import '../../theme/widgets/draggable_bottom_sheet.dart';
 
 class PetRegistrationFlow extends StatefulWidget {
-  final VoidCallback onComplete;
-  const PetRegistrationFlow({super.key, required this.onComplete});
+  const PetRegistrationFlow({super.key});
 
   @override
   State<PetRegistrationFlow> createState() => _PetRegistrationFlowState();
@@ -132,8 +131,9 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     );
 
     await ProfileService().saveProfile(profile);
-
-    widget.onComplete();
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/');
+    }
   }
 
   List<Step> _buildSteps() {

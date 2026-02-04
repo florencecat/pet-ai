@@ -22,6 +22,10 @@ class PetHealthApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pet Health Tracker',
+      initialRoute: '/',
+      routes: {
+        '/registration': (context) => const PetRegistrationFlow()
+      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Color.fromARGB(255, 156, 213, 210),
@@ -72,9 +76,9 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  void _onRegistrationComplete() {
-    setState(() => _hasProfile = true);
-  }
+  // void _onRegistrationComplete() {
+  //   setState(() => _hasProfile = true);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +89,7 @@ class _MainPageState extends State<MainPage> {
     }
 
     if (!_hasProfile) {
-      return PetRegistrationFlow(onComplete: _onRegistrationComplete);
+      return PetRegistrationFlow();
     }
 
     final pages = [
