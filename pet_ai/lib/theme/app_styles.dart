@@ -10,6 +10,6 @@ RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
   side: BorderSide(width: 2, color: Color.fromARGB(128, 244, 67, 54)),
 );
 
-Color mainColor = Color.fromARGB(255, 59, 128, 123);
-Color secondaryColor = Color.fromARGB(128, 59, 128, 123);
-Color dangerColor = Color.fromARGB(255, 244, 67, 54);
+const Color mainColor = Color.fromARGB(255, 59, 128, 123);
+const Color secondaryColor = Color.fromARGB(128, 59, 128, 123);
+const Color dangerColor = Color.fromARGB(255, 244, 67, 54);
