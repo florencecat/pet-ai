@@ -71,9 +71,10 @@ extension EventSheetModeX on EventSheetMode {
 class EventDraggableSheet extends StatefulWidget {
   final EventSheetMode mode;
   final PetEvent? event;
+  final DateTime? dateTime;
 
-  const EventDraggableSheet({super.key, required this.mode, required this.event});
-  EventDraggableSheet.create({super.key, required this.mode}) : event = PetEvent.empty();
+  EventDraggableSheet({super.key, required this.mode, required this.event}) : dateTime = DateTime.now();
+  EventDraggableSheet.create({super.key, required this.mode, required this.dateTime}) : event = PetEvent.empty();
 
   @override
   State<EventDraggableSheet> createState() => _EventDraggableSheetState();
@@ -84,6 +85,8 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   final _categoryController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+
+  _EventDraggableSheetState();
 
   Future<void> _selectDate(BuildContext context) async {
     final now = DateTime.now();
@@ -102,9 +105,9 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (picked != null) setState(() {
-      _selectedTime = picked;
-    });
+    if (picked != null) {
+      setState(() { _selectedTime = picked; });
+    }
   }
 
   @override

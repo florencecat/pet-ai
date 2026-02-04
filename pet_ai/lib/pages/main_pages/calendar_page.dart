@@ -12,16 +12,7 @@ class CalendarPage extends StatefulWidget {
   State<CalendarPage> createState() => _CalendarPageState();
 }
 
-void _openEventSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    enableDrag: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => EventDraggableSheet.create(mode: EventSheetMode.create),
-  );
-}
+
 
 class _CalendarPageState extends State<CalendarPage> {
   CalendarFormat _format = CalendarFormat.month;
@@ -29,6 +20,17 @@ class _CalendarPageState extends State<CalendarPage> {
   DateTime? _selectedDay;
 
   List<PetEvent> _events = [];
+
+  void openEventSheet(BuildContext context, DateTime dateTime) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventDraggableSheet.create(mode: EventSheetMode.create, dateTime: dateTime),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +87,9 @@ class _CalendarPageState extends State<CalendarPage> {
               child: ListView(
                 children: [
                   TextButton.icon(
-                    onPressed: () => _openEventSheet(context),
+                    onPressed: _selectedDay == null
+                        ? null
+                        : () => openEventSheet(context, _selectedDay!),
                     // onPressed: () async {
                     //   final added = await Navigator.push(
                     //     context,
