@@ -59,7 +59,7 @@ class _HomePageState extends State<HomePage> {
       enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) =>
-          EventDraggableSheet(mode: EventSheetMode.view, event: event),
+          EventDraggableSheet(event: event),
     );
   }
 
@@ -219,11 +219,10 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (_events.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: widget.onOpenCalendar,
-                ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: widget.onOpenCalendar,
+              ),
             ],
           ),
           const SizedBox(height: 8),

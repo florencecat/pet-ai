@@ -21,14 +21,25 @@ class _CalendarPageState extends State<CalendarPage> {
 
   List<PetEvent> _events = [];
 
-  void openEventSheet(BuildContext context, DateTime dateTime) {
+  void openCreateEventSheet(BuildContext context, DateTime dateTime) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet.create(mode: EventSheetMode.create, dateTime: dateTime),
+      builder: (_) => EventDraggableSheet.create(dateTime: dateTime),
+    );
+  }
+
+  void openViewEventSheet(BuildContext context, PetEvent event) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventDraggableSheet(event: event),
     );
   }
 
@@ -87,24 +98,7 @@ class _CalendarPageState extends State<CalendarPage> {
               child: ListView(
                 children: [
                   TextButton.icon(
-                    onPressed: _selectedDay == null
-                        ? null
-                        : () => openEventSheet(context, _selectedDay!),
-                    // onPressed: () async {
-                    //   final added = await Navigator.push(
-                    //     context,
-                    //     MaterialPageRoute(
-                    //       builder: (_) => const EventDraggableSheet(
-                    //         mode: EventSheetMode.view,
-                    //       ),
-                    //     ),
-                    //   );
-                    //   if (added == true && mounted) {
-                    //     ScaffoldMessenger.of(context).showSnackBar(
-                    //       const SnackBar(content: Text('Событие добавлено')),
-                    //     );
-                    //   }
-                    // },
+                    onPressed: _selectedDay == null ? null : () => openCreateEventSheet(context, _selectedDay!),
                     icon: const Icon(Icons.add),
                     label: const Text('Добавить событие'),
                   ),
@@ -121,9 +115,7 @@ class _CalendarPageState extends State<CalendarPage> {
                         shape: cardBorder,
                         child: InkWell(
                           splashColor: Colors.blue.withAlpha(50),
-                          onTap: () {
-                            debugPrint('Card tapped.');
-                          },
+                          onTap: () => openViewEventSheet(context, e),
                           child: ListTile(
                             leading: const Icon(Icons.event),
                             title: Text(e.name),

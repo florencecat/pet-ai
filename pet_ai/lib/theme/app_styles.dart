@@ -13,3 +13,4 @@ RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
 const Color mainColor = Color.fromARGB(255, 59, 128, 123);
 const Color secondaryColor = Color.fromARGB(128, 59, 128, 123);
 const Color dangerColor = Color.fromARGB(255, 244, 67, 54);
+const Color errorColor = Color.fromARGB(255, 186, 26, 26);

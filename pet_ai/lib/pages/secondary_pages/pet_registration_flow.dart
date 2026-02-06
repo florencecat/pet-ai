@@ -159,17 +159,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                   ),
                 ),
               ),
-            ),
-
-            // DropdownButtonFormField<String>(
-            //   items: const [
-            //     DropdownMenuItem(value: 'Не указана', child: Text('Не указана')),
-            //     DropdownMenuItem(value: 'Корги', child: Text('Корги')),
-            //     DropdownMenuItem(value: 'Сиба-ину', child: Text('Сиба-ину')),
-            //   ],
-            //   onChanged: (v) => setState(() => _breedCtrl.text = v ?? 'Не указан'),
-            //   decoration: const InputDecoration(labelText: 'Порода'),
-            // ),
+            )
           ],
         ),
         isActive: _currentStep >= 0,

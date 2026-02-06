@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_ai/theme/app_styles.dart';
 
 import '../../services/event_service.dart';
+//import '../../theme/widgets/validated_icon_button.dart';
 
 enum EventSheetMode { view, create, edit }
 
@@ -55,9 +57,12 @@ Future<void> deleteEvent(BuildContext context, PetEvent event) async {
 
   await EventService().deleteEvent(event);
 
-  if (context.mounted) {
-    closeSheet(context);
-  }
+  if (context.mounted) closeSheet(context);
+}
+
+Future<void> createEvent(BuildContext context, PetEvent event) async {
+  EventService().createEvent(event);
+  if (context.mounted) closeSheet(context);
 }
 
 extension EventSheetModeX on EventSheetMode {
@@ -73,16 +78,23 @@ class EventDraggableSheet extends StatefulWidget {
   final PetEvent? event;
   final DateTime? dateTime;
 
-  EventDraggableSheet({super.key, required this.mode, required this.event}) : dateTime = DateTime.now();
-  EventDraggableSheet.create({super.key, required this.mode, required this.dateTime}) : event = PetEvent.empty();
+  const EventDraggableSheet({super.key, required this.event})
+      : mode = EventSheetMode.edit, dateTime = null;
+  EventDraggableSheet.create({
+    super.key,
+    required this.dateTime,
+  }) : mode = EventSheetMode.create, event = PetEvent.empty();
 
   @override
   State<EventDraggableSheet> createState() => _EventDraggableSheetState();
 }
 
 class _EventDraggableSheetState extends State<EventDraggableSheet> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
+  final _dateController = WidgetStatesController();
+  final _timeController = WidgetStatesController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
@@ -97,7 +109,11 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
       lastDate: now.add(const Duration(days: 365 * 2)),
       locale: const Locale('ru'),
     );
-    if (picked != null) setState(() { _selectedDate = picked; });
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
   }
 
   Future<void> _selectTime(BuildContext context) async {
@@ -106,12 +122,35 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
       initialTime: TimeOfDay.now(),
     );
     if (picked != null) {
-      setState(() { _selectedTime = picked; });
+      setState(() {
+        _selectedTime = picked;
+      });
     }
+  }
+
+  bool _verifyForm() {
+    final hasError =
+        !_formKey.currentState!.validate() ||
+        _selectedDate == null ||
+        _selectedTime == null;
+
+    setState(() {
+      _dateController.update(WidgetState.error, _selectedDate == null);
+      _timeController.update(WidgetState.error, _selectedTime == null);
+    });
+
+    return !hasError;
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.dateTime != null) {
+      _selectedDate = widget.dateTime;
+    }
+    if (widget.event != null) {
+      _selectedDate = widget.event!.dateTime;
+      _selectedTime = TimeOfDay.fromDateTime(widget.event!.dateTime);
+    }
     return DraggableScrollableSheet(
       controller: _sheetController,
       initialChildSize: 0.45,
@@ -127,129 +166,164 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Stack(
-            children: [
-            ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              // DRAG HANDLE
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(2),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                // DRAG HANDLE
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
 
-              SizedBox(
-                height: 48,
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      color: mainColor,
-                      onPressed: () => closeSheet(context),
-                    ),
-                    const Spacer(),
-                    if (EventSheetModeX(widget.mode).isView)
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
                       IconButton(
-                        icon: const Icon(Icons.edit),
-                        color: mainColor,
-                        onPressed: () {},
-                      ),
-                    if (EventSheetModeX(widget.mode).isView)
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        color: dangerColor,
-                        onPressed: () => deleteEvent(context, widget.event!),
-                      ),
-                    if (EventSheetModeX(widget.mode).isEditable)
-                      IconButton(
-                        icon: const Icon(Icons.check),
+                        icon: const Icon(Icons.arrow_back),
                         color: mainColor,
                         onPressed: () => closeSheet(context),
                       ),
-                  ],
-                ),
-              ),
-
-              if (EventSheetModeX(widget.mode).isEditable)
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Название'),
-                  validator: (v) =>
-                  v == null || v.isEmpty ? 'Введите название' : null,
-                )
-              else
-                Text(
-                  textAlign: TextAlign.center,
-                  widget.event?.name ?? "",
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-
-              const SizedBox(height: 8),
-
-              if (EventSheetModeX(widget.mode).isEditable)
-                TextFormField(
-                  controller: _categoryController,
-                  decoration: const InputDecoration(labelText: 'Категория'),
-                  validator: (v) =>
-                  v == null || v.isEmpty ? 'Введите категорию' : null,
-                )
-              else
-                Text(
-                  textAlign: TextAlign.center,
-                  widget.event?.name ?? "",
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-
-              const SizedBox(height: 8),
-
-              if (EventSheetModeX(widget.mode).isEditable)
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(
-                          _selectedDate == null
-                              ? 'Выбрать дату'
-                              : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
+                      const Spacer(),
+                      if (EventSheetModeX(widget.mode).isView)
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          color: mainColor,
+                          onPressed: () {},
                         ),
-                        onPressed: () => _selectDate(context),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.access_time),
-                        label: Text(
-                          _selectedTime == null
-                              ? 'Выбрать время'
-                              : _selectedTime!.format(context),
+                      if (EventSheetModeX(widget.mode).isView)
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          color: dangerColor,
+                          onPressed: () => deleteEvent(context, widget.event!),
                         ),
-                        onPressed: () => _selectTime(context),
-                      ),
-                    ),
-                  ],
-                )
-              else
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.event, size: 18, color: Colors.grey.shade600),
-                    const SizedBox(width: 6),
-                    Text(widget.event?.dateTime.toString() ?? ""),
-                  ],
+                      if (EventSheetModeX(widget.mode).isEditable)
+                        IconButton(
+                          icon: const Icon(Icons.check),
+                          color: mainColor,
+                          onPressed: () {
+                            if (!_verifyForm()) return;
+
+                            PetEvent event = PetEvent(
+                              name: _nameController.text,
+                              category: _categoryController.text,
+                              dateTime: DateTime(
+                                _selectedDate!.year,
+                                _selectedDate!.month,
+                                _selectedDate!.day,
+                                _selectedTime!.hour,
+                                _selectedTime!.minute,
+                              ),
+                            );
+                            createEvent(context, event);
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-            ],
-          )
-            ],
+
+                if (EventSheetModeX(widget.mode).isEditable)
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: 'Название'),
+                    initialValue: null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Введите название' : null,
+                  )
+                else
+                  Text(
+                    textAlign: TextAlign.center,
+                    widget.event?.name ?? "",
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+
+                const SizedBox(height: 8),
+
+                if (EventSheetModeX(widget.mode).isEditable)
+                  TextFormField(
+                    controller: _categoryController,
+                    decoration: const InputDecoration(labelText: 'Категория'),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Введите категорию' : null,
+                  )
+                else
+                  Text(
+                    textAlign: TextAlign.center,
+                    widget.event?.name ?? "",
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+
+                const SizedBox(height: 16),
+
+                if (EventSheetModeX(widget.mode).isEditable)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton.icon(
+                          statesController: _dateController,
+                          style: TextButton.styleFrom(
+                            foregroundColor:
+                                _dateController.value.contains(
+                                  WidgetState.error,
+                                )
+                                ? errorColor
+                                : mainColor,
+                          ),
+                          icon: const Icon(Icons.calendar_today),
+                          label: Text(
+                            _selectedDate == null
+                                ? 'Выбрать дату'
+                                : DateFormat(
+                                    'dd.MM.yyyy',
+                                  ).format(_selectedDate!),
+                          ),
+                          onPressed: () => _selectDate(context),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextButton.icon(
+                          statesController: _timeController,
+                          style: TextButton.styleFrom(
+                            foregroundColor:
+                                _timeController.value.contains(
+                                  WidgetState.error,
+                                )
+                                ? errorColor
+                                : mainColor,
+                          ),
+                          icon: const Icon(Icons.access_time),
+                          label: Text(
+                            _selectedTime == null
+                                ? 'Выбрать время'
+                                : _selectedTime!.format(context),
+                          ),
+                          onPressed: () => _selectTime(context),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.event, size: 18, color: Colors.grey.shade600),
+                      const SizedBox(width: 6),
+                      Text(widget.event?.dateTime.toString() ?? ""),
+                    ],
+                  ),
+              ],
+            ),
           ),
         );
       },

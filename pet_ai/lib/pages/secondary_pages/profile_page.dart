@@ -185,9 +185,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               child: Row(
-                                children: [
-                                  Text(_formatDate(_birthDate)),
-                                ],
+                                children: [Text(_formatDate(_birthDate))],
                               ),
                             ),
                           ),
@@ -208,8 +206,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
                               final val = double.tryParse(
                                 v.replaceAll(',', '.'),
                               );
-                              if (val == null || val <= 0)
+                              if (val == null || val <= 0) {
                                 return 'Неверный вес';
+                              }
                               return null;
                             },
                           ),
@@ -256,7 +255,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                       maxLines: 4,
                     ),
 
-                    const SizedBox(height: 20)
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),

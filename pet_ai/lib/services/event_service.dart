@@ -43,9 +43,19 @@ class EventService {
     return data.map((e) => PetEvent.fromJson(jsonDecode(e))).toList();
   }
 
-  Future<void> saveEvent(PetEvent event) async {
+  Future<void> createEvent(PetEvent event) async {
     final events = await loadEvents();
     events.add(event);
+    final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
+    await SharedPreferencesAsync().setStringList(_key, encoded);
+  }
+
+  Future<void> saveEvent(PetEvent event) async {
+    final events = await loadEvents();
+    final index = events.indexOf(event);
+    if (index < 0) return;
+
+    events[index] = event;
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_key, encoded);
   }
