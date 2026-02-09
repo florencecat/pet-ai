@@ -30,7 +30,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadEvents() async {
     final events = await EventService().loadEvents();
-    events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    if (events.length > 1) {
+      events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    }
     setState(() => _events = events);
   }
 
@@ -51,6 +53,11 @@ class _HomePageState extends State<HomePage> {
     return description;
   }
 
+  void eventSheetCallback() async {
+    await _loadEvents();
+    setState(() { });
+  }
+
   void _openEventSheet(BuildContext context, PetEvent event) {
     showModalBottomSheet(
       context: context,
@@ -59,7 +66,7 @@ class _HomePageState extends State<HomePage> {
       enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) =>
-          EventDraggableSheet(event: event),
+          EventDraggableSheet(event: event, onClose: eventSheetCallback),
     );
   }
 

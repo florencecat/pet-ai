@@ -10,60 +10,6 @@ enum EventSheetMode { view, create, edit }
 final DraggableScrollableController _sheetController =
     DraggableScrollableController();
 
-void collapseSheet() {
-  _sheetController.animateTo(
-    0.45,
-    duration: const Duration(milliseconds: 300),
-    curve: Curves.easeOutCubic,
-  );
-}
-
-void expandSheet() {
-  _sheetController.animateTo(
-    0.9,
-    duration: const Duration(milliseconds: 350),
-    curve: Curves.easeOutCubic,
-  );
-}
-
-void closeSheet(BuildContext context) {
-  Navigator.of(context).pop();
-}
-
-Future<void> deleteEvent(BuildContext context, PetEvent event) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Очистить данные?'),
-      content: const Text(
-        'Будут удалены все данные питомца, события и настройки. '
-        'Приложение будет выглядеть как при первом запуске.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Отмена'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red),
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Очистить'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirmed != true) return;
-
-  await EventService().deleteEvent(event);
-
-  if (context.mounted) closeSheet(context);
-}
-
-Future<void> createEvent(BuildContext context, PetEvent event) async {
-  EventService().createEvent(event);
-  if (context.mounted) closeSheet(context);
-}
 
 extension EventSheetModeX on EventSheetMode {
   bool get isView => this == EventSheetMode.view;
@@ -74,16 +20,29 @@ extension EventSheetModeX on EventSheetMode {
 }
 
 class EventDraggableSheet extends StatefulWidget {
-  final EventSheetMode mode;
+  EventSheetMode mode;
   final PetEvent? event;
   final DateTime? dateTime;
+  final VoidCallback onClose;
 
-  const EventDraggableSheet({super.key, required this.event})
-      : mode = EventSheetMode.edit, dateTime = null;
+  EventDraggableSheet({
+    super.key,
+    required this.event,
+    required this.onClose,
+  }) : mode = EventSheetMode.view,
+       dateTime = null;
+  EventDraggableSheet.edit({
+    super.key,
+    required this.event,
+    required this.onClose,
+  }) : mode = EventSheetMode.edit,
+       dateTime = null;
   EventDraggableSheet.create({
     super.key,
     required this.dateTime,
-  }) : mode = EventSheetMode.create, event = PetEvent.empty();
+    required this.onClose,
+  }) : mode = EventSheetMode.create,
+       event = null;
 
   @override
   State<EventDraggableSheet> createState() => _EventDraggableSheetState();
@@ -128,6 +87,63 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
     }
   }
 
+  void collapseSheet() {
+    _sheetController.animateTo(
+      0.45,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void expandSheet() {
+    _sheetController.animateTo(
+      0.9,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void closeSheet(BuildContext context) {
+    widget.onClose.call();
+    Navigator.of(context).pop();
+  }
+
+  Future<void> deleteEvent(BuildContext context, PetEvent event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(title: const Text('Внимание'),
+        content: const Text('Вы точно хотите удалить это событие?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Нет'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: dangerColor),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await EventService().deleteEvent(event);
+
+    if (context.mounted) closeSheet(context);
+  }
+
+  Future<void> createEvent(BuildContext context, PetEvent event) async {
+    EventService().createEvent(event);
+    if (context.mounted) closeSheet(context);
+  }
+
+  Future<void> editEvent(BuildContext context, PetEvent event) async {
+    EventService().saveEvent(event);
+    if (context.mounted) closeSheet(context);
+  }
+
   bool _verifyForm() {
     final hasError =
         !_formKey.currentState!.validate() ||
@@ -144,10 +160,12 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.dateTime != null) {
+    if (widget.dateTime != null && _selectedDate == null) {
       _selectedDate = widget.dateTime;
     }
-    if (widget.event != null) {
+    else if (widget.event != null) {
+      _nameController.text = widget.event!.name;
+      _categoryController.text = widget.event!.category;
       _selectedDate = widget.event!.dateTime;
       _selectedTime = TimeOfDay.fromDateTime(widget.event!.dateTime);
     }
@@ -199,7 +217,11 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                         IconButton(
                           icon: const Icon(Icons.edit),
                           color: mainColor,
-                          onPressed: () {},
+                          onPressed: () {
+                            setState(() {
+                              widget.mode = EventSheetMode.edit;
+                            });
+                          },
                         ),
                       if (EventSheetModeX(widget.mode).isView)
                         IconButton(
@@ -214,18 +236,24 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                           onPressed: () {
                             if (!_verifyForm()) return;
 
-                            PetEvent event = PetEvent(
-                              name: _nameController.text,
-                              category: _categoryController.text,
-                              dateTime: DateTime(
-                                _selectedDate!.year,
-                                _selectedDate!.month,
-                                _selectedDate!.day,
-                                _selectedTime!.hour,
-                                _selectedTime!.minute,
-                              ),
+                            final String name = _nameController.text;
+                            final String category = _categoryController.text;
+                            final DateTime dateTime = DateTime(
+                              _selectedDate!.year,
+                              _selectedDate!.month,
+                              _selectedDate!.day,
+                              _selectedTime!.hour,
+                              _selectedTime!.minute,
                             );
-                            createEvent(context, event);
+
+                            if (EventSheetModeX(widget.mode).isCreate) {
+                              createEvent(context, PetEvent(name: name, category: category, dateTime: dateTime));
+                            }
+                            if (EventSheetModeX(widget.mode).isEdit) {
+                              PetEvent event = widget.event!;
+                              event.assign(name, category, dateTime);
+                              editEvent(context, event);
+                            }
                           },
                         ),
                     ],
@@ -236,7 +264,6 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(labelText: 'Название'),
-                    initialValue: null,
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Введите название' : null,
                   )

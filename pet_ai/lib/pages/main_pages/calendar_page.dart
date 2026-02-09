@@ -12,14 +12,17 @@ class CalendarPage extends StatefulWidget {
   State<CalendarPage> createState() => _CalendarPageState();
 }
 
-
-
 class _CalendarPageState extends State<CalendarPage> {
   CalendarFormat _format = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
   List<PetEvent> _events = [];
+
+  void eventSheetCallback() async {
+    final events = await EventService().loadEvents();
+    setState(()  { _events = events; });
+  }
 
   void openCreateEventSheet(BuildContext context, DateTime dateTime) {
     showModalBottomSheet(
@@ -28,7 +31,10 @@ class _CalendarPageState extends State<CalendarPage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet.create(dateTime: dateTime),
+      builder: (_) => EventDraggableSheet.create(
+        dateTime: dateTime,
+        onClose: eventSheetCallback,
+      ),
     );
   }
 
@@ -39,7 +45,8 @@ class _CalendarPageState extends State<CalendarPage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet(event: event),
+      builder: (_) =>
+          EventDraggableSheet(event: event, onClose: eventSheetCallback),
     );
   }
 
@@ -98,7 +105,9 @@ class _CalendarPageState extends State<CalendarPage> {
               child: ListView(
                 children: [
                   TextButton.icon(
-                    onPressed: _selectedDay == null ? null : () => openCreateEventSheet(context, _selectedDay!),
+                    onPressed: _selectedDay == null
+                        ? null
+                        : () => openCreateEventSheet(context, _selectedDay!),
                     icon: const Icon(Icons.add),
                     label: const Text('Добавить событие'),
                   ),

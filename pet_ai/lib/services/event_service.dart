@@ -4,9 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PetEvent {
   final String? id;
-  final String name;
-  final String category;
-  final DateTime dateTime;
+  String name;
+  String category;
+  DateTime dateTime;
 
   PetEvent({required this.name, required this.category, required this.dateTime})
     : id = UniqueKey().toString();
@@ -19,6 +19,13 @@ class PetEvent {
   });
 
   PetEvent.empty() : id = UniqueKey().toString(), name = "", category = "", dateTime = DateTime.now();
+
+  void assign(String? name, String? category, DateTime? dateTime)
+  {
+    this.name = name ?? this.name;
+    this.category = category ?? this.category;
+    this.dateTime = dateTime ?? this.dateTime;
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -52,7 +59,7 @@ class EventService {
 
   Future<void> saveEvent(PetEvent event) async {
     final events = await loadEvents();
-    final index = events.indexOf(event);
+    final index = events.indexWhere((e) => e.id == event.id);
     if (index < 0) return;
 
     events[index] = event;
@@ -62,6 +69,7 @@ class EventService {
 
   Future<void> deleteEvent(PetEvent event) async {
     final events = await loadEvents();
+    events.removeWhere((e) => e.id == event.id);
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_key, encoded);
   }
