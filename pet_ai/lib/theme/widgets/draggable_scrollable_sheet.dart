@@ -23,24 +23,20 @@ class EventDraggableSheet extends StatefulWidget {
   EventSheetMode mode;
   final PetEvent? event;
   final DateTime? dateTime;
-  final VoidCallback onClose;
 
   EventDraggableSheet({
     super.key,
     required this.event,
-    required this.onClose,
   }) : mode = EventSheetMode.view,
        dateTime = null;
   EventDraggableSheet.edit({
     super.key,
     required this.event,
-    required this.onClose,
   }) : mode = EventSheetMode.edit,
        dateTime = null;
   EventDraggableSheet.create({
     super.key,
     required this.dateTime,
-    required this.onClose,
   }) : mode = EventSheetMode.create,
        event = null;
 
@@ -58,6 +54,20 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   TimeOfDay? _selectedTime;
 
   _EventDraggableSheetState();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.dateTime != null && _selectedDate == null) {
+      _selectedDate = widget.dateTime;
+    }
+    else if (widget.event != null) {
+      _nameController.text = widget.event!.name;
+      _categoryController.text = widget.event!.category;
+      _selectedDate = widget.event!.dateTime;
+      _selectedTime = TimeOfDay.fromDateTime(widget.event!.dateTime);
+    }
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final now = DateTime.now();
@@ -104,8 +114,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   }
 
   void closeSheet(BuildContext context) {
-    widget.onClose.call();
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(true);
   }
 
   Future<void> deleteEvent(BuildContext context, PetEvent event) async {
@@ -135,7 +144,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   }
 
   Future<void> createEvent(BuildContext context, PetEvent event) async {
-    EventService().createEvent(event);
+    await EventService().createEvent(event);
     if (context.mounted) closeSheet(context);
   }
 
@@ -160,15 +169,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.dateTime != null && _selectedDate == null) {
-      _selectedDate = widget.dateTime;
-    }
-    else if (widget.event != null) {
-      _nameController.text = widget.event!.name;
-      _categoryController.text = widget.event!.category;
-      _selectedDate = widget.event!.dateTime;
-      _selectedTime = TimeOfDay.fromDateTime(widget.event!.dateTime);
-    }
+
     return DraggableScrollableSheet(
       controller: _sheetController,
       initialChildSize: 0.45,

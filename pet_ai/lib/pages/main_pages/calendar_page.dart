@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../services/event_service.dart';
@@ -19,35 +20,54 @@ class _CalendarPageState extends State<CalendarPage> {
 
   List<PetEvent> _events = [];
 
-  void eventSheetCallback() async {
+  void openCreateEventSheet(BuildContext context, DateTime dateTime) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventDraggableSheet.create(dateTime: dateTime),
+    );
+
+    if (updated == true) {
+      final events = await EventService().loadEvents();
+      setState(() {
+        _events = events;
+      });
+    }
+  }
+
+  void openViewEventSheet(BuildContext context, PetEvent event) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventDraggableSheet(event: event),
+    );
+
+    if (updated == true) {
+      final events = await EventService().loadEvents();
+      setState(() {
+        _events = events;
+      });
+    }
+  }
+
+  Future<void> _loadEvents() async {
     final events = await EventService().loadEvents();
-    setState(()  { _events = events; });
+    if (events.length > 1) {
+      events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    }
+    setState(() => _events = events);
   }
 
-  void openCreateEventSheet(BuildContext context, DateTime dateTime) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet.create(
-        dateTime: dateTime,
-        onClose: eventSheetCallback,
-      ),
-    );
-  }
-
-  void openViewEventSheet(BuildContext context, PetEvent event) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) =>
-          EventDraggableSheet(event: event, onClose: eventSheetCallback),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
   }
 
   @override
@@ -68,6 +88,11 @@ class _CalendarPageState extends State<CalendarPage> {
                   lastDay: DateTime.utc(2030),
                   calendarFormat: _format,
                   headerStyle: HeaderStyle(formatButtonVisible: false),
+                  eventLoader: (day) {
+                    return _events
+                        .where((e) => DateUtils.isSameDay(e.dateTime, day))
+                        .toList();
+                  },
                   calendarStyle: const CalendarStyle(
                     todayDecoration: BoxDecoration(
                       color: Color.fromARGB(128, 59, 128, 123),
@@ -128,6 +153,11 @@ class _CalendarPageState extends State<CalendarPage> {
                           child: ListTile(
                             leading: const Icon(Icons.event),
                             title: Text(e.name),
+                            subtitle: Text(
+                              DateFormat(
+                                'dd.MM.yyyy – HH:mm',
+                              ).format(e.dateTime),
+                            ),
                           ),
                         ),
                       ),

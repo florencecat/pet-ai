@@ -58,16 +58,19 @@ class _HomePageState extends State<HomePage> {
     setState(() { });
   }
 
-  void _openEventSheet(BuildContext context, PetEvent event) {
-    showModalBottomSheet(
+  void _openEventSheet(BuildContext context, PetEvent event) async {
+    final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          EventDraggableSheet(event: event, onClose: eventSheetCallback),
+      builder: (_) => EventDraggableSheet(event: event),
     );
+
+    if (updated == true) {
+      await _loadEvents();
+    }
   }
 
   @override
