@@ -2,6 +2,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class EventCategory {
+  final String id;
+  final String caption;
+  final String? description;
+
+  EventCategory({required this.id, required this.caption, this.description});
+}
+
 class PetEvent {
   final String? id;
   String name;

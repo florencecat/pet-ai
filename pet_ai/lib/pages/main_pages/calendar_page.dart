@@ -87,6 +87,31 @@ class _CalendarPageState extends State<CalendarPage> {
                   firstDay: DateTime.utc(2024),
                   lastDay: DateTime.utc(2030),
                   calendarFormat: _format,
+                  calendarBuilders: CalendarBuilders(
+                    markerBuilder: (context, day, events) {
+                        if (events.isEmpty) return const SizedBox();
+
+                        return Positioned(
+                          bottom: 4,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: events.take(3).map((event) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                    },
+                  ),
                   headerStyle: HeaderStyle(formatButtonVisible: false),
                   eventLoader: (day) {
                     return _events
