@@ -1,19 +1,77 @@
 import 'dart:convert';
+import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class EventCategory {
   final String id;
-  final String caption;
-  final String? description;
+  final String name;
+  final String description;
+  final int colorValue;
+  final IconData icon;
 
-  EventCategory({required this.id, required this.caption, this.description});
+  const EventCategory({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.colorValue,
+    required this.icon,
+  });
+
+  Color get color => Color(colorValue);
+}
+
+class EventCategories {
+  static const empty = EventCategory(
+    id: 'empty',
+    name: '',
+    description: '',
+    colorValue: 0,
+    icon: Icons.pets
+  );
+
+  static const health = EventCategory(
+    id: 'health',
+    name: 'Здоровье',
+    description: 'Визиты к врачу, прививки',
+    colorValue: 0xFFE53935,
+    icon: Icons.medical_information
+  );
+
+  static const grooming = EventCategory(
+    id: 'grooming',
+    name: 'Груминг',
+    description: 'Стрижка, купание',
+    colorValue: 0xFF1E88E5,
+    icon: Icons.wash
+  );
+
+  static const food = EventCategory(
+    id: 'food',
+    name: 'Питание',
+    description: 'Кормление, добавки',
+    colorValue: 0xFF43A047,
+    icon: Icons.feed
+  );
+
+  static const all = [
+    empty,
+    health,
+    grooming,
+    food,
+  ];
+
+  static EventCategory byId(String id) {
+    return all.firstWhere((c) => c.id == id);
+  }
 }
 
 class PetEvent {
-  final String? id;
+  final String id;
   String name;
-  String category;
+  EventCategory category;
   DateTime dateTime;
 
   PetEvent({required this.name, required this.category, required this.dateTime})
@@ -26,9 +84,9 @@ class PetEvent {
     required this.dateTime,
   });
 
-  PetEvent.empty() : id = UniqueKey().toString(), name = "", category = "", dateTime = DateTime.now();
+  PetEvent.empty() : id = UniqueKey().toString(), name = "", category = EventCategories.empty, dateTime = DateTime.now();
 
-  void assign(String? name, String? category, DateTime? dateTime)
+  void assign(String? name, EventCategory? category, DateTime? dateTime)
   {
     this.name = name ?? this.name;
     this.category = category ?? this.category;

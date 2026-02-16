@@ -13,9 +13,9 @@ class AddEventPage extends StatefulWidget {
 class _AddEventPageState extends State<AddEventPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _categoryController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  EventCategory _selectedCategory = EventCategories.empty;
 
   Future<void> _selectDate() async {
     final now = DateTime.now();
@@ -57,7 +57,7 @@ class _AddEventPageState extends State<AddEventPage> {
 
     final event = PetEvent(
       name: _nameController.text,
-      category: _categoryController.text,
+      category: _selectedCategory,
       dateTime: dateTime,
     );
 
@@ -82,12 +82,16 @@ class _AddEventPageState extends State<AddEventPage> {
                     v == null || v.isEmpty ? 'Введите название' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _categoryController,
-                decoration: const InputDecoration(labelText: 'Категория'),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Введите категорию' : null,
+              DropdownButtonFormField<String>(
+                items: EventCategories.all.skip(1).map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                onChanged: (v) => setState(() { if (v != null) _selectedCategory = EventCategories.byId(v); })
               ),
+              // TextFormField(
+              //   controller: _categoryController,
+              //   decoration: const InputDecoration(labelText: 'Категория'),
+              //   validator: (v) =>
+              //       v == null || v.isEmpty ? 'Введите категорию' : null,
+              // ),
               const SizedBox(height: 16),
               Row(
                 children: [

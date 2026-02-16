@@ -10,7 +10,6 @@ enum EventSheetMode { view, create, edit }
 final DraggableScrollableController _sheetController =
     DraggableScrollableController();
 
-
 extension EventSheetModeX on EventSheetMode {
   bool get isView => this == EventSheetMode.view;
   bool get isEdit => this == EventSheetMode.edit;
@@ -24,21 +23,15 @@ class EventDraggableSheet extends StatefulWidget {
   final PetEvent? event;
   final DateTime? dateTime;
 
-  EventDraggableSheet({
-    super.key,
-    required this.event,
-  }) : mode = EventSheetMode.view,
-       dateTime = null;
-  EventDraggableSheet.edit({
-    super.key,
-    required this.event,
-  }) : mode = EventSheetMode.edit,
-       dateTime = null;
-  EventDraggableSheet.create({
-    super.key,
-    required this.dateTime,
-  }) : mode = EventSheetMode.create,
-       event = null;
+  EventDraggableSheet({super.key, required this.event})
+    : mode = EventSheetMode.view,
+      dateTime = null;
+  EventDraggableSheet.edit({super.key, required this.event})
+    : mode = EventSheetMode.edit,
+      dateTime = null;
+  EventDraggableSheet.create({super.key, required this.dateTime})
+    : mode = EventSheetMode.create,
+      event = null;
 
   @override
   State<EventDraggableSheet> createState() => _EventDraggableSheetState();
@@ -47,11 +40,11 @@ class EventDraggableSheet extends StatefulWidget {
 class _EventDraggableSheetState extends State<EventDraggableSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _categoryController = TextEditingController();
   final _dateController = WidgetStatesController();
   final _timeController = WidgetStatesController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  EventCategory? _selectedCategory;
 
   _EventDraggableSheetState();
 
@@ -60,10 +53,9 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
     super.initState();
     if (widget.dateTime != null && _selectedDate == null) {
       _selectedDate = widget.dateTime;
-    }
-    else if (widget.event != null) {
+    } else if (widget.event != null) {
       _nameController.text = widget.event!.name;
-      _categoryController.text = widget.event!.category;
+      _selectedCategory = widget.event!.category;
       _selectedDate = widget.event!.dateTime;
       _selectedTime = TimeOfDay.fromDateTime(widget.event!.dateTime);
     }
@@ -120,7 +112,8 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   Future<void> deleteEvent(BuildContext context, PetEvent event) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(title: const Text('Внимание'),
+      builder: (context) => AlertDialog(
+        title: const Text('Внимание'),
         content: const Text('Вы точно хотите удалить это событие?'),
         actions: [
           TextButton(
@@ -157,7 +150,8 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
     final hasError =
         !_formKey.currentState!.validate() ||
         _selectedDate == null ||
-        _selectedTime == null;
+        _selectedTime == null ||
+        _selectedCategory == null;
 
     setState(() {
       _dateController.update(WidgetState.error, _selectedDate == null);
@@ -169,7 +163,6 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
   @override
   Widget build(BuildContext context) {
-
     return DraggableScrollableSheet(
       controller: _sheetController,
       initialChildSize: 0.45,
@@ -238,7 +231,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                             if (!_verifyForm()) return;
 
                             final String name = _nameController.text;
-                            final String category = _categoryController.text;
+                            final EventCategory category = _selectedCategory!;
                             final DateTime dateTime = DateTime(
                               _selectedDate!.year,
                               _selectedDate!.month,
@@ -248,7 +241,14 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                             );
 
                             if (EventSheetModeX(widget.mode).isCreate) {
-                              createEvent(context, PetEvent(name: name, category: category, dateTime: dateTime));
+                              createEvent(
+                                context,
+                                PetEvent(
+                                  name: name,
+                                  category: category,
+                                  dateTime: dateTime,
+                                ),
+                              );
                             }
                             if (EventSheetModeX(widget.mode).isEdit) {
                               PetEvent event = widget.event!;
@@ -278,11 +278,23 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                 const SizedBox(height: 8),
 
                 if (EventSheetModeX(widget.mode).isEditable)
-                  TextFormField(
-                    controller: _categoryController,
-                    decoration: const InputDecoration(labelText: 'Категория'),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Введите категорию' : null,
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(labelText: 'Категория'),
+
+                    items: EventCategories.all
+                        .skip(1)
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c.id,
+                            child: Row(children: [Icon(c.icon, color: c.color), const SizedBox(width: 8), Text(c.name)]),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() {
+                      if (v != null) {
+                        _selectedCategory = EventCategories.byId(v);
+                      }
+                    }),
                   )
                 else
                   Text(
