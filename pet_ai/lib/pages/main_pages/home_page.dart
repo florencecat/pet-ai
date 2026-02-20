@@ -19,6 +19,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<PetEvent> _events = [];
+  PetEvent? _upcomingStarredEvent;
   PetProfile _profile = PetProfile();
 
   @override
@@ -33,7 +34,12 @@ class _HomePageState extends State<HomePage> {
     if (events.length > 1) {
       events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     }
-    setState(() => _events = events);
+    setState(() {
+      _events = events;
+      _upcomingStarredEvent = _events
+          .where((e) => e.starred == true)
+          .firstOrNull;
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -55,7 +61,7 @@ class _HomePageState extends State<HomePage> {
 
   void eventSheetCallback() async {
     await _loadEvents();
-    setState(() { });
+    setState(() {});
   }
 
   void _openEventSheet(BuildContext context, PetEvent event) async {
@@ -195,27 +201,57 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
 
           // ближайшее важное напоминание
-          Card.outlined(
-            shape: cardBorder,
-            clipBehavior: Clip.antiAliasWithSaveLayer,
-            child: InkWell(
-              splashColor: Colors.blue.withAlpha(50),
-              onTap: () {
-                debugPrint('Card tapped.');
-              },
-              child: Padding(
-                padding: EdgeInsetsGeometry.all(4),
-                child: ListTile(
-                  title: const Text('Напоминания'),
-                  subtitle: const Text('Следующая вакцина: 15.10.2025'),
-                  trailing: IconButton(
-                    onPressed: () {},
-                    icon: Icon(Icons.notifications_active_outlined),
+          if (_upcomingStarredEvent != null)
+            Card.outlined(
+              shape: cardBorder,
+              clipBehavior: Clip.antiAliasWithSaveLayer,
+              child: InkWell(
+                splashColor: Colors.blue.withAlpha(50),
+                onTap: () {
+                  debugPrint('Card tapped.');
+                },
+                child: Padding(
+                  padding: EdgeInsetsGeometry.all(4),
+                  child: ListTile(
+                    leading: Icon(
+                      _upcomingStarredEvent!.category.icon,
+                      color: _upcomingStarredEvent!.category.color,
+                    ),
+                    title: Text(_upcomingStarredEvent!.name),
+                    subtitle: Text(
+                      DateFormat(
+                        'dd.MM.yyyy – HH:mm',
+                      ).format(_upcomingStarredEvent!.dateTime),
+                    ),
+                    trailing: IconButton(
+                      onPressed: () {},
+                      icon: Icon(Icons.notifications_active_outlined),
+                    ),
                   ),
                 ),
               ),
+            )
+          else
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.05,
+              child: const Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.star_border_rounded,
+                      size: 18,
+                      color: secondaryColor,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Нет ближайших важных событий',
+                      style: TextStyle(color: secondaryColor, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
           const SizedBox(height: 16),
 
           // ближайшие события
@@ -265,18 +301,19 @@ class _HomePageState extends State<HomePage> {
                     )
                     .take(4)
                     .map((event) {
-                      final formattedDate = DateFormat(
-                        'dd.MM.yyyy – HH:mm',
-                      ).format(event.dateTime);
                       return Column(
                         children: [
                           ListTile(
-                            leading: const Icon(
-                              Icons.event,
-                              color: Colors.teal,
+                            leading: Icon(
+                              event.category.icon,
+                              color: event.category.color,
                             ),
                             title: Text(event.name),
-                            subtitle: Text(formattedDate),
+                            subtitle: Text(
+                              DateFormat(
+                                'dd.MM.yyyy – HH:mm',
+                              ).format(event.dateTime),
+                            ),
                             trailing: IconButton(
                               onPressed: () => _openEventSheet(context, event),
                               icon: Icon(Icons.chevron_right),

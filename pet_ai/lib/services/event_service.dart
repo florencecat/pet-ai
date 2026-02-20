@@ -73,18 +73,20 @@ class PetEvent {
   String name;
   EventCategory category;
   DateTime dateTime;
+  bool starred;
 
   PetEvent({required this.name, required this.category, required this.dateTime})
-    : id = UniqueKey().toString();
+    : id = UniqueKey().toString(), starred = false;
 
   PetEvent.deserialize({
     required this.id,
     required this.name,
     required this.category,
     required this.dateTime,
+    required this.starred,
   });
 
-  PetEvent.empty() : id = UniqueKey().toString(), name = "", category = EventCategories.empty, dateTime = DateTime.now();
+  PetEvent.empty() : id = UniqueKey().toString(), name = "", category = EventCategories.empty, dateTime = DateTime.now(), starred = false;
 
   void assign(String? name, EventCategory? category, DateTime? dateTime)
   {
@@ -96,23 +98,25 @@ class PetEvent {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
-    'category': category,
+    'category': category.id,
     'dateTime': dateTime.toIso8601String(),
+    'starred': starred,
   };
 
   factory PetEvent.fromJson(Map<String, dynamic> json) => PetEvent.deserialize(
     id: json['id'],
     name: json['name'],
-    category: json['category'],
+    category: EventCategories.byId(json['category']),
     dateTime: DateTime.parse(json['dateTime']),
+    starred: json['starred']
   );
 }
 
 class EventService {
-  static const _key = 'pet_events';
+  static const _eventKey = 'pet_events';
 
   Future<List<PetEvent>> loadEvents() async {
-    final data = await SharedPreferencesAsync().getStringList(_key) ?? [];
+    final data = await SharedPreferencesAsync().getStringList(_eventKey) ?? [];
     return data.map((e) => PetEvent.fromJson(jsonDecode(e))).toList();
   }
 
@@ -120,7 +124,7 @@ class EventService {
     final events = await loadEvents();
     events.add(event);
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
-    await SharedPreferencesAsync().setStringList(_key, encoded);
+    await SharedPreferencesAsync().setStringList(_eventKey, encoded);
   }
 
   Future<void> saveEvent(PetEvent event) async {
@@ -130,17 +134,17 @@ class EventService {
 
     events[index] = event;
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
-    await SharedPreferencesAsync().setStringList(_key, encoded);
+    await SharedPreferencesAsync().setStringList(_eventKey, encoded);
   }
 
   Future<void> deleteEvent(PetEvent event) async {
     final events = await loadEvents();
     events.removeWhere((e) => e.id == event.id);
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
-    await SharedPreferencesAsync().setStringList(_key, encoded);
+    await SharedPreferencesAsync().setStringList(_eventKey, encoded);
   }
 
   Future<void> clearEvents() async {
-    await SharedPreferencesAsync().remove(_key);
+    await SharedPreferencesAsync().remove(_eventKey);
   }
 }

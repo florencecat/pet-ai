@@ -225,6 +225,20 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                         ),
                       if (EventSheetModeX(widget.mode).isEditable)
                         IconButton(
+                          icon: widget.event?.starred == true
+                              ? Icon(Icons.star_rounded)
+                              : Icon(Icons.star_outline_rounded),
+                          color: mainColor,
+                          onPressed: () {
+                            setState(() {
+                              if (widget.event != null) {
+                                widget.event!.starred = !widget.event!.starred;
+                              }
+                            });
+                          },
+                        ),
+                      if (EventSheetModeX(widget.mode).isEditable)
+                        IconButton(
                           icon: const Icon(Icons.check),
                           color: mainColor,
                           onPressed: () {
@@ -280,13 +294,20 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                 if (EventSheetModeX(widget.mode).isEditable)
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(labelText: 'Категория'),
+                    dropdownColor: Colors.white,
 
                     items: EventCategories.all
                         .skip(1)
                         .map(
                           (c) => DropdownMenuItem(
                             value: c.id,
-                            child: Row(children: [Icon(c.icon, color: c.color), const SizedBox(width: 8), Text(c.name)]),
+                            child: Row(
+                              children: [
+                                Icon(c.icon, color: c.color),
+                                const SizedBox(width: 8),
+                                Text(c.name),
+                              ],
+                            ),
                           ),
                         )
                         .toList(),
