@@ -99,7 +99,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _birthDate ?? DateTime(now.year - 1),
+      initialDate: _birthDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(now.year + 5),
       locale: const Locale('ru'),
