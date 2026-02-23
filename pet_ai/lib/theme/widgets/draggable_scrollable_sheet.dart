@@ -142,7 +142,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   }
 
   Future<void> editEvent(BuildContext context, PetEvent event) async {
-    EventService().saveEvent(event);
+    await EventService().saveEvent(event);
     if (context.mounted) closeSheet(context);
   }
 
@@ -293,9 +293,11 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
                 if (EventSheetModeX(widget.mode).isEditable)
                   DropdownButtonFormField<String>(
+                    validator: (v) =>
+                    v == null || v.isEmpty ? 'Выберите категорию' : null,
                     decoration: InputDecoration(labelText: 'Категория'),
                     dropdownColor: Colors.white,
-
+                    initialValue: widget.event?.category.id,
                     items: EventCategories.all
                         .skip(1)
                         .map(
