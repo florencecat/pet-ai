@@ -73,12 +73,12 @@ class ProfileService {
 
   String localizeDuration(int amount, FormattingType type) {
     if ((amount >= 5 && amount <= 20) || amount % 10 == 0) {
-      return type == FormattingType.year ? 'лет' : 'месяцев';
+      return type == FormattingType.year ? 'лет' : 'мес.';
     }
     if ((amount % 10) >= 2 && (amount % 10) <= 4) {
-      return type == FormattingType.year ? 'года' : 'месяца';
+      return type == FormattingType.year ? 'года' : 'мес.';
     }
-    return type == FormattingType.year ? 'год' : 'месяц';
+    return type == FormattingType.year ? 'год' : 'мес.';
   }
 
   String formatAge(Duration duration) {
