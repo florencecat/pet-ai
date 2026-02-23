@@ -70,34 +70,5 @@ class EventPreviewBlock extends StatelessWidget {
           );
         }).toList()
     );
-
-    return Column(
-      children: events.take(4).map((event) {
-        return Card.outlined(
-          clipBehavior: Clip.antiAlias,
-          shape: cardBorder,
-          child: InkWell(
-            splashColor: Colors.blue.withAlpha(50),
-            onTap: () => onTap(event),
-            child: ListTile(
-              leading: Icon(
-                event.category.icon,
-                color: event.category.color,
-              ),
-              title: Text(event.name),
-              subtitle: Text(
-                DateFormat('dd.MM.yyyy – HH:mm')
-                    .format(event.dateTime),
-              ),
-              trailing: IconButton(
-                onPressed: () =>
-                    onOpenCalendar(event.dateTime),
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
   }
 }
