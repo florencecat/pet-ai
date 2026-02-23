@@ -1,6 +1,8 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
+import 'package:pet_ai/theme/widgets/activity_indicator.dart';
+import 'package:pet_ai/theme/widgets/events_preview_block.dart';
 import 'dart:core';
 
 import '../secondary_pages/profile_page.dart';
@@ -10,17 +12,24 @@ import '../../../theme/widgets/draggable_scrollable_sheet.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;
+  final ValueChanged<DateTime> onOpenCalendarByEvent;
 
-  const HomePage({super.key, required this.onOpenCalendar});
+  const HomePage({
+    super.key,
+    required this.onOpenCalendar,
+    required this.onOpenCalendarByEvent,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  List<PetEvent> _events = [];
   PetEvent? _upcomingStarredEvent;
   PetProfile _profile = PetProfile();
+
+  bool _isLoadingEvents = true;
+  List<PetEvent> _events = [];
 
   @override
   void initState() {
@@ -30,16 +39,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadEvents() async {
+    setState(() { _isLoadingEvents = true; });
     final events = await EventService().loadEvents();
-    if (events.length > 1) {
-      events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
-    }
     setState(() {
-      _events = events;
+      _events = events
+          .where(
+            (e) =>
+                e.dateTime.isAfter(DateTime.now()) ||
+                e.dateTime.isAtSameMomentAs(DateTime.now()),
+          )
+          .toList();
+      if (events.length > 1) {
+        events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      }
       _upcomingStarredEvent = _events
           .where((e) => e.starred == true)
           .firstOrNull;
     });
+    _isLoadingEvents = false;
   }
 
   Future<void> _loadProfile() async {
@@ -57,11 +74,6 @@ class _HomePageState extends State<HomePage> {
       }
     }
     return description;
-  }
-
-  void eventSheetCallback() async {
-    await _loadEvents();
-    setState(() {});
   }
 
   void _openEventSheet(BuildContext context, PetEvent event) async {
@@ -113,13 +125,16 @@ class _HomePageState extends State<HomePage> {
                     },
                     child: Padding(
                       padding: EdgeInsetsGeometry.all(5),
-                      child: ListTile(
-                        title: Text(
-                          _profile.name,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w500),
+                      child: InlineLoading(
+                        isLoading: _isLoadingEvents,
+                        child: ListTile(
+                          title: Text(
+                            _profile.name,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                          subtitle: Text(_profileDescription()),
                         ),
-                        subtitle: Text(_profileDescription()),
                       ),
                     ),
                   ),
@@ -127,6 +142,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
+
           const SizedBox(height: 16),
 
           // блок здоровья
@@ -138,25 +154,28 @@ class _HomePageState extends State<HomePage> {
               onTap: () {},
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Здоровье',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                child: InlineLoading(
+                  isLoading: _isLoadingEvents,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Здоровье',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('Последний осмотр: 10.09.2025'),
-                    Text(
-                      _profile.weightKg == null
-                          ? ''
-                          : '${_profile.weightKg!.toInt().toString()} кг',
-                    ),
-                    const Text('Активность: высокая'),
-                  ],
+                      const SizedBox(height: 8),
+                      const Text('Последний осмотр: 10.09.2025'),
+                      const Text('Активность: высокая'),
+                      Text(
+                        _profile.weightKg == null
+                            ? ''
+                            : '${_profile.weightKg!.toInt().toString()} кг',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -272,60 +291,15 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           const SizedBox(height: 8),
-          if (_events.isEmpty)
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.35,
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.pets_sharp, size: 72, color: secondaryColor),
-                    SizedBox(height: 12),
-                    Text(
-                      'Нет запланированных событий',
-                      style: TextStyle(color: secondaryColor, fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
+
+          InlineLoading(
+            isLoading: _isLoadingEvents,
+            child: EventPreviewBlock(
+              events: _events,
+              onTap: (event) => _openEventSheet(context, event),
+              onOpenCalendar: widget.onOpenCalendarByEvent,
             ),
-          if (_events.isNotEmpty)
-            Card.outlined(
-              shape: cardBorder,
-              child: Column(
-                children: _events
-                    .where(
-                      (e) =>
-                          e.dateTime.isAfter(DateTime.now()) ||
-                          e.dateTime.isAtSameMomentAs(DateTime.now()),
-                    )
-                    .take(4)
-                    .map((event) {
-                      return Column(
-                        children: [
-                          ListTile(
-                            leading: Icon(
-                              event.category.icon,
-                              color: event.category.color,
-                            ),
-                            title: Text(event.name),
-                            subtitle: Text(
-                              DateFormat(
-                                'dd.MM.yyyy – HH:mm',
-                              ).format(event.dateTime),
-                            ),
-                            trailing: IconButton(
-                              onPressed: () => _openEventSheet(context, event),
-                              icon: Icon(Icons.chevron_right),
-                            ),
-                          ),
-                          if (event != _events.last) const Divider(height: 0),
-                        ],
-                      );
-                    })
-                    .toList(),
-              ),
-            ),
+          ),
         ],
       ),
     );

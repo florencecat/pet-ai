@@ -51,10 +51,18 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
+enum NavigationTab {
+  home,
+  stats,
+  calendar,
+  settings,
+}
+
 class _MainPageState extends State<MainPage> {
   bool _loading = true;
   bool _hasProfile = false;
-  int _selectedIndex = 0;
+  NavigationTab _selectedIndex = NavigationTab.home;
+  DateTime _calendarInitialDate = DateTime.now();
 
   @override
   void initState() {
@@ -62,9 +70,16 @@ class _MainPageState extends State<MainPage> {
     _checkProfile();
   }
 
-  void _onItemTapped(int index) {
+  void _onOpenCalendar() {
     setState(() {
-      _selectedIndex = index;
+      _selectedIndex = NavigationTab.calendar;
+    });
+  }
+
+  void _onOpenCalendarByEvent(DateTime eventDate) {
+    setState(() {
+      _calendarInitialDate = eventDate;
+      _selectedIndex = NavigationTab.calendar;
     });
   }
 
@@ -93,17 +108,17 @@ class _MainPageState extends State<MainPage> {
     }
 
     final pages = [
-      HomePage(onOpenCalendar: () => _onItemTapped(2)),
+      HomePage(onOpenCalendar: () => _onOpenCalendar, onOpenCalendarByEvent: _onOpenCalendarByEvent),
       const AIChatPage(),
-      const CalendarPage(),
+      CalendarPage(initialDate: _calendarInitialDate),
       const SettingsPage()
     ];
 
     return Scaffold(
-      body: pages[_selectedIndex],
+      body: pages[_selectedIndex.index],
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+        currentIndex: _selectedIndex.index,
+        onTap: (value) => setState(() { _selectedIndex = NavigationTab.values[value]; }),
         selectedItemColor: Color.fromARGB(255, 59, 128, 123),
         unselectedItemColor: Color.fromARGB(128, 59, 128, 123),
         items: const [

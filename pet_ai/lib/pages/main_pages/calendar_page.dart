@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../services/event_service.dart';
@@ -7,7 +10,10 @@ import '../../../theme/widgets/draggable_scrollable_sheet.dart';
 import '../../../theme/app_styles.dart';
 
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({super.key});
+  final DateTime? initialDate;
+  final DateTime selectedDate;
+
+  CalendarPage({super.key, this.initialDate}) : selectedDate = DateTime.now();
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -15,9 +21,10 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage> {
   CalendarFormat _format = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  late DateTime _focusedDay = DateTime.now();
+  late DateTime? _selectedDay;
 
+  bool _isLoadingEvents = true;
   List<PetEvent> _events = [];
 
   void openCreateEventSheet(BuildContext context, DateTime dateTime) async {
@@ -57,17 +64,29 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Future<void> _loadEvents() async {
+    setState(() {
+      _isLoadingEvents = true;
+    });
+
     final events = await EventService().loadEvents();
     if (events.length > 1) {
       events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     }
-    setState(() => _events = events);
+    setState(() {
+      _events = events;
+      _isLoadingEvents = false;
+    });
   }
 
   @override
   void initState() {
     super.initState();
     _loadEvents();
+
+    final initial = widget.initialDate ?? DateTime.now();
+
+    _focusedDay = initial;
+    _selectedDay = initial;
   }
 
   @override
@@ -89,27 +108,29 @@ class _CalendarPageState extends State<CalendarPage> {
                   calendarFormat: _format,
                   calendarBuilders: CalendarBuilders(
                     markerBuilder: (context, day, events) {
-                        if (events.isEmpty) return const SizedBox();
+                      if (events.isEmpty) return const SizedBox();
 
-                        return Positioned(
-                          bottom: 4,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: events.take(3).map((event) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 2),
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
+                      return Positioned(
+                        bottom: 4,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: events.take(3).map((event) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: (event as PetEvent).category.color,
+                                  shape: BoxShape.circle,
                                 ),
-                              );
-                            }).toList(),
-                          ),
-                        );
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      );
                     },
                   ),
                   headerStyle: HeaderStyle(formatButtonVisible: false),
@@ -120,11 +141,11 @@ class _CalendarPageState extends State<CalendarPage> {
                   },
                   calendarStyle: const CalendarStyle(
                     todayDecoration: BoxDecoration(
-                      color: Color.fromARGB(128, 59, 128, 123),
+                      color: Colors.transparent,
                       shape: BoxShape.circle,
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: Color.fromARGB(255, 59, 128, 123),
+                      color: secondaryColor,
                       shape: BoxShape.circle,
                     ),
                     todayTextStyle: TextStyle(
@@ -151,43 +172,53 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
             ),
             const SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                children: [
-                  TextButton.icon(
-                    onPressed: _selectedDay == null
-                        ? null
-                        : () => openCreateEventSheet(context, _selectedDay!),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Добавить событие'),
-                  ),
 
-                  if (_selectedDay != null && _events.isNotEmpty)
-                    ...(_events.where(
-                      (e) =>
-                          e.dateTime.year == _selectedDay!.year &&
-                          e.dateTime.month == _selectedDay!.month &&
-                          e.dateTime.day == _selectedDay!.day,
-                    )).map(
-                      (e) => Card.outlined(
-                        clipBehavior: Clip.antiAlias,
-                        shape: cardBorder,
-                        child: InkWell(
-                          splashColor: Colors.blue.withAlpha(50),
-                          onTap: () => openViewEventSheet(context, e),
-                          child: ListTile(
-                            leading: const Icon(Icons.event),
-                            title: Text(e.name),
-                            subtitle: Text(
-                              DateFormat(
-                                'dd.MM.yyyy – HH:mm',
-                              ).format(e.dateTime),
+            Expanded(
+              child: InlineLoading(
+                isLoading: _isLoadingEvents,
+                child: Expanded(
+                  child: ListView(
+                    children: [
+                      TextButton.icon(
+                        onPressed: _selectedDay == null
+                            ? null
+                            : () =>
+                                  openCreateEventSheet(context, _selectedDay!),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Добавить событие'),
+                      ),
+
+                      if (_selectedDay != null && _events.isNotEmpty)
+                        ...(_events.where(
+                          (e) =>
+                              e.dateTime.year == _selectedDay!.year &&
+                              e.dateTime.month == _selectedDay!.month &&
+                              e.dateTime.day == _selectedDay!.day,
+                        )).map(
+                          (e) => Card.outlined(
+                            clipBehavior: Clip.antiAlias,
+                            shape: cardBorder,
+                            child: InkWell(
+                              splashColor: Colors.blue.withAlpha(50),
+                              onTap: () => openViewEventSheet(context, e),
+                              child: ListTile(
+                                leading: Icon(
+                                  e.category.icon,
+                                  color: e.category.color,
+                                ),
+                                title: Text(e.name),
+                                subtitle: Text(
+                                  DateFormat(
+                                    'dd.MM.yyyy – HH:mm',
+                                  ).format(e.dateTime),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
