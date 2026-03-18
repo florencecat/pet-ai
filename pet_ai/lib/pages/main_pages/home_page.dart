@@ -39,7 +39,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadEvents() async {
-    setState(() { _isLoadingEvents = true; });
+    setState(() {
+      _isLoadingEvents = true;
+    });
     final events = await EventService().loadEvents();
     setState(() {
       _events = events
@@ -93,6 +95,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final description = _profileDescription();
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ListView(
@@ -102,10 +105,28 @@ class _HomePageState extends State<HomePage> {
             children: [
               Expanded(
                 flex: 1,
-                child: const Icon(
-                  Icons.pets_outlined,
-                  size: 40,
-                  color: Colors.teal,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(2), // толщина рамки
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: mainColor,
+                    ),
+                    child: CircleAvatar(
+                      radius: 36,
+                      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                      backgroundImage: _profile.profileImage != null
+                          ? FileImage(_profile.profileImage!)
+                          : null,
+                      child: _profile.profileImage == null
+                          ? const Icon(
+                              Icons.pets_outlined,
+                              size: 36,
+                              color: Colors.teal,
+                            )
+                          : Image.file(_profile.profileImage!),
+                    ),
+                  ),
                 ),
               ),
               Expanded(
@@ -129,11 +150,17 @@ class _HomePageState extends State<HomePage> {
                         isLoading: _isLoadingEvents,
                         child: ListTile(
                           title: Text(
-                            _profile.name,
+                            _profile.name.isEmpty
+                                ? "Загружаем..."
+                                : _profile.name,
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w500),
                           ),
-                          subtitle: Text(_profileDescription()),
+                          subtitle: Text(
+                            description.isEmpty
+                                ? "Здесь будет имя и порода..."
+                                : description,
+                          ),
                         ),
                       ),
                     ),

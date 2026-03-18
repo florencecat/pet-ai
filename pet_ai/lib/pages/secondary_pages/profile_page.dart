@@ -1,8 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-
 import 'package:intl/intl.dart';
 import 'package:pet_ai/theme/app_styles.dart';
-
 import '../../services/profile_service.dart';
 
 class PetProfilePage extends StatefulWidget {
@@ -21,6 +20,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
   DateTime? _birthDate;
   String _gender = 'Не указан';
+  File? _profileImage;
 
   bool _loading = true;
 
@@ -40,6 +40,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     _notesController.text = profile.notes;
     _birthDate = profile.birthDate;
     _gender = profile.gender;
+    _profileImage = profile.profileImage;
     if (mounted) setState(() => _loading = false);
   }
 
@@ -55,6 +56,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
       weightKg: weight,
       gender: _gender,
       notes: _notesController.text.trim(),
+      profileImage: _profileImage,
     );
 
     await ProfileService().saveProfile(profile);
@@ -126,24 +128,26 @@ class _PetProfilePageState extends State<PetProfilePage> {
                               color: Colors.grey.shade200,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.pets,
-                              size: 60,
-                              color: Colors.grey,
-                            ),
+                            child: _profileImage == null
+                                ? const Icon(
+                                    Icons.pets,
+                                    size: 60,
+                                    color: Colors.grey,
+                                  )
+                                : Image.file(_profileImage!, key: ValueKey(_profileImage!.path + DateTime.now().toString())),
                           ),
                           Positioned(
                             right: 0,
                             bottom: 0,
                             child: FloatingActionButton.small(
                               heroTag: 'edit_photo',
-                              onPressed: () {
-                                // TODO: добавить выбор/съём фото (image_picker и сохранение пути/байтов)
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Выбор фото: TODO'),
-                                  ),
-                                );
+                              onPressed: () async {
+                                final path = await ProfileService().pickProfileImage();
+                                if (path != null) {
+                                  setState(() {
+                                    _profileImage = File(path);
+                                  });
+                                }
                               },
                               backgroundColor: secondaryColor,
                               child: const Icon(Icons.edit, size: 18),

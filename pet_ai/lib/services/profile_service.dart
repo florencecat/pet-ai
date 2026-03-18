@@ -1,5 +1,12 @@
-  import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+
+import 'package:path_provider/path_provider.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:pet_ai/theme/app_styles.dart';
 
 class PetProfile {
   String name;
@@ -8,6 +15,7 @@ class PetProfile {
   double? weightKg;
   String gender;
   String notes;
+  File? profileImage;
 
   PetProfile({
     this.name = '',
@@ -16,6 +24,7 @@ class PetProfile {
     this.weightKg,
     this.gender = 'Не указан',
     this.notes = '',
+    this.profileImage
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +34,7 @@ class PetProfile {
     'weightKg': weightKg,
     'gender': gender,
     'notes': notes,
+    'profileImage': profileImage?.path
   };
 
   factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile(
@@ -38,6 +48,7 @@ class PetProfile {
         : null,
     gender: json['gender'] ?? 'Не указан',
     notes: json['notes'] ?? '',
+    profileImage: json['profileImage'] != null ? File(json['profileImage']) : null
   );
 }
 
@@ -70,6 +81,50 @@ class ProfileService {
     );
   }
 
+  Future<String> _saveAvatarToAppDir(String tempPath) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final avatarPath = '${directory.path}/avatar.png';
+    final avatarFile = await File(tempPath).copy(avatarPath);
+    return avatarFile.path;
+  }
+
+  Future<String?> pickProfileImage  () async {
+    final picker = ImagePicker();
+
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+
+    if (pickedFile == null) return null;
+
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: pickedFile.path,
+      compressQuality: 90,
+      compressFormat: ImageCompressFormat.jpg,
+      maxWidth: 256,
+      maxHeight: 256,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Обрезка фото',
+          toolbarColor: mainColor,
+          toolbarWidgetColor: Colors.white,
+          activeControlsWidgetColor: mainColor,
+          lockAspectRatio: true,
+          hideBottomControls: false,
+        ),
+        IOSUiSettings(
+          title: 'Обрезка фото',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
+
+    if (cropped == null) return null;
+
+    return await _saveAvatarToAppDir(cropped.path);
+  }
 
   String localizeDuration(int amount, FormattingType type) {
     if ((amount >= 5 && amount <= 20) || amount % 10 == 0) {
@@ -87,13 +142,6 @@ class ProfileService {
     final fullYears = (inYears / 365).toInt();
     if (fullYears > 0) {
       description += '$fullYears ${localizeDuration(fullYears, FormattingType.year)}';
-      // if ((fullYears >= 5 && fullYears <= 20) || fullYears % 10 == 0) {
-      //   description += '$fullYears лет';
-      // } else if ((fullYears % 10) >= 2 && (fullYears % 10) <= 4) {
-      //   description += '$fullYears года';
-      // } else {
-      //   description += '$fullYears год';
-      // }
     }
     final fullMonths = ((inYears % 365) / 30).toInt();
     if (fullYears > 0 && fullMonths > 0) {
@@ -105,8 +153,6 @@ class ProfileService {
     else {
       description += 'совсем маленький';
     }
-    // description += ' - ${ }';
-
     return description;
   }
 }
