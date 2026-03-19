@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -115,7 +114,7 @@ class EventService {
 
   Future<List<PetEvent>> loadEvents() async {
 
-    if (kDebugMode) await Future.delayed(const Duration(seconds: 1));
+    // if (kDebugMode) await Future.delayed(const Duration(seconds: ));
 
     final data = await SharedPreferencesAsync().getStringList(_eventKey) ?? [];
     return data.map((e) => PetEvent.fromJson(jsonDecode(e))).toList();

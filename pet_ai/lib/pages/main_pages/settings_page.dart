@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/event_service.dart';
-import '../../theme/app_styles.dart';
+import '../../theme/app_colors.dart';
 import '../../services/profile_service.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -46,9 +46,7 @@ class SettingsPage extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Очистить данные?'),
-        content: const Text(
-          'Будут удалены все события питомца. '
-        ),
+        content: const Text('Будут удалены все события питомца. '),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -68,27 +66,43 @@ class SettingsPage extends StatelessWidget {
     await EventService().clearEvents();
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('События удалены')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('События удалены')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Настройки')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          /// 🔔 Уведомления (плейсхолдер)
+          const SizedBox(height: 8),
+
+          Text('Основные', style: Theme.of(context).textTheme.titleMedium),
+
+          const SizedBox(height: 8),
+
           Card.outlined(
             shape: cardBorder,
             child: ListTile(
-              leading: const Icon(Icons.notifications),
-              title: const Text('Уведомления'),
-              subtitle: const Text('Настройка напоминаний и событий'),
-              trailing: const Icon(Icons.chevron_right),
+              leading: const Icon(
+                Icons.notifications,
+                color: ThemeColors.border,
+              ),
+              title: Text(
+                'Уведомления',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              subtitle: Text(
+                'Настройка напоминаний и событий',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: ThemeColors.border,
+              ),
               onTap: () {
                 // TODO: экран уведомлений
               },
@@ -99,10 +113,19 @@ class SettingsPage extends StatelessWidget {
           Card.outlined(
             shape: cardBorder,
             child: ListTile(
-              leading: const Icon(Icons.palette),
-              title: const Text('Внешний вид'),
-              subtitle: const Text('Тема, цвета, оформление'),
-              trailing: const Icon(Icons.chevron_right),
+              leading: const Icon(Icons.palette, color: ThemeColors.border),
+              title: Text(
+                'Внешний вид',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              subtitle: Text(
+                'Тема, цвета, оформление',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: ThemeColors.border,
+              ),
               onTap: () {
                 // TODO: экран темы
               },
@@ -113,10 +136,19 @@ class SettingsPage extends StatelessWidget {
           Card.outlined(
             shape: cardBorder,
             child: ListTile(
-              leading: const Icon(Icons.pets),
-              title: const Text('Профиль питомца'),
-              subtitle: const Text('Редактирование данных питомца'),
-              trailing: const Icon(Icons.chevron_right),
+              leading: const Icon(Icons.pets, color: ThemeColors.border),
+              title: Text(
+                'Профиль питомца',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              subtitle: Text(
+                'Редактирование данных питомца',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: ThemeColors.border,
+              ),
               onTap: () {
                 // TODO: переход на PetProfilePage
               },
@@ -133,11 +165,20 @@ class SettingsPage extends StatelessWidget {
             shape: dangerCardBorder,
             child: ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.red),
-              title: const Text(
+              title: Text(
                 'Очистить данные приложения',
-                style: TextStyle(color: Colors.red),
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                  inherit: true,
+                  color: ThemeColors.danger,
+                ),
               ),
-              subtitle: const Text('Сброс SharedPreferences (для отладки)'),
+              subtitle: Text(
+                'Сброс SharedPreferences (для отладки)',
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  inherit: true,
+                  color: ThemeColors.danger,
+                ),
+              ),
               onTap: () => _clearAppData(context),
             ),
           ),
@@ -146,11 +187,20 @@ class SettingsPage extends StatelessWidget {
             shape: dangerCardBorder,
             child: ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.red),
-              title: const Text(
+              title: Text(
                 'Очистить все события',
-                style: TextStyle(color: Colors.red),
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                  inherit: true,
+                  color: ThemeColors.danger,
+                ),
               ),
-              subtitle: const Text('Удалить все события на устройстве (для отладки)'),
+              subtitle: Text(
+                'Удалить все события на устройстве (для отладки)',
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  inherit: true,
+                  color: ThemeColors.danger,
+                ),
+              ),
               onTap: () => _clearEvents(context),
             ),
           ),

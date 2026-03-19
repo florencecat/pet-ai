@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/theme/app_styles.dart';
 import '../../services/profile_service.dart';
 
 class PetProfilePage extends StatefulWidget {
@@ -134,7 +133,13 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                     size: 60,
                                     color: Colors.grey,
                                   )
-                                : Image.file(_profileImage!, key: ValueKey(_profileImage!.path + DateTime.now().toString())),
+                                : Image.file(
+                                    _profileImage!,
+                                    key: ValueKey(
+                                      _profileImage!.path +
+                                          DateTime.now().toString(),
+                                    ),
+                                  ),
                           ),
                           Positioned(
                             right: 0,
@@ -142,14 +147,17 @@ class _PetProfilePageState extends State<PetProfilePage> {
                             child: FloatingActionButton.small(
                               heroTag: 'edit_photo',
                               onPressed: () async {
-                                final path = await ProfileService().pickProfileImage();
+                                final path = await ProfileService()
+                                    .pickProfileImage();
                                 if (path != null) {
                                   setState(() {
                                     _profileImage = File(path);
                                   });
                                 }
                               },
-                              backgroundColor: secondaryColor,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.secondary,
                               child: const Icon(Icons.edit, size: 18),
                             ),
                           ),
@@ -225,24 +233,34 @@ class _PetProfilePageState extends State<PetProfilePage> {
                     // --- Gender ---
                     DropdownButtonFormField<String>(
                       initialValue: _gender,
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'Не указан',
-                          child: Text('Не указан'),
+                          child: Text(
+                            'Не указан',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'Мальчик',
-                          child: Text('Мальчик'),
+                          child: Text(
+                            'Мальчик',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'Девочка',
-                          child: Text('Девочка'),
+                          child: Text(
+                            'Девочка',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ),
                       ],
                       onChanged: (v) =>
                           setState(() => _gender = v ?? 'Не указан'),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Пол',
+                        labelStyle: Theme.of(context).textTheme.bodyMedium,
                         border: OutlineInputBorder(),
                       ),
                     ),

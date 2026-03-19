@@ -7,7 +7,7 @@ import 'dart:core';
 
 import '../secondary_pages/profile_page.dart';
 import '../../../services/event_service.dart';
-import '../../../theme/app_styles.dart';
+import '../../../theme/app_colors.dart';
 import '../../../theme/widgets/draggable_scrollable_sheet.dart';
 
 class HomePage extends StatefulWidget {
@@ -107,14 +107,16 @@ class _HomePageState extends State<HomePage> {
                 flex: 1,
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.all(2), // толщина рамки
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: mainColor,
+                      color: Theme.of(context).dividerColor,
                     ),
                     child: CircleAvatar(
                       radius: 36,
-                      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).scaffoldBackgroundColor,
                       backgroundImage: _profile.profileImage != null
                           ? FileImage(_profile.profileImage!)
                           : null,
@@ -122,7 +124,7 @@ class _HomePageState extends State<HomePage> {
                           ? const Icon(
                               Icons.pets_outlined,
                               size: 36,
-                              color: Colors.teal,
+                              color: ThemeColors.border,
                             )
                           : Image.file(_profile.profileImage!),
                     ),
@@ -135,7 +137,7 @@ class _HomePageState extends State<HomePage> {
                   shape: cardBorder,
                   clipBehavior: Clip.antiAliasWithSaveLayer,
                   child: InkWell(
-                    splashColor: Colors.blue.withAlpha(50),
+                    splashColor: Theme.of(context).splashColor,
                     onTap: () async {
                       await Navigator.push(
                         context,
@@ -153,13 +155,13 @@ class _HomePageState extends State<HomePage> {
                             _profile.name.isEmpty
                                 ? "Загружаем..."
                                 : _profile.name,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w500),
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
                           subtitle: Text(
                             description.isEmpty
                                 ? "Здесь будет имя и порода..."
                                 : description,
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
                       ),
@@ -177,7 +179,7 @@ class _HomePageState extends State<HomePage> {
             shape: cardBorder,
             clipBehavior: Clip.antiAliasWithSaveLayer,
             child: InkWell(
-              splashColor: Colors.blue.withAlpha(50),
+              splashColor: Theme.of(context).splashColor,
               onTap: () {},
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -186,20 +188,18 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Здоровье',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
-                      const Text('Последний осмотр: 10.09.2025'),
-                      const Text('Активность: высокая'),
+                      Text('Последний осмотр: 10.09.2025', style: Theme.of(context).textTheme.bodySmall,),
+                      Text('Активность: высокая', style: Theme.of(context).textTheme.bodySmall),
                       Text(
                         _profile.weightKg == null
                             ? ''
                             : '${_profile.weightKg!.toInt().toString()} кг',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -218,8 +218,9 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     // TODO: реализовать обновление веса
                   },
-                  child: const Text(
+                  child: Text(
                     'Обновить вес',
+                    style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -230,7 +231,11 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     // TODO: первая заглушка
                   },
-                  child: const Text('Заметка', textAlign: TextAlign.center),
+                  child: Text(
+                    'Заметка',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
               const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
@@ -239,7 +244,11 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     // TODO: вторая заглушка
                   },
-                  child: const Text('Сводка', textAlign: TextAlign.center),
+                  child: Text(
+                    'Сводка',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ],
@@ -280,19 +289,22 @@ class _HomePageState extends State<HomePage> {
           else
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.05,
-              child: const Center(
+              child: Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.star_border_rounded,
                       size: 18,
-                      color: secondaryColor,
+                      color: Theme.of(context).colorScheme.primary.withAlpha(128),
                     ),
                     SizedBox(width: 8),
                     Text(
                       'Нет ближайших важных событий',
-                      style: TextStyle(color: secondaryColor, fontSize: 16),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary.withAlpha(128),
+                        fontSize: 16,
+                      ),
                     ),
                   ],
                 ),
@@ -306,13 +318,11 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(
                 'Ближайшие события',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.teal.shade700,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline),
+                color: ThemeColors.border,
                 onPressed: widget.onOpenCalendar,
               ),
             ],

@@ -1,12 +1,11 @@
+import 'dart:developer';
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:pet_ai/theme/app_styles.dart';
 
 class PetProfile {
   String name;
@@ -24,7 +23,7 @@ class PetProfile {
     this.weightKg,
     this.gender = 'Не указан',
     this.notes = '',
-    this.profileImage
+    this.profileImage,
   });
 
   Map<String, dynamic> toJson() => {
@@ -34,7 +33,7 @@ class PetProfile {
     'weightKg': weightKg,
     'gender': gender,
     'notes': notes,
-    'profileImage': profileImage?.path
+    'profileImage': profileImage?.path,
   };
 
   factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile(
@@ -48,14 +47,14 @@ class PetProfile {
         : null,
     gender: json['gender'] ?? 'Не указан',
     notes: json['notes'] ?? '',
-    profileImage: json['profileImage'] != null ? File(json['profileImage']) : null
+    profileImage: json['profileImage'] != null
+        ? File(json['profileImage'])
+        : null,
   );
 }
 
-enum FormattingType{
-  year,
-  month
-}
+enum FormattingType { year, month }
+
 class ProfileService {
   static const _key = 'pet_profile';
 
@@ -65,14 +64,18 @@ class ProfileService {
       try {
         final map = jsonDecode(jsonStr) as Map<String, dynamic>;
         return PetProfile.fromJson(map);
-      } catch (e) {}
+      } catch (e) {
+        log(e.toString());
+      }
     }
     return PetProfile();
   }
 
-  Future<void> clearProfile() async => await SharedPreferencesAsync().remove(_key);
+  Future<void> clearProfile() async =>
+      await SharedPreferencesAsync().remove(_key);
 
-  Future<bool> hasProfile() async => await SharedPreferencesAsync().containsKey(_key);
+  Future<bool> hasProfile() async =>
+      await SharedPreferencesAsync().containsKey(_key);
 
   Future<void> saveProfile(PetProfile profile) async {
     await SharedPreferencesAsync().setString(
@@ -88,7 +91,7 @@ class ProfileService {
     return avatarFile.path;
   }
 
-  Future<String?> pickProfileImage  () async {
+  Future<String?> pickProfileImage() async {
     final picker = ImagePicker();
 
     final pickedFile = await picker.pickImage(
@@ -105,20 +108,20 @@ class ProfileService {
       maxWidth: 256,
       maxHeight: 256,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Обрезка фото',
-          toolbarColor: mainColor,
-          toolbarWidgetColor: Colors.white,
-          activeControlsWidgetColor: mainColor,
-          lockAspectRatio: true,
-          hideBottomControls: false,
-        ),
-        IOSUiSettings(
-          title: 'Обрезка фото',
-          aspectRatioLockEnabled: true,
-        ),
-      ],
+      // uiSettings: [
+      //   AndroidUiSettings(
+      //     toolbarTitle: 'Обрезка фото',
+      //     toolbarColor: mainColor,
+      //     toolbarWidgetColor: Colors.white,
+      //     activeControlsWidgetColor: mainColor,
+      //     lockAspectRatio: true,
+      //     hideBottomControls: false,
+      //   ),
+      //   IOSUiSettings(
+      //     title: 'Обрезка фото',
+      //     aspectRatioLockEnabled: true,
+      //   ),
+      // ],
     );
 
     if (cropped == null) return null;
@@ -141,16 +144,17 @@ class ProfileService {
     final inYears = duration.inDays.abs();
     final fullYears = (inYears / 365).toInt();
     if (fullYears > 0) {
-      description += '$fullYears ${localizeDuration(fullYears, FormattingType.year)}';
+      description +=
+          '$fullYears ${localizeDuration(fullYears, FormattingType.year)}';
     }
     final fullMonths = ((inYears % 365) / 30).toInt();
     if (fullYears > 0 && fullMonths > 0) {
       description += ' и ';
     }
     if (fullMonths > 0) {
-      description += '$fullMonths ${localizeDuration(fullMonths, FormattingType.month)}';
-    }
-    else {
+      description +=
+          '$fullMonths ${localizeDuration(fullMonths, FormattingType.month)}';
+    } else {
       description += 'совсем маленький';
     }
     return description;

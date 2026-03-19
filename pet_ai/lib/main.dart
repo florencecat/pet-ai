@@ -8,6 +8,7 @@ import '../pages/main_pages/home_page.dart';
 import '../pages/main_pages/ai_chat_page.dart';
 import '../pages/main_pages/calendar_page.dart';
 import '../pages/secondary_pages/pet_registration_flow.dart';
+import '../theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,12 +27,7 @@ class PetHealthApp extends StatelessWidget {
       routes: {
         '/registration': (context) => const PetRegistrationFlow()
       },
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Color.fromARGB(255, 156, 213, 210),
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -108,7 +104,7 @@ class _MainPageState extends State<MainPage> {
     }
 
     final pages = [
-      HomePage(onOpenCalendar: () => _onOpenCalendar, onOpenCalendarByEvent: _onOpenCalendarByEvent),
+      HomePage(onOpenCalendar: _onOpenCalendar, onOpenCalendarByEvent: _onOpenCalendarByEvent),
       const AIChatPage(),
       CalendarPage(initialDate: _calendarInitialDate),
       const SettingsPage()
@@ -119,8 +115,8 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex.index,
         onTap: (value) => setState(() { _selectedIndex = NavigationTab.values[value]; }),
-        selectedItemColor: Color.fromARGB(255, 59, 128, 123),
-        unselectedItemColor: Color.fromARGB(128, 59, 128, 123),
+        selectedItemColor: Theme.of(context).bottomNavigationBarTheme.selectedItemColor,
+        unselectedItemColor: Theme.of(context).bottomNavigationBarTheme.unselectedItemColor,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'Главная'),
           BottomNavigationBarItem(

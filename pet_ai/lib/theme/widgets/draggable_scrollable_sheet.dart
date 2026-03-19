@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/theme/app_styles.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 
 import '../../services/event_service.dart';
 //import '../../theme/widgets/validated_icon_button.dart';
@@ -19,17 +19,17 @@ extension EventSheetModeX on EventSheetMode {
 }
 
 class EventDraggableSheet extends StatefulWidget {
-  EventSheetMode mode;
+  final EventSheetMode mode;
   final PetEvent? event;
   final DateTime? dateTime;
 
-  EventDraggableSheet({super.key, required this.event})
+  const EventDraggableSheet({super.key, required this.event})
     : mode = EventSheetMode.view,
       dateTime = null;
-  EventDraggableSheet.edit({super.key, required this.event})
+  const EventDraggableSheet.edit({super.key, required this.event})
     : mode = EventSheetMode.edit,
       dateTime = null;
-  EventDraggableSheet.create({super.key, required this.dateTime})
+  const EventDraggableSheet.create({super.key, required this.dateTime})
     : mode = EventSheetMode.create,
       event = null;
 
@@ -45,6 +45,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   EventCategory? _selectedCategory;
+  EventSheetMode _mode = EventSheetMode.view;
 
   _EventDraggableSheetState();
 
@@ -59,6 +60,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
       _selectedDate = widget.event!.dateTime;
       _selectedTime = TimeOfDay.fromDateTime(widget.event!.dateTime);
     }
+    _mode = widget.mode;
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -121,7 +123,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
             child: const Text('Нет'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: dangerColor),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -203,32 +205,32 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back),
-                        color: mainColor,
+                        color: Theme.of(context).colorScheme.primary,
                         onPressed: () => closeSheet(context),
                       ),
                       const Spacer(),
-                      if (EventSheetModeX(widget.mode).isView)
+                      if (EventSheetModeX(_mode).isView)
                         IconButton(
                           icon: const Icon(Icons.edit),
-                          color: mainColor,
+                          color: Theme.of(context).colorScheme.primary,
                           onPressed: () {
                             setState(() {
-                              widget.mode = EventSheetMode.edit;
+                              _mode = EventSheetMode.edit;
                             });
                           },
                         ),
-                      if (EventSheetModeX(widget.mode).isView)
+                      if (EventSheetModeX(_mode).isView)
                         IconButton(
                           icon: const Icon(Icons.delete),
-                          color: dangerColor,
+                          color: ThemeColors.danger,
                           onPressed: () => deleteEvent(context, widget.event!),
                         ),
-                      if (EventSheetModeX(widget.mode).isEditable)
+                      if (EventSheetModeX(_mode).isEditable)
                         IconButton(
                           icon: widget.event?.starred == true
                               ? Icon(Icons.star_rounded)
                               : Icon(Icons.star_outline_rounded),
-                          color: mainColor,
+                          color: Theme.of(context).colorScheme.primary,
                           onPressed: () {
                             setState(() {
                               if (widget.event != null) {
@@ -237,10 +239,10 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                             });
                           },
                         ),
-                      if (EventSheetModeX(widget.mode).isEditable)
+                      if (EventSheetModeX(_mode).isEditable)
                         IconButton(
                           icon: const Icon(Icons.check),
-                          color: mainColor,
+                          color: Theme.of(context).colorScheme.primary,
                           onPressed: () {
                             if (!_verifyForm()) return;
 
@@ -254,7 +256,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                               _selectedTime!.minute,
                             );
 
-                            if (EventSheetModeX(widget.mode).isCreate) {
+                            if (EventSheetModeX(_mode).isCreate) {
                               createEvent(
                                 context,
                                 PetEvent(
@@ -264,7 +266,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                                 ),
                               );
                             }
-                            if (EventSheetModeX(widget.mode).isEdit) {
+                            if (EventSheetModeX(_mode).isEdit) {
                               PetEvent event = widget.event!;
                               event.assign(name, category, dateTime);
                               editEvent(context, event);
@@ -275,7 +277,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                   ),
                 ),
 
-                if (EventSheetModeX(widget.mode).isEditable)
+                if (EventSheetModeX(_mode).isEditable)
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(labelText: 'Название'),
@@ -291,10 +293,10 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
                 const SizedBox(height: 8),
 
-                if (EventSheetModeX(widget.mode).isEditable)
+                if (EventSheetModeX(_mode).isEditable)
                   DropdownButtonFormField<String>(
                     validator: (v) =>
-                    v == null || v.isEmpty ? 'Выберите категорию' : null,
+                        v == null || v.isEmpty ? 'Выберите категорию' : null,
                     decoration: InputDecoration(labelText: 'Категория'),
                     dropdownColor: Colors.white,
                     initialValue: widget.event?.category.id,
@@ -307,7 +309,10 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                               children: [
                                 Icon(c.icon, color: c.color),
                                 const SizedBox(width: 8),
-                                Text(c.name),
+                                Text(
+                                  c.name,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
                               ],
                             ),
                           ),
@@ -328,7 +333,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
                 const SizedBox(height: 16),
 
-                if (EventSheetModeX(widget.mode).isEditable)
+                if (EventSheetModeX(_mode).isEditable)
                   Row(
                     children: [
                       Expanded(
@@ -339,8 +344,8 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                                 _dateController.value.contains(
                                   WidgetState.error,
                                 )
-                                ? errorColor
-                                : mainColor,
+                                ? ThemeColors.error
+                                : Theme.of(context).colorScheme.primary,
                           ),
                           icon: const Icon(Icons.calendar_today),
                           label: Text(
@@ -362,8 +367,8 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                                 _timeController.value.contains(
                                   WidgetState.error,
                                 )
-                                ? errorColor
-                                : mainColor,
+                                ? ThemeColors.error
+                                : Theme.of(context).colorScheme.primary,
                           ),
                           icon: const Icon(Icons.access_time),
                           label: Text(

@@ -5,7 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../../../services/event_service.dart';
 import '../../../theme/widgets/draggable_scrollable_sheet.dart';
-import '../../../theme/app_styles.dart';
+import '../../../theme/app_colors.dart';
 
 class CalendarPage extends StatefulWidget {
   final DateTime? initialDate;
@@ -131,19 +131,26 @@ class _CalendarPageState extends State<CalendarPage> {
                       );
                     },
                   ),
-                  headerStyle: HeaderStyle(formatButtonVisible: false),
+                  headerStyle: HeaderStyle(
+                    formatButtonVisible: false,
+                    titleTextStyle: Theme.of(context).textTheme.bodyLarge!,
+                  ),
+                  daysOfWeekStyle: DaysOfWeekStyle(
+                    weekdayStyle: Theme.of(context).textTheme.bodySmall!.copyWith(inherit: true, fontSize: 13),
+                    weekendStyle: Theme.of(context).textTheme.bodySmall!.copyWith(inherit: true, fontSize: 13),
+                  ),
                   eventLoader: (day) {
                     return _events
                         .where((e) => DateUtils.isSameDay(e.dateTime, day))
                         .toList();
                   },
-                  calendarStyle: const CalendarStyle(
+                  calendarStyle: CalendarStyle(
                     todayDecoration: BoxDecoration(
                       color: Colors.transparent,
                       shape: BoxShape.circle,
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: secondaryColor,
+                      color: Theme.of(context).colorScheme.secondary,
                       shape: BoxShape.circle,
                     ),
                     todayTextStyle: TextStyle(
@@ -185,7 +192,7 @@ class _CalendarPageState extends State<CalendarPage> {
                         icon: const Icon(Icons.add),
                         label: const Text('Добавить событие'),
                       ),
-
+                      const SizedBox(height: 16),
                       if (_selectedDay != null && _events.isNotEmpty)
                         ...(_events.where(
                           (e) =>

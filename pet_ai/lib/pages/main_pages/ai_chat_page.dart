@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 
 import '../../theme/widgets/draggable_bottom_sheet.dart';
 
@@ -23,7 +24,7 @@ class _AIChatPageState extends State<AIChatPage> {
   void _sendPrompt() {
     setState(() {
       _response =
-      '🤖 Ответ ИИ на запрос: "${_controller.text}".\n\n(В реальном приложении сюда подставится результат модели.)';
+          '🤖 Ответ ИИ на запрос: "${_controller.text}".\n\n(В реальном приложении сюда подставится результат модели.)';
       _history.insert(0, _controller.text);
       _controller.clear();
     });
@@ -34,7 +35,7 @@ class _AIChatPageState extends State<AIChatPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor:
-      Colors.transparent, // 👈 чтобы был виден полупрозрачный фон
+          Colors.transparent, // 👈 чтобы был виден полупрозрачный фон
       barrierColor: Colors.black54, // 👈 затемнённая подложка
       builder: (context) {
         return DraggableScrollableSheet(
@@ -135,7 +136,10 @@ class _AIChatPageState extends State<AIChatPage> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.attach_file, color: Colors.teal),
+                      icon: const Icon(
+                        Icons.attach_file,
+                        color: ThemeColors.primary,
+                      ),
                       onPressed: _sendPrompt,
                     ),
                     const SizedBox(width: 8),
@@ -150,7 +154,10 @@ class _AIChatPageState extends State<AIChatPage> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.send, color: Colors.teal),
+                      icon: const Icon(
+                        Icons.send,
+                        color: ThemeColors.primary,
+                      ),
                       onPressed: _sendPrompt,
                     ),
                   ],
