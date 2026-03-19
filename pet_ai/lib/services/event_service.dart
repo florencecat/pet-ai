@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -146,5 +147,29 @@ class EventService {
 
   Future<void> clearEvents() async {
     await SharedPreferencesAsync().remove(_eventKey);
+  }
+}
+
+
+class NoteModal extends StatelessWidget {
+  const NoteModal({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      height: 250,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Заметка",
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 20),
+          const Text("Функция появится позже."),
+        ],
+      ),
+    );
   }
 }

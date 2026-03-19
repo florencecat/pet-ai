@@ -6,6 +6,7 @@ import 'package:pet_ai/theme/widgets/events_preview_block.dart';
 import 'dart:core';
 
 import '../secondary_pages/profile_page.dart';
+import '../../services/health_service.dart';
 import '../../../services/event_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/widgets/draggable_scrollable_sheet.dart';
@@ -26,7 +27,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   PetEvent? _upcomingStarredEvent;
-  PetProfile _profile = PetProfile();
+  late PetProfile _profile;
 
   bool _isLoadingEvents = true;
   List<PetEvent> _events = [];
@@ -62,7 +63,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadProfile() async {
-    _profile = await ProfileService().loadProfile();
+    final profile = await ProfileService().loadProfile();
+    if (profile == null) {
+      if (Navigator.of(context).mounted) {
+        Navigator.of(context).pushReplacementNamed('/registration');
+      } else {
+        throw Exception("Failed navigate to registration flow");
+      }
+    }
+    else {
+      _profile = profile;
+    }
   }
 
   String _profileDescription() {
@@ -180,7 +191,6 @@ class _HomePageState extends State<HomePage> {
             clipBehavior: Clip.antiAliasWithSaveLayer,
             child: InkWell(
               splashColor: Theme.of(context).splashColor,
-              onTap: () {},
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: InlineLoading(
@@ -193,8 +203,14 @@ class _HomePageState extends State<HomePage> {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
-                      Text('Последний осмотр: 10.09.2025', style: Theme.of(context).textTheme.bodySmall,),
-                      Text('Активность: высокая', style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        'Последний осмотр: 10.09.2025',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      Text(
+                        'Активность: высокая',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       Text(
                         _profile.weightKg == null
                             ? ''
@@ -215,9 +231,17 @@ class _HomePageState extends State<HomePage> {
             children: [
               Expanded(
                 child: TextButton(
-                  onPressed: () {
-                    // TODO: реализовать обновление веса
+                  onPressed: () async {
+                    await showModalBottomSheet<bool>(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      enableDrag: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const UpdateWeightModal(),
+                    );
                   },
+
                   child: Text(
                     'Обновить вес',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -229,7 +253,11 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: TextButton(
                   onPressed: () {
-                    // TODO: первая заглушка
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const NoteModal(),
+                    );
                   },
                   child: Text(
                     'Заметка',
@@ -242,7 +270,11 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: TextButton(
                   onPressed: () {
-                    // TODO: вторая заглушка
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const HealthSummaryModal(),
+                    );
                   },
                   child: Text(
                     'Сводка',
@@ -296,13 +328,17 @@ class _HomePageState extends State<HomePage> {
                     Icon(
                       Icons.star_border_rounded,
                       size: 18,
-                      color: Theme.of(context).colorScheme.primary.withAlpha(128),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withAlpha(128),
                     ),
                     SizedBox(width: 8),
                     Text(
                       'Нет ближайших важных событий',
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary.withAlpha(128),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withAlpha(128),
                         fontSize: 16,
                       ),
                     ),

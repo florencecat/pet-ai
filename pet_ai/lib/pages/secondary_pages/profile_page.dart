@@ -33,14 +33,22 @@ class _PetProfilePageState extends State<PetProfilePage> {
     setState(() => _loading = true);
 
     final profile = await ProfileService().loadProfile();
-    _nameController.text = profile.name;
-    _breedController.text = profile.breed;
-    _weightController.text = profile.weightKg?.toString() ?? '';
-    _notesController.text = profile.notes;
-    _birthDate = profile.birthDate;
-    _gender = profile.gender;
-    _profileImage = profile.profileImage;
-    if (mounted) setState(() => _loading = false);
+    if (profile != null) {
+      _nameController.text = profile.name;
+      _breedController.text = profile.breed;
+      _weightController.text = profile.weightKg?.toString() ?? '';
+      _notesController.text = profile.notes;
+      _birthDate = profile.birthDate;
+      _gender = profile.gender;
+      _profileImage = profile.profileImage;
+      if (mounted) setState(() => _loading = false);
+    }
+    else if (Navigator.of(context).mounted) {
+      Navigator.of(context).pushReplacementNamed("/registration");
+    }
+    else {
+      throw Exception("Failed navigate to registration flow");
+    }
   }
 
   Future<void> _saveProfile() async {

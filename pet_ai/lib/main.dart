@@ -115,8 +115,8 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex.index,
         onTap: (value) => setState(() { _selectedIndex = NavigationTab.values[value]; }),
-        selectedItemColor: Theme.of(context).bottomNavigationBarTheme.selectedItemColor,
-        unselectedItemColor: Theme.of(context).bottomNavigationBarTheme.unselectedItemColor,
+        selectedItemColor: Color.fromARGB(255, 59, 128, 123),
+        unselectedItemColor: Color.fromARGB(128, 59, 128, 123),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'Главная'),
           BottomNavigationBarItem(

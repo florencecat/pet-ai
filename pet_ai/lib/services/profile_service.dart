@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -7,7 +8,77 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
+// История веса
+enum WeightPeriod { month, year, all }
+
+class WeightEntry {
+  final DateTime date;
+  final double weight;
+
+  WeightEntry({required this.date, required this.weight});
+
+  factory WeightEntry.fromJson(Map<String, dynamic> json) {
+    return WeightEntry(
+      date: DateTime.parse(json['date']),
+      weight: (json['weight'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'date': date.toIso8601String(), 'weight': weight};
+  }
+}
+
+class WeightHistory {
+  final List<WeightEntry> entries;
+
+  WeightHistory({required this.entries});
+
+  factory WeightHistory.fromJson(List<dynamic> json) {
+    return WeightHistory(
+      entries: json.map((e) => WeightEntry.fromJson(e)).toList(),
+    );
+  }
+
+  List<Map<String, dynamic>> toJson() {
+    return entries.map((e) => e.toJson()).toList();
+  }
+
+  void add(double weight) {
+    entries.add(
+      WeightEntry(
+        date: DateTime.now(),
+        weight: double.parse(weight.toStringAsFixed(1)),
+      ),
+    );
+  }
+
+  double? get lastWeight {
+    if (entries.isEmpty) return null;
+    return entries.last.weight;
+  }
+
+  List<WeightEntry> filterByPeriod(WeightPeriod period) {
+    final now = DateTime.now();
+
+    switch (period) {
+      case WeightPeriod.month:
+        final start = now.subtract(const Duration(days: 30));
+        return entries.where((e) => e.date.isAfter(start)).toList();
+
+      case WeightPeriod.year:
+        final start = DateTime(now.year - 1, now.month, now.day);
+        return entries.where((e) => e.date.isAfter(start)).toList();
+
+      case WeightPeriod.all:
+        return entries;
+    }
+  }
+}
+
+// Профиль питомца
 class PetProfile {
+  final String id;
   String name;
   String breed;
   DateTime? birthDate;
@@ -24,9 +95,21 @@ class PetProfile {
     this.gender = 'Не указан',
     this.notes = '',
     this.profileImage,
+  }) : id = UniqueKey().toString();
+
+  PetProfile.deserialize({
+    required this.id,
+    required this.name,
+    required this.breed,
+    required this.birthDate,
+    required this.weightKg,
+    required this.gender,
+    required this.notes,
+    required this.profileImage,
   });
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'name': name,
     'breed': breed,
     'birthDate': birthDate?.toIso8601String(),
@@ -36,7 +119,8 @@ class PetProfile {
     'profileImage': profileImage?.path,
   };
 
-  factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile(
+  factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile.deserialize(
+    id: json['id'],
     name: json['name'] ?? '',
     breed: json['breed'] ?? '',
     birthDate: json['birthDate'] != null
@@ -58,7 +142,7 @@ enum FormattingType { year, month }
 class ProfileService {
   static const _key = 'pet_profile';
 
-  Future<PetProfile> loadProfile() async {
+  Future<PetProfile?> loadProfile() async {
     final jsonStr = await SharedPreferencesAsync().getString(_key);
     if (jsonStr != null) {
       try {
@@ -68,7 +152,7 @@ class ProfileService {
         log(e.toString());
       }
     }
-    return PetProfile();
+    return null;
   }
 
   Future<void> clearProfile() async =>
@@ -83,6 +167,8 @@ class ProfileService {
       jsonEncode(profile.toJson()),
     );
   }
+
+  // Future<List<WeightHistory>> loadWeightHistory() async {}
 
   Future<String> _saveAvatarToAppDir(String tempPath) async {
     final directory = await getApplicationDocumentsDirectory();

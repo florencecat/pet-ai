@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
 import '../../services/event_service.dart';
-//import '../../theme/widgets/validated_icon_button.dart';
 
 enum EventSheetMode { view, create, edit }
 
