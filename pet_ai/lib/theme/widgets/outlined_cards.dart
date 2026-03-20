@@ -99,6 +99,69 @@ class EventCard extends StatelessWidget {
   }
 }
 
+class SettingsCard extends StatelessWidget {
+  final VoidCallback? callback;
+  final IconData leadingIcon;
+  final String title;
+  final String? subtitle;
+  final IconData? trailingIcon;
+  final Color borderColor;
+  final Color textColor;
+  final RoundedRectangleBorder border;
+
+  const SettingsCard({
+    super.key,
+    this.callback,
+    required this.leadingIcon,
+    required this.title,
+    this.subtitle,
+    this.trailingIcon,
+  }) : borderColor = ThemeColors.border,
+       textColor = ThemeColors.border,
+       border = cardBorder;
+
+  const SettingsCard.debug({
+    super.key,
+    this.callback,
+    required this.leadingIcon,
+    required this.title,
+    this.subtitle,
+    this.trailingIcon,
+  }) : borderColor = ThemeColors.danger,
+       textColor = ThemeColors.danger,
+       border = dangerCardBorder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card.outlined(
+      shape: border,
+      clipBehavior: Clip.antiAliasWithSaveLayer,
+      child: ListTile(
+        leading: Icon(leadingIcon, color: borderColor),
+        title: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge!.copyWith(inherit: true, color: textColor),
+        ),
+        subtitle: subtitle != null
+            ? Text(
+                subtitle!,
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  inherit: true,
+                  color: textColor,
+                ),
+              )
+            : null,
+        trailing: trailingIcon != null
+            ? Icon(trailingIcon!, color: borderColor)
+            : null,
+        onTap: callback,
+      ),
+    );
+  }
+}
+
 class OutlinedInkCard extends StatelessWidget {
   final VoidCallback? callback;
   final Widget? child;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/event_service.dart';
-import '../../theme/app_colors.dart';
+import 'package:pet_ai/theme/widgets/outlined_cards.dart';
 import '../../services/profile_service.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -72,6 +72,37 @@ class SettingsPage extends StatelessWidget {
     }
   }
 
+  Future<void> _clearWeightHistory(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Очистить данные?'),
+        content: const Text('Будут удалены вся история веса. '),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Очистить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await ProfileService().clearWeightHistory();
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('История веса удалена')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,75 +115,25 @@ class SettingsPage extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          Card.outlined(
-            shape: cardBorder,
-            child: ListTile(
-              leading: const Icon(
-                Icons.notifications,
-                color: ThemeColors.border,
-              ),
-              title: Text(
-                'Уведомления',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              subtitle: Text(
-                'Настройка напоминаний и событий',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              trailing: const Icon(
-                Icons.chevron_right,
-                color: ThemeColors.border,
-              ),
-              onTap: () {
-                // TODO: экран уведомлений
-              },
-            ),
+          SettingsCard(
+            leadingIcon: Icons.notifications,
+            title: 'Уведомления',
+            subtitle: 'Настройка напоминаний и событий',
+            trailingIcon: Icons.chevron_right,
           ),
 
-          /// 🎨 Внешний вид (плейсхолдер)
-          Card.outlined(
-            shape: cardBorder,
-            child: ListTile(
-              leading: const Icon(Icons.palette, color: ThemeColors.border),
-              title: Text(
-                'Внешний вид',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              subtitle: Text(
-                'Тема, цвета, оформление',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              trailing: const Icon(
-                Icons.chevron_right,
-                color: ThemeColors.border,
-              ),
-              onTap: () {
-                // TODO: экран темы
-              },
-            ),
+          SettingsCard(
+            leadingIcon: Icons.palette,
+            title: 'Внешний вид',
+            subtitle: 'Тема, цвета, оформление',
+            trailingIcon: Icons.chevron_right,
           ),
 
-          /// 🐾 Профиль питомца (плейсхолдер)
-          Card.outlined(
-            shape: cardBorder,
-            child: ListTile(
-              leading: const Icon(Icons.pets, color: ThemeColors.border),
-              title: Text(
-                'Профиль питомца',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              subtitle: Text(
-                'Редактирование данных питомца',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              trailing: const Icon(
-                Icons.chevron_right,
-                color: ThemeColors.border,
-              ),
-              onTap: () {
-                // TODO: переход на PetProfilePage
-              },
-            ),
+          SettingsCard(
+            leadingIcon: Icons.pets,
+            title: 'Профиль питомца',
+            subtitle: 'Редактирование данных питомца',
+            trailingIcon: Icons.chevron_right,
           ),
 
           const SizedBox(height: 24),
@@ -161,48 +142,25 @@ class SettingsPage extends StatelessWidget {
           Text('Отладка', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
 
-          Card.outlined(
-            shape: dangerCardBorder,
-            child: ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
-              title: Text(
-                'Очистить данные приложения',
-                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                  inherit: true,
-                  color: ThemeColors.danger,
-                ),
-              ),
-              subtitle: Text(
-                'Сброс SharedPreferences (для отладки)',
-                style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  inherit: true,
-                  color: ThemeColors.danger,
-                ),
-              ),
-              onTap: () => _clearAppData(context),
-            ),
+          SettingsCard.debug(
+            leadingIcon: Icons.delete_forever,
+            title: 'Очистить данные приложения',
+            subtitle: 'Сброс SharedPreferences',
+            callback: () => _clearAppData(context),
           ),
 
-          Card.outlined(
-            shape: dangerCardBorder,
-            child: ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
-              title: Text(
-                'Очистить все события',
-                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                  inherit: true,
-                  color: ThemeColors.danger,
-                ),
-              ),
-              subtitle: Text(
-                'Удалить все события на устройстве (для отладки)',
-                style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  inherit: true,
-                  color: ThemeColors.danger,
-                ),
-              ),
-              onTap: () => _clearEvents(context),
-            ),
+          SettingsCard.debug(
+            leadingIcon: Icons.delete_forever,
+            title: 'Очистить все события',
+            subtitle: 'Удалить все события на устройстве',
+            callback: () => _clearEvents(context),
+          ),
+
+          SettingsCard.debug(
+            leadingIcon: Icons.delete_forever,
+            title: 'Очистить историю веса',
+            subtitle: 'Удалить все записи в истории веса',
+            callback: () => _clearWeightHistory(context),
           ),
 
           const SizedBox(height: 32),

@@ -15,12 +15,14 @@ class ThemeColors {
   static const white = Colors.white;
 }
 
-RoundedRectangleBorder cardBorder = RoundedRectangleBorder(
-  borderRadius: BorderRadiusGeometry.circular(20),
+const double cardBorderRadius = 20;
+
+const RoundedRectangleBorder cardBorder = RoundedRectangleBorder(
+  borderRadius: BorderRadiusGeometry.all(Radius.circular(cardBorderRadius)),
   side: BorderSide(width: 2, color: ThemeColors.border),
 );
 
-RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
-  borderRadius: BorderRadiusGeometry.circular(20),
+const RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
+  borderRadius: BorderRadiusGeometry.all(Radius.circular(cardBorderRadius)),
   side: BorderSide(width: 2, color: Color.fromARGB(128, 244, 67, 54)),
 );
