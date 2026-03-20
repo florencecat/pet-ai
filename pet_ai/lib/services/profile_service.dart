@@ -8,7 +8,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
-// История веса
 enum WeightPeriod { month, year, all }
 
 class WeightEntry {
@@ -33,6 +32,7 @@ class WeightHistory {
   final List<WeightEntry> entries;
 
   WeightHistory({required this.entries});
+  WeightHistory.empty() : entries = [];
 
   factory WeightHistory.fromJson(List<dynamic> json) {
     return WeightHistory(
@@ -52,6 +52,10 @@ class WeightHistory {
       ),
     );
   }
+
+  void deleteEntry(DateTime date) => entries.removeWhere((e) => e.date == date);
+
+  void clear() => entries.clear();
 
   double? get lastWeight {
     if (entries.isEmpty) return null;
@@ -82,30 +86,29 @@ class PetProfile {
   String name;
   String breed;
   DateTime? birthDate;
-  double? weightKg;
   String gender;
   String notes;
   File? profileImage;
+  WeightHistory weightHistory;
 
   PetProfile({
     this.name = '',
     this.breed = '',
     this.birthDate,
-    this.weightKg,
     this.gender = 'Не указан',
     this.notes = '',
     this.profileImage,
-  }) : id = UniqueKey().toString();
+  }) : id = UniqueKey().toString(), weightHistory = WeightHistory.empty();
 
   PetProfile.deserialize({
     required this.id,
     required this.name,
     required this.breed,
     required this.birthDate,
-    required this.weightKg,
     required this.gender,
     required this.notes,
     required this.profileImage,
+    required this.weightHistory,
   });
 
   Map<String, dynamic> toJson() => {
@@ -113,10 +116,10 @@ class PetProfile {
     'name': name,
     'breed': breed,
     'birthDate': birthDate?.toIso8601String(),
-    'weightKg': weightKg,
     'gender': gender,
     'notes': notes,
     'profileImage': profileImage?.path,
+    'weightHistory': weightHistory.toJson()
   };
 
   factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile.deserialize(
@@ -126,14 +129,12 @@ class PetProfile {
     birthDate: json['birthDate'] != null
         ? DateTime.parse(json['birthDate'])
         : null,
-    weightKg: json['weightKg'] != null
-        ? (json['weightKg'] as num).toDouble()
-        : null,
     gender: json['gender'] ?? 'Не указан',
     notes: json['notes'] ?? '',
     profileImage: json['profileImage'] != null
         ? File(json['profileImage'])
         : null,
+    weightHistory: WeightHistory.fromJson(json['weightHistory'] ?? [])
   );
 }
 
@@ -168,7 +169,13 @@ class ProfileService {
     );
   }
 
-  // Future<List<WeightHistory>> loadWeightHistory() async {}
+  Future<void> clearWeightHistory() async {
+    final profile = await loadProfile();
+    if (profile != null) {
+      profile.weightHistory.clear();
+      saveProfile(profile);
+    }
+  }
 
   Future<String> _saveAvatarToAppDir(String tempPath) async {
     final directory = await getApplicationDocumentsDirectory();
