@@ -108,6 +108,21 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _openWeightHistory(BuildContext context) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => UpdateWeightModal(profile: _profile!),
+    );
+
+    if (updated == true) {
+      await _loadProfile();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final description = _profileDescription();
@@ -222,17 +237,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               Expanded(
                 child: TextButton(
-                  onPressed: () async {
-                    await showModalBottomSheet<bool>(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      enableDrag: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => UpdateWeightModal(profile: _profile!),
-                    );
-                  },
-
+                  onPressed: () => _openWeightHistory(context),
                   child: Text(
                     'Обновить вес',
                     style: Theme.of(context).textTheme.bodySmall,

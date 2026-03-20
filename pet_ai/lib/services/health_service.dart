@@ -117,11 +117,13 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
     if (newWeight != null) {
       await ProfileService().updateWeightHistory(weight);
     }
-    close();
+    if (Navigator.of(context).mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   void close() {
-    Navigator.of(context).pop(true);
+    Navigator.of(context).pop(false);
   }
 
   @override
