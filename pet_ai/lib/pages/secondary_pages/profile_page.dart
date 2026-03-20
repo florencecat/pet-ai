@@ -14,7 +14,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _breedController = TextEditingController();
-  final _weightController = TextEditingController();
   final _notesController = TextEditingController();
 
   DateTime? _birthDate;
@@ -36,7 +35,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
     if (profile != null) {
       _nameController.text = profile.name;
       _breedController.text = profile.breed;
-      _weightController.text = profile.weightKg?.toString() ?? '';
       _notesController.text = profile.notes;
       _birthDate = profile.birthDate;
       _gender = profile.gender;
@@ -54,13 +52,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final weight = double.tryParse(_weightController.text.replaceAll(',', '.'));
-
     final profile = PetProfile(
       name: _nameController.text.trim(),
       breed: _breedController.text.trim(),
       birthDate: _birthDate,
-      weightKg: weight,
       gender: _gender,
       notes: _notesController.text.trim(),
       profileImage: _profileImage,
@@ -97,7 +92,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
   void dispose() {
     _nameController.dispose();
     _breedController.dispose();
-    _weightController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -123,7 +117,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                 key: _formKey,
                 child: ListView(
                   children: [
-                    // --- Avatar / Фото (плейсхолдер) ---
+
                     Center(
                       child: Stack(
                         alignment: Alignment.bottomRight,
@@ -174,7 +168,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- Name ---
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -186,7 +179,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
                     ),
                     const SizedBox(height: 12),
 
-                    // --- Breed ---
                     TextFormField(
                       controller: _breedController,
                       decoration: const InputDecoration(
@@ -196,49 +188,20 @@ class _PetProfilePageState extends State<PetProfilePage> {
                     ),
                     const SizedBox(height: 12),
 
-                    // --- Row: Birthdate & Weight ---
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _pickBirthDate,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              child: Row(
-                                children: [Text(_formatDate(_birthDate))],
-                              ),
-                            ),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _pickBirthDate,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Row(
+                            children: [Text(_formatDate(_birthDate))],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _weightController,
-                            decoration: const InputDecoration(
-                              labelText: 'Вес (кг)',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) return null;
-                              final val = double.tryParse(
-                                v.replaceAll(',', '.'),
-                              );
-                              if (val == null || val <= 0) {
-                                return 'Неверный вес';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
 
                     const SizedBox(height: 12),
 
-                    // --- Gender ---
                     DropdownButtonFormField<String>(
                       initialValue: _gender,
                       items: [
@@ -275,7 +238,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
                     const SizedBox(height: 12),
 
-                    // --- Notes ---
                     TextFormField(
                       controller: _notesController,
                       decoration: const InputDecoration(

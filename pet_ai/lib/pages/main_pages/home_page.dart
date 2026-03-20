@@ -204,9 +204,9 @@ class _HomePageState extends State<HomePage> {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Text(
-                    _profile?.weightKg == null
+                    _profile?.weightHistory.lastWeight == null
                         ? ''
-                        : '${_profile!.weightKg!.toInt().toString()} кг',
+                        : '${_profile?.weightHistory.lastWeight.toString()} кг',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -229,7 +229,7 @@ class _HomePageState extends State<HomePage> {
                       useSafeArea: true,
                       enableDrag: true,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => const UpdateWeightModal(),
+                      builder: (_) => UpdateWeightModal(profile: _profile!),
                     );
                   },
 

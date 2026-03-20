@@ -17,7 +17,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   final _nameCtrl = TextEditingController();
   final _breedCtrl = TextEditingController();
   DateTime? _birthDate;
-  final _weightCtrl = TextEditingController();
   String _gender = 'Не указан';
   final _notesCtrl = TextEditingController();
 
@@ -125,7 +124,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
       name: _nameCtrl.text.trim(),
       breed: _breedCtrl.text.trim(),
       birthDate: _birthDate,
-      weightKg: double.tryParse(_weightCtrl.text.replaceAll(',', '.')),
       gender: _gender,
       notes: _notesCtrl.text.trim(),
     );
@@ -174,14 +172,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
               label: Text('Дата рождения: ${_formatDate(_birthDate)}'),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _weightCtrl,
-              decoration: const InputDecoration(labelText: 'Вес (кг)'),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-            ),
-            const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               items: const [
                 DropdownMenuItem(value: 'Не указан', child: Text('Не указан')),
@@ -219,7 +209,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
             Text('Имя: ${_nameCtrl.text}'),
             Text('Порода: ${_breedCtrl.text}'),
             Text('Дата рождения: ${_formatDate(_birthDate)}'),
-            Text('Вес: ${_weightCtrl.text}'),
             Text('Пол: $_gender'),
             const SizedBox(height: 12),
           ],

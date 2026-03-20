@@ -169,6 +169,14 @@ class ProfileService {
     );
   }
 
+  Future<void> updateWeightHistory(double weight) async {
+    final profile = await loadProfile();
+    if (profile != null) {
+      profile.weightHistory.add(weight);
+      saveProfile(profile);
+    }
+  }
+
   Future<void> clearWeightHistory() async {
     final profile = await loadProfile();
     if (profile != null) {
