@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/theme/widgets/outlined_cards.dart';
 
 class EventPreviewBlock extends StatelessWidget {
   final List<PetEvent> events;
@@ -47,28 +46,11 @@ class EventPreviewBlock extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: events.take(4).map((event) {
-        return Card.outlined(
-          clipBehavior: Clip.antiAlias,
-          shape: cardBorder,
-          child: InkWell(
-            splashColor: Colors.blue.withAlpha(50),
-            onTap: () => onTap(event),
-            child: ListTile(
-              leading: Icon(event.category.icon, color: event.category.color),
-              title: Text(
-                event.name,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              subtitle: Text(
-                DateFormat('dd.MM.yyyy – HH:mm').format(event.dateTime),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              trailing: IconButton(
-                onPressed: () => onOpenCalendar(event.dateTime),
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ),
-          ),
+        return EventCard(
+          event: event,
+          callback: () => onTap(event),
+          trailingIcon: Icons.chevron_right,
+          trailingCallback: () => onOpenCalendar(event.dateTime)
         );
       }).toList(),
     );

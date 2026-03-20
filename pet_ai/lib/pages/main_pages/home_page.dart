@@ -1,4 +1,3 @@
-import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
@@ -10,6 +9,7 @@ import '../../services/health_service.dart';
 import '../../../services/event_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/widgets/draggable_scrollable_sheet.dart';
+import '../../../theme/widgets/outlined_cards.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;
@@ -27,8 +27,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   PetEvent? _upcomingStarredEvent;
-  late PetProfile _profile;
+  PetProfile? _profile;
 
+  bool _isLoadingProfile = true;
   bool _isLoadingEvents = true;
   List<PetEvent> _events = [];
 
@@ -63,23 +64,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadProfile() async {
+    setState(() {
+      _isLoadingProfile = true;
+    });
     final profile = await ProfileService().loadProfile();
-    if (profile == null) {
-      if (Navigator.of(context).mounted) {
-        Navigator.of(context).pushReplacementNamed('/registration');
-      } else {
-        throw Exception("Failed navigate to registration flow");
-      }
-    }
-    else {
-      _profile = profile;
+    if (profile != null) {
+      setState(() {
+        _isLoadingProfile = false;
+        _profile = profile;
+      });
+    } else if (Navigator.of(context).mounted) {
+      Navigator.of(context).pushReplacementNamed('/registration');
+    } else {
+      throw Exception("Failed navigate to registration flow");
     }
   }
 
   String _profileDescription() {
-    String description = _profile.breed;
-    if (_profile.birthDate != null) {
-      final duration = _profile.birthDate?.difference(DateTime.now());
+    String description = _profile?.breed ?? "";
+    if (_profile != null && _profile!.birthDate != null) {
+      final duration = _profile!.birthDate?.difference(DateTime.now());
       if (duration == null) {
         return description;
       } else {
@@ -123,58 +127,52 @@ class _HomePageState extends State<HomePage> {
                       shape: BoxShape.circle,
                       color: Theme.of(context).dividerColor,
                     ),
-                    child: CircleAvatar(
-                      radius: 36,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).scaffoldBackgroundColor,
-                      backgroundImage: _profile.profileImage != null
-                          ? FileImage(_profile.profileImage!)
-                          : null,
-                      child: _profile.profileImage == null
-                          ? const Icon(
-                              Icons.pets_outlined,
-                              size: 36,
-                              color: ThemeColors.border,
-                            )
-                          : Image.file(_profile.profileImage!),
+                    child: InlineLoading(
+                      isLoading: _isLoadingProfile,
+                      child: CircleAvatar(
+                        radius: 36,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).scaffoldBackgroundColor,
+                        backgroundImage: _profile?.profileImage != null
+                            ? FileImage(_profile!.profileImage!)
+                            : null,
+                        child: _profile?.profileImage == null
+                            ? const Icon(
+                                Icons.pets_outlined,
+                                size: 36,
+                                color: ThemeColors.border,
+                              )
+                            : Image.file(_profile!.profileImage!),
+                      ),
                     ),
                   ),
                 ),
               ),
               Expanded(
                 flex: 3,
-                child: Card.outlined(
-                  shape: cardBorder,
-                  clipBehavior: Clip.antiAliasWithSaveLayer,
-                  child: InkWell(
-                    splashColor: Theme.of(context).splashColor,
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PetProfilePage(),
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: EdgeInsetsGeometry.all(5),
-                      child: InlineLoading(
-                        isLoading: _isLoadingEvents,
-                        child: ListTile(
-                          title: Text(
-                            _profile.name.isEmpty
-                                ? "Загружаем..."
-                                : _profile.name,
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          subtitle: Text(
-                            description.isEmpty
-                                ? "Здесь будет имя и порода..."
-                                : description,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
+                child: OutlinedInkCard(
+                  padding: 5,
+                  callback: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PetProfilePage()),
+                    );
+                  },
+                  child: InlineLoading(
+                    isLoading: _isLoadingProfile,
+                    child: ListTile(
+                      title: Text(
+                        _profile == null || _profile!.name.isEmpty
+                            ? "Загружаем..."
+                            : _profile!.name,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      subtitle: Text(
+                        description.isEmpty
+                            ? "Здесь будет имя и порода..."
+                            : description,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
                   ),
@@ -186,43 +184,36 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
 
           // блок здоровья
-          Card.outlined(
-            shape: cardBorder,
-            clipBehavior: Clip.antiAliasWithSaveLayer,
-            child: InkWell(
-              splashColor: Theme.of(context).splashColor,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: InlineLoading(
-                  isLoading: _isLoadingEvents,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Здоровье',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Последний осмотр: 10.09.2025',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      Text(
-                        'Активность: высокая',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      Text(
-                        _profile.weightKg == null
-                            ? ''
-                            : '${_profile.weightKg!.toInt().toString()} кг',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+          OutlinedCard(
+            child: InlineLoading(
+              isLoading: _isLoadingProfile,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Здоровье',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Последний осмотр: 10.09.2025',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Активность: высокая',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    _profile?.weightKg == null
+                        ? ''
+                        : '${_profile!.weightKg!.toInt().toString()} кг',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
             ),
           ),
+
           const SizedBox(height: 16),
 
           // быстрые действия
@@ -289,34 +280,11 @@ class _HomePageState extends State<HomePage> {
 
           // ближайшее важное напоминание
           if (_upcomingStarredEvent != null)
-            Card.outlined(
-              shape: cardBorder,
-              clipBehavior: Clip.antiAliasWithSaveLayer,
-              child: InkWell(
-                splashColor: Colors.blue.withAlpha(50),
-                onTap: () {
-                  debugPrint('Card tapped.');
-                },
-                child: Padding(
-                  padding: EdgeInsetsGeometry.all(4),
-                  child: ListTile(
-                    leading: Icon(
-                      _upcomingStarredEvent!.category.icon,
-                      color: _upcomingStarredEvent!.category.color,
-                    ),
-                    title: Text(_upcomingStarredEvent!.name),
-                    subtitle: Text(
-                      DateFormat(
-                        'dd.MM.yyyy – HH:mm',
-                      ).format(_upcomingStarredEvent!.dateTime),
-                    ),
-                    trailing: IconButton(
-                      onPressed: () {},
-                      icon: Icon(Icons.notifications_active_outlined),
-                    ),
-                  ),
-                ),
-              ),
+            DottedEventCard(
+              event: _upcomingStarredEvent!,
+              callback: () => _openEventSheet(context, _upcomingStarredEvent!),
+              trailingIcon: Icons.notifications_active_outlined,
+              trailingCallback: () {},
             )
           else
             SizedBox(
@@ -363,7 +331,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           InlineLoading(
             isLoading: _isLoadingEvents,

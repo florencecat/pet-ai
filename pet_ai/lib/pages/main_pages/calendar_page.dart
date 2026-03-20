@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
+import 'package:pet_ai/theme/widgets/outlined_cards.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../services/event_service.dart';
@@ -136,8 +136,10 @@ class _CalendarPageState extends State<CalendarPage> {
                     titleTextStyle: Theme.of(context).textTheme.bodyLarge!,
                   ),
                   daysOfWeekStyle: DaysOfWeekStyle(
-                    weekdayStyle: Theme.of(context).textTheme.bodySmall!.copyWith(inherit: true, fontSize: 13),
-                    weekendStyle: Theme.of(context).textTheme.bodySmall!.copyWith(inherit: true, fontSize: 13),
+                    weekdayStyle: Theme.of(context).textTheme.bodySmall!
+                        .copyWith(inherit: true, fontSize: 13),
+                    weekendStyle: Theme.of(context).textTheme.bodySmall!
+                        .copyWith(inherit: true, fontSize: 13),
                   ),
                   eventLoader: (day) {
                     return _events
@@ -181,48 +183,29 @@ class _CalendarPageState extends State<CalendarPage> {
             Expanded(
               child: InlineLoading(
                 isLoading: _isLoadingEvents,
-                child: Expanded(
-                  child: ListView(
-                    children: [
-                      TextButton.icon(
-                        onPressed: _selectedDay == null
-                            ? null
-                            : () =>
-                                  openCreateEventSheet(context, _selectedDay!),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Добавить событие'),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_selectedDay != null && _events.isNotEmpty)
-                        ...(_events.where(
-                          (e) =>
-                              e.dateTime.year == _selectedDay!.year &&
-                              e.dateTime.month == _selectedDay!.month &&
-                              e.dateTime.day == _selectedDay!.day,
-                        )).map(
-                          (e) => Card.outlined(
-                            clipBehavior: Clip.antiAlias,
-                            shape: cardBorder,
-                            child: InkWell(
-                              splashColor: Colors.blue.withAlpha(50),
-                              onTap: () => openViewEventSheet(context, e),
-                              child: ListTile(
-                                leading: Icon(
-                                  e.category.icon,
-                                  color: e.category.color,
-                                ),
-                                title: Text(e.name),
-                                subtitle: Text(
-                                  DateFormat(
-                                    'dd.MM.yyyy – HH:mm',
-                                  ).format(e.dateTime),
-                                ),
-                              ),
-                            ),
-                          ),
+                child: ListView(
+                  children: [
+                    TextButton.icon(
+                      onPressed: _selectedDay == null
+                          ? null
+                          : () => openCreateEventSheet(context, _selectedDay!),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Добавить событие'),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_selectedDay != null && _events.isNotEmpty)
+                      ...(_events.where(
+                        (e) =>
+                            e.dateTime.year == _selectedDay!.year &&
+                            e.dateTime.month == _selectedDay!.month &&
+                            e.dateTime.day == _selectedDay!.day,
+                      )).map(
+                        (e) => EventCard(
+                          event: e,
+                          callback: () => openViewEventSheet(context, e)
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
             ),
