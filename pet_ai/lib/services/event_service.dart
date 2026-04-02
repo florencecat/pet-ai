@@ -1,7 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_service.dart';
+
+enum RepeatInterval { none, daily, weekly, monthly }
 
 class EventCategory {
   final String id;
@@ -27,7 +29,7 @@ class EventCategories {
     name: '',
     description: '',
     colorValue: 0,
-    icon: Icons.pets
+    icon: Icons.pets,
   );
 
   static const health = EventCategory(
@@ -35,7 +37,7 @@ class EventCategories {
     name: 'Здоровье',
     description: 'Визиты к врачу, прививки',
     colorValue: 0xFFE53935,
-    icon: Icons.medical_information
+    icon: Icons.medical_information,
   );
 
   static const grooming = EventCategory(
@@ -43,7 +45,7 @@ class EventCategories {
     name: 'Груминг',
     description: 'Стрижка, купание',
     colorValue: 0xFF1E88E5,
-    icon: Icons.wash
+    icon: Icons.wash,
   );
 
   static const food = EventCategory(
@@ -51,15 +53,10 @@ class EventCategories {
     name: 'Питание',
     description: 'Кормление, добавки',
     colorValue: 0xFF43A047,
-    icon: Icons.feed
+    icon: Icons.feed,
   );
 
-  static const all = [
-    empty,
-    health,
-    grooming,
-    food,
-  ];
+  static const all = [empty, health, grooming, food];
 
   static EventCategory byId(String id) {
     return all.firstWhere((c) => c.id == id);
@@ -72,9 +69,12 @@ class PetEvent {
   EventCategory category;
   DateTime dateTime;
   bool starred;
+  RepeatInterval repeat;
+  int remindBeforeMinutes;
 
-  PetEvent({required this.name, required this.category, required this.dateTime})
-    : id = UniqueKey().toString(), starred = false;
+  PetEvent({required this.name, required this.category, required this.dateTime, this.repeat = RepeatInterval.none, this.remindBeforeMinutes = 0})
+    : id = UniqueKey().toString(),
+      starred = false;
 
   PetEvent.deserialize({
     required this.id,
@@ -82,15 +82,31 @@ class PetEvent {
     required this.category,
     required this.dateTime,
     required this.starred,
+    required this.repeat,
+    required this.remindBeforeMinutes,
   });
 
-  PetEvent.empty() : id = UniqueKey().toString(), name = "", category = EventCategories.empty, dateTime = DateTime.now(), starred = false;
+  PetEvent.empty()
+    : id = UniqueKey().toString(),
+      name = "",
+      category = EventCategories.empty,
+      dateTime = DateTime.now(),
+      starred = false,
+      repeat = RepeatInterval.none,
+      remindBeforeMinutes = 0;
 
-  void assign(String? name, EventCategory? category, DateTime? dateTime)
-  {
+  void assign(
+    String? name,
+    EventCategory? category,
+    DateTime? dateTime,
+    RepeatInterval? repeat,
+    int? remindBeforeMinutes
+  ) {
     this.name = name ?? this.name;
     this.category = category ?? this.category;
     this.dateTime = dateTime ?? this.dateTime;
+    this.repeat = repeat ?? this.repeat;
+    this.remindBeforeMinutes = remindBeforeMinutes ?? this.remindBeforeMinutes;
   }
 
   Map<String, dynamic> toJson() => {
@@ -99,6 +115,8 @@ class PetEvent {
     'category': category.id,
     'dateTime': dateTime.toIso8601String(),
     'starred': starred,
+    'repeat': repeat.index,
+    'remindBeforeMinutes': remindBeforeMinutes,
   };
 
   factory PetEvent.fromJson(Map<String, dynamic> json) => PetEvent.deserialize(
@@ -106,7 +124,9 @@ class PetEvent {
     name: json['name'],
     category: EventCategories.byId(json['category']),
     dateTime: DateTime.parse(json['dateTime']),
-    starred: json['starred']
+    starred: json['starred'],
+    repeat: RepeatInterval.values[json['repeat'] ?? 0],
+    remindBeforeMinutes: json['remindBeforeMinutes'] ?? 0,
   );
 }
 
@@ -114,9 +134,6 @@ class EventService {
   static const _eventKey = 'pet_events';
 
   Future<List<PetEvent>> loadEvents() async {
-
-    // if (kDebugMode) await Future.delayed(const Duration(seconds: ));
-
     final data = await SharedPreferencesAsync().getStringList(_eventKey) ?? [];
     return data.map((e) => PetEvent.fromJson(jsonDecode(e))).toList();
   }
@@ -126,6 +143,8 @@ class EventService {
     events.add(event);
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_eventKey, encoded);
+
+    await NotificationService().scheduleEventNotification(event);
   }
 
   Future<void> saveEvent(PetEvent event) async {
@@ -136,6 +155,9 @@ class EventService {
     events[index] = event;
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_eventKey, encoded);
+
+    await NotificationService().cancelNotification(event.id);
+    await NotificationService().scheduleEventNotification(event);
   }
 
   Future<void> deleteEvent(PetEvent event) async {
@@ -143,13 +165,18 @@ class EventService {
     events.removeWhere((e) => e.id == event.id);
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_eventKey, encoded);
+
+    await NotificationService().cancelNotification(event.id);
   }
 
   Future<void> clearEvents() async {
+    final events = await loadEvents();
+    for (var event in events) {
+      await NotificationService().cancelNotification(event.id);
+    }
     await SharedPreferencesAsync().remove(_eventKey);
   }
 }
-
 
 class NoteModal extends StatelessWidget {
   const NoteModal({super.key});
@@ -162,10 +189,7 @@ class NoteModal extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Заметка",
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text("Заметка", style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 20),
           const Text("Функция появится позже."),
         ],

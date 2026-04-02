@@ -6,14 +6,10 @@ import '../../services/event_service.dart';
 
 enum EventSheetMode { view, create, edit }
 
-final DraggableScrollableController _sheetController =
-    DraggableScrollableController();
-
 extension EventSheetModeX on EventSheetMode {
   bool get isView => this == EventSheetMode.view;
   bool get isEdit => this == EventSheetMode.edit;
   bool get isCreate => this == EventSheetMode.create;
-
   bool get isEditable => isEdit || isCreate;
 }
 
@@ -36,21 +32,31 @@ class EventDraggableSheet extends StatefulWidget {
   State<EventDraggableSheet> createState() => _EventDraggableSheetState();
 }
 
-class _EventDraggableSheetState extends State<EventDraggableSheet> {
+class _EventDraggableSheetState extends State<EventDraggableSheet>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _dateController = WidgetStatesController();
   final _timeController = WidgetStatesController();
+
+  late DraggableScrollableController _sheetController;
+
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   EventCategory? _selectedCategory;
   EventSheetMode _mode = EventSheetMode.view;
 
-  _EventDraggableSheetState();
+  // Новые поля для повторов и напоминаний
+  bool _isRepeating = false;
+  RepeatInterval _selectedRepeat = RepeatInterval.none;
+  int _remindBeforeMinutes = 0;
 
   @override
   void initState() {
     super.initState();
+    _sheetController = DraggableScrollableController();
+    WidgetsBinding.instance.addObserver(this);
+
     if (widget.dateTime != null && _selectedDate == null) {
       _selectedDate = widget.dateTime;
     } else if (widget.event != null) {
@@ -58,15 +64,40 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
       _selectedCategory = widget.event!.category;
       _selectedDate = widget.event!.dateTime;
       _selectedTime = TimeOfDay.fromDateTime(widget.event!.dateTime);
+      _selectedRepeat = widget.event!.repeat;
+      _isRepeating = _selectedRepeat != RepeatInterval.none;
+      _remindBeforeMinutes = widget.event!.remindBeforeMinutes;
     }
     _mode = widget.mode;
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _sheetController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    final bottomInset = WidgetsBinding
+        .instance
+        .platformDispatcher
+        .views
+        .first
+        .viewInsets
+        .bottom;
+    if (bottomInset > 0 && EventSheetModeX(_mode).isEditable) {
+      expandSheet();
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: _selectedDate ?? now,
       firstDate: now.subtract(const Duration(days: 365)),
       lastDate: now.add(const Duration(days: 365 * 2)),
       locale: const Locale('ru'),
@@ -81,7 +112,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   Future<void> _selectTime(BuildContext context) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _selectedTime ?? TimeOfDay.now(),
     );
     if (picked != null) {
       setState(() {
@@ -91,19 +122,23 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   }
 
   void collapseSheet() {
-    _sheetController.animateTo(
-      0.45,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        0.45,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   void expandSheet() {
-    _sheetController.animateTo(
-      0.9,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-    );
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        0.9,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   void closeSheet(BuildContext context) {
@@ -162,30 +197,44 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
     return !hasError;
   }
 
+  String _getRepeatText(RepeatInterval interval) {
+    switch (interval) {
+      case RepeatInterval.none:
+        return 'Не повторять';
+      case RepeatInterval.daily:
+        return 'Каждый день';
+      case RepeatInterval.weekly:
+        return 'Каждую неделю';
+      case RepeatInterval.monthly:
+        return 'Каждый месяц';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return DraggableScrollableSheet(
       controller: _sheetController,
-      initialChildSize: 0.45,
+      initialChildSize: 0.6,
       minChildSize: 0.3,
-      maxChildSize: 0.85,
+      maxChildSize: 0.95,
       snap: true,
-      snapSizes: const [0.45, 0.85],
+      snapSizes: const [0.6, 0.95],
       builder: (context, scrollController) {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Form(
             key: _formKey,
             child: ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 24 + bottomInset),
               children: [
-                // DRAG HANDLE
                 Center(
                   child: Container(
                     width: 40,
@@ -206,6 +255,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                         icon: const Icon(Icons.arrow_back),
                         color: Theme.of(context).colorScheme.primary,
                         onPressed: () => closeSheet(context),
+                        enableFeedback: true,
                       ),
                       const Spacer(),
                       if (EventSheetModeX(_mode).isView)
@@ -217,18 +267,20 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                               _mode = EventSheetMode.edit;
                             });
                           },
+                          enableFeedback: true,
                         ),
                       if (EventSheetModeX(_mode).isView)
                         IconButton(
                           icon: const Icon(Icons.delete),
                           color: ThemeColors.danger,
                           onPressed: () => deleteEvent(context, widget.event!),
+                          enableFeedback: true,
                         ),
                       if (EventSheetModeX(_mode).isEditable)
                         IconButton(
                           icon: widget.event?.starred == true
-                              ? Icon(Icons.star_rounded)
-                              : Icon(Icons.star_outline_rounded),
+                              ? const Icon(Icons.star_rounded)
+                              : const Icon(Icons.star_outline_rounded),
                           color: Theme.of(context).colorScheme.primary,
                           onPressed: () {
                             setState(() {
@@ -237,6 +289,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                               }
                             });
                           },
+                          enableFeedback: true,
                         ),
                       if (EventSheetModeX(_mode).isEditable)
                         IconButton(
@@ -255,6 +308,10 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                               _selectedTime!.minute,
                             );
 
+                            final repeat = _isRepeating
+                                ? _selectedRepeat
+                                : RepeatInterval.none;
+
                             if (EventSheetModeX(_mode).isCreate) {
                               createEvent(
                                 context,
@@ -262,12 +319,20 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                                   name: name,
                                   category: category,
                                   dateTime: dateTime,
+                                  repeat: repeat,
+                                  remindBeforeMinutes: _remindBeforeMinutes,
                                 ),
                               );
                             }
                             if (EventSheetModeX(_mode).isEdit) {
                               PetEvent event = widget.event!;
-                              event.assign(name, category, dateTime);
+                              event.assign(
+                                name,
+                                category,
+                                dateTime,
+                                repeat,
+                                _remindBeforeMinutes,
+                              );
                               editEvent(context, event);
                             }
                           },
@@ -279,7 +344,12 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                 if (EventSheetModeX(_mode).isEditable)
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Название'),
+                    decoration: InputDecoration(
+                      labelText: 'Название',
+                      labelStyle: Theme.of(context).textTheme.titleMedium!
+                          .copyWith(inherit: true, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    style: Theme.of(context).textTheme.bodyMedium,
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Введите название' : null,
                   )
@@ -287,7 +357,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                   Text(
                     textAlign: TextAlign.center,
                     widget.event?.name ?? "",
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
 
                 const SizedBox(height: 8),
@@ -296,9 +366,14 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                   DropdownButtonFormField<String>(
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Выберите категорию' : null,
-                    decoration: InputDecoration(labelText: 'Категория'),
+                    decoration: InputDecoration(
+                      labelText: 'Категория',
+                      labelStyle: Theme.of(context).textTheme.titleMedium!
+                          .copyWith(inherit: true, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
                     dropdownColor: Colors.white,
                     initialValue: widget.event?.category.id,
+                    style: Theme.of(context).textTheme.bodyMedium,
                     items: EventCategories.all
                         .skip(1)
                         .map(
@@ -324,13 +399,27 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                     }),
                   )
                 else
-                  Text(
-                    textAlign: TextAlign.center,
-                    widget.event?.name ?? "",
-                    style: Theme.of(context).textTheme.bodyLarge,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        widget.event!.category.icon,
+                        color: widget.event!.category.color,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        textAlign: TextAlign.center,
+                        widget.event!.category.name,
+                        style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                          inherit: true,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
                   ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
 
                 if (EventSheetModeX(_mode).isEditable)
                   Row(
@@ -384,11 +473,142 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.event, size: 18, color: Colors.grey.shade600),
+                      const Icon(
+                        Icons.event,
+                        size: 20,
+                        color: ThemeColors.border,
+                      ),
                       const SizedBox(width: 6),
-                      Text(widget.event?.dateTime.toString() ?? ""),
+                      Text(
+                        DateFormat(
+                          'd MMMM в HH:mm',
+                          'ru-RU',
+                        ).format(widget.event!.dateTime),
+                      ),
                     ],
                   ),
+
+                if (EventSheetModeX(_mode).isEditable) ...[
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.all(0),
+                    title: Text(
+                      'Повторять',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    subtitle: Text(
+                      'Сделать событие регулярным',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    value: _isRepeating,
+                    activeColor: Theme.of(context).dividerColor,
+                    onChanged: (val) {
+                      setState(() {
+                        _isRepeating = val ?? false;
+                        if (_isRepeating &&
+                            _selectedRepeat == RepeatInterval.none) {
+                          _selectedRepeat = RepeatInterval.daily;
+                        }
+                      });
+                    },
+                  ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          return SizeTransition(
+                            sizeFactor: animation,
+                            child: child,
+                          );
+                        },
+                    child: _isRepeating
+                        ? Column(
+                            children: [
+                              DropdownButtonFormField<RepeatInterval>(
+                                initialValue:
+                                    _selectedRepeat == RepeatInterval.none
+                                    ? RepeatInterval.daily
+                                    : _selectedRepeat,
+                                decoration: InputDecoration(
+                                  labelText: 'Интервал повторения',
+                                  labelStyle: Theme.of(context).textTheme.titleMedium!.copyWith(inherit: true, fontSize: 16, fontWeight: FontWeight.w600),
+                                ),
+                                items: RepeatInterval.values
+                                    .where((e) => e != RepeatInterval.none)
+                                    .map((e) {
+                                      return DropdownMenuItem(
+                                        value: e,
+                                        child: Text(
+                                          _getRepeatText(e),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge!
+                                              .copyWith(
+                                                inherit: true,
+                                                fontWeight: FontWeight.w400,
+                                              ),
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
+                                onChanged: (val) =>
+                                    setState(() => _selectedRepeat = val!),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text('Напомнить за (мин):'),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline,
+                                    ),
+                                    onPressed: _remindBeforeMinutes > 0
+                                        ? () => setState(
+                                            () => _remindBeforeMinutes -= 5,
+                                          )
+                                        : null,
+                                  ),
+                                  SizedBox(
+                                    width: 40,
+                                    child: Text(
+                                      '$_remindBeforeMinutes',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle_outline),
+                                    onPressed: _remindBeforeMinutes < 120
+                                        ? () => setState(
+                                            () => _remindBeforeMinutes += 5,
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ] else ...[
+                  // Просмотр повторений
+                  if (widget.event?.repeat != RepeatInterval.none)
+                    ListTile(
+                      leading: const Icon(
+                        Icons.repeat,
+                        color: ThemeColors.border,
+                      ),
+                      title: Text(_getRepeatText(widget.event!.repeat)),
+                      subtitle: widget.event!.remindBeforeMinutes > 0
+                          ? Text(
+                              'Напоминание за ${widget.event!.remindBeforeMinutes} мин',
+                            )
+                          : null,
+                    ),
+                ],
               ],
             ),
           ),

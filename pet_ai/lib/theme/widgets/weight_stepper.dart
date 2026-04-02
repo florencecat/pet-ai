@@ -33,7 +33,7 @@ class _WeightStepperState extends State<WeightStepper> {
   }
 
   void updateWeight(double newWeight) {
-    newWeight = double.parse(newWeight.toStringAsFixed(1));
+    newWeight = (weight * 10).round() / 10;
 
     setState(() {
       weight = newWeight;
@@ -43,13 +43,13 @@ class _WeightStepperState extends State<WeightStepper> {
     widget.onChanged(weight);
   }
 
-  void increase() {
-    HapticFeedback.selectionClick();
+  void increase() async {
+    await HapticFeedback.selectionClick();
     updateWeight(weight + step);
   }
 
-  void decrease() {
-    HapticFeedback.selectionClick();
+  void decrease() async {
+    await HapticFeedback.selectionClick();
     updateWeight((weight - step).clamp(0, 999));
   }
 

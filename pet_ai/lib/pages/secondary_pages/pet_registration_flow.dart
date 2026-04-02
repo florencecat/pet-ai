@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 
 import '../../services/profile_service.dart';
 import '../../theme/widgets/draggable_bottom_sheet.dart';
@@ -18,6 +21,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   final _breedCtrl = TextEditingController();
   DateTime? _birthDate;
   String _gender = 'Не указан';
+  File? _profileImage;
   final _notesCtrl = TextEditingController();
 
   Future<void> _showBreedSelector() async {
@@ -53,8 +57,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      backgroundColor:
-          Colors.transparent,
+      backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
       builder: (context) {
         return DraggableScrollableSheet(
@@ -126,6 +129,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
       birthDate: _birthDate,
       gender: _gender,
       notes: _notesCtrl.text.trim(),
+      profileImage: _profileImage
     );
 
     await ProfileService().saveProfile(profile);
@@ -157,7 +161,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                   ),
                 ),
               ),
-            )
+            ),
           ],
         ),
         isActive: _currentStep >= 0,
@@ -189,9 +193,46 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
         title: const Text('Дополнительно'),
         content: Column(
           children: [
-            // Фото можно реализовать отдельно; пока заглушка
-            const Text('Фото питомца можно добавить позже'),
-            const SizedBox(height: 8),
+            Center(
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: ThemeColors.border, width: 4),
+                    ),
+                    child: _profileImage == null
+                        ? const Icon(Icons.pets, size: 60, color: Colors.grey)
+                        : CircleAvatar(
+                            radius: 26,
+                            backgroundImage: FileImage(_profileImage!),
+                          ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: FloatingActionButton.small(
+                      heroTag: 'edit_photo',
+                      onPressed: () async {
+                        final path = await ProfileService().pickProfileImage();
+                        if (path != null) {
+                          setState(() {
+                            _profileImage = File(path);
+                          });
+                        }
+                      },
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      child: const Icon(Icons.edit, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
             TextField(
               controller: _notesCtrl,
               decoration: const InputDecoration(labelText: 'Заметки'),

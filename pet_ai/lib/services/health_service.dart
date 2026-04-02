@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/services.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/weight_stepper.dart';
+import '../../../theme/app_colors.dart';
 
 class WeightInputFormatter extends TextInputFormatter {
   final RegExp regex = RegExp(r'^\d+(\.\d?)?$');
@@ -72,6 +73,7 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
 
   final controller = TextEditingController();
 
+  bool change = false;
   late double weight;
   late WeightHistory history;
 
@@ -174,7 +176,7 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
                     IconButton(
                       icon: const Icon(Icons.save),
                       color: Theme.of(context).dividerColor,
-                      onPressed: () async => save(),
+                      onPressed: change ? () async => save() : null,
                     ),
                   ],
                 ),
@@ -218,82 +220,107 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
 
               if (entries.isEmpty)
                 WeightChartPlaceholder(message: "История веса пока пуста")
-              // SizedBox(
-              //   height: 200,
-              //   child: Center(
-              //     child: Column(
-              //       mainAxisAlignment: MainAxisAlignment.center,
-              //       children: [
-              //         Icon(
-              //           Icons.monitor_weight_outlined,
-              //           size: 72,
-              //           color: Theme.of(
-              //             context,
-              //           ).colorScheme.primary.withAlpha(128),
-              //         ),
-              //         const SizedBox(height: 8),
-              //         Text(
-              //           "История веса пока пуста",
-              //           style: Theme.of(context).textTheme.titleLarge!
-              //               .copyWith(
-              //                 inherit: true,
-              //                 color: Theme.of(
-              //                   context,
-              //                 ).colorScheme.primary.withAlpha(128),
-              //               ),
-              //         ),
-              //       ],
-              //     ),
-              //   ),
-              // )
               else if (entries.length <= 3)
                 WeightChartPlaceholder(
-                  message:
-                      "В истории слишком мало записей для отображения",
+                  message: "В истории слишком мало записей для отображения",
                 )
               else
-                SizedBox(
-                  height: 200,
-                  child: LineChart(
-                    LineChartData(
-                      gridData: FlGridData(show: true),
+                Padding(
+                  padding: EdgeInsetsGeometry.fromLTRB(5, 10, 10, 10),
+                  child: SizedBox(
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: true,
+                          horizontalInterval: 1,
+                          verticalInterval: 1,
+                          getDrawingHorizontalLine: (value) {
+                            return const FlLine(
+                              color: ThemeColors.primary,
+                              strokeWidth: 1,
+                            );
+                          },
+                          getDrawingVerticalLine: (value) {
+                            return const FlLine(
+                              color: ThemeColors.primary,
+                              strokeWidth: 1,
+                            );
+                          },
+                        ),
+                        borderData: FlBorderData(
+                          show: true,
+                          border: Border.all(color: ThemeColors.border),
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          rightTitles: const AxisTitles(),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              reservedSize: 30,
+                              showTitles: true,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
 
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: 1,
-                            getTitlesWidget: (value, meta) {
-                              final index = value.toInt();
+                                if (index >= entries.length || index == 0) {
+                                  return const SizedBox();
+                                }
 
-                              if (index >= entries.length) {
-                                return const SizedBox();
-                              }
+                                final date = entries[index].date;
 
-                              final date = entries[index].date;
-
-                              return Text(
-                                "${date.day}.${date.month}",
-                                style: const TextStyle(fontSize: 10),
-                              );
-                            },
+                                return Text(
+                                  "${date.day}.${date.month}",
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                );
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              reservedSize: 42,
+                              showTitles: true,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  value.toStringAsFixed(1),
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                );
+                              },
+                            ),
                           ),
                         ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: true),
-                        ),
+                        minY:
+                            entries.reduce((min, entry) {
+                              return entry.weight < min.weight ? entry : min;
+                            }).weight *
+                            0.975,
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: spots,
+                            isCurved: true,
+                            barWidth: 3,
+                            gradient: LinearGradient(
+                              colors: ThemeColors.gradientColors,
+                            ),
+                            dotData: FlDotData(show: true),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                colors: ThemeColors.gradientColors
+                                    .map(
+                                      (color) => color.withValues(alpha: 0.3),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-
-                      borderData: FlBorderData(show: false),
-
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: spots,
-                          isCurved: true,
-                          barWidth: 3,
-                          dotData: FlDotData(show: true),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -305,77 +332,12 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
                   weight: weight,
                   onChanged: (value) {
                     setState(() {
+                      change = true;
                       weight = value;
                     });
                   },
                 ),
               ),
-
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: Center(
-              //         child: IconButton(
-              //           onPressed: decrease,
-              //           icon: const Icon(Icons.remove_circle),
-              //           color: Theme.of(context).dividerColor,
-              //           iconSize: 28,
-              //         ),
-              //       ),
-              //     ),
-              //
-              //     Expanded(
-              //       child: Center(
-              //         child: Row(
-              //           mainAxisSize: MainAxisSize.min,
-              //           children: [
-              //             SizedBox(
-              //               width: 60,
-              //               child: TextField(
-              //                 controller: controller,
-              //
-              //                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              //                 inputFormatters: [
-              //                   WeightInputFormatter(),
-              //                 ],
-              //                 textAlign: TextAlign.center,
-              //                 style: Theme.of(context)
-              //                     .textTheme
-              //                     .titleLarge!
-              //                     .copyWith(fontSize: 28),
-              //                 decoration: const InputDecoration(
-              //                   border: InputBorder.none,
-              //                   isDense: true,
-              //                 ),
-              //               ),
-              //             ),
-              //
-              //             const SizedBox(width: 6),
-              //
-              //             Text(
-              //               "кг",
-              //               style: Theme.of(context)
-              //                   .textTheme
-              //                   .titleLarge!
-              //                   .copyWith(fontSize: 28),
-              //             ),
-              //           ],
-              //         ),
-              //       ),
-              //     ),
-              //
-              //     Expanded(
-              //       child: Center(
-              //         child: IconButton(
-              //           onPressed: increase,
-              //           icon: const Icon(Icons.add_circle),
-              //           color: Theme.of(context).dividerColor,
-              //           iconSize: 28,
-              //         ),
-              //       ),
-              //     ),
-              //   ],
-              // )
             ],
           ),
         );

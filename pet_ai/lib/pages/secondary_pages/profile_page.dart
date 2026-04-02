@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 import '../../services/profile_service.dart';
 
 class PetProfilePage extends StatefulWidget {
@@ -40,11 +41,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
       _gender = profile.gender;
       _profileImage = profile.profileImage;
       if (mounted) setState(() => _loading = false);
-    }
-    else if (Navigator.of(context).mounted) {
+    } else if (Navigator.of(context).mounted) {
       Navigator.of(context).pushReplacementNamed("/registration");
-    }
-    else {
+    } else {
       throw Exception("Failed navigate to registration flow");
     }
   }
@@ -117,7 +116,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
                 key: _formKey,
                 child: ListView(
                   children: [
-
                     Center(
                       child: Stack(
                         alignment: Alignment.bottomRight,
@@ -128,6 +126,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
                             decoration: BoxDecoration(
                               color: Colors.grey.shade200,
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: ThemeColors.border,
+                                width: 4,
+                              ),
                             ),
                             child: _profileImage == null
                                 ? const Icon(
@@ -135,12 +137,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                     size: 60,
                                     color: Colors.grey,
                                   )
-                                : Image.file(
-                                    _profileImage!,
-                                    key: ValueKey(
-                                      _profileImage!.path +
-                                          DateTime.now().toString(),
-                                    ),
+                                : CircleAvatar(
+                                    radius: 26,
+                                    backgroundImage: FileImage(_profileImage!),
                                   ),
                           ),
                           Positioned(
@@ -159,13 +158,14 @@ class _PetProfilePageState extends State<PetProfilePage> {
                               },
                               backgroundColor: Theme.of(
                                 context,
-                              ).colorScheme.secondary,
+                              ).colorScheme.primary,
                               child: const Icon(Icons.edit, size: 18),
                             ),
                           ),
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 20),
 
                     TextFormField(
@@ -193,9 +193,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                         onPressed: _pickBirthDate,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Row(
-                            children: [Text(_formatDate(_birthDate))],
-                          ),
+                          child: Row(children: [Text(_formatDate(_birthDate))]),
                         ),
                       ),
                     ),

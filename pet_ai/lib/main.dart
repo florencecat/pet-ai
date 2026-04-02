@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pet_ai/pages/main_pages/settings_page.dart';
+import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 
 import '../pages/main_pages/home_page.dart';
@@ -12,6 +13,8 @@ import '../theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
+
   await initializeDateFormatting('ru_RU', null);
   runApp(const PetHealthApp());
 }

@@ -8,6 +8,11 @@ class ThemeColors {
   static const danger = Color(0xFFF44336);
   static const error = Color(0xFFBA1A1A);
 
+  static const gradientBegin = Color(0xFF0bbce4);
+  static const gradientEnd = Color(0xFF0edfa6);
+
+  static const gradientColors = [gradientBegin, gradientEnd];
+
   static const textPrimary = Color(0xFF00453D);
   static const border = secondary;
   static const splash = Color(0x40698583);

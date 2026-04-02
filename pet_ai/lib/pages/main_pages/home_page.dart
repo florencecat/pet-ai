@@ -149,16 +149,18 @@ class _HomePageState extends State<HomePage> {
                         backgroundColor: Theme.of(
                           context,
                         ).scaffoldBackgroundColor,
-                        backgroundImage: _profile?.profileImage != null
-                            ? FileImage(_profile!.profileImage!)
-                            : null,
                         child: _profile?.profileImage == null
                             ? const Icon(
                                 Icons.pets_outlined,
                                 size: 36,
                                 color: ThemeColors.border,
                               )
-                            : Image.file(_profile!.profileImage!),
+                            : CircleAvatar(
+                                radius: 40,
+                                backgroundImage: FileImage(
+                                  _profile!.profileImage!,
+                                ),
+                              ),
                       ),
                     ),
                   ),

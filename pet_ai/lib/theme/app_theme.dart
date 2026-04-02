@@ -24,8 +24,13 @@ class AppTheme {
       ),
       titleMedium: TextStyle(
         color: ThemeColors.textPrimary,
-        fontWeight: FontWeight.w500,
         fontSize: 20,
+        fontWeight: FontWeight.w500,
+      ),
+      titleSmall: TextStyle(
+        color: ThemeColors.textPrimary,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
       ),
     ),
 
