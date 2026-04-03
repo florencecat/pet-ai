@@ -222,7 +222,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   Text(
                     _profile?.weightHistory.lastWeight == null
-                        ? ''
+                        ? 'Вес не зафиксирован'
                         : '${_profile?.weightHistory.lastWeight.toString()} кг',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),

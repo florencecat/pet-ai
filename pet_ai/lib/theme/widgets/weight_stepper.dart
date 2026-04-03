@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 
 class WeightStepper extends StatefulWidget {
   final double weight;
@@ -27,9 +28,7 @@ class _WeightStepperState extends State<WeightStepper> {
 
     weight = widget.weight;
 
-    controller = TextEditingController(
-      text: weight.toStringAsFixed(1),
-    );
+    controller = TextEditingController(text: weight.toStringAsFixed(1));
   }
 
   void updateWeight(double newWeight) {
@@ -87,18 +86,16 @@ class _WeightStepperState extends State<WeightStepper> {
                 child: TextField(
                   controller: controller,
                   textAlign: TextAlign.center,
-                  keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d+\.?\d{0,1}'),
-                    ),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d?')),
                   ],
                   onChanged: onTextChanged,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge!
-                      .copyWith(fontSize: 26),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge!.copyWith(fontSize: 26),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
@@ -110,10 +107,9 @@ class _WeightStepperState extends State<WeightStepper> {
 
               Text(
                 "кг",
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge!
-                    .copyWith(fontSize: 26),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge!.copyWith(fontSize: 26),
               ),
             ],
           ),
@@ -127,13 +123,9 @@ class _WeightStepperState extends State<WeightStepper> {
   }
 
   Widget _circleButton(IconData icon, VoidCallback onPressed) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onPressed,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Icon(icon, size: 22),
-      ),
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 22, color: ThemeColors.border),
     );
   }
 }
