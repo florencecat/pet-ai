@@ -33,7 +33,7 @@ class _WeightStepperState extends State<WeightStepper> {
   }
 
   void updateWeight(double newWeight) {
-    newWeight = (weight * 10).round() / 10;
+    newWeight = (newWeight * 10).round() / 10;
 
     setState(() {
       weight = newWeight;

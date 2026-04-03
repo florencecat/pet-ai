@@ -255,7 +255,8 @@ class ProfileService {
     if (fullMonths > 0) {
       description +=
           '$fullMonths ${localizeDuration(fullMonths, FormattingType.month)}';
-    } else {
+    }
+    if (description.isEmpty) {
       description += 'совсем маленький';
     }
     return description;

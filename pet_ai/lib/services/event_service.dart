@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
@@ -144,7 +145,7 @@ class EventService {
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_eventKey, encoded);
 
-    await NotificationService().scheduleEventNotification(event);
+    if (!Platform.isWindows) await NotificationService().scheduleEventNotification(event);
   }
 
   Future<void> saveEvent(PetEvent event) async {
@@ -166,7 +167,7 @@ class EventService {
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_eventKey, encoded);
 
-    await NotificationService().cancelNotification(event.id);
+    if (!Platform.isWindows) await NotificationService().cancelNotification(event.id);
   }
 
   Future<void> clearEvents() async {
