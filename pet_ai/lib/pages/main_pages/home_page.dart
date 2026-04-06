@@ -123,6 +123,21 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _openMoodHistory(BuildContext context) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => UpdateMoodModal(profile: _profile!),
+    );
+
+    if (updated == true) {
+      await _loadProfile();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final description = _profileDescription();
@@ -250,13 +265,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
               Expanded(
                 child: TextButton(
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (_) => const NoteModal(),
-                    );
-                  },
+                  onPressed: () => _openMoodHistory(context),
                   child: Text(
                     'Заметка',
                     style: Theme.of(context).textTheme.bodySmall,

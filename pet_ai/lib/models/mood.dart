@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:pet_ai/models/history.dart';
 
 // Настроение
@@ -19,7 +21,7 @@ extension PetMoodX on PetMood {
       case PetMood.sad:
         return "Грустный";
       case PetMood.sick:
-        return "Плохо себя чувствует";
+        return "Болеет";
       case PetMood.playful:
         return "Игривый";
     }
@@ -37,6 +39,21 @@ extension PetMoodX on PetMood {
         return 4;
       case PetMood.happy:
         return 5;
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case PetMood.sick:
+        return Icons.sick_outlined;
+      case PetMood.sad:
+        return Icons.sentiment_very_dissatisfied;
+      case PetMood.calm:
+        return Icons.sentiment_neutral;
+      case PetMood.playful:
+        return Icons.sports_baseball_outlined;
+      case PetMood.happy:
+        return Icons.sentiment_very_satisfied;
     }
   }
 }
@@ -79,4 +96,8 @@ class MoodHistory extends History<MoodEntry> {
         e.date.month == now.month &&
         e.date.day == now.day);
   }
+
+  static final moodSerializer = HistorySerializer<MoodEntry>(
+    fromJson: MoodEntry.fromJson,
+  );
 }

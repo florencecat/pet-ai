@@ -8,117 +8,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/weight.dart';
 import 'package:pet_ai/models/mood.dart';
 
-
-//
-// class MoodEntry {
-//   final DateTime date;
-//   final PetMood mood;
-//
-//   MoodEntry({
-//     required this.date,
-//     required this.mood,
-//   });
-//
-//   Map<String, dynamic> toJson() => {
-//     "date": date.toIso8601String(),
-//     "mood": mood.name,
-//   };
-//
-//   factory MoodEntry.fromJson(Map<String, dynamic> json) {
-//     return MoodEntry(
-//       date: DateTime.parse(json["date"]),
-//       mood: PetMood.values.firstWhere(
-//             (e) => e.name == json["mood"],
-//       ),
-//     );
-//   }
-// }
-//
-// class MoodHistory {
-//   final List<MoodEntry> entries;
-//
-//   MoodHistory({required this.entries});
-//   MoodHistory.empty() : entries = [];
-// }
-//
-// // История веса
-// enum WeightPeriod { month, year, all }
-//
-// class WeightEntry {
-//   final DateTime date;
-//   final double weight;
-//
-//   WeightEntry({required this.date, required this.weight});
-//
-//   factory WeightEntry.fromJson(Map<String, dynamic> json) {
-//     return WeightEntry(
-//       date: DateTime.parse(json['date']),
-//       weight: (json['weight'] as num).toDouble(),
-//     );
-//   }
-//
-//   Map<String, dynamic> toJson() {
-//     return {'date': date.toIso8601String(), 'weight': weight};
-//   }
-// }
-//
-// class WeightHistory {
-//   final List<WeightEntry> entries;
-//
-//   WeightHistory({required this.entries});
-//   WeightHistory.empty() : entries = [];
-//
-//   factory WeightHistory.fromJson(List<dynamic> json) {
-//     return WeightHistory(
-//       entries: json.map((e) => WeightEntry.fromJson(e)).toList(),
-//     );
-//   }
-//
-//   List<Map<String, dynamic>> toJson() {
-//     return entries.map((e) => e.toJson()).toList();
-//   }
-//
-//   void add(double weight) {
-//     entries.add(
-//       WeightEntry(
-//         date: DateTime.now(),
-//         weight: double.parse(weight.toStringAsFixed(1)),
-//       ),
-//     );
-//   }
-//
-//   void deleteEntry(DateTime date) => entries.removeWhere((e) => e.date == date);
-//
-//   void clear() => entries.clear();
-//
-//   double? get lastWeight {
-//     if (entries.isEmpty) return null;
-//     return entries.last.weight;
-//   }
-//
-//   List<WeightEntry> filterByPeriod(WeightPeriod period) {
-//     final now = DateTime.now();
-//
-//     switch (period) {
-//       case WeightPeriod.month:
-//         final start = now.subtract(const Duration(days: 30));
-//         return entries.where((e) => e.date.isAfter(start)).toList();
-//
-//       case WeightPeriod.year:
-//         final start = DateTime(now.year - 1, now.month, now.day);
-//         return entries.where((e) => e.date.isAfter(start)).toList();
-//
-//       case WeightPeriod.all:
-//         return entries;
-//     }
-//   }
-// }
-
-// Профиль питомца
 class PetProfile {
   final String id;
   String name;
@@ -128,14 +20,7 @@ class PetProfile {
   String notes;
   File? profileImage;
   WeightHistory weightHistory;
-
-  final weightSerializer = HistorySerializer<WeightEntry>(
-    fromJson: WeightEntry.fromJson,
-  );
-
-  final moodSerializer = HistorySerializer<MoodEntry>(
-    fromJson: MoodEntry.fromJson,
-  );
+  MoodHistory moodHistory;
 
   PetProfile({
     this.name = '',
@@ -144,7 +29,9 @@ class PetProfile {
     this.gender = 'Не указан',
     this.notes = '',
     this.profileImage,
-  }) : id = UniqueKey().toString(), weightHistory = WeightHistory.empty();
+  }) : id = UniqueKey().toString(),
+       weightHistory = WeightHistory.empty(),
+       moodHistory = MoodHistory.empty();
 
   PetProfile.deserialize({
     required this.id,
@@ -155,6 +42,7 @@ class PetProfile {
     required this.notes,
     required this.profileImage,
     required this.weightHistory,
+    required this.moodHistory,
   });
 
   Map<String, dynamic> toJson() => {
@@ -165,23 +53,39 @@ class PetProfile {
     'gender': gender,
     'notes': notes,
     'profileImage': profileImage?.path,
-    'weightHistory':
+    'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
+    'moodHistory': MoodHistory.moodSerializer.toJsonList(moodHistory),
   };
 
-  factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile.deserialize(
-    id: json['id'],
-    name: json['name'] ?? '',
-    breed: json['breed'] ?? '',
-    birthDate: json['birthDate'] != null
-        ? DateTime.parse(json['birthDate'])
-        : null,
-    gender: json['gender'] ?? 'Не указан',
-    notes: json['notes'] ?? '',
-    profileImage: json['profileImage'] != null
-        ? File(json['profileImage'])
-        : null,
-    weightHistory: WeightHistory(entries: weightSerializer.fromJsonList(json))
-  );
+  factory PetProfile.fromJson(Map<String, dynamic> json) {
+    return PetProfile.deserialize(
+      id: json['id'],
+      name: json['name'] ?? '',
+      breed: json['breed'] ?? '',
+      birthDate: json['birthDate'] != null
+          ? DateTime.parse(json['birthDate'])
+          : null,
+      gender: json['gender'] ?? 'Не указан',
+      notes: json['notes'] ?? '',
+      profileImage: json['profileImage'] != null
+          ? File(json['profileImage'])
+          : null,
+      weightHistory: json['weightHistory'] != null
+          ? WeightHistory(
+              entries: WeightHistory.weightSerializer
+                  .fromJsonList(json['weightHistory'])
+                  .entries,
+            )
+          : WeightHistory.empty(),
+      moodHistory: json['moodHistory'] != null
+          ? MoodHistory(
+              entries: MoodHistory.moodSerializer
+                  .fromJsonList(json['moodHistory'])
+                  .entries,
+            )
+          : MoodHistory.empty(),
+    );
+  }
 }
 
 enum FormattingType { year, month }
@@ -218,7 +122,15 @@ class ProfileService {
   Future<void> updateWeightHistory(double weight) async {
     final profile = await loadProfile();
     if (profile != null) {
-      profile.weightHistory.add(weight);
+      profile.weightHistory.addWeight(weight);
+      saveProfile(profile);
+    }
+  }
+
+  Future<void> updateMoodHistory(MoodEntry entry) async {
+    final profile = await loadProfile();
+    if (profile != null) {
+      profile.moodHistory.add(entry);
       saveProfile(profile);
     }
   }

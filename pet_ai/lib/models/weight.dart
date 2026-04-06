@@ -42,4 +42,8 @@ class WeightHistory extends History<WeightEntry> {
   }
 
   double? get lastWeight => lastEntry?.weight;
+
+  static final weightSerializer = HistorySerializer<WeightEntry>(
+    fromJson: WeightEntry.fromJson,
+  );
 }

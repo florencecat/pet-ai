@@ -27,6 +27,8 @@ class History<T extends BaseEntry> {
     return entries.last;
   }
 
+
+
   List<T> filterByPeriod(WeightPeriod period) {
     final now = DateTime.now();
 

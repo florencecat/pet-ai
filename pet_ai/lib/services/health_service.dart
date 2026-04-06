@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/services.dart';
+import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/weight_stepper.dart';
 import '../../../theme/app_colors.dart';
+import 'package:pet_ai/models/weight.dart';
 
 class WeightInputFormatter extends TextInputFormatter {
   final RegExp regex = RegExp(r'^\d+(\.\d?)?$');
@@ -337,6 +339,306 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
                     });
                   },
                 ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class UpdateMoodModal extends StatefulWidget {
+  final PetProfile profile;
+
+  const UpdateMoodModal({super.key, required this.profile});
+
+  @override
+  State<UpdateMoodModal> createState() => _UpdateMoodModalState();
+}
+
+class _UpdateMoodModalState extends State<UpdateMoodModal> {
+  WeightPeriod period = WeightPeriod.month;
+
+  bool change = false;
+
+  late MoodHistory history;
+  PetMood? selectedMood;
+
+  @override
+  void initState() {
+    super.initState();
+    history = widget.profile.moodHistory;
+  }
+
+  List<FlSpot> buildSpots(List<MoodEntry> entries) {
+    return List.generate(entries.length, (i) {
+      return FlSpot(i.toDouble(), entries[i].mood.value.toDouble());
+    });
+  }
+
+  void save() async {
+    if (selectedMood != null) {
+      await ProfileService().updateMoodHistory(
+        MoodEntry(date: DateTime.now(), mood: selectedMood!),
+      );
+    }
+
+    if (Navigator.of(context).mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  void close() {
+    Navigator.of(context).pop(false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = history.filterByPeriod(period);
+    final spots = buildSpots(entries);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.60,
+      maxChildSize: 0.65,
+      snapSizes: const [0.60, 0.65],
+      snap: true,
+      builder: (context, scrollController) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              SizedBox(
+                height: 48,
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      color: Theme.of(context).dividerColor,
+                      onPressed: close,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.save),
+                      color: Theme.of(context).dividerColor,
+                      onPressed: change ? save : null,
+                    ),
+                  ],
+                ),
+              ),
+
+              Text(
+                "Настроение питомца",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+
+              const SizedBox(height: 12),
+
+              SegmentedButton<WeightPeriod>(
+                style: SegmentedButton.styleFrom(
+                  side: BorderSide(
+                    color: Theme.of(context).dividerColor,
+                    width: 2,
+                  ),
+                  foregroundColor: Theme.of(context).dividerColor,
+                  selectedForegroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surface,
+                ),
+                segments: const [
+                  ButtonSegment(
+                    value: WeightPeriod.month,
+                    label: Text("Месяц"),
+                  ),
+                  ButtonSegment(value: WeightPeriod.year, label: Text("Год")),
+                  ButtonSegment(value: WeightPeriod.all, label: Text("Все")),
+                ],
+                selected: {period},
+                onSelectionChanged: (value) {
+                  setState(() {
+                    period = value.first;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              if (entries.isEmpty)
+                const WeightChartPlaceholder(
+                  message: "История настроения пуста",
+                )
+              else if (entries.length <= 3)
+                const WeightChartPlaceholder(
+                  message: "Слишком мало записей для графика",
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(5, 10, 10, 10),
+                  child: SizedBox(
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: true,
+                          horizontalInterval: 1,
+                          verticalInterval: 1,
+                          getDrawingHorizontalLine: (value) {
+                            return const FlLine(
+                              color: ThemeColors.primary,
+                              strokeWidth: 1,
+                            );
+                          },
+                          getDrawingVerticalLine: (value) {
+                            return const FlLine(
+                              color: ThemeColors.primary,
+                              strokeWidth: 1,
+                            );
+                          },
+                        ),
+                        borderData: FlBorderData(
+                          show: true,
+                          border: Border.all(color: ThemeColors.border),
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          rightTitles: const AxisTitles(),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              reservedSize: 30,
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
+
+                                if (index >= entries.length || index == 0) {
+                                  return const SizedBox();
+                                }
+
+                                final date = entries[index].date;
+
+                                return Text(
+                                  "${date.day}.${date.month}",
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                );
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              reservedSize: 42,
+                              showTitles: true,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  value.toInt().toString(),
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        minY: 1,
+                        maxY: 5,
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: spots,
+                            isCurved: true,
+                            barWidth: 3,
+                            gradient: LinearGradient(
+                              colors: ThemeColors.gradientColors,
+                            ),
+                            dotData: FlDotData(show: true),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                colors: ThemeColors.gradientColors
+                                    .map((c) => c.withValues(alpha: 0.3))
+                                    .toList(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: PetMood.values.map((mood) {
+                  final isSelected = selectedMood == mood;
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedMood = mood;
+                        change = true;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected
+                            ? ThemeColors.primary
+                            : ThemeColors.primary.withValues(alpha: 0.1),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            mood.icon,
+                            size: 26,
+                            color: isSelected
+                                ? ThemeColors.background
+                                : ThemeColors.border,
+                          ),
+                          Text(
+                            mood.label,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleSmall!
+                                .copyWith(
+                                  inherit: true,
+                                  fontSize: 11,
+                                  color: isSelected
+                                      ? ThemeColors.background
+                                      : ThemeColors.textPrimary,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           ),
