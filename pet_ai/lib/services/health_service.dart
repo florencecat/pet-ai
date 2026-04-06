@@ -604,8 +604,8 @@ class _UpdateMoodModalState extends State<UpdateMoodModal> {
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      width: 80,
-                      height: 80,
+                      width: 65,
+                      height: 65,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isSelected
@@ -628,7 +628,7 @@ class _UpdateMoodModalState extends State<UpdateMoodModal> {
                             style: Theme.of(context).textTheme.titleSmall!
                                 .copyWith(
                                   inherit: true,
-                                  fontSize: 11,
+                                  fontSize: 9,
                                   color: isSelected
                                       ? ThemeColors.background
                                       : ThemeColors.textPrimary,

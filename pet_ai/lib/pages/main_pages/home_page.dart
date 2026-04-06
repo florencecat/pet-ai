@@ -256,7 +256,7 @@ class _HomePageState extends State<HomePage> {
                 child: TextButton(
                   onPressed: () => _openWeightHistory(context),
                   child: Text(
-                    'Обновить вес',
+                    'История веса',
                     style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),
@@ -267,7 +267,7 @@ class _HomePageState extends State<HomePage> {
                 child: TextButton(
                   onPressed: () => _openMoodHistory(context),
                   child: Text(
-                    'Заметка',
+                    'История настроения',
                     style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),

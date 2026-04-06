@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
-
+import 'package:provider/provider.dart';
 import '../../theme/widgets/draggable_bottom_sheet.dart';
 
 class AIChatPage extends StatefulWidget {
@@ -11,162 +13,241 @@ class AIChatPage extends StatefulWidget {
 }
 
 class _AIChatPageState extends State<AIChatPage> {
-  final TextEditingController _controller = TextEditingController();
-  String _response = '';
-  final List<String> _history = [
-    'Как часто нужно чистить уши собаке?',
-    'Что делать, если питомец отказывается от еды?',
-    'Как понять, что пора к ветеринару?',
-  ];
+  late final Future<AIChatController> _future;
 
-  //void _attachPhoto() {}
+  @override
+  void initState() {
+    super.initState();
 
-  void _sendPrompt() {
-    setState(() {
-      _response =
-          '🤖 Ответ ИИ на запрос: "${_controller.text}".\n\n(В реальном приложении сюда подставится результат модели.)';
-      _history.insert(0, _controller.text);
-      _controller.clear();
-    });
+    final service = GigaChatService(
+      authService: AuthService(authorizationKey: dotenv.env["GIGACHAT_KEY"]!),
+    );
+
+    _future = _createController(service);
   }
 
-  void _openHistorySheet() {
-    showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor:
-          Colors.transparent, // 👈 чтобы был виден полупрозрачный фон
-      barrierColor: Colors.black54, // 👈 затемнённая подложка
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          minChildSize: 0.3,
-          maxChildSize: 0.6,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: DraggableBottomSheet(
-                allItems: _history,
-                hintText: 'Поиск вопроса...',
-                leadingIcon: Icons.question_answer,
-                scrollController: scrollController,
-              ),
-            );
-          },
-        );
-
-        // return DraggableScrollableSheet(
-        //   expand: false,
-        //   initialChildSize: 0.5,
-        //   minChildSize: 0.3,
-        //   maxChildSize: 0.9,
-        //   builder: (context, scrollController) {
-        //     return ListView.builder(
-        //       controller: scrollController,
-        //       itemCount: _history.length,
-        //       itemBuilder: (context, index) {
-        //         final prompt = _history[index];
-        //         return ListTile(
-        //           leading: const Icon(Icons.history),
-        //           title: Text(prompt),
-        //           subtitle: const Text('Ответ ИИ сохранён (заглушка)'),
-        //           onTap: () {
-        //             Navigator.pop(context);
-        //             setState(() {
-        //               _response =
-        //               '📜 Повтор выбранного запроса:\n\n"$prompt"\n\n(Здесь можно подгрузить сохранённый ответ)';
-        //             });
-        //           },
-        //         );
-        //       },
-        //     );
-        //   },
-        // );
-      },
-    );
+  Future<AIChatController> _createController(GigaChatService service) async {
+    final controller = AIChatController(service: service);
+    await controller.init();
+    return controller;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('AI Ветеринар 🐾'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'История запросов',
-            onPressed: _openHistorySheet,
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(Icons.history),
+                onPressed: () {
+                  final controller = Provider.of<AIChatController>(
+                    context,
+                    listen: false,
+                  );
+                  _openHistorySheet(controller);
+                },
+              );
+            },
           ),
         ],
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Текст в центре
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SingleChildScrollView(
-                  child: Text(
-                    _response.isEmpty
-                        ? 'Задайте вопрос, чтобы получить ответ от ИИ.'
-                        : _response,
-                    style: const TextStyle(fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ),
+      body: FutureBuilder<AIChatController>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            // Поле ввода внизу
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.attach_file,
-                        color: ThemeColors.primary,
-                      ),
-                      onPressed: _sendPrompt,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: const InputDecoration(
-                          hintText: 'Введите вопрос об уходе за питомцем',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.send,
-                        color: ThemeColors.primary,
-                      ),
-                      onPressed: _sendPrompt,
-                    ),
-                  ],
-                ),
+          if (snapshot.hasError) {
+            return Center(child: Text('Ошибка: ${snapshot.error}'));
+          }
+
+          return ChangeNotifierProvider.value(
+            value: snapshot.data!,
+            child: const _ChatView(),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openHistorySheet(AIChatController controller) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _HistorySheet(controller: controller);
+      },
+    );
+  }
+}
+
+class _ChatView extends StatelessWidget {
+  const _ChatView();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<AIChatController>();
+
+    return Stack(
+      children: [
+        Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                reverse: true,
+                padding: const EdgeInsets.only(bottom: 100, top: 12),
+                itemCount: controller.messages.length,
+                itemBuilder: (context, index) {
+                  final msg = controller.messages.reversed.toList()[index];
+
+                  return _MessageBubble(msg: msg);
+                },
               ),
             ),
+            const _InputBar(),
           ],
         ),
+
+        if (controller.isLoading)
+          Positioned(bottom: 90, left: 16, child: _TypingIndicator()),
+      ],
+    );
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  final ChatMessage msg;
+
+  const _MessageBubble({required this.msg});
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = msg.role == 'user';
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: const EdgeInsets.all(14),
+        constraints: const BoxConstraints(maxWidth: 300),
+        decoration: BoxDecoration(
+          color: isUser ? ThemeColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [BoxShadow(blurRadius: 8, color: Colors.black12)],
+        ),
+        child: Text(
+          msg.content,
+          style: TextStyle(color: isUser ? Colors.white : Colors.black87),
+        ),
       ),
+    );
+  }
+}
+
+class _InputBar extends StatefulWidget {
+  const _InputBar();
+
+  @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar> {
+  final controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = context.read<AIChatController>();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              maxLines: 3,
+              minLines: 1,
+              decoration: InputDecoration(
+                hintText: 'Спросите о питомце...',
+                filled: true,
+                fillColor: ThemeColors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              chat.sendMessage(controller.text);
+              controller.clear();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ThemeColors.primary,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.send, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: const Text('Печатает...'),
+    );
+  }
+}
+
+class _HistorySheet extends StatelessWidget {
+  final AIChatController controller;
+
+  const _HistorySheet({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: DraggableBottomSheet(
+            hintText: 'Поиск...',
+            leadingIcon: Icons.history,
+            scrollController: scrollController,
+            allItems: controller.messages.map((msg) {
+              return msg.content;
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pet_ai/pages/main_pages/settings_page.dart';
+import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 
@@ -14,6 +18,11 @@ import '../theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService().init();
+
+  await Hive.initFlutter();
+  Hive.registerAdapter(ChatMessageAdapter());
+
+  await dotenv.load(fileName: ".env");
 
   await initializeDateFormatting('ru_RU', null);
   runApp(const PetHealthApp());

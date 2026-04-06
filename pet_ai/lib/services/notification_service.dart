@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -103,7 +104,7 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: matchComponents, // Это включает повторение
+      matchDateTimeComponents: matchComponents,
     );
   }
 
@@ -111,16 +112,17 @@ class NotificationService {
     await _notificationsPlugin.cancel(eventId.hashCode);
   }
 
-  // МЕТОД ДЛЯ ОТЛАДКИ: Выводит в консоль все запланированные пуши
   Future<void> debugPendingNotifications() async {
     final List<PendingNotificationRequest> pendingRequests =
         await _notificationsPlugin.pendingNotificationRequests();
-    print("--- ЗАПЛАНИРОВАННЫЕ УВЕДОМЛЕНИЯ (${pendingRequests.length}) ---");
-    for (var request in pendingRequests) {
-      print(
-        "ID: ${request.id}, Title: ${request.title}, Body: ${request.body}",
-      );
+    if (kDebugMode) {
+      print("--- ЗАПЛАНИРОВАННЫЕ УВЕДОМЛЕНИЯ (${pendingRequests.length}) ---");
+      for (var request in pendingRequests) {
+        print(
+          "ID: ${request.id}, Title: ${request.title}, Body: ${request.body}",
+        );
+      }
+      print("---------------------------------------------------------");
     }
-    print("---------------------------------------------------------");
   }
 }

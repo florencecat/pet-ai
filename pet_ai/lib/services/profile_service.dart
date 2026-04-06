@@ -11,6 +11,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pet_ai/models/weight.dart';
 import 'package:pet_ai/models/mood.dart';
 
+class PetContextBuilder {
+  static String build(PetProfile pet) {
+    return """
+      Имя: ${pet.name}
+      Вид: ${pet.breed}
+      Дата рождения: ${pet.birthDate}
+      Вес: ${pet.weightHistory.lastWeight} кг
+    """;
+  }
+}
+
 class PetProfile {
   final String id;
   String name;
