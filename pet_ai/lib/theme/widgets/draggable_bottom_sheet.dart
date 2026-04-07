@@ -62,8 +62,8 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
             height: 5,
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(2.5),
+              color: Colors.grey.shade400,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
           TextField(

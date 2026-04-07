@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
+import 'package:pet_ai/models/note.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -32,6 +33,7 @@ class PetProfile {
   File? profileImage;
   WeightHistory weightHistory;
   MoodHistory moodHistory;
+  NoteHistory noteHistory;
 
   PetProfile({
     this.name = '',
@@ -42,7 +44,8 @@ class PetProfile {
     this.profileImage,
   }) : id = UniqueKey().toString(),
        weightHistory = WeightHistory.empty(),
-       moodHistory = MoodHistory.empty();
+       moodHistory = MoodHistory.empty(),
+       noteHistory = NoteHistory.empty();
 
   PetProfile.deserialize({
     required this.id,
@@ -54,6 +57,7 @@ class PetProfile {
     required this.profileImage,
     required this.weightHistory,
     required this.moodHistory,
+    required this.noteHistory,
   });
 
   Map<String, dynamic> toJson() => {
@@ -66,6 +70,7 @@ class PetProfile {
     'profileImage': profileImage?.path,
     'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
     'moodHistory': MoodHistory.moodSerializer.toJsonList(moodHistory),
+    'noteHistory': NoteHistory.noteSerializer.toJsonList(noteHistory),
   };
 
   factory PetProfile.fromJson(Map<String, dynamic> json) {
@@ -95,6 +100,13 @@ class PetProfile {
                   .entries,
             )
           : MoodHistory.empty(),
+      noteHistory: json['noteHistory'] != null
+          ? NoteHistory(
+              entries: NoteHistory.noteSerializer
+                  .fromJsonList(json['noteHistory'])
+                  .entries,
+            )
+          : NoteHistory.empty(),
     );
   }
 }
@@ -134,7 +146,7 @@ class ProfileService {
     final profile = await loadProfile();
     if (profile != null) {
       profile.weightHistory.addWeight(weight);
-      saveProfile(profile);
+      await saveProfile(profile);
     }
   }
 
@@ -142,7 +154,15 @@ class ProfileService {
     final profile = await loadProfile();
     if (profile != null) {
       profile.moodHistory.add(entry);
-      saveProfile(profile);
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> addNote(String note) async {
+    final profile = await loadProfile();
+    if (profile != null) {
+      profile.noteHistory.addNote(note);
+      await saveProfile(profile);
     }
   }
 
@@ -150,7 +170,15 @@ class ProfileService {
     final profile = await loadProfile();
     if (profile != null) {
       profile.weightHistory.clear();
-      saveProfile(profile);
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> clearMoodHistory() async {
+    final profile = await loadProfile();
+    if (profile != null) {
+      profile.moodHistory.clear();
+      await saveProfile(profile);
     }
   }
 

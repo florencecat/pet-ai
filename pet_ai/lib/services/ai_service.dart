@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:pet_ai/services/http_client.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:hive/hive.dart';
@@ -62,9 +62,10 @@ class AuthService {
       return _accessToken!;
     }
 
+    final httpClient = await createIOClient();
     final uuid = Uuid().v4();
 
-    final response = await http.post(
+    final response = await httpClient.post(
       Uri.parse(_authUrl),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -82,9 +83,9 @@ class AuthService {
     final data = jsonDecode(response.body);
 
     _accessToken = data['access_token'];
-    final expiresIn = data['expires_in']; // секунды
+    final expiresAt = data['expires_at']; // секунды
 
-    _expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
+    _expiresAt = DateTime.fromMillisecondsSinceEpoch(expiresAt);
 
     return _accessToken!;
   }
@@ -102,8 +103,8 @@ class GigaChatService {
     required List<ChatMessage> history,
     required String petContext,
   }) async {
+    final httpClient = await createIOClient();
     final token = await authService.getAccessToken();
-
     final limitedHistory = history.take(10).toList();
 
     final messages = [
@@ -116,26 +117,30 @@ class GigaChatService {
       ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
     ];
 
-    final response = await http.post(
-      Uri.parse(_baseUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        "model": "GigaChat-2",
-        "messages": messages,
-        "n": 1,
-        "stream": false,
-        "max_tokens": 350,
-        "repetition_penalty": 1.05,
-      }),
-    );
+    if (kDebugMode) {
+      return "Для вельш-корги кардигана вес 14 кг может быть немного выше среднего для взрослого кобеля его возраста. Обычно взрослые корги весят около 12-14 кг. Рекомендуется проконсультироваться с ветеринаром для точного определения индекса массы тела и получения рекомендаций по питанию и физической активности.";
+    } else {
+      final response = await httpClient.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "model": "GigaChat-2",
+          "messages": messages,
+          "n": 1,
+          "stream": false,
+          "max_tokens": 350,
+          "repetition_penalty": 1.05,
+        }),
+      );
 
-    final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
 
-    return data['choices'][0]['message']['content'];
+      return data['choices'][0]['message']['content'];
+    }
   }
 }
 
@@ -172,7 +177,9 @@ class AIChatController extends ChangeNotifier {
 
       isInitialized = true;
     } catch (e) {
-      print('Init error: $e');
+      if (kDebugMode) {
+        print('Init error: $e');
+      }
     }
 
     isLoading = false;
@@ -185,7 +192,7 @@ class AIChatController extends ChangeNotifier {
 
   Stream<String> fakeStream(String fullText) async* {
     for (int i = 0; i < fullText.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 15));
+      await Future.delayed(const Duration(milliseconds: 20));
       yield fullText.substring(0, i + 1);
     }
   }
@@ -219,13 +226,20 @@ class AIChatController extends ChangeNotifier {
 
     await _repo!.add(botMsg);
 
+    isLoading = false;
+    notifyListeners();
+
     await for (final chunk in fakeStream(fullResponse)) {
       botMsg.content = chunk;
       await botMsg.save();
       notifyListeners();
     }
+  }
 
-    isLoading = false;
-    notifyListeners();
+  static void clearMessageHistory() async {
+    final repository = ChatRepository(
+      await Hive.openBox<ChatMessage>('chat_box'),
+    );
+    repository.clear();
   }
 }

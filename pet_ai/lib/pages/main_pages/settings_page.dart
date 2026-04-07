@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/widgets/outlined_cards.dart';
 import '../../services/profile_service.dart';
@@ -77,7 +78,7 @@ class SettingsPage extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Очистить данные?'),
-        content: const Text('Будут удалены вся история веса. '),
+        content: const Text('Будет удалена вся история веса. '),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -100,6 +101,67 @@ class SettingsPage extends StatelessWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('История веса удалена')));
+    }
+  }
+
+  Future<void> _clearMoodHistory(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Очистить данные?'),
+        content: const Text('Будет удалена вся история настроения. '),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Очистить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await ProfileService().clearMoodHistory();
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('История настроения удалена')));
+    }
+  }
+  Future<void> _clearMessageHistory(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Очистить диалог?'),
+        content: const Text('Будет удалена вся история общения с ИИ. '),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Очистить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    AIChatController.clearMessageHistory();
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('История настроения удалена')));
     }
   }
 
@@ -161,6 +223,20 @@ class SettingsPage extends StatelessWidget {
             title: 'Очистить историю веса',
             subtitle: 'Удалить все записи в истории веса',
             callback: () => _clearWeightHistory(context),
+          ),
+
+          SettingsCard.debug(
+            leadingIcon: Icons.delete_forever,
+            title: 'Очистить историю настроения',
+            subtitle: 'Удалить все записи в истории настроения',
+            callback: () => _clearMoodHistory(context),
+          ),
+
+          SettingsCard.debug(
+            leadingIcon: Icons.delete_forever,
+            title: 'Очистить историю сообщений в чате',
+            subtitle: 'Удалить все сообщения',
+            callback: () => _clearMessageHistory(context),
           ),
 
           const SizedBox(height: 32),

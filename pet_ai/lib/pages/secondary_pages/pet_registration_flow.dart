@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/theme/app_colors.dart';
 
-import '../../services/profile_service.dart';
-import '../../theme/widgets/draggable_bottom_sheet.dart';
+import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/services/profile_service.dart';
+import 'package:pet_ai/theme/widgets/breed_selector.dart';
 
 class PetRegistrationFlow extends StatefulWidget {
   const PetRegistrationFlow({super.key});
@@ -23,79 +23,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   String _gender = 'Не указан';
   File? _profileImage;
   final _notesCtrl = TextEditingController();
-
-  Future<void> _showBreedSelector() async {
-    final List<String> allBreeds = [
-      'Абиссинская',
-      'Акита-ину',
-      'Алабай',
-      'Английский бульдог',
-      'Бигль',
-      'Бишон фризе',
-      'Бордоский дог',
-      'Вельш-корги пемброк',
-      'Вельш-корги кардиган',
-      'Доберман',
-      'Йоркширский терьер',
-      'Кане-корсо',
-      'Лабрадор ретривер',
-      'Мопс',
-      'Немецкая овчарка',
-      'Померанский шпиц',
-      'Ретривер (золотистый)',
-      'Русский той',
-      'Самоед',
-      'Сибирский хаски',
-      'Такса',
-      'Французский бульдог',
-      'Чихуахуа',
-      'Шпиц',
-      'Ши-тцу',
-      'Шнауцер',
-    ];
-
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black54,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.8,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: DraggableBottomSheet(
-                allItems: allBreeds,
-                hintText: 'Поиск породы...',
-                leadingIcon: Icons.pets,
-                scrollController: scrollController,
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        _breedCtrl.text = result;
-      });
-    }
-  }
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
@@ -151,7 +78,14 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
             const SizedBox(height: 8),
 
             GestureDetector(
-              onTap: _showBreedSelector,
+              onTap: () async {
+                final result = await showBreedSelector(context);
+                if (result != null && result.isNotEmpty) {
+                  setState(() {
+                    _breedCtrl.text = result;
+                  });
+                }
+              },
               child: AbsorbPointer(
                 child: TextField(
                   controller: _breedCtrl,
@@ -231,12 +165,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _notesCtrl,
-              decoration: const InputDecoration(labelText: 'Заметки'),
-              maxLines: 3,
             ),
           ],
         ),

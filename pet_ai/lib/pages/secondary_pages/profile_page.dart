@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/theme/app_colors.dart';
-import '../../services/profile_service.dart';
+import 'package:pet_ai/services/profile_service.dart';
+import 'package:pet_ai/theme/widgets/breed_selector.dart';
 
 class PetProfilePage extends StatefulWidget {
   const PetProfilePage({super.key});
@@ -13,11 +14,15 @@ class PetProfilePage extends StatefulWidget {
 
 class _PetProfilePageState extends State<PetProfilePage> {
   final _formKey = GlobalKey<FormState>();
+
+  final _dateFormat = 'd MMMM yyyy';
+  final _locale = 'ru-RU';
+
   final _nameController = TextEditingController();
   final _breedController = TextEditingController();
+  final _dateController = TextEditingController();
   final _notesController = TextEditingController();
 
-  DateTime? _birthDate;
   String _gender = 'Не указан';
   File? _profileImage;
 
@@ -30,22 +35,22 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _loadProfile() async {
-    setState(() => _loading = true);
-
     final profile = await ProfileService().loadProfile();
-    if (profile != null) {
-      _nameController.text = profile.name;
-      _breedController.text = profile.breed;
-      _notesController.text = profile.notes;
-      _birthDate = profile.birthDate;
-      _gender = profile.gender;
-      _profileImage = profile.profileImage;
-      if (mounted) setState(() => _loading = false);
-    } else if (Navigator.of(context).mounted) {
-      Navigator.of(context).pushReplacementNamed("/registration");
-    } else {
-      throw Exception("Failed navigate to registration flow");
+
+    if (profile == null) {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed("/registration");
+      }
+      return;
     }
+
+    _nameController.text = profile.name;
+    _breedController.text = profile.breed;
+    _dateController.text = _formatDate(profile.birthDate);
+    _gender = profile.gender;
+    _profileImage = profile.profileImage;
+
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _saveProfile() async {
@@ -54,9 +59,8 @@ class _PetProfilePageState extends State<PetProfilePage> {
     final profile = PetProfile(
       name: _nameController.text.trim(),
       breed: _breedController.text.trim(),
-      birthDate: _birthDate,
+      birthDate: _parseDate(_dateController.text),
       gender: _gender,
-      notes: _notesController.text.trim(),
       profileImage: _profileImage,
     );
 
@@ -71,20 +75,42 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
-    final initial = _birthDate ?? DateTime(now.year - 1);
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial,
+      initialDate: _parseDate(_dateController.text) ?? DateTime(now.year - 1),
       firstDate: DateTime(2000),
       lastDate: DateTime(now.year + 5),
       locale: const Locale('ru'),
     );
-    if (picked != null) setState(() => _birthDate = picked);
+
+    if (picked != null) {
+      setState(
+        () => _dateController.text = _formatDate(picked),
+      );
+    }
   }
 
   String _formatDate(DateTime? d) {
-    if (d == null) return 'Не указано';
-    return DateFormat('dd.MM.yyyy').format(d);
+    if (d == null) return 'Дата рождения';
+    return DateFormat(_dateFormat, _locale).format(d);
+  }
+
+  DateTime? _parseDate(String? value) {
+    if (value == null || value.isEmpty) return null;
+    return DateFormat(_dateFormat, _locale).tryParse(value);
+  }
+
+  InputDecoration _input(String label) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: ThemeColors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+    );
   }
 
   @override
@@ -97,155 +123,166 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Профиль питомца'),
-        actions: [
-          IconButton(
-            onPressed: _saveProfile,
-            icon: const Icon(Icons.save),
-            tooltip: 'Сохранить',
-          ),
-        ],
+      appBar: AppBar(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _saveProfile,
+        label: const Text('Сохранить'),
+        icon: const Icon(Icons.check),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
+          : Form(
+              key: _formKey,
+              child: SafeArea(
                 child: ListView(
+                  padding: const EdgeInsets.all(20),
                   children: [
                     Center(
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: ThemeColors.border,
-                                width: 4,
+                      child: GestureDetector(
+                        onTap: () async {
+                          final path = await ProfileService()
+                              .pickProfileImage();
+                          if (path != null) {
+                            setState(() => _profileImage = File(path));
+                          }
+                        },
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    theme.colorScheme.primary.withAlpha(64),
+                                    theme.colorScheme.primary.withAlpha(2),
+                                  ],
+                                ),
+                              ),
+                              child: ClipOval(
+                                child: _profileImage == null
+                                    ? const Icon(Icons.pets, size: 50)
+                                    : Image.file(
+                                        _profileImage!,
+                                        fit: BoxFit.cover,
+                                      ),
                               ),
                             ),
-                            child: _profileImage == null
-                                ? const Icon(
-                                    Icons.pets,
-                                    size: 60,
-                                    color: Colors.grey,
-                                  )
-                                : CircleAvatar(
-                                    radius: 26,
-                                    backgroundImage: FileImage(_profileImage!),
-                                  ),
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: FloatingActionButton.small(
-                              heroTag: 'edit_photo',
-                              onPressed: () async {
-                                final path = await ProfileService()
-                                    .pickProfileImage();
-                                if (path != null) {
-                                  setState(() {
-                                    _profileImage = File(path);
-                                  });
-                                }
-                              },
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              child: const Icon(Icons.edit, size: 18),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 28),
 
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Имя питомца',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: _input('Имя питомца'),
                       validator: (v) =>
                           v == null || v.trim().isEmpty ? 'Введите имя' : null,
                     ),
+
+                    const SizedBox(height: 12),
+
+                    GestureDetector(
+                      onTap: () async {
+                        final result = await showBreedSelector(context);
+                        if (result != null && result.isNotEmpty) {
+                          setState(() {
+                            _breedController.text = result;
+                          });
+                        }
+                      },
+                      child: AbsorbPointer(
+                        child: TextFormField(
+                          controller: _breedController,
+                          decoration: _input('Порода'),
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Выберите породу'
+                              : null,
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 12),
 
                     TextFormField(
-                      controller: _breedController,
-                      decoration: const InputDecoration(
-                        labelText: 'Порода',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _pickBirthDate,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Row(children: [Text(_formatDate(_birthDate))]),
+                      onTap: _pickBirthDate,
+                      showCursor: false,
+                      controller: _dateController,
+                      decoration: InputDecoration(
+                        labelText: "Дата рождения",
+                        filled: true,
+                        fillColor: ThemeColors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: Padding(
+                          padding: EdgeInsetsGeometry.only(right: 6),
+                          child: const Icon(Icons.calendar_today, size: 18),
                         ),
                       ),
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Выберите дату'
+                          : null,
                     ),
 
                     const SizedBox(height: 12),
 
-                    DropdownButtonFormField<String>(
-                      initialValue: _gender,
-                      items: [
-                        DropdownMenuItem(
-                          value: 'Не указан',
-                          child: Text(
-                            'Не указан',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
+                    SegmentedButton<String>(
+                      style: SegmentedButton.styleFrom(
+                        padding: EdgeInsetsGeometry.all(20),
+                        side: BorderSide(style: BorderStyle.none),
+                        backgroundColor: ThemeColors.white,
+                        foregroundColor: Theme.of(context).dividerColor,
+                        selectedForegroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surface,
+                      ),
+                      segments: const <ButtonSegment<String>>[
+                        ButtonSegment<String>(
+                          value: "Не указан",
+                          label: Text("Не указан"),
                         ),
-                        DropdownMenuItem(
-                          value: 'Мальчик',
-                          child: Text(
-                            'Мальчик',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
+                        ButtonSegment<String>(
+                          value: "Мужской",
+                          label: Text("Мужской"),
+                          icon: Icon(Icons.male),
                         ),
-                        DropdownMenuItem(
-                          value: 'Девочка',
-                          child: Text(
-                            'Девочка',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
+                        ButtonSegment<String>(
+                          value: "Женский",
+                          label: Text("Женский"),
+                          icon: Icon(Icons.female),
                         ),
                       ],
-                      onChanged: (v) =>
-                          setState(() => _gender = v ?? 'Не указан'),
-                      decoration: InputDecoration(
-                        labelText: 'Пол',
-                        labelStyle: Theme.of(context).textTheme.bodyMedium,
-                        border: OutlineInputBorder(),
-                      ),
+                      selected: <String>{_gender},
+                      onSelectionChanged: (Set<String> newSelection) {
+                        setState(() {
+                          _gender = newSelection.first;
+                        });
+                      },
                     ),
-
-                    const SizedBox(height: 12),
-
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Заметки',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 4,
-                    ),
-
-                    const SizedBox(height: 20),
                   ],
                 ),
               ),

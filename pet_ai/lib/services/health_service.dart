@@ -4,8 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/weight_stepper.dart';
-import '../../../theme/app_colors.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/models/weight.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class WeightInputFormatter extends TextInputFormatter {
   final RegExp regex = RegExp(r'^\d+(\.\d?)?$');
@@ -136,211 +137,211 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
     final spots = buildSpots(entries);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.60,
-      maxChildSize: 0.65,
-      snapSizes: const [0.60, 0.65],
+      minChildSize: 0.40,
+      maxChildSize: 0.50,
       snap: true,
       builder: (context, scrollController) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        return Scaffold(
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+          floatingActionButton: WeightStepper(
+              weight: weight,
+              onChanged: (value) {
+                setState(() {
+                  change = true;
+                  weight = value;
+                });
+              },
           ),
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-
-              SizedBox(
-                height: 48,
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      color: Theme.of(context).dividerColor,
-                      onPressed: close,
+          body: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.save),
-                      color: Theme.of(context).dividerColor,
-                      onPressed: change ? () async => save() : null,
-                    ),
-                  ],
-                ),
-              ),
-
-              Text(
-                "История веса",
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-
-              const SizedBox(height: 12),
-
-              SegmentedButton<WeightPeriod>(
-                style: SegmentedButton.styleFrom(
-                  side: BorderSide(
-                    color: Theme.of(context).dividerColor,
-                    width: 2,
                   ),
-                  foregroundColor: Theme.of(context).dividerColor,
-                  selectedForegroundColor: Theme.of(
-                    context,
-                  ).colorScheme.surface,
                 ),
-                segments: [
-                  ButtonSegment(
-                    value: WeightPeriod.month,
-                    label: Text("Месяц"),
-                  ),
-                  ButtonSegment(value: WeightPeriod.year, label: Text("Год")),
-                  ButtonSegment(value: WeightPeriod.all, label: Text("Все")),
-                ],
-                selected: {period},
-                onSelectionChanged: (value) {
-                  setState(() {
-                    period = value.first;
-                  });
-                },
-              ),
 
-              const SizedBox(height: 16),
-
-              if (entries.isEmpty)
-                WeightChartPlaceholder(message: "История веса пока пуста")
-              else if (entries.length <= 3)
-                WeightChartPlaceholder(
-                  message: "В истории слишком мало записей для отображения",
-                )
-              else
-                Padding(
-                  padding: EdgeInsetsGeometry.fromLTRB(5, 10, 10, 10),
-                  child: SizedBox(
-                    height: 200,
-                    child: LineChart(
-                      LineChartData(
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: true,
-                          horizontalInterval: 1,
-                          verticalInterval: 1,
-                          getDrawingHorizontalLine: (value) {
-                            return const FlLine(
-                              color: ThemeColors.primary,
-                              strokeWidth: 1,
-                            );
-                          },
-                          getDrawingVerticalLine: (value) {
-                            return const FlLine(
-                              color: ThemeColors.primary,
-                              strokeWidth: 1,
-                            );
-                          },
-                        ),
-                        borderData: FlBorderData(
-                          show: true,
-                          border: Border.all(color: ThemeColors.border),
-                        ),
-                        titlesData: FlTitlesData(
-                          show: true,
-                          rightTitles: const AxisTitles(),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              reservedSize: 30,
-                              showTitles: true,
-                              interval: 1,
-                              getTitlesWidget: (value, meta) {
-                                final index = value.toInt();
-
-                                if (index >= entries.length || index == 0) {
-                                  return const SizedBox();
-                                }
-
-                                final date = entries[index].date;
-
-                                return Text(
-                                  "${date.day}.${date.month}",
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                );
-                              },
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              reservedSize: 42,
-                              showTitles: true,
-                              interval: 1,
-                              getTitlesWidget: (value, meta) {
-                                return Text(
-                                  value.toStringAsFixed(1),
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        minY:
-                            entries.reduce((min, entry) {
-                              return entry.weight < min.weight ? entry : min;
-                            }).weight *
-                            0.975,
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: spots,
-                            isCurved: true,
-                            barWidth: 3,
-                            gradient: LinearGradient(
-                              colors: ThemeColors.gradientColors,
-                            ),
-                            dotData: FlDotData(show: true),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              gradient: LinearGradient(
-                                colors: ThemeColors.gradientColors
-                                    .map(
-                                      (color) => color.withValues(alpha: 0.3),
-                                    )
-                                    .toList(),
-                              ),
-                            ),
-                          ),
-                        ],
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        color: Theme.of(context).dividerColor,
+                        onPressed: close,
                       ),
-                    ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.save),
+                        color: Theme.of(context).dividerColor,
+                        onPressed: change ? () async => save() : null,
+                      ),
+                    ],
                   ),
                 ),
 
-              const SizedBox(height: 16),
+                Text(
+                  "История веса",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
 
-              Center(
-                child: WeightStepper(
-                  weight: weight,
-                  onChanged: (value) {
+                const SizedBox(height: 12),
+
+                SegmentedButton<WeightPeriod>(
+                  style: SegmentedButton.styleFrom(
+                    side: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                      width: 2,
+                    ),
+                    foregroundColor: Theme.of(context).dividerColor,
+                    selectedForegroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surface,
+                  ),
+                  segments: [
+                    ButtonSegment(
+                      value: WeightPeriod.month,
+                      label: Text("Месяц"),
+                    ),
+                    ButtonSegment(value: WeightPeriod.year, label: Text("Год")),
+                    ButtonSegment(value: WeightPeriod.all, label: Text("Все")),
+                  ],
+                  selected: {period},
+                  onSelectionChanged: (value) {
                     setState(() {
-                      change = true;
-                      weight = value;
+                      period = value.first;
                     });
                   },
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 16),
+
+                if (entries.isEmpty)
+                  WeightChartPlaceholder(message: "История веса пока пуста")
+                else if (entries.length <= 3)
+                  WeightChartPlaceholder(
+                    message: "В истории слишком мало записей для отображения",
+                  )
+                else
+                  Padding(
+                    padding: EdgeInsetsGeometry.fromLTRB(5, 10, 10, 10),
+                    child: SizedBox(
+                      height: 200,
+                      child: LineChart(
+                        LineChartData(
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: true,
+                            horizontalInterval: 1,
+                            verticalInterval: 1,
+                            getDrawingHorizontalLine: (value) {
+                              return const FlLine(
+                                color: ThemeColors.primary,
+                                strokeWidth: 1,
+                              );
+                            },
+                            getDrawingVerticalLine: (value) {
+                              return const FlLine(
+                                color: ThemeColors.primary,
+                                strokeWidth: 1,
+                              );
+                            },
+                          ),
+                          borderData: FlBorderData(
+                            show: true,
+                            border: Border.all(color: ThemeColors.border),
+                          ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            rightTitles: const AxisTitles(),
+                            topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                reservedSize: 30,
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, meta) {
+                                  final index = value.toInt();
+
+                                  if (index >= entries.length || index == 0) {
+                                    return const SizedBox();
+                                  }
+
+                                  final date = entries[index].date;
+
+                                  return Text(
+                                    "${date.day}.${date.month}",
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleSmall,
+                                  );
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                reservedSize: 42,
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, meta) {
+                                  return Text(
+                                    value.toStringAsFixed(1),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleSmall,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          minY:
+                              entries.reduce((min, entry) {
+                                return entry.weight < min.weight ? entry : min;
+                              }).weight *
+                              0.975,
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: spots,
+                              isCurved: true,
+                              barWidth: 3,
+                              gradient: LinearGradient(
+                                colors: ThemeColors.gradientColors,
+                              ),
+                              dotData: FlDotData(show: true),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                gradient: LinearGradient(
+                                  colors: ThemeColors.gradientColors
+                                      .map(
+                                        (color) => color.withValues(alpha: 0.3),
+                                      )
+                                      .toList(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -399,13 +400,65 @@ class _UpdateMoodModalState extends State<UpdateMoodModal> {
     final spots = buildSpots(entries);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.60,
-      maxChildSize: 0.65,
-      snapSizes: const [0.60, 0.65],
+      minChildSize: 0.40,
+      maxChildSize: 0.50,
       snap: true,
       builder: (context, scrollController) {
-        return AnimatedContainer(
+        return Scaffold(
+            floatingActionButton: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: PetMood.values.map((mood) {
+                final isSelected = selectedMood == mood;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedMood = mood;
+                      change = true;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 65,
+                    height: 65,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? ThemeColors.primary
+                          : ThemeColors.primary.withValues(alpha: 0.1),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          mood.icon,
+                          size: 26,
+                          color: isSelected
+                              ? ThemeColors.background
+                              : ThemeColors.border,
+                        ),
+                        Text(
+                          mood.label,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleSmall!
+                              .copyWith(
+                            inherit: true,
+                            fontSize: 9,
+                            color: isSelected
+                                ? ThemeColors.background
+                                : ThemeColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+          body: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
@@ -588,60 +641,10 @@ class _UpdateMoodModalState extends State<UpdateMoodModal> {
 
               const SizedBox(height: 16),
 
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
-                children: PetMood.values.map((mood) {
-                  final isSelected = selectedMood == mood;
 
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedMood = mood;
-                        change = true;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 65,
-                      height: 65,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isSelected
-                            ? ThemeColors.primary
-                            : ThemeColors.primary.withValues(alpha: 0.1),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            mood.icon,
-                            size: 26,
-                            color: isSelected
-                                ? ThemeColors.background
-                                : ThemeColors.border,
-                          ),
-                          Text(
-                            mood.label,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.titleSmall!
-                                .copyWith(
-                                  inherit: true,
-                                  fontSize: 9,
-                                  color: isSelected
-                                      ? ThemeColors.background
-                                      : ThemeColors.textPrimary,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
             ],
           ),
+            ),
         );
       },
     );
@@ -715,6 +718,110 @@ class HealthEventsList extends StatelessWidget {
           subtitle: Text("10 марта"),
         ),
       ],
+    );
+  }
+}
+
+class UpdateNotesModal extends StatefulWidget {
+  const UpdateNotesModal({super.key});
+
+  @override
+  State<UpdateNotesModal> createState() => _UpdateNotesModalState();
+}
+
+class _UpdateNotesModalState extends State<UpdateNotesModal> {
+  final TextEditingController _controller = TextEditingController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+
+  bool _isListening = false;
+
+  Future<void> _toggleListening() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (result) {
+            setState(() {
+              _controller.text = result.recognizedWords;
+              _controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: _controller.text.length),
+              );
+            });
+          },
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _speech.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.3,
+      minChildSize: 0.2,
+      maxChildSize: 0.8,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  maxLines: null,
+                  expands: true,
+                  scrollController: scrollController,
+                  decoration: const InputDecoration(
+                    hintText: 'Напишите заметку...',
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: _toggleListening,
+                    icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
+                  ),
+                  ElevatedButton(
+                    onPressed: _controller.text.isEmpty
+                        ? null
+                        : () {
+                            ProfileService().addNote(_controller.text);
+                            Navigator.pop(context, true);
+                          },
+                    child: const Text('Прикрепить'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

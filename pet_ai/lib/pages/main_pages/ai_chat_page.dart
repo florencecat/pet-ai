@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:provider/provider.dart';
 import '../../theme/widgets/draggable_bottom_sheet.dart';
 
@@ -34,49 +35,42 @@ class _AIChatPageState extends State<AIChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Ветеринар 🐾'),
-        actions: [
-          Builder(
+    return FutureBuilder<AIChatController>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Scaffold(body: InlineLoading(isLoading: !snapshot.hasData));
+        }
+
+        return ChangeNotifierProvider.value(
+          value: snapshot.data!,
+          child: Builder(
             builder: (context) {
-              return IconButton(
-                icon: const Icon(Icons.history),
-                onPressed: () {
-                  final controller = Provider.of<AIChatController>(
-                    context,
-                    listen: false,
-                  );
-                  _openHistorySheet(controller);
-                },
+              return Scaffold(
+                appBar: AppBar(
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.history),
+                      onPressed: () {
+                        final controller = context.read<AIChatController>();
+
+                        _openHistorySheet(context, controller);
+                      },
+                    ),
+                  ],
+                ),
+                body: const _ChatView(),
               );
             },
           ),
-        ],
-      ),
-      body: FutureBuilder<AIChatController>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text('Ошибка: ${snapshot.error}'));
-          }
-
-          return ChangeNotifierProvider.value(
-            value: snapshot.data!,
-            child: const _ChatView(),
-          );
-        },
-      ),
+        );
+      },
     );
   }
 
-  void _openHistorySheet(AIChatController controller) {
+  void _openHistorySheet(BuildContext context, AIChatController controller) {
     showModalBottomSheet(
-      context: context,
+      context: context, // ✅ теперь правильный context
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
@@ -100,7 +94,7 @@ class _ChatView extends StatelessWidget {
             Expanded(
               child: ListView.builder(
                 reverse: true,
-                padding: const EdgeInsets.only(bottom: 100, top: 12),
+                padding: const EdgeInsets.only(top: 12),
                 itemCount: controller.messages.length,
                 itemBuilder: (context, index) {
                   final msg = controller.messages.reversed.toList()[index];
@@ -179,25 +173,40 @@ class _InputBarState extends State<_InputBar> {
                 fillColor: ThemeColors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide.none
                 ),
               ),
+              onChanged: (value) {
+                setState(() {});
+              },
             ),
           ),
           const SizedBox(width: 8),
           InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              chat.sendMessage(controller.text);
-              controller.clear();
-            },
+            onTap: controller.text.isEmpty
+                ? null
+                : () {
+                    chat.sendMessage(controller.text);
+                    controller.clear();
+                  },
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ThemeColors.primary,
+                border: BoxBorder.all(
+                  color: controller.text.isEmpty
+                      ? Colors.grey.shade400
+                      : ThemeColors.primary,
+                  width: 3,
+                ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.send, color: Colors.white),
+              child: Icon(
+                Icons.send,
+                color: controller.text.isEmpty
+                    ? Colors.grey.shade400
+                    : ThemeColors.primary,
+              ),
             ),
           ),
         ],
@@ -234,16 +243,17 @@ class _HistorySheet extends StatelessWidget {
       maxChildSize: 0.9,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: DraggableBottomSheet(
             hintText: 'Поиск...',
             leadingIcon: Icons.history,
             scrollController: scrollController,
             allItems: controller.messages.map((msg) {
-              return msg.content;
+              final prefix = msg.role == "user" ? "Вы: " : "Чат-бот: ";
+              return prefix + msg.content;
             }).toList(),
           ),
         );

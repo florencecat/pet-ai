@@ -138,6 +138,29 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _openNotes(BuildContext context) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => UpdateNotesModal(),
+    );
+
+    if (updated == true) {
+      await _loadProfile();
+    }
+  }
+
+  void _openProfile(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PetProfilePage()),
+    );
+    await _loadProfile();
+  }
+
   @override
   Widget build(BuildContext context) {
     final description = _profileDescription();
@@ -185,12 +208,7 @@ class _HomePageState extends State<HomePage> {
                 flex: 3,
                 child: OutlinedInkCard(
                   padding: 5,
-                  callback: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PetProfilePage()),
-                    );
-                  },
+                  callback: () => _openProfile(context),
                   child: InlineLoading(
                     isLoading: _isLoadingProfile,
                     child: ListTile(
@@ -216,32 +234,43 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
 
           // блок здоровья
-          OutlinedCard(
+          OutlinedInkCard(
+            padding: 0,
+            callback: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => const HealthSummaryModal(),
+              );
+            },
             child: InlineLoading(
               isLoading: _isLoadingProfile,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Здоровье',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Последний осмотр: 10.09.2025',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'Активность: высокая',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    _profile?.weightHistory.lastWeight == null
-                        ? 'Вес не зафиксирован'
-                        : '${_profile?.weightHistory.lastWeight.toString()} кг',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+              child: Padding(
+                padding: EdgeInsetsGeometry.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Здоровье',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Последний осмотр: 10.09.2025',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      'Активность: высокая',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      _profile?.weightHistory.lastWeight == null
+                          ? 'Вес не зафиксирован'
+                          : '${_profile?.weightHistory.lastWeight.toString()} кг',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -276,15 +305,9 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
               Expanded(
                 child: TextButton(
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (_) => const HealthSummaryModal(),
-                    );
-                  },
+                  onPressed: () => _openNotes(context),
                   child: Text(
-                    'Сводка',
+                    'Заметка',
                     style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),
