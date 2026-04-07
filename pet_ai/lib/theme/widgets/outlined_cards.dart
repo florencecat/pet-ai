@@ -4,6 +4,54 @@ import 'package:intl/intl.dart';
 
 import '../../../theme/app_colors.dart';
 import '../../../services/event_service.dart';
+import 'dart:ui';
+
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  final VoidCallback? onTap;
+
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.borderRadius = 24,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15), // Полупрозрачный белый
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2), // Тонкий светлый блик по краю
+                width: 1.5,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(borderRadius),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class DottedEventCard extends StatelessWidget {
   final PetEvent event;

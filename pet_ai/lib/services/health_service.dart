@@ -137,8 +137,8 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
     final spots = buildSpots(entries);
 
     return DraggableScrollableSheet(
-      minChildSize: 0.40,
-      maxChildSize: 0.50,
+      minChildSize: 0.50,
+      maxChildSize: 0.60,
       snap: true,
       builder: (context, scrollController) {
         return Scaffold(

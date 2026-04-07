@@ -252,7 +252,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
                     SegmentedButton<String>(
                       style: SegmentedButton.styleFrom(
-                        padding: EdgeInsetsGeometry.all(20),
+                        padding: EdgeInsetsGeometry.all(12),
                         side: BorderSide(style: BorderStyle.none),
                         backgroundColor: ThemeColors.white,
                         foregroundColor: Theme.of(context).dividerColor,
