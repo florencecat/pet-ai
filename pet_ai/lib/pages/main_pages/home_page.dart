@@ -5,12 +5,13 @@ import 'package:pet_ai/theme/widgets/events_preview_block.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'dart:core';
 
-import '../secondary_pages/profile_page.dart';
-import '../../services/health_service.dart';
-import '../../../services/event_service.dart';
-import '../../../theme/app_colors.dart';
-import '../../../theme/widgets/draggable_scrollable_sheet.dart';
-import '../../../theme/widgets/outlined_cards.dart';
+import 'package:pet_ai/pages/secondary_pages/profile_page.dart';
+import 'package:pet_ai/services/health_service.dart';
+import 'package:pet_ai/services/event_service.dart';
+import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/theme/widgets/draggable_scrollable_sheet.dart';
+import 'package:pet_ai/theme/widgets/outlined_cards.dart';
+import 'package:pet_ai/theme/widgets/health_action_button.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;
@@ -27,7 +28,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  PetEvent? _upcomingStarredEvent;
   PetProfile? _profile;
 
   bool _isLoadingProfile = true;
@@ -57,9 +57,6 @@ class _HomePageState extends State<HomePage> {
       if (events.length > 1) {
         events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
       }
-      _upcomingStarredEvent = _events
-          .where((e) => e.starred == true)
-          .firstOrNull;
     });
     _isLoadingEvents = false;
   }
@@ -166,7 +163,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final description = _profileDescription();
     return Scaffold(
-      backgroundColor: ThemeColors.white, // Важно для градиента
+      backgroundColor: ThemeColors.white,
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -178,8 +175,8 @@ class _HomePageState extends State<HomePage> {
             colors: [
               ThemeColors.gradientBegin.withAlpha(
                 96,
-              ), // ThemeColors.gradientBegin
-              ThemeColors.gradientEnd.withAlpha(64), // ThemeColors.gradientEnd
+              ),
+              ThemeColors.gradientEnd.withAlpha(64),
             ],
           ),
         ),
@@ -191,39 +188,54 @@ class _HomePageState extends State<HomePage> {
                 // хэдер профиля
                 Row(
                   children: [
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Theme.of(context).dividerColor,
-                          ),
-                          child: InlineLoading(
-                            isLoading: _isLoadingProfile,
-                            child: CircleAvatar(
-                              radius: 36,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).scaffoldBackgroundColor,
-                              child: _profile?.profileImage == null
-                                  ? const Icon(
-                                      Icons.pets_outlined,
-                                      size: 36,
-                                      color: ThemeColors.border,
-                                    )
-                                  : CircleAvatar(
-                                      radius: 40,
-                                      backgroundImage: FileImage(
-                                        _profile!.profileImage!,
-                                      ),
-                                    ),
-                            ),
-                          ),
+                    // Expanded(
+                    //   flex: 1,
+                    //   child: Center(
+                    //     child: Container(
+                    //       padding: const EdgeInsets.all(2),
+                    //       decoration: BoxDecoration(
+                    //         shape: BoxShape.circle,
+                    //         color: Theme.of(context).dividerColor,
+                    //       ),
+                    //       child: InlineLoading(
+                    //         isLoading: _isLoadingProfile,
+                    //         child: CircleAvatar(
+                    //           radius: 36,
+                    //           backgroundColor: Theme.of(
+                    //             context,
+                    //           ).scaffoldBackgroundColor,
+                    //           child: _profile?.profileImage == null
+                    //               ? const Icon(
+                    //                   Icons.pets_outlined,
+                    //                   size: 36,
+                    //                   color: ThemeColors.border,
+                    //                 )
+                    //               : CircleAvatar(
+                    //                   radius: 40,
+                    //                   backgroundImage: FileImage(
+                    //                     _profile!.profileImage!,
+                    //                   ),
+                    //                 ),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+
+                    InlineLoading(
+                      isLoading: _isLoadingProfile,
+                      child: CircleAvatar(
+                        radius: 42,
+                        backgroundColor: Colors.white.withValues(alpha: 0.3),
+                        child: _profile?.profileImage == null
+                            ? const Icon(Icons.pets, size: 40, color: Colors.white)
+                            : CircleAvatar(
+                          radius: 40,
+                          backgroundImage: FileImage(_profile!.profileImage!),
                         ),
                       ),
                     ),
+
                     Expanded(
                       flex: 3,
                       child: GlassCard(
@@ -256,7 +268,6 @@ class _HomePageState extends State<HomePage> {
 
                 // блок здоровья
                 GlassCard(
-                  width: 120,
                   callback: () {
                     showModalBottomSheet(
                       context: context,
@@ -264,118 +275,115 @@ class _HomePageState extends State<HomePage> {
                       builder: (_) => const HealthSummaryModal(),
                     );
                   },
-                  child: InlineLoading(
-                    isLoading: _isLoadingProfile,
-                    child: Padding(
-                      padding: EdgeInsetsGeometry.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Здоровье',
-                            style: Theme.of(context).textTheme.titleLarge,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      InlineLoading(
+                        isLoading: _isLoadingProfile,
+                        child: Padding(
+                          padding: EdgeInsetsGeometry.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Здоровье',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Последний осмотр: 10.09.2025',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              Text(
+                                'Активность: высокая',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              Text(
+                                _profile?.weightHistory.lastWeight == null
+                                    ? 'Вес не зафиксирован'
+                                    : '${_profile?.weightHistory.lastWeight.toString()} кг',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Последний осмотр: 10.09.2025',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          Text(
-                            'Активность: высокая',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          Text(
-                            _profile?.weightHistory.lastWeight == null
-                                ? 'Вес не зафиксирован'
-                                : '${_profile?.weightHistory.lastWeight.toString()} кг',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+
+                      // быстрые действия
+                      Padding(
+                        padding: EdgeInsetsGeometry.only(left: 8, right: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: HealthActionButton(
+                                icon: Icons.monitor_weight_outlined,
+                                label: 'Вес',
+                                onPressed: () => _openWeightHistory(context),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: HealthActionButton(
+                                icon: Icons.mood_outlined,
+                                label: 'Настроение',
+                                onPressed: () => _openMoodHistory(context),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: HealthActionButton(
+                                icon: Icons.note_alt_outlined,
+                                label: 'Заметка',
+                                onPressed: () => _openNotes(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
-                const SizedBox(height: 16),
-
-                // быстрые действия
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                      child: TextButton.icon(
-                        onPressed: () => _openWeightHistory(context),
-                        iconAlignment: IconAlignment.start,
-                        label: Text(
-                          'История веса',
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                      Expanded(
-                      child: TextButton.icon(
-                        onPressed: () => _openMoodHistory(context),
-                        iconAlignment: IconAlignment.start,
-                        label: Text(
-                          'История настроения',
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => _openNotes(context),
-                        child: Text(
-                          'Заметка',
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 16),
 
                 // ближайшее важное напоминание
-                if (_upcomingStarredEvent != null)
-                  DottedEventCard(
-                    event: _upcomingStarredEvent!,
-                    callback: () =>
-                        _openEventSheet(context, _upcomingStarredEvent!),
-                    trailingIcon: Icons.notifications_active_outlined,
-                    trailingCallback: () {},
-                  )
-                else
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.05,
-                    child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.star_border_rounded,
-                            size: 18,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary.withAlpha(128),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Нет ближайших важных событий',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withAlpha(128),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 16),
+                // if (_upcomingStarredEvent != null)
+                //   DottedEventCard(
+                //     event: _upcomingStarredEvent!,
+                //     callback: () =>
+                //         _openEventSheet(context, _upcomingStarredEvent!),
+                //     trailingIcon: Icons.notifications_active_outlined,
+                //     trailingCallback: () {},
+                //   )
+                // else
+                //   SizedBox(
+                //     height: MediaQuery.of(context).size.height * 0.05,
+                //     child: Center(
+                //       child: Row(
+                //         mainAxisSize: MainAxisSize.min,
+                //         children: [
+                //           Icon(
+                //             Icons.star_border_rounded,
+                //             size: 18,
+                //             color: Theme.of(
+                //               context,
+                //             ).colorScheme.primary.withAlpha(128),
+                //           ),
+                //           SizedBox(width: 8),
+                //           Text(
+                //             'Нет ближайших важных событий',
+                //             style: TextStyle(
+                //               color: Theme.of(
+                //                 context,
+                //               ).colorScheme.primary.withAlpha(128),
+                //               fontSize: 16,
+                //             ),
+                //           ),
+                //         ],
+                //       ),
+                //     ),
+                //   ),
+                // const SizedBox(height: 16),
 
                 // ближайшие события
                 Row(

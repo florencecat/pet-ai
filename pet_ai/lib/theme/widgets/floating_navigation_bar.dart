@@ -68,7 +68,7 @@ class NavItem extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             child: Icon(
               icon,
-              size: 24,
+              size: 28,
               color: isActive ? activeColor : activeColor.withOpacity(0.5),
             ),
           ),

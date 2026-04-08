@@ -132,7 +132,7 @@ class _MainPageState extends State<MainPage> {
           Positioned(
             left: 16,
             right: 16,
-            bottom: 16,
+            bottom: 24,
             child: FloatingNavigationBar(
               currentIndex: _selectedIndex.index,
               onTap: (index) {
