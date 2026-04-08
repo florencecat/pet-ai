@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
@@ -13,25 +14,13 @@ class AppTheme {
 
     splashColor: ThemeColors.splash,
 
-    textTheme: const TextTheme(
-      bodyMedium: TextStyle(fontSize: 16, color: ThemeColors.textPrimary),
-      bodySmall: TextStyle(fontSize: 14, color: ThemeColors.textPrimary),
-      bodyLarge: TextStyle(fontSize: 17, color: ThemeColors.textPrimary, fontWeight: FontWeight.w500),
-      titleLarge: TextStyle(
-        color: ThemeColors.textPrimary,
-        fontSize: 20,
-        fontWeight: FontWeight.w500,
-      ),
-      titleMedium: TextStyle(
-        color: ThemeColors.textPrimary,
-        fontSize: 20,
-        fontWeight: FontWeight.w500,
-      ),
-      titleSmall: TextStyle(
-        color: ThemeColors.textPrimary,
-        fontWeight: FontWeight.w500,
-        fontSize: 14,
-      ),
+    textTheme: TextTheme(
+      bodyMedium: GoogleFonts.rubikTextTheme().bodyMedium!.copyWith(color: ThemeColors.textPrimary),
+      bodySmall: GoogleFonts.rubikTextTheme().bodySmall!.copyWith(color: ThemeColors.textPrimary),
+      bodyLarge: GoogleFonts.rubikTextTheme().bodyLarge!.copyWith(color: ThemeColors.textPrimary),
+      titleLarge: GoogleFonts.rubikTextTheme().titleLarge!.copyWith(fontSize: 24, fontWeight: FontWeight.w800, color: ThemeColors.textPrimary),
+      titleMedium: GoogleFonts.rubikTextTheme().titleMedium!.copyWith(fontSize: 18, fontWeight: FontWeight.w800, color: ThemeColors.textPrimary),
+      titleSmall: GoogleFonts.rubikTextTheme().titleSmall!.copyWith(fontSize: 14,fontWeight: FontWeight.w800, color: ThemeColors.textPrimary)
     ),
 
     appBarTheme: const AppBarTheme(

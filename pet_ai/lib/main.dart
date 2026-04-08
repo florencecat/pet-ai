@@ -8,11 +8,12 @@ import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 
-import '../pages/main_pages/home_page.dart';
-import '../pages/main_pages/ai_chat_page.dart';
-import '../pages/main_pages/calendar_page.dart';
-import '../pages/secondary_pages/pet_registration_flow.dart';
-import '../theme/app_theme.dart';
+import 'package:pet_ai/pages/main_pages/home_page.dart';
+import 'package:pet_ai/pages/main_pages/ai_chat_page.dart';
+import 'package:pet_ai/pages/main_pages/calendar_page.dart';
+import 'package:pet_ai/pages/secondary_pages/pet_registration_flow.dart';
+import 'package:pet_ai/theme/app_theme.dart';
+import 'package:pet_ai/theme/widgets/floating_navigation_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,25 +123,24 @@ class _MainPageState extends State<MainPage> {
     ];
 
     return Scaffold(
-      body: pages[_selectedIndex.index],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex.index,
-        onTap: (value) => setState(() { _selectedIndex = NavigationTab.values[value]; }),
-        selectedItemColor: Color.fromARGB(255, 59, 128, 123),
-        unselectedItemColor: Color.fromARGB(128, 59, 128, 123),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'Главная'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Чат',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: 'Календарь',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Настройки',
+      extendBody: true, // важно для прозрачности
+      body: Stack(
+        children: [
+          pages[_selectedIndex.index],
+
+          // Floating Navbar
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: FloatingNavigationBar(
+              currentIndex: _selectedIndex.index,
+              onTap: (index) {
+                setState(() {
+                  _selectedIndex = NavigationTab.values[index];
+                });
+              },
+            ),
           ),
         ],
       ),

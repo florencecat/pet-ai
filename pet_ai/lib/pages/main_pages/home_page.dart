@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/events_preview_block.dart';
+import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'dart:core';
 
 import '../secondary_pages/profile_page.dart';
@@ -164,223 +165,247 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final description = _profileDescription();
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: ListView(
-        children: [
-          // хэдер профиля
-          Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(context).dividerColor,
-                    ),
-                    child: InlineLoading(
-                      isLoading: _isLoadingProfile,
-                      child: CircleAvatar(
-                        radius: 36,
-                        backgroundColor: Theme.of(
-                          context,
-                        ).scaffoldBackgroundColor,
-                        child: _profile?.profileImage == null
-                            ? const Icon(
-                                Icons.pets_outlined,
-                                size: 36,
-                                color: ThemeColors.border,
-                              )
-                            : CircleAvatar(
-                                radius: 40,
-                                backgroundImage: FileImage(
-                                  _profile!.profileImage!,
-                                ),
-                              ),
+    return Scaffold(
+      backgroundColor: ThemeColors.white, // Важно для градиента
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            tileMode: TileMode.mirror,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              ThemeColors.gradientBegin.withAlpha(
+                96,
+              ), // ThemeColors.gradientBegin
+              ThemeColors.gradientEnd.withAlpha(64), // ThemeColors.gradientEnd
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ListView(
+              children: [
+                // хэдер профиля
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).dividerColor,
+                          ),
+                          child: InlineLoading(
+                            isLoading: _isLoadingProfile,
+                            child: CircleAvatar(
+                              radius: 36,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).scaffoldBackgroundColor,
+                              child: _profile?.profileImage == null
+                                  ? const Icon(
+                                      Icons.pets_outlined,
+                                      size: 36,
+                                      color: ThemeColors.border,
+                                    )
+                                  : CircleAvatar(
+                                      radius: 40,
+                                      backgroundImage: FileImage(
+                                        _profile!.profileImage!,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    Expanded(
+                      flex: 3,
+                      child: GlassCard(
+                        callback: () => _openProfile(context),
+                        child: Center(
+                          child: InlineLoading(
+                            isLoading: _isLoadingProfile,
+                            child: ListTile(
+                              title: Text(
+                                _profile == null || _profile!.name.isEmpty
+                                    ? "Загружаем..."
+                                    : _profile!.name,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              subtitle: Text(
+                                description.isEmpty
+                                    ? "Здесь будет имя и порода..."
+                                    : description,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Expanded(
-                flex: 3,
-                child: OutlinedInkCard(
-                  padding: 5,
-                  callback: () => _openProfile(context),
+
+                const SizedBox(height: 16),
+
+                // блок здоровья
+                GlassCard(
+                  width: 120,
+                  callback: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const HealthSummaryModal(),
+                    );
+                  },
                   child: InlineLoading(
                     isLoading: _isLoadingProfile,
-                    child: ListTile(
-                      title: Text(
-                        _profile == null || _profile!.name.isEmpty
-                            ? "Загружаем..."
-                            : _profile!.name,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      subtitle: Text(
-                        description.isEmpty
-                            ? "Здесь будет имя и порода..."
-                            : description,
-                        style: Theme.of(context).textTheme.bodySmall,
+                    child: Padding(
+                      padding: EdgeInsetsGeometry.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Здоровье',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Последний осмотр: 10.09.2025',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            'Активность: высокая',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            _profile?.weightHistory.lastWeight == null
+                                ? 'Вес не зафиксирован'
+                                : '${_profile?.weightHistory.lastWeight.toString()} кг',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
 
-          const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-          // блок здоровья
-          OutlinedInkCard(
-            padding: 0,
-            callback: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => const HealthSummaryModal(),
-              );
-            },
-            child: InlineLoading(
-              isLoading: _isLoadingProfile,
-              child: Padding(
-                padding: EdgeInsetsGeometry.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // быстрые действия
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => _openWeightHistory(context),
+                        iconAlignment: IconAlignment.start,
+                        label: Text(
+                          'История веса',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                      Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => _openMoodHistory(context),
+                        iconAlignment: IconAlignment.start,
+                        label: Text(
+                          'История настроения',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => _openNotes(context),
+                        child: Text(
+                          'Заметка',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // ближайшее важное напоминание
+                if (_upcomingStarredEvent != null)
+                  DottedEventCard(
+                    event: _upcomingStarredEvent!,
+                    callback: () =>
+                        _openEventSheet(context, _upcomingStarredEvent!),
+                    trailingIcon: Icons.notifications_active_outlined,
+                    trailingCallback: () {},
+                  )
+                else
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.05,
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.star_border_rounded,
+                            size: 18,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withAlpha(128),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Нет ближайших важных событий',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withAlpha(128),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                // ближайшие события
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Здоровье',
+                      'Ближайшие события',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Последний осмотр: 10.09.2025',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      'Активность: высокая',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      _profile?.weightHistory.lastWeight == null
-                          ? 'Вес не зафиксирован'
-                          : '${_profile?.weightHistory.lastWeight.toString()} кг',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: ThemeColors.border,
+                      onPressed: widget.onOpenCalendar,
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
+                const SizedBox(height: 10),
 
-          const SizedBox(height: 16),
-
-          // быстрые действия
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => _openWeightHistory(context),
-                  child: Text(
-                    'История веса',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
+                InlineLoading(
+                  isLoading: _isLoadingEvents,
+                  child: EventPreviewBlock(
+                    events: _events,
+                    onTap: (event) => _openEventSheet(context, event),
+                    onOpenCalendar: widget.onOpenCalendarByEvent,
                   ),
                 ),
-              ),
-              const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
-              Expanded(
-                child: TextButton(
-                  onPressed: () => _openMoodHistory(context),
-                  child: Text(
-                    'История настроения',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24, child: VerticalDivider(thickness: 1)),
-              Expanded(
-                child: TextButton(
-                  onPressed: () => _openNotes(context),
-                  child: Text(
-                    'Заметка',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // ближайшее важное напоминание
-          if (_upcomingStarredEvent != null)
-            DottedEventCard(
-              event: _upcomingStarredEvent!,
-              callback: () => _openEventSheet(context, _upcomingStarredEvent!),
-              trailingIcon: Icons.notifications_active_outlined,
-              trailingCallback: () {},
-            )
-          else
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.05,
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.star_border_rounded,
-                      size: 18,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withAlpha(128),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Нет ближайших важных событий',
-                      style: TextStyle(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withAlpha(128),
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-
-          // ближайшие события
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Ближайшие события',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                color: ThemeColors.border,
-                onPressed: widget.onOpenCalendar,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          InlineLoading(
-            isLoading: _isLoadingEvents,
-            child: EventPreviewBlock(
-              events: _events,
-              onTap: (event) => _openEventSheet(context, event),
-              onOpenCalendar: widget.onOpenCalendarByEvent,
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

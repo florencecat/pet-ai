@@ -157,8 +157,10 @@ class EventService {
     final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
     await SharedPreferencesAsync().setStringList(_eventKey, encoded);
 
-    await NotificationService().cancelNotification(event.id);
-    await NotificationService().scheduleEventNotification(event);
+    if (!Platform.isWindows) {
+      await NotificationService().cancelNotification(event.id);
+      await NotificationService().scheduleEventNotification(event);
+    }
   }
 
   Future<void> deleteEvent(PetEvent event) async {
