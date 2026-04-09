@@ -1,8 +1,12 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
+import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'package:provider/provider.dart';
 import '../../theme/widgets/draggable_bottom_sheet.dart';
 
@@ -39,7 +43,24 @@ class _AIChatPageState extends State<AIChatPage> {
       future: _future,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return Scaffold(body: InlineLoading(isLoading: !snapshot.hasData));
+          return Scaffold(
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  tileMode: TileMode.mirror,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    ThemeColors.gradientBegin.withAlpha(96),
+                    ThemeColors.gradientEnd.withAlpha(64),
+                  ],
+                ),
+              ),
+              child: InlineLoading(isLoading: !snapshot.hasData),
+            ),
+          );
         }
 
         return ChangeNotifierProvider.value(
@@ -47,34 +68,25 @@ class _AIChatPageState extends State<AIChatPage> {
           child: Builder(
             builder: (context) {
               return Scaffold(
-                appBar: AppBar(
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.history),
-                      onPressed: () {
-                        final controller = context.read<AIChatController>();
-
-                        _openHistorySheet(context, controller);
-                      },
+                body: Container(
+                  padding: EdgeInsets.only(bottom: 0),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      tileMode: TileMode.mirror,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        ThemeColors.gradientBegin.withAlpha(96),
+                        ThemeColors.gradientEnd.withAlpha(64),
+                      ],
                     ),
-                  ],
+                  ),
+                  child: const _ChatView(),
                 ),
-                body: const _ChatView(),
               );
             },
           ),
         );
-      },
-    );
-  }
-
-  void _openHistorySheet(BuildContext context, AIChatController controller) {
-    showModalBottomSheet(
-      context: context, // ✅ теперь правильный context
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return _HistorySheet(controller: controller);
       },
     );
   }
@@ -83,6 +95,17 @@ class _AIChatPageState extends State<AIChatPage> {
 class _ChatView extends StatelessWidget {
   const _ChatView();
 
+  void _openHistorySheet(BuildContext context, AIChatController controller) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      builder: (_) {
+        return _HistorySheet(controller: controller);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AIChatController>();
@@ -90,25 +113,62 @@ class _ChatView extends StatelessWidget {
     return Stack(
       children: [
         Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
               child: ListView.builder(
                 reverse: true,
-                padding: const EdgeInsets.only(top: 12),
+                clipBehavior: Clip.none,
+                padding: const EdgeInsets.only(top: 12, bottom: 185),
                 itemCount: controller.messages.length,
+                physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
                   final msg = controller.messages.reversed.toList()[index];
-
                   return _MessageBubble(msg: msg);
                 },
               ),
             ),
-            const _InputBar(),
           ],
         ),
 
+        const _GlobalEdgeBlur(),
+
+        Align(
+          alignment: AlignmentGeometry.topRight,
+          child: Padding(
+            padding: EdgeInsetsGeometry.only(top: 16, right: 16),
+            child: GlassCard(
+              callback: () {
+                final controller = context.read<AIChatController>();
+                _openHistorySheet(context, controller);
+              },
+              child: const Icon(Icons.history, color: ThemeColors.primary),
+            ),
+          ),
+        ),
+
+        const Align(
+          alignment: AlignmentGeometry.bottomCenter,
+          child: Padding(
+            padding: EdgeInsetsGeometry.only(bottom: 90),
+            child: _InputBar(),
+          ),
+        ),
+
         if (controller.isLoading)
-          Positioned(bottom: 90, left: 16, child: _TypingIndicator()),
+          Positioned(
+            bottom: 191,
+            left: 16,
+            child: GlassPlate(
+              child: Padding(
+                padding: EdgeInsetsGeometry.symmetric(
+                  vertical: 8,
+                  horizontal: 14,
+                ),
+                child: Text('Печатает...'),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -126,17 +186,20 @@ class _MessageBubble extends StatelessWidget {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
         constraints: const BoxConstraints(maxWidth: 300),
-        decoration: BoxDecoration(
+        child: GlassPlate(
           color: isUser ? ThemeColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [BoxShadow(blurRadius: 8, color: Colors.black12)],
-        ),
-        child: Text(
-          msg.content,
-          style: TextStyle(color: isUser ? Colors.white : Colors.black87),
+          child: Padding(
+            padding: EdgeInsetsGeometry.symmetric(vertical: 8, horizontal: 14),
+            child: Text(
+              msg.content,
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                inherit: true,
+                color: isUser ? ThemeColors.white : ThemeColors.textPrimary,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -158,49 +221,49 @@ class _InputBarState extends State<_InputBar> {
     final chat = context.read<AIChatController>();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              maxLines: 3,
-              minLines: 1,
-              decoration: InputDecoration(
-                hintText: 'Спросите о питомце...',
-                filled: true,
-                fillColor: ThemeColors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none
+            child: GlassPlate(
+              child: TextField(
+                controller: controller,
+                maxLines: 3,
+                minLines: 1,
+
+                decoration: InputDecoration(
+                  hintText: 'Спросите о питомце...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
+                onChanged: (value) {
+                  setState(() {});
+                },
               ),
-              onChanged: (value) {
-                setState(() {});
-              },
             ),
+            // Material(
+            //   shape: RoundedRectangleBorder(
+            //     side: BorderSide(color: ThemeColors.primary, width: 3),
+            //     borderRadius: BorderRadius.circular(16),
+            //   ),
+            //   color: Colors.transparent,
+
+            // ),
           ),
           const SizedBox(width: 8),
-          InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: controller.text.isEmpty
+
+          GlassCard(
+            callback: controller.text.isEmpty
                 ? null
                 : () {
+                    HapticFeedback.mediumImpact();
                     chat.sendMessage(controller.text);
                     controller.clear();
                   },
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: BoxBorder.all(
-                  color: controller.text.isEmpty
-                      ? Colors.grey.shade400
-                      : ThemeColors.primary,
-                  width: 3,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
+            child: Padding(
+              padding: EdgeInsetsGeometry.all(10),
               child: Icon(
                 Icons.send,
                 color: controller.text.isEmpty
@@ -215,21 +278,6 @@ class _InputBarState extends State<_InputBar> {
   }
 }
 
-class _TypingIndicator extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-      ),
-      child: const Text('Печатает...'),
-    );
-  }
-}
-
 class _HistorySheet extends StatelessWidget {
   final AIChatController controller;
 
@@ -237,27 +285,45 @@ class _HistorySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.3,
-      maxChildSize: 0.9,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    return SizedBox(
+      height: 500,
+      child: DraggableBottomSheet(
+        hintText: 'Поиск...',
+        leadingIcon: Icons.history,
+        allItems: controller.messages.map((msg) {
+          final prefix = msg.role == "user" ? "Вы: " : "Чат-бот: ";
+          return prefix + msg.content;
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _GlobalEdgeBlur extends StatelessWidget {
+  const _GlobalEdgeBlur();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Column(
+        children: [
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaY: 0.5, sigmaX: 0.5),
+              child: Container(height: 120, decoration: BoxDecoration()),
+            ),
           ),
-          child: DraggableBottomSheet(
-            hintText: 'Поиск...',
-            leadingIcon: Icons.history,
-            scrollController: scrollController,
-            allItems: controller.messages.map((msg) {
-              final prefix = msg.role == "user" ? "Вы: " : "Чат-бот: ";
-              return prefix + msg.content;
-            }).toList(),
+
+          const Spacer(),
+
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaY: 1, sigmaX: 1),
+              child: Container(height: 140, decoration: BoxDecoration()),
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

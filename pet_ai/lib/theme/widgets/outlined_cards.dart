@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import '../../../theme/app_colors.dart';
 import '../../../services/event_service.dart';
-import 'dart:ui';
 
 class DottedEventCard extends StatelessWidget {
   final PetEvent event;

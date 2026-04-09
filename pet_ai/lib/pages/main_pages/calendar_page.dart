@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pet_ai/theme/widgets/activity_indicator.dart';
-import 'package:pet_ai/theme/widgets/outlined_cards.dart';
+import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../services/event_service.dart';
@@ -22,7 +21,6 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime _focusedDay = DateTime.now();
   late DateTime? _selectedDay;
 
-  bool _isLoadingEvents = true;
   List<PetEvent> _events = [];
 
   void openCreateEventSheet(BuildContext context, DateTime dateTime) async {
@@ -63,7 +61,6 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Future<void> _loadEvents() async {
     setState(() {
-      _isLoadingEvents = true;
     });
 
     final events = await EventService().loadEvents();
@@ -72,7 +69,6 @@ class _CalendarPageState extends State<CalendarPage> {
     }
     setState(() {
       _events = events;
-      _isLoadingEvents = false;
     });
   }
 
@@ -89,17 +85,28 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Scaffold(
+      body: Container(
+        padding: EdgeInsetsGeometry.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            tileMode: TileMode.mirror,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              ThemeColors.gradientBegin.withAlpha(96),
+              ThemeColors.gradientEnd.withAlpha(64),
+            ],
+          ),
+        ),
         child: Column(
           children: [
-            Card.outlined(
-              shape: cardBorder,
+            GlassPlate(
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsetsGeometry.all(16),
                 child: TableCalendar(
                   locale: 'ru_RU',
+                  startingDayOfWeek: StartingDayOfWeek.monday,
                   focusedDay: _focusedDay,
                   firstDay: DateTime.utc(2024),
                   lastDay: DateTime.utc(2030),
@@ -152,7 +159,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       shape: BoxShape.circle,
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: Theme.of(context).colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                     todayTextStyle: TextStyle(
@@ -180,35 +187,54 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
             const SizedBox(height: 16),
 
-            Expanded(
-              child: InlineLoading(
-                isLoading: _isLoadingEvents,
-                child: ListView(
-                  children: [
-                    TextButton.icon(
-                      onPressed: _selectedDay == null
-                          ? null
-                          : () => openCreateEventSheet(context, _selectedDay!),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Добавить событие'),
+            GlassCard(
+              color: ThemeColors.primary,
+              callback: _selectedDay == null
+                  ? null
+                  : () => openCreateEventSheet(context, _selectedDay!),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add, color: ThemeColors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Добавить событие',
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      inherit: true,
+                      color: ThemeColors.white,
                     ),
-                    const SizedBox(height: 16),
-                    if (_selectedDay != null && _events.isNotEmpty)
-                      ...(_events.where(
-                        (e) =>
-                            e.dateTime.year == _selectedDay!.year &&
-                            e.dateTime.month == _selectedDay!.month &&
-                            e.dateTime.day == _selectedDay!.day,
-                      )).map(
-                        (e) => EventCard(
-                          event: e,
-                          callback: () => openViewEventSheet(context, e)
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+
+            // Expanded(
+            //   child: InlineLoading(
+            //     isLoading: _isLoadingEvents,
+            //     child: ListView(
+            //       children: [
+            //         TextButton. icon(
+            //           onPressed: ,
+            //           icon:
+            //           label:
+            //         ),
+            //         const SizedBox(height: 16),
+            //         if (_selectedDay != null && _events.isNotEmpty)
+            //           ...(_events.where(
+            //             (e) =>
+            //                 e.dateTime.year == _selectedDay!.year &&
+            //                 e.dateTime.month == _selectedDay!.month &&
+            //                 e.dateTime.day == _selectedDay!.day,
+            //           )).map(
+            //             (e) => EventCard(
+            //               event: e,
+            //               callback: () => openViewEventSheet(context, e),
+            //             ),
+            //           ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

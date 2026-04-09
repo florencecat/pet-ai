@@ -10,7 +10,6 @@ import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_scrollable_sheet.dart';
-import 'package:pet_ai/theme/widgets/outlined_cards.dart';
 import 'package:pet_ai/theme/widgets/health_action_button.dart';
 
 class HomePage extends StatefulWidget {
@@ -112,7 +111,6 @@ class _HomePageState extends State<HomePage> {
       isScrollControlled: true,
       useSafeArea: true,
       enableDrag: true,
-      backgroundColor: Colors.transparent,
       builder: (_) => UpdateWeightModal(profile: _profile!),
     );
 
@@ -127,7 +125,6 @@ class _HomePageState extends State<HomePage> {
       isScrollControlled: true,
       useSafeArea: true,
       enableDrag: true,
-      backgroundColor: Colors.transparent,
       builder: (_) => UpdateMoodModal(profile: _profile!),
     );
 
@@ -142,7 +139,7 @@ class _HomePageState extends State<HomePage> {
       isScrollControlled: true,
       useSafeArea: true,
       enableDrag: true,
-      backgroundColor: Colors.transparent,
+
       builder: (_) => UpdateNotesModal(),
     );
 
@@ -173,9 +170,7 @@ class _HomePageState extends State<HomePage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              ThemeColors.gradientBegin.withAlpha(
-                96,
-              ),
+              ThemeColors.gradientBegin.withAlpha(96),
               ThemeColors.gradientEnd.withAlpha(64),
             ],
           ),
@@ -185,56 +180,29 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
-                // хэдер профиля
                 Row(
                   children: [
-                    // Expanded(
-                    //   flex: 1,
-                    //   child: Center(
-                    //     child: Container(
-                    //       padding: const EdgeInsets.all(2),
-                    //       decoration: BoxDecoration(
-                    //         shape: BoxShape.circle,
-                    //         color: Theme.of(context).dividerColor,
-                    //       ),
-                    //       child: InlineLoading(
-                    //         isLoading: _isLoadingProfile,
-                    //         child: CircleAvatar(
-                    //           radius: 36,
-                    //           backgroundColor: Theme.of(
-                    //             context,
-                    //           ).scaffoldBackgroundColor,
-                    //           child: _profile?.profileImage == null
-                    //               ? const Icon(
-                    //                   Icons.pets_outlined,
-                    //                   size: 36,
-                    //                   color: ThemeColors.border,
-                    //                 )
-                    //               : CircleAvatar(
-                    //                   radius: 40,
-                    //                   backgroundImage: FileImage(
-                    //                     _profile!.profileImage!,
-                    //                   ),
-                    //                 ),
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
-
                     InlineLoading(
                       isLoading: _isLoadingProfile,
                       child: CircleAvatar(
                         radius: 42,
                         backgroundColor: Colors.white.withValues(alpha: 0.3),
                         child: _profile?.profileImage == null
-                            ? const Icon(Icons.pets, size: 40, color: Colors.white)
+                            ? const Icon(
+                                Icons.pets,
+                                size: 40,
+                                color: Colors.white,
+                              )
                             : CircleAvatar(
-                          radius: 40,
-                          backgroundImage: FileImage(_profile!.profileImage!),
-                        ),
+                                radius: 40,
+                                backgroundImage: FileImage(
+                                  _profile!.profileImage!,
+                                ),
+                              ),
                       ),
                     ),
+
+                    const SizedBox(width: 16),
 
                     Expanded(
                       flex: 3,
@@ -346,46 +314,6 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 16),
 
-                // ближайшее важное напоминание
-                // if (_upcomingStarredEvent != null)
-                //   DottedEventCard(
-                //     event: _upcomingStarredEvent!,
-                //     callback: () =>
-                //         _openEventSheet(context, _upcomingStarredEvent!),
-                //     trailingIcon: Icons.notifications_active_outlined,
-                //     trailingCallback: () {},
-                //   )
-                // else
-                //   SizedBox(
-                //     height: MediaQuery.of(context).size.height * 0.05,
-                //     child: Center(
-                //       child: Row(
-                //         mainAxisSize: MainAxisSize.min,
-                //         children: [
-                //           Icon(
-                //             Icons.star_border_rounded,
-                //             size: 18,
-                //             color: Theme.of(
-                //               context,
-                //             ).colorScheme.primary.withAlpha(128),
-                //           ),
-                //           SizedBox(width: 8),
-                //           Text(
-                //             'Нет ближайших важных событий',
-                //             style: TextStyle(
-                //               color: Theme.of(
-                //                 context,
-                //               ).colorScheme.primary.withAlpha(128),
-                //               fontSize: 16,
-                //             ),
-                //           ),
-                //         ],
-                //       ),
-                //     ),
-                //   ),
-                // const SizedBox(height: 16),
-
-                // ближайшие события
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -393,14 +321,16 @@ class _HomePageState extends State<HomePage> {
                       'Ближайшие события',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      color: ThemeColors.border,
-                      onPressed: widget.onOpenCalendar,
+                    GlassCard(
+                      callback: widget.onOpenCalendar,
+                      child: Icon(
+                        Icons.add_circle_outline,
+                        color: ThemeColors.primary,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
 
                 InlineLoading(
                   isLoading: _isLoadingEvents,

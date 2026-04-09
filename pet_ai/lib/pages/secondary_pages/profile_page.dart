@@ -85,9 +85,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     );
 
     if (picked != null) {
-      setState(
-        () => _dateController.text = _formatDate(picked),
-      );
+      setState(() => _dateController.text = _formatDate(picked));
     }
   }
 
@@ -132,161 +130,164 @@ class _PetProfilePageState extends State<PetProfilePage> {
         label: const Text('Сохранить'),
         icon: const Icon(Icons.check),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    Center(
-                      child: GestureDetector(
+      body: Container(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Form(
+                key: _formKey,
+                child: SafeArea(
+                  child: ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      Center(
+                        child: GestureDetector(
+                          onTap: () async {
+                            final path = await ProfileService()
+                                .pickProfileImage();
+                            if (path != null) {
+                              setState(() => _profileImage = File(path));
+                            }
+                          },
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      theme.colorScheme.primary.withAlpha(64),
+                                      theme.colorScheme.primary.withAlpha(2),
+                                    ],
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: _profileImage == null
+                                      ? const Icon(Icons.pets, size: 50)
+                                      : Image.file(
+                                          _profileImage!,
+                                          fit: BoxFit.cover,
+                                        ),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.edit,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: _input('Имя питомца'),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Введите имя'
+                            : null,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      GestureDetector(
                         onTap: () async {
-                          final path = await ProfileService()
-                              .pickProfileImage();
-                          if (path != null) {
-                            setState(() => _profileImage = File(path));
+                          final result = await showBreedSelector(context);
+                          if (result != null && result.isNotEmpty) {
+                            setState(() {
+                              _breedController.text = result;
+                            });
                           }
                         },
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    theme.colorScheme.primary.withAlpha(64),
-                                    theme.colorScheme.primary.withAlpha(2),
-                                  ],
-                                ),
-                              ),
-                              child: ClipOval(
-                                child: _profileImage == null
-                                    ? const Icon(Icons.pets, size: 50)
-                                    : Image.file(
-                                        _profileImage!,
-                                        fit: BoxFit.cover,
-                                      ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.edit,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: AbsorbPointer(
+                          child: TextFormField(
+                            controller: _breedController,
+                            decoration: _input('Порода'),
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Выберите породу'
+                                : null,
+                          ),
                         ),
                       ),
-                    ),
 
-                    const SizedBox(height: 28),
+                      const SizedBox(height: 12),
 
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: _input('Имя питомца'),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Введите имя' : null,
-                    ),
+                      TextFormField(
+                        onTap: _pickBirthDate,
+                        showCursor: false,
+                        controller: _dateController,
+                        decoration: InputDecoration(
+                          labelText: "Дата рождения",
+                          filled: true,
+                          fillColor: ThemeColors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          suffixIcon: Padding(
+                            padding: EdgeInsetsGeometry.only(right: 6),
+                            child: const Icon(Icons.calendar_today, size: 18),
+                          ),
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Выберите дату'
+                            : null,
+                      ),
 
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                    GestureDetector(
-                      onTap: () async {
-                        final result = await showBreedSelector(context);
-                        if (result != null && result.isNotEmpty) {
+                      SegmentedButton<String>(
+                        style: SegmentedButton.styleFrom(
+                          padding: EdgeInsetsGeometry.all(12),
+                          side: BorderSide(style: BorderStyle.none),
+                          backgroundColor: ThemeColors.white,
+                          foregroundColor: Theme.of(context).dividerColor,
+                          selectedForegroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surface,
+                        ),
+                        segments: const <ButtonSegment<String>>[
+                          ButtonSegment<String>(
+                            value: "Не указан",
+                            label: Text("Не указан"),
+                          ),
+                          ButtonSegment<String>(
+                            value: "Мужской",
+                            label: Text("Мужской"),
+                            icon: Icon(Icons.male),
+                          ),
+                          ButtonSegment<String>(
+                            value: "Женский",
+                            label: Text("Женский"),
+                            icon: Icon(Icons.female),
+                          ),
+                        ],
+                        selected: <String>{_gender},
+                        onSelectionChanged: (Set<String> newSelection) {
                           setState(() {
-                            _breedController.text = result;
+                            _gender = newSelection.first;
                           });
-                        }
-                      },
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          controller: _breedController,
-                          decoration: _input('Порода'),
-                          validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Выберите породу'
-                              : null,
-                        ),
+                        },
                       ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    TextFormField(
-                      onTap: _pickBirthDate,
-                      showCursor: false,
-                      controller: _dateController,
-                      decoration: InputDecoration(
-                        labelText: "Дата рождения",
-                        filled: true,
-                        fillColor: ThemeColors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        suffixIcon: Padding(
-                          padding: EdgeInsetsGeometry.only(right: 6),
-                          child: const Icon(Icons.calendar_today, size: 18),
-                        ),
-                      ),
-                      validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Выберите дату'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    SegmentedButton<String>(
-                      style: SegmentedButton.styleFrom(
-                        padding: EdgeInsetsGeometry.all(12),
-                        side: BorderSide(style: BorderStyle.none),
-                        backgroundColor: ThemeColors.white,
-                        foregroundColor: Theme.of(context).dividerColor,
-                        selectedForegroundColor: Theme.of(
-                          context,
-                        ).colorScheme.surface,
-                      ),
-                      segments: const <ButtonSegment<String>>[
-                        ButtonSegment<String>(
-                          value: "Не указан",
-                          label: Text("Не указан"),
-                        ),
-                        ButtonSegment<String>(
-                          value: "Мужской",
-                          label: Text("Мужской"),
-                          icon: Icon(Icons.male),
-                        ),
-                        ButtonSegment<String>(
-                          value: "Женский",
-                          label: Text("Женский"),
-                          icon: Icon(Icons.female),
-                        ),
-                      ],
-                      selected: <String>{_gender},
-                      onSelectionChanged: (Set<String> newSelection) {
-                        setState(() {
-                          _gender = newSelection.first;
-                        });
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }

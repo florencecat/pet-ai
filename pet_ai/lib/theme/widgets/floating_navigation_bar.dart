@@ -69,7 +69,7 @@ class NavItem extends StatelessWidget {
             child: Icon(
               icon,
               size: 28,
-              color: isActive ? activeColor : activeColor.withOpacity(0.5),
+              color: isActive ? activeColor : activeColor.withAlpha(128),
             ),
           ),
           const SizedBox(height: 4),
@@ -77,7 +77,7 @@ class NavItem extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 10,
-              color: isActive ? activeColor : activeColor.withOpacity(0.5),
+              color: isActive ? activeColor : activeColor.withAlpha(128),
             ),
           ),
         ],
@@ -118,16 +118,14 @@ class OldNavItem extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: _isActive
-                    ? activeColor.withOpacity(0.25)
+                    ? activeColor.withAlpha(64)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
                 size: 22, // 🔒 фикс размер
-                color: _isActive
-                    ? activeColor
-                    : activeColor.withOpacity(0.5),
+                color: _isActive ? activeColor : activeColor.withAlpha(128),
               ),
             ),
 
@@ -141,9 +139,7 @@ class OldNavItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   height: 1,
-                  color: _isActive
-                      ? activeColor
-                      : activeColor.withOpacity(0.5),
+                  color: _isActive ? activeColor : activeColor.withAlpha(128),
                 ),
               ),
             ),

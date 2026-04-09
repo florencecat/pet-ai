@@ -3,31 +3,25 @@ import 'package:flutter/material.dart';
 
 class GlassPlate extends StatelessWidget {
   final Widget child;
-  final double? width;
+  final Color color;
 
-  const GlassPlate({
-    super.key,
-    required this.child,
-    this.width,
-  });
+  const GlassPlate({super.key, required this.child, this.color = Colors.white});
 
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(28);
 
     return Container(
-      width: width,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 0),
       child: Stack(
         children: [
-          // тень (не обрезается!)
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: borderRadius,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
+                    color: Colors.black.withAlpha(30),
                     blurRadius: 40,
                     offset: const Offset(0, 12),
                   ),
@@ -36,7 +30,6 @@ class GlassPlate extends StatelessWidget {
             ),
           ),
 
-          // glass слой
           ClipRRect(
             borderRadius: borderRadius,
             child: BackdropFilter(
@@ -44,15 +37,14 @@ class GlassPlate extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: borderRadius,
-                  color: Colors.white.withOpacity(0.5),
+                  color: color.withAlpha(128),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.6),
+                    color: color.withAlpha(153),
                     width: 1.2,
                   ),
                 ),
                 child: Stack(
                   children: [
-                    // верхний блик
                     Positioned(
                       top: 0,
                       left: 0,
@@ -65,8 +57,8 @@ class GlassPlate extends StatelessWidget {
                           ),
                           gradient: LinearGradient(
                             colors: [
-                              Colors.white.withOpacity(0.7),
-                              Colors.white.withOpacity(0.0),
+                              color.withAlpha(180),
+                              color.withAlpha(0),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -75,11 +67,7 @@ class GlassPlate extends StatelessWidget {
                       ),
                     ),
 
-                    // ВАЖНО: отступы внутри
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: child,
-                    ),
+                    Padding(padding: const EdgeInsets.all(8), child: child),
                   ],
                 ),
               ),
@@ -94,19 +82,19 @@ class GlassPlate extends StatelessWidget {
 class GlassCard extends StatelessWidget {
   final VoidCallback? callback;
   final Widget child;
-  final double width;
+  final Color color;
 
   const GlassCard({
     super.key,
     required this.callback,
     required this.child,
-    this.width = 80,
+    this.color = Colors.white,
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
-      width: width,
+      color: color,
       child: InkWell(onTap: callback, child: child),
     );
   }
