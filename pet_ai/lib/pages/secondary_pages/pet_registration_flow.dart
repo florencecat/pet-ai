@@ -38,7 +38,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   }
 
   String _formatDate(DateTime? d) {
-    if (d == null) return 'Не указано';
+    if (d == null) return 'не указана';
     return DateFormat('dd.MM.yyyy').format(d);
   }
 
@@ -170,10 +170,10 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Имя: ${_nameCtrl.text}'),
-            Text('Порода: ${_breedCtrl.text}'),
+            Text('Имя: ${_nameCtrl.text.isEmpty ? "не указано" : _nameCtrl.text}'),
+            Text('Порода: ${_breedCtrl.text.isEmpty ? "не указано" : _breedCtrl.text}'),
             Text('Дата рождения: ${_formatDate(_birthDate)}'),
-            Text('Пол: $_gender'),
+            Text('Пол: ${_gender.label.toLowerCase()}'),
             const SizedBox(height: 12),
           ],
         ),
