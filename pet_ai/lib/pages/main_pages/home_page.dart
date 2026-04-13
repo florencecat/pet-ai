@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
@@ -13,11 +14,13 @@ import 'package:pet_ai/theme/widgets/health_action_button.dart';
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;
   final ValueChanged<DateTime> onOpenCalendarByEvent;
+  final VoidCallback? onProfileSwitched;
 
   const HomePage({
     super.key,
     required this.onOpenCalendar,
     required this.onOpenCalendarByEvent,
+    this.onProfileSwitched,
   });
 
   @override
@@ -152,39 +155,72 @@ class _HomePageState extends State<HomePage> {
     await _initScreen();
   }
 
+  void _showProfileSwitcher(BuildContext context) async {
+    final profiles = await ProfileService().loadAllProfiles();
+    final activeId = _profile?.id;
+
+    if (!mounted) return;
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ProfileSwitcherSheet(
+        profiles: profiles,
+        activeId: activeId,
+      ),
+    );
+
+    if (result == null) return;
+
+    if (result == '__create_new__') {
+      if (mounted) {
+        await Navigator.pushNamed(context, '/registration');
+        // After returning from registration, refresh
+        widget.onProfileSwitched?.call();
+      }
+    } else {
+      await ProfileService().setActiveProfile(result);
+      widget.onProfileSwitched?.call();
+      await _initScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final description = _profileDescription();
-    return SafeArea(
-      child: Scaffold(
+    final topPadding = MediaQuery.of(context).padding.top;
+    return Scaffold(
       backgroundColor: ThemeColors.white,
       body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: pageGradientDecoration,
-        child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: ListView(
-              children: [
+        child: ListView(
+            padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 16),
+            children: [
                 Row(
                   children: [
-                    InlineLoading(
-                      isLoading: _isLoadingProfile,
-                      child: CircleAvatar(
-                        radius: 42,
-                        backgroundColor: Colors.white.withValues(alpha: 0.3),
-                        child: _profile?.profileImage == null
-                            ? const Icon(
-                                Icons.pets,
-                                size: 40,
-                                color: Colors.white,
-                              )
-                            : CircleAvatar(
-                                radius: 40,
-                                backgroundImage: FileImage(
-                                  _profile!.profileImage!,
+                    GestureDetector(
+                      onTap: () => _showProfileSwitcher(context),
+                      child: InlineLoading(
+                        isLoading: _isLoadingProfile,
+                        child: CircleAvatar(
+                          radius: 42,
+                          backgroundColor: Colors.white.withValues(alpha: 0.3),
+                          child: _profile?.profileImage == null
+                              ? const Icon(
+                                  Icons.pets,
+                                  size: 40,
+                                  color: Colors.white,
+                                )
+                              : CircleAvatar(
+                                  radius: 40,
+                                  backgroundImage: FileImage(
+                                    _profile!.profileImage!,
+                                  ),
                                 ),
-                              ),
+                        ),
                       ),
                     ),
 
@@ -333,8 +369,126 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-          ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Profile Switcher Bottom Sheet ─────────────────────────────────────────
+
+class _ProfileSwitcherSheet extends StatelessWidget {
+  final List<PetProfile> profiles;
+  final String? activeId;
+
+  const _ProfileSwitcherSheet({
+    required this.profiles,
+    required this.activeId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: ThemeColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade400,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          Text(
+            'Профили питомцев',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+
+          ...profiles.map((profile) {
+            final isActive = profile.id == activeId;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: GlassPlate(
+                color: isActive ? ThemeColors.primary : Colors.white,
+                child: ListTile(
+                  leading: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: isActive
+                        ? Colors.white.withAlpha(77)
+                        : ThemeColors.primary.withAlpha(38),
+                    backgroundImage: profile.profileImage != null
+                        ? FileImage(profile.profileImage!)
+                        : null,
+                    child: profile.profileImage == null
+                        ? Icon(
+                            Icons.pets,
+                            size: 20,
+                            color: isActive ? Colors.white : ThemeColors.primary,
+                          )
+                        : null,
+                  ),
+                  title: Text(
+                    profile.name.isEmpty ? 'Без имени' : profile.name,
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      color: isActive ? Colors.white : ThemeColors.textPrimary,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                  subtitle: Text(
+                    profile.breed.isEmpty ? profile.species.name : profile.breed,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: isActive
+                          ? Colors.white.withAlpha(204)
+                          : ThemeColors.textPrimary.withAlpha(153),
+                    ),
+                  ),
+                  trailing: isActive
+                      ? const Icon(Icons.check_circle, color: Colors.white)
+                      : null,
+                  onTap: isActive
+                      ? () => Navigator.pop(context)
+                      : () => Navigator.pop(context, profile.id),
+                ),
+              ),
+            );
+          }),
+
+          const SizedBox(height: 8),
+
+          SizedBox(
+            width: double.infinity,
+            child: GlassCard(
+              callback: () => Navigator.pop(context, '__create_new__'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.add_circle_outline, color: ThemeColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Добавить питомца',
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: ThemeColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

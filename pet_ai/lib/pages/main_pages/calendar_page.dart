@@ -93,9 +93,9 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
       body: Container(
-        padding: EdgeInsetsGeometry.fromLTRB(16, 16, 16, 100),
         decoration: BoxDecoration(
           gradient: pageGradientDecoration.gradient,
         ),
@@ -103,6 +103,7 @@ class _CalendarPageState extends State<CalendarPage> {
           isLoading: _isLoadingEvents,
           child: ListView(
             clipBehavior: Clip.none,
+            padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
             children: [
               GlassPlate(
                 child: Padding(

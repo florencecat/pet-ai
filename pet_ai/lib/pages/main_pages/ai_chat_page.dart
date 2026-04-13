@@ -128,7 +128,10 @@ class _ChatView extends StatelessWidget {
         Align(
           alignment: AlignmentGeometry.topRight,
           child: Padding(
-            padding: EdgeInsetsGeometry.only(top: 16, right: 16),
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 16,
+            ),
             child: GlassCard(
               callback: () {
                 final controller = context.read<AIChatController>();

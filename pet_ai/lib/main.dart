@@ -106,24 +106,28 @@ class _MainPageState extends State<MainPage> {
       HomePage(
         onOpenCalendar: _onOpenCalendar,
         onOpenCalendarByEvent: _onOpenCalendarByEvent,
+        onProfileSwitched: () {
+          _checkProfile();
+        },
       ),
       const AIChatPage(),
       CalendarPage(initialDate: _calendarInitialDate),
       const SettingsPage(),
     ];
 
-    return SafeArea(
-      child: Scaffold(
-        extendBody: true, // важно для прозрачности
-        body: Stack(
-          children: [
-            pages[_selectedIndex.index],
+    return Scaffold(
+      extendBody: true,
+      body: Stack(
+        children: [
+          pages[_selectedIndex.index],
 
-            // Floating Navbar
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 24,
+          // Floating Navbar
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 24,
+            child: SafeArea(
+              top: false,
               child: FloatingNavigationBar(
                 currentIndex: _selectedIndex.index,
                 onTap: (index) {
@@ -133,8 +137,8 @@ class _MainPageState extends State<MainPage> {
                 },
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
