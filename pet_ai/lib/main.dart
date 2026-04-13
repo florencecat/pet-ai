@@ -36,9 +36,7 @@ class PetHealthApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pet Health Tracker',
       initialRoute: '/',
-      routes: {
-        '/registration': (context) => const PetRegistrationFlow()
-      },
+      routes: {'/registration': (context) => const PetRegistrationFlow()},
       theme: AppTheme.lightTheme,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -59,12 +57,7 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-enum NavigationTab {
-  home,
-  stats,
-  calendar,
-  settings,
-}
+enum NavigationTab { home, stats, calendar, settings }
 
 class _MainPageState extends State<MainPage> {
   bool _loading = true;
@@ -106,9 +99,7 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (!_hasProfile) {
@@ -116,33 +107,38 @@ class _MainPageState extends State<MainPage> {
     }
 
     final pages = [
-      HomePage(onOpenCalendar: _onOpenCalendar, onOpenCalendarByEvent: _onOpenCalendarByEvent),
+      HomePage(
+        onOpenCalendar: _onOpenCalendar,
+        onOpenCalendarByEvent: _onOpenCalendarByEvent,
+      ),
       const AIChatPage(),
       CalendarPage(initialDate: _calendarInitialDate),
-      const SettingsPage()
+      const SettingsPage(),
     ];
 
-    return Scaffold(
-      extendBody: true, // важно для прозрачности
-      body: Stack(
-        children: [
-          pages[_selectedIndex.index],
+    return SafeArea(
+      child: Scaffold(
+        extendBody: true, // важно для прозрачности
+        body: Stack(
+          children: [
+            pages[_selectedIndex.index],
 
-          // Floating Navbar
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 24,
-            child: FloatingNavigationBar(
-              currentIndex: _selectedIndex.index,
-              onTap: (index) {
-                setState(() {
-                  _selectedIndex = NavigationTab.values[index];
-                });
-              },
+            // Floating Navbar
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 24,
+              child: FloatingNavigationBar(
+                currentIndex: _selectedIndex.index,
+                onTap: (index) {
+                  setState(() {
+                    _selectedIndex = NavigationTab.values[index];
+                  });
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

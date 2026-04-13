@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/widgets/outlined_cards.dart';
+import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/theme/widgets/glass_card.dart';
 import '../../services/profile_service.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -129,11 +130,12 @@ class SettingsPage extends StatelessWidget {
     await ProfileService().clearMoodHistory();
 
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('История настроения удалена')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('История настроения удалена')),
+      );
     }
   }
+
   Future<void> _clearMessageHistory(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -159,99 +161,112 @@ class SettingsPage extends StatelessWidget {
     AIChatController.clearMessageHistory();
 
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('История настроения удалена')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('История настроения удалена')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const SizedBox(height: 8),
-
-          Text('Основные', style: Theme.of(context).textTheme.titleMedium),
-
-          const SizedBox(height: 8),
-
-          SettingsCard(
-            leadingIcon: Icons.notifications,
-            title: 'Уведомления',
-            subtitle: 'Настройка напоминаний и событий',
-            trailingIcon: Icons.chevron_right,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            tileMode: TileMode.mirror,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              ThemeColors.gradientBegin.withAlpha(96),
+              ThemeColors.gradientEnd.withAlpha(64),
+            ],
           ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 125),
+          children: [
+            const SizedBox(height: 8),
 
-          SettingsCard(
-            leadingIcon: Icons.palette,
-            title: 'Внешний вид',
-            subtitle: 'Тема, цвета, оформление',
-            trailingIcon: Icons.chevron_right,
-          ),
+            Text('Основные', style: Theme.of(context).textTheme.titleMedium),
 
-          SettingsCard(
-            leadingIcon: Icons.pets,
-            title: 'Профиль питомца',
-            subtitle: 'Редактирование данных питомца',
-            trailingIcon: Icons.chevron_right,
-          ),
+            const SizedBox(height: 8),
 
-          const SizedBox(height: 24),
-
-          /// 🧪 Отладка
-          Text('Отладка', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-
-          SettingsCard.debug(
-            leadingIcon: Icons.delete_forever,
-            title: 'Очистить данные приложения',
-            subtitle: 'Сброс SharedPreferences',
-            callback: () => _clearAppData(context),
-          ),
-
-          SettingsCard.debug(
-            leadingIcon: Icons.delete_forever,
-            title: 'Очистить все события',
-            subtitle: 'Удалить все события на устройстве',
-            callback: () => _clearEvents(context),
-          ),
-
-          SettingsCard.debug(
-            leadingIcon: Icons.delete_forever,
-            title: 'Очистить историю веса',
-            subtitle: 'Удалить все записи в истории веса',
-            callback: () => _clearWeightHistory(context),
-          ),
-
-          SettingsCard.debug(
-            leadingIcon: Icons.delete_forever,
-            title: 'Очистить историю настроения',
-            subtitle: 'Удалить все записи в истории настроения',
-            callback: () => _clearMoodHistory(context),
-          ),
-
-          SettingsCard.debug(
-            leadingIcon: Icons.delete_forever,
-            title: 'Очистить историю сообщений в чате',
-            subtitle: 'Удалить все сообщения',
-            callback: () => _clearMessageHistory(context),
-          ),
-
-          const SizedBox(height: 32),
-
-          /// ℹ️ Версия
-          Center(
-            child: Text(
-              'Pet Health App · MVP\nv0.1.0',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            GlassSettingsCard(
+              leadingIcon: Icons.notifications,
+              title: 'Уведомления',
+              subtitle: 'Настройка напоминаний и событий',
+              trailingIcon: Icons.chevron_right,
             ),
-          ),
-        ],
+
+            GlassSettingsCard(
+              leadingIcon: Icons.palette,
+              title: 'Внешний вид',
+              subtitle: 'Тема, цвета, оформление',
+              trailingIcon: Icons.chevron_right,
+            ),
+
+            GlassSettingsCard(
+              leadingIcon: Icons.pets,
+              title: 'Профиль питомца',
+              subtitle: 'Редактирование данных питомца',
+              trailingIcon: Icons.chevron_right,
+            ),
+
+            const SizedBox(height: 24),
+
+            /// 🧪 Отладка
+            Text('Отладка', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+
+            GlassSettingsCard.debug(
+              leadingIcon: Icons.delete_forever,
+              title: 'Очистить данные приложения',
+              subtitle: 'Сброс SharedPreferences',
+              callback: () => _clearAppData(context),
+            ),
+
+            GlassSettingsCard.debug(
+              leadingIcon: Icons.delete_forever,
+              title: 'Очистить все события',
+              subtitle: 'Удалить все события на устройстве',
+              callback: () => _clearEvents(context),
+            ),
+
+            GlassSettingsCard.debug(
+              leadingIcon: Icons.delete_forever,
+              title: 'Очистить историю веса',
+              subtitle: 'Удалить все записи в истории веса',
+              callback: () => _clearWeightHistory(context),
+            ),
+
+            GlassSettingsCard.debug(
+              leadingIcon: Icons.delete_forever,
+              title: 'Очистить историю настроения',
+              subtitle: 'Удалить все записи в истории настроения',
+              callback: () => _clearMoodHistory(context),
+            ),
+
+            GlassSettingsCard.debug(
+              leadingIcon: Icons.delete_forever,
+              title: 'Очистить историю сообщений в чате',
+              subtitle: 'Удалить все сообщения',
+              callback: () => _clearMessageHistory(context),
+            ),
+
+            const SizedBox(height: 32),
+
+            /// ℹ️ Версия
+            Center(
+              child: Text(
+                'Pet Health App · MVP\nv0.1.0',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

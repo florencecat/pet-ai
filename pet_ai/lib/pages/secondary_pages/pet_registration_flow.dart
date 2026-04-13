@@ -20,7 +20,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   final _nameCtrl = TextEditingController();
   final _breedCtrl = TextEditingController();
   DateTime? _birthDate;
-  String _gender = 'Не указан';
+  Gender _gender = Gender.none;
   File? _profileImage;
   final _notesCtrl = TextEditingController();
 
@@ -111,12 +111,8 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              items: const [
-                DropdownMenuItem(value: 'Не указан', child: Text('Не указан')),
-                DropdownMenuItem(value: 'Мальчик', child: Text('Мальчик')),
-                DropdownMenuItem(value: 'Девочка', child: Text('Девочка')),
-              ],
-              onChanged: (v) => setState(() => _gender = v ?? 'Не указан'),
+              items: Gender.values.map((g) => DropdownMenuItem(value: g.caption, child: Text(g.label))).toList(),
+              onChanged: (v) => setState(() => _gender = Gender.values.firstWhere((g)=> g.caption == v)),
               decoration: const InputDecoration(labelText: 'Пол'),
             ),
           ],

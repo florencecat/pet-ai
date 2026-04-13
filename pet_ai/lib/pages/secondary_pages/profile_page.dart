@@ -23,7 +23,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   final _dateController = TextEditingController();
   final _notesController = TextEditingController();
 
-  String _gender = 'Не указан';
+  Gender _gender = Gender.none;
   File? _profileImage;
 
   bool _loading = true;
@@ -69,7 +69,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Профиль сохранён')));
+      ).showSnackBar(SnackBar(content: Text('Профиль сохранён'), backgroundColor: ThemeColors.gradientEnd));
     }
   }
 
@@ -154,6 +154,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                 width: 120,
                                 height: 120,
                                 decoration: BoxDecoration(
+                                  border: BoxBorder.all(color: ThemeColors.primary, width: 4),
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: [
@@ -177,7 +178,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary,
+                                    color: theme.dividerColor,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -240,7 +241,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                           ),
                           suffixIcon: Padding(
                             padding: EdgeInsetsGeometry.only(right: 6),
-                            child: const Icon(Icons.calendar_today, size: 18),
+                            child: Icon(Icons.calendar_today, color: Theme.of(context).dividerColor, size: 18),
                           ),
                         ),
                         validator: (v) => v == null || v.trim().isEmpty
@@ -250,7 +251,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
                       const SizedBox(height: 12),
 
-                      SegmentedButton<String>(
+                      SegmentedButton<Gender>(
                         style: SegmentedButton.styleFrom(
                           padding: EdgeInsetsGeometry.all(12),
                           side: BorderSide(style: BorderStyle.none),
@@ -259,25 +260,28 @@ class _PetProfilePageState extends State<PetProfilePage> {
                           selectedForegroundColor: Theme.of(
                             context,
                           ).colorScheme.surface,
+                          selectedBackgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary
                         ),
-                        segments: const <ButtonSegment<String>>[
-                          ButtonSegment<String>(
-                            value: "Не указан",
+                        segments: const <ButtonSegment<Gender>>[
+                          ButtonSegment<Gender>(
+                            value: Gender.none,
                             label: Text("Не указан"),
                           ),
-                          ButtonSegment<String>(
-                            value: "Мужской",
+                          ButtonSegment<Gender>(
+                            value: Gender.male,
                             label: Text("Мужской"),
                             icon: Icon(Icons.male),
                           ),
-                          ButtonSegment<String>(
-                            value: "Женский",
+                          ButtonSegment<Gender>(
+                            value: Gender.female,
                             label: Text("Женский"),
                             icon: Icon(Icons.female),
                           ),
                         ],
-                        selected: <String>{_gender},
-                        onSelectionChanged: (Set<String> newSelection) {
+                        selected: <Gender>{_gender},
+                        onSelectionChanged: (Set<Gender> newSelection) {
                           setState(() {
                             _gender = newSelection.first;
                           });

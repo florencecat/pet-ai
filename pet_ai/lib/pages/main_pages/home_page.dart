@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
@@ -71,6 +72,7 @@ class _HomePageState extends State<HomePage> {
         _profile = profile;
       });
     } else if (Navigator.of(context).mounted) {
+      if (kDebugMode) print("Failed to load profile");
       Navigator.of(context).pushReplacementNamed('/registration');
     } else {
       throw Exception("Failed navigate to registration flow");
@@ -159,7 +161,8 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final description = _profileDescription();
-    return Scaffold(
+    return SafeArea(
+      child: Scaffold(
       backgroundColor: ThemeColors.white,
       body: Container(
         width: double.infinity,
@@ -175,8 +178,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        child: SafeArea(
-          child: Padding(
+        child: Padding(
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
@@ -212,12 +214,17 @@ class _HomePageState extends State<HomePage> {
                           child: InlineLoading(
                             isLoading: _isLoadingProfile,
                             child: ListTile(
-                              title: Text(
-                                _profile == null || _profile!.name.isEmpty
-                                    ? "Загружаем..."
-                                    : _profile!.name,
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
+                              title: Row(children: [
+                                if (_profile != null && _profile!.gender.icon != null)
+                                  Icon(_profile!.gender.icon, color: ThemeColors.textPrimary),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _profile == null || _profile!.name.isEmpty
+                                      ? "Загружаем..."
+                                      : _profile!.name,
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                )
+                              ]),
                               subtitle: Text(
                                 description.isEmpty
                                     ? "Здесь будет имя и порода..."
@@ -330,7 +337,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
 
                 InlineLoading(
                   isLoading: _isLoadingEvents,

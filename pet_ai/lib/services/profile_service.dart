@@ -1,6 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:pet_ai/models/note.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -23,12 +23,60 @@ class PetContextBuilder {
   }
 }
 
+enum Gender { none, male, female }
+
+extension GenderX on Gender {
+  String get label {
+    switch (this) {
+      case Gender.none:
+        return "Не указан";
+      case Gender.male:
+        return "Мальчик";
+      case Gender.female:
+        return "Девочка";
+    }
+  }
+
+  String get caption {
+    switch (this) {
+      case Gender.none:
+        return "";
+      case Gender.male:
+        return "мальчик";
+      case Gender.female:
+        return "девочка";
+    }
+  }
+
+  int get value {
+    switch (this) {
+      case Gender.none:
+        return 0;
+      case Gender.male:
+        return 1;
+      case Gender.female:
+        return 2;
+    }
+  }
+
+  IconData? get icon {
+    switch (this) {
+      case Gender.none:
+        return null;
+      case Gender.male:
+        return Icons.male;
+      case Gender.female:
+        return Icons.female;
+    }
+  }
+}
+
 class PetProfile {
   final String id;
   String name;
   String breed;
   DateTime? birthDate;
-  String gender;
+  Gender gender;
   String notes;
   File? profileImage;
   WeightHistory weightHistory;
@@ -39,7 +87,7 @@ class PetProfile {
     this.name = '',
     this.breed = '',
     this.birthDate,
-    this.gender = 'Не указан',
+    this.gender = Gender.none,
     this.notes = '',
     this.profileImage,
   }) : id = UniqueKey().toString(),
@@ -65,7 +113,7 @@ class PetProfile {
     'name': name,
     'breed': breed,
     'birthDate': birthDate?.toIso8601String(),
-    'gender': gender,
+    'gender': gender.caption,
     'notes': notes,
     'profileImage': profileImage?.path,
     'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
@@ -81,7 +129,11 @@ class PetProfile {
       birthDate: json['birthDate'] != null
           ? DateTime.parse(json['birthDate'])
           : null,
-      gender: json['gender'] ?? 'Не указан',
+      gender: json['gender'] != null
+          ? Gender.values.firstWhere(
+              (g) => g.caption == json['gender'],
+            )
+          : Gender.none,
       notes: json['notes'] ?? '',
       profileImage: json['profileImage'] != null
           ? File(json['profileImage'])

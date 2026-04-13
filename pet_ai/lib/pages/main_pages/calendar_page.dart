@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -21,6 +22,7 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime _focusedDay = DateTime.now();
   late DateTime? _selectedDay;
 
+  bool _isLoadingEvents = true;
   List<PetEvent> _events = [];
 
   void openCreateEventSheet(BuildContext context, DateTime dateTime) async {
@@ -61,6 +63,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Future<void> _loadEvents() async {
     setState(() {
+      _isLoadingEvents = true;
     });
 
     final events = await EventService().loadEvents();
@@ -68,6 +71,7 @@ class _CalendarPageState extends State<CalendarPage> {
       events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     }
     setState(() {
+      _isLoadingEvents = false;
       _events = events;
     });
   }
@@ -87,7 +91,7 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        padding: EdgeInsetsGeometry.all(16),
+        padding: EdgeInsetsGeometry.fromLTRB(16, 16, 16, 100),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             tileMode: TileMode.mirror,
@@ -99,7 +103,8 @@ class _CalendarPageState extends State<CalendarPage> {
             ],
           ),
         ),
-        child: Column(
+        child: InlineLoading(isLoading: _isLoadingEvents, child: ListView(
+          clipBehavior: Clip.none,
           children: [
             GlassPlate(
               child: Padding(
@@ -208,36 +213,24 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
             ),
 
-            // Expanded(
-            //   child: InlineLoading(
-            //     isLoading: _isLoadingEvents,
-            //     child: ListView(
-            //       children: [
-            //         TextButton. icon(
-            //           onPressed: ,
-            //           icon:
-            //           label:
-            //         ),
-            //         const SizedBox(height: 16),
-            //         if (_selectedDay != null && _events.isNotEmpty)
-            //           ...(_events.where(
-            //             (e) =>
-            //                 e.dateTime.year == _selectedDay!.year &&
-            //                 e.dateTime.month == _selectedDay!.month &&
-            //                 e.dateTime.day == _selectedDay!.day,
-            //           )).map(
-            //             (e) => EventCard(
-            //               event: e,
-            //               callback: () => openViewEventSheet(context, e),
-            //             ),
-            //           ),
-            //       ],
-            //     ),
-            //   ),
-            // ),
+            const SizedBox(height: 8),
+
+            if (_selectedDay != null && _events.isNotEmpty)
+              ...(_events.where(
+                (e) =>
+                    e.dateTime.year == _selectedDay!.year &&
+                    e.dateTime.month == _selectedDay!.month &&
+                    e.dateTime.day == _selectedDay!.day,
+              )).map(
+                (e) => GlassEventCard(
+                  event: e,
+                  callback: () => openViewEventSheet(context, e),
+                ),
+              ),
           ],
         ),
       ),
+      )
     );
   }
 }

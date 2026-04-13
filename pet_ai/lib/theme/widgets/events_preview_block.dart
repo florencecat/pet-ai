@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/widgets/outlined_cards.dart';
+import 'package:pet_ai/theme/widgets/glass_card.dart';
 
 class EventPreviewBlock extends StatelessWidget {
   final List<PetEvent> events;
@@ -46,7 +46,7 @@ class EventPreviewBlock extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: events.take(4).map((event) {
-        return EventCard(
+        return GlassEventCard(
           event: event,
           callback: () => onTap(event),
           trailingIcon: Icons.chevron_right,
