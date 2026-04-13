@@ -91,9 +91,9 @@ class PetProfile {
     this.notes = '',
     this.profileImage,
   }) : id = UniqueKey().toString(),
-       weightHistory = WeightHistory.empty(),
-       moodHistory = MoodHistory.empty(),
-       noteHistory = NoteHistory.empty();
+        weightHistory = WeightHistory.empty(),
+        moodHistory = MoodHistory.empty(),
+        noteHistory = NoteHistory.empty();
 
   PetProfile.deserialize({
     required this.id,
@@ -131,8 +131,8 @@ class PetProfile {
           : null,
       gender: json['gender'] != null
           ? Gender.values.firstWhere(
-              (g) => g.caption == json['gender'],
-            )
+            (g) => g.caption == json['gender'],
+      )
           : Gender.none,
       notes: json['notes'] ?? '',
       profileImage: json['profileImage'] != null
@@ -140,24 +140,24 @@ class PetProfile {
           : null,
       weightHistory: json['weightHistory'] != null
           ? WeightHistory(
-              entries: WeightHistory.weightSerializer
-                  .fromJsonList(json['weightHistory'])
-                  .entries,
-            )
+        entries: WeightHistory.weightSerializer
+            .fromJsonList(json['weightHistory'])
+            .entries,
+      )
           : WeightHistory.empty(),
       moodHistory: json['moodHistory'] != null
           ? MoodHistory(
-              entries: MoodHistory.moodSerializer
-                  .fromJsonList(json['moodHistory'])
-                  .entries,
-            )
+        entries: MoodHistory.moodSerializer
+            .fromJsonList(json['moodHistory'])
+            .entries,
+      )
           : MoodHistory.empty(),
       noteHistory: json['noteHistory'] != null
           ? NoteHistory(
-              entries: NoteHistory.noteSerializer
-                  .fromJsonList(json['noteHistory'])
-                  .entries,
-            )
+        entries: NoteHistory.noteSerializer
+            .fromJsonList(json['noteHistory'])
+            .entries,
+      )
           : NoteHistory.empty(),
     );
   }
@@ -166,82 +166,186 @@ class PetProfile {
 enum FormattingType { year, month }
 
 class ProfileService {
-  static const _key = 'pet_profile';
+  static const _profilesKey = 'pet_profiles';
+  static const _activeIdKey = 'active_pet_id';
 
-  Future<PetProfile?> loadProfile() async {
-    final jsonStr = await SharedPreferencesAsync().getString(_key);
-    if (jsonStr != null) {
-      try {
-        final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-        return PetProfile.fromJson(map);
-      } catch (e) {
-        log(e.toString());
+  // ─── Чтение/запись всей коллекции ────────────────────────────────────────
+
+  Future<List<PetProfile>> loadAllProfiles() async {
+    final prefs = SharedPreferencesAsync();
+    final jsonStr = await prefs.getString(_profilesKey);
+    if (jsonStr == null) return [];
+    try {
+      final list = jsonDecode(jsonStr) as List<dynamic>;
+      return list
+          .map((e) => PetProfile.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      log('ProfileService.loadAllProfiles: $e');
+      return [];
+    }
+  }
+
+  Future<void> _saveAllProfiles(List<PetProfile> profiles) async {
+    final jsonStr = jsonEncode(profiles.map((p) => p.toJson()).toList());
+    await SharedPreferencesAsync().setString(_profilesKey, jsonStr);
+  }
+
+  // ─── Активный профиль ─────────────────────────────────────────────────────
+
+  /// Возвращает id активного профиля или null, если не выбран.
+  Future<String?> getActiveProfileId() async =>
+      SharedPreferencesAsync().getString(_activeIdKey);
+
+  /// Устанавливает активный профиль. Бросает [ArgumentError], если [petId]
+  /// не существует в коллекции.
+  Future<void> setActiveProfile(String petId) async {
+    final profiles = await loadAllProfiles();
+    if (!profiles.any((p) => p.id == petId)) {
+      throw ArgumentError('Профиль с id=$petId не найден');
+    }
+    await SharedPreferencesAsync().setString(_activeIdKey, petId);
+  }
+
+  /// Возвращает активный профиль. Если активный id не задан или устарел —
+  /// возвращает первый из списка (и обновляет сохранённый id).
+  Future<PetProfile?> loadActiveProfile() async {
+    final profiles = await loadAllProfiles();
+    if (profiles.isEmpty) return null;
+
+    final activeId = await getActiveProfileId();
+    final found = profiles.firstWhere(
+          (p) => p.id == activeId,
+      orElse: () => profiles.first,
+    );
+
+    // Синхронизируем сохранённый id на случай устаревания
+    if (found.id != activeId) {
+      await SharedPreferencesAsync().setString(_activeIdKey, found.id);
+    }
+    return found;
+  }
+
+  // ─── CRUD ─────────────────────────────────────────────────────────────────
+
+  Future<PetProfile?> loadProfile(String petId) async {
+    final profiles = await loadAllProfiles();
+    try {
+      return profiles.firstWhere((p) => p.id == petId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Добавляет новый профиль. Если это первый профиль — делает его активным.
+  Future<void> addProfile(PetProfile profile) async {
+    final profiles = await loadAllProfiles();
+    profiles.add(profile);
+    await _saveAllProfiles(profiles);
+
+    if (profiles.length == 1) {
+      await SharedPreferencesAsync().setString(_activeIdKey, profile.id);
+    }
+  }
+
+  /// Сохраняет (обновляет) существующий профиль по [profile.id].
+  Future<void> saveProfile(PetProfile profile) async {
+    final profiles = await loadAllProfiles();
+    final idx = profiles.indexWhere((p) => p.id == profile.id);
+    if (idx == -1) {
+      // Профиля нет — добавляем как новый
+      await addProfile(profile);
+      return;
+    }
+    profiles[idx] = profile;
+    await _saveAllProfiles(profiles);
+  }
+
+  /// Удаляет профиль. Если удалён активный — переключается на следующий
+  /// доступный (или сбрасывает активный id).
+  Future<void> deleteProfile(String petId) async {
+    final profiles = await loadAllProfiles();
+    final activeId = await getActiveProfileId();
+
+    profiles.removeWhere((p) => p.id == petId);
+    await _saveAllProfiles(profiles);
+
+    if (activeId == petId) {
+      final newActiveId = profiles.isNotEmpty ? profiles.first.id : null;
+      if (newActiveId != null) {
+        await SharedPreferencesAsync().setString(_activeIdKey, newActiveId);
+      } else {
+        await SharedPreferencesAsync().remove(_activeIdKey);
       }
     }
-    return null;
   }
 
-  Future<void> clearProfile() async =>
-      await SharedPreferencesAsync().remove(_key);
-
-  Future<bool> hasProfile() async =>
-      await SharedPreferencesAsync().containsKey(_key);
-
-  Future<void> saveProfile(PetProfile profile) async {
-    await SharedPreferencesAsync().setString(
-      _key,
-      jsonEncode(profile.toJson()),
-    );
+  Future<bool> hasProfiles() async {
+    final profiles = await loadAllProfiles();
+    return profiles.isNotEmpty;
   }
 
-  Future<void> updateWeightHistory(double weight) async {
-    final profile = await loadProfile();
+  /// Удаляет все профили и сбрасывает активный id.
+  Future<void> clearAll() async {
+    final prefs = SharedPreferencesAsync();
+    await prefs.remove(_profilesKey);
+    await prefs.remove(_activeIdKey);
+  }
+
+  // ─── Мутации данных профиля ───────────────────────────────────────────────
+
+  Future<void> updateWeightHistory(String petId, double weight) async {
+    final profile = await loadProfile(petId);
     if (profile != null) {
       profile.weightHistory.addWeight(weight);
       await saveProfile(profile);
     }
   }
 
-  Future<void> updateMoodHistory(MoodEntry entry) async {
-    final profile = await loadProfile();
+  Future<void> updateMoodHistory(String petId, MoodEntry entry) async {
+    final profile = await loadProfile(petId);
     if (profile != null) {
       profile.moodHistory.add(entry);
       await saveProfile(profile);
     }
   }
 
-  Future<void> addNote(String note) async {
-    final profile = await loadProfile();
+  Future<void> addNote(String petId, String note) async {
+    final profile = await loadProfile(petId);
     if (profile != null) {
       profile.noteHistory.addNote(note);
       await saveProfile(profile);
     }
   }
 
-  Future<void> clearWeightHistory() async {
-    final profile = await loadProfile();
+  Future<void> clearWeightHistory(String petId) async {
+    final profile = await loadProfile(petId);
     if (profile != null) {
       profile.weightHistory.clear();
       await saveProfile(profile);
     }
   }
 
-  Future<void> clearMoodHistory() async {
-    final profile = await loadProfile();
+  Future<void> clearMoodHistory(String petId) async {
+    final profile = await loadProfile(petId);
     if (profile != null) {
       profile.moodHistory.clear();
       await saveProfile(profile);
     }
   }
 
-  Future<String> _saveAvatarToAppDir(String tempPath) async {
+  // ─── Работа с изображением ────────────────────────────────────────────────
+
+  Future<String> _saveAvatarToAppDir(String petId, String tempPath) async {
     final directory = await getApplicationDocumentsDirectory();
-    final avatarPath = '${directory.path}/avatar.png';
+    // Уникальное имя файла на профиль, чтобы не затирать аватары других питомцев
+    final sanitizedId = petId.replaceAll(RegExp(r'[^\w]'), '_');
+    final avatarPath = '${directory.path}/avatar_$sanitizedId.png';
     final avatarFile = await File(tempPath).copy(avatarPath);
     return avatarFile.path;
   }
 
-  Future<String?> pickProfileImage() async {
+  Future<String?> pickProfileImage(String petId) async {
     final picker = ImagePicker();
 
     final pickedFile = await picker.pickImage(
@@ -258,25 +362,11 @@ class ProfileService {
       maxWidth: 256,
       maxHeight: 256,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      // uiSettings: [
-      //   AndroidUiSettings(
-      //     toolbarTitle: 'Обрезка фото',
-      //     toolbarColor: mainColor,
-      //     toolbarWidgetColor: Colors.white,
-      //     activeControlsWidgetColor: mainColor,
-      //     lockAspectRatio: true,
-      //     hideBottomControls: false,
-      //   ),
-      //   IOSUiSettings(
-      //     title: 'Обрезка фото',
-      //     aspectRatioLockEnabled: true,
-      //   ),
-      // ],
     );
 
     if (cropped == null) return null;
 
-    return await _saveAvatarToAppDir(cropped.path);
+    return await _saveAvatarToAppDir(petId, cropped.path);
   }
 
   String localizeDuration(int amount, FormattingType type) {
@@ -295,7 +385,7 @@ class ProfileService {
     final fullYears = (inYears / 365).toInt();
     if (fullYears > 0) {
       description +=
-          '$fullYears ${localizeDuration(fullYears, FormattingType.year)}';
+      '$fullYears ${localizeDuration(fullYears, FormattingType.year)}';
     }
     final fullMonths = ((inYears % 365) / 30).toInt();
     if (fullYears > 0 && fullMonths > 0) {
@@ -303,7 +393,7 @@ class ProfileService {
     }
     if (fullMonths > 0) {
       description +=
-          '$fullMonths ${localizeDuration(fullMonths, FormattingType.month)}';
+      '$fullMonths ${localizeDuration(fullMonths, FormattingType.month)}';
     }
     if (description.isEmpty) {
       description += 'совсем маленький';

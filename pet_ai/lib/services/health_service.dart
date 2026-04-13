@@ -120,7 +120,7 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
   void save() async {
     final newWeight = double.tryParse(weight.toStringAsFixed(1));
     if (newWeight != null) {
-      await ProfileService().updateWeightHistory(weight);
+      await ProfileService().updateWeightHistory(widget.profile.id, weight);
     }
     if (Navigator.of(context).mounted) {
       Navigator.of(context).pop(true);
@@ -349,7 +349,7 @@ class _UpdateMoodModalState extends State<UpdateMoodModal> {
 
   void save() async {
     if (selectedMood != null) {
-      await ProfileService().updateMoodHistory(
+      await ProfileService().updateMoodHistory(widget.profile.id,
         MoodEntry(date: DateTime.now(), mood: selectedMood!),
       );
     }
@@ -662,7 +662,9 @@ class HealthEventsList extends StatelessWidget {
 }
 
 class UpdateNotesModal extends StatefulWidget {
-  const UpdateNotesModal({super.key});
+  final PetProfile profile;
+
+  const UpdateNotesModal({super.key, required this.profile});
 
   @override
   State<UpdateNotesModal> createState() => _UpdateNotesModalState();
@@ -741,7 +743,7 @@ class _UpdateNotesModalState extends State<UpdateNotesModal> {
                 onPressed: _controller.text.isEmpty
                     ? null
                     : () {
-                        ProfileService().addNote(_controller.text);
+                        ProfileService().addNote(widget.profile.id, _controller.text);
                         Navigator.pop(context, true);
                       },
                 child: const Text('Прикрепить'),

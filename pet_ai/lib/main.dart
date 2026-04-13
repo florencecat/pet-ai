@@ -85,7 +85,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _checkProfile() async {
-    final hasProfile = await ProfileService().hasProfile();
+    final hasProfile = await ProfileService().hasProfiles();
     setState(() {
       _hasProfile = hasProfile;
       _loading = false;

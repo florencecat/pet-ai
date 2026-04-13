@@ -161,7 +161,7 @@ class AIChatController extends ChangeNotifier {
 
     try {
       final results = await Future.wait([
-        ProfileService().loadProfile(),
+        ProfileService().loadActiveProfile(),
         Hive.openBox<ChatMessage>('chat_box'),
       ]);
 

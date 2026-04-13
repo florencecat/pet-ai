@@ -17,6 +17,7 @@ class PetRegistrationFlow extends StatefulWidget {
 class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   int _currentStep = 0;
 
+  final PetProfile _profile = PetProfile();
   final _nameCtrl = TextEditingController();
   final _breedCtrl = TextEditingController();
   DateTime? _birthDate;
@@ -50,16 +51,14 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
       return;
     }
 
-    final profile = PetProfile(
-      name: _nameCtrl.text.trim(),
-      breed: _breedCtrl.text.trim(),
-      birthDate: _birthDate,
-      gender: _gender,
-      notes: _notesCtrl.text.trim(),
-      profileImage: _profileImage
-    );
+    _profile.name = _nameCtrl.text.trim();
+    _profile.breed = _breedCtrl.text.trim();
+    _profile.birthDate = _birthDate;
+    _profile.gender = _gender;
+    _profile.notes = _notesCtrl.text.trim();
+    _profile.profileImage = _profileImage;
 
-    await ProfileService().saveProfile(profile);
+    await ProfileService().saveProfile(_profile);
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/');
     }
@@ -148,7 +147,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                     child: FloatingActionButton.small(
                       heroTag: 'edit_photo',
                       onPressed: () async {
-                        final path = await ProfileService().pickProfileImage();
+                        final path = await ProfileService().pickProfileImage(_profile.id);
                         if (path != null) {
                           setState(() {
                             _profileImage = File(path);

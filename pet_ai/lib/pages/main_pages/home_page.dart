@@ -37,46 +37,47 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadEvents();
-    _loadProfile();
+    _initScreen();
   }
 
-  Future<void> _loadEvents() async {
+  Future<void> _initScreen() async {
     setState(() {
+      _isLoadingProfile = true;
       _isLoadingEvents = true;
     });
-    final events = await EventService().loadEvents();
+
+    final profile = await ProfileService().loadActiveProfile();
+
+    if (profile == null) {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/registration');
+      } else {
+        throw Exception("Failed navigate to registration flow");
+      }
+      return; // прерываем — дальше работать не с чем
+    }
+
+    setState(() {
+      _profile = profile;
+      _isLoadingProfile = false;
+    });
+
+    // Профиль есть — загружаем события
+    final events = await EventService().loadEvents(profile.id);
+
+    if (!mounted) return;
+
     setState(() {
       _events = events
           .where(
             (e) =>
-                e.dateTime.isAfter(DateTime.now()) ||
-                e.dateTime.isAtSameMomentAs(DateTime.now()),
-          )
-          .toList();
-      if (events.length > 1) {
-        events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
-      }
+        e.dateTime.isAfter(DateTime.now()) ||
+            e.dateTime.isAtSameMomentAs(DateTime.now()),
+      )
+          .toList()
+        ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      _isLoadingEvents = false;
     });
-    _isLoadingEvents = false;
-  }
-
-  Future<void> _loadProfile() async {
-    setState(() {
-      _isLoadingProfile = true;
-    });
-    final profile = await ProfileService().loadProfile();
-    if (profile != null) {
-      setState(() {
-        _isLoadingProfile = false;
-        _profile = profile;
-      });
-    } else if (Navigator.of(context).mounted) {
-      if (kDebugMode) print("Failed to load profile");
-      Navigator.of(context).pushReplacementNamed('/registration');
-    } else {
-      throw Exception("Failed navigate to registration flow");
-    }
   }
 
   String _profileDescription() {
@@ -103,7 +104,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (updated == true) {
-      await _loadEvents();
+      await _initScreen();
     }
   }
 
@@ -117,7 +118,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (updated == true) {
-      await _loadProfile();
+      await _initScreen();
     }
   }
 
@@ -131,7 +132,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (updated == true) {
-      await _loadProfile();
+      await _initScreen();
     }
   }
 
@@ -142,11 +143,11 @@ class _HomePageState extends State<HomePage> {
       useSafeArea: true,
       enableDrag: true,
 
-      builder: (_) => UpdateNotesModal(),
+      builder: (_) => UpdateNotesModal(profile: _profile!),
     );
 
     if (updated == true) {
-      await _loadProfile();
+      await _initScreen();
     }
   }
 
@@ -155,7 +156,7 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (_) => const PetProfilePage()),
     );
-    await _loadProfile();
+    await _initScreen();
   }
 
   @override

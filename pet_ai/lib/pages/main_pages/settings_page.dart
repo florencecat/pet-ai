@@ -33,7 +33,8 @@ class SettingsPage extends StatelessWidget {
 
     if (confirmed != true) return;
 
-    await ProfileService().clearProfile();
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) await ProfileService().deleteProfile(profileId);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -65,7 +66,8 @@ class SettingsPage extends StatelessWidget {
 
     if (confirmed != true) return;
 
-    await EventService().clearEvents();
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) await EventService().clearEvents(profileId);
 
     if (context.mounted) {
       ScaffoldMessenger.of(
@@ -96,7 +98,8 @@ class SettingsPage extends StatelessWidget {
 
     if (confirmed != true) return;
 
-    await ProfileService().clearWeightHistory();
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) await ProfileService().clearWeightHistory(profileId);
 
     if (context.mounted) {
       ScaffoldMessenger.of(
@@ -127,7 +130,8 @@ class SettingsPage extends StatelessWidget {
 
     if (confirmed != true) return;
 
-    await ProfileService().clearMoodHistory();
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) await ProfileService().clearMoodHistory(profileId);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

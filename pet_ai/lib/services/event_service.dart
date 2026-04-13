@@ -73,9 +73,14 @@ class PetEvent {
   RepeatInterval repeat;
   int remindBeforeMinutes;
 
-  PetEvent({required this.name, required this.category, required this.dateTime, this.repeat = RepeatInterval.none, this.remindBeforeMinutes = 0})
-    : id = UniqueKey().toString(),
-      starred = false;
+  PetEvent({
+    required this.name,
+    required this.category,
+    required this.dateTime,
+    this.repeat = RepeatInterval.none,
+    this.remindBeforeMinutes = 0,
+  }) : id = UniqueKey().toString(),
+        starred = false;
 
   PetEvent.deserialize({
     required this.id,
@@ -88,21 +93,21 @@ class PetEvent {
   });
 
   PetEvent.empty()
-    : id = UniqueKey().toString(),
-      name = "",
-      category = EventCategories.empty,
-      dateTime = DateTime.now(),
-      starred = false,
-      repeat = RepeatInterval.none,
-      remindBeforeMinutes = 0;
+      : id = UniqueKey().toString(),
+        name = "",
+        category = EventCategories.empty,
+        dateTime = DateTime.now(),
+        starred = false,
+        repeat = RepeatInterval.none,
+        remindBeforeMinutes = 0;
 
   void assign(
-    String? name,
-    EventCategory? category,
-    DateTime? dateTime,
-    RepeatInterval? repeat,
-    int? remindBeforeMinutes
-  ) {
+      String? name,
+      EventCategory? category,
+      DateTime? dateTime,
+      RepeatInterval? repeat,
+      int? remindBeforeMinutes,
+      ) {
     this.name = name ?? this.name;
     this.category = category ?? this.category;
     this.dateTime = dateTime ?? this.dateTime;
@@ -132,30 +137,53 @@ class PetEvent {
 }
 
 class EventService {
-  static const _eventKey = 'pet_events';
+  // Ключ изолирован по petId: "pet_events:<petId>"
+  static String _eventsKey(String petId) => 'pet_events:$petId';
 
-  Future<List<PetEvent>> loadEvents() async {
-    final data = await SharedPreferencesAsync().getStringList(_eventKey) ?? [];
+  // ─── Чтение ──────────────────────────────────────────────────────────────
+
+  Future<List<PetEvent>> loadEvents(String petId) async {
+    final data =
+        await SharedPreferencesAsync().getStringList(_eventsKey(petId)) ?? [];
     return data.map((e) => PetEvent.fromJson(jsonDecode(e))).toList();
   }
 
-  Future<void> createEvent(PetEvent event) async {
-    final events = await loadEvents();
-    events.add(event);
-    final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
-    await SharedPreferencesAsync().setStringList(_eventKey, encoded);
-
-    if (!Platform.isWindows) await NotificationService().scheduleEventNotification(event);
+  /// Возвращает события всех питомцев, сгруппированные по petId.
+  /// Удобно для агрегированного календаря.
+  Future<Map<String, List<PetEvent>>> loadAllEvents(
+      List<String> petIds,
+      ) async {
+    final result = <String, List<PetEvent>>{};
+    for (final id in petIds) {
+      result[id] = await loadEvents(id);
+    }
+    return result;
   }
 
-  Future<void> saveEvent(PetEvent event) async {
-    final events = await loadEvents();
+  // ─── Запись ───────────────────────────────────────────────────────────────
+
+  Future<void> _persistEvents(String petId, List<PetEvent> events) async {
+    final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
+    await SharedPreferencesAsync().setStringList(_eventsKey(petId), encoded);
+  }
+
+  Future<void> createEvent(String petId, PetEvent event) async {
+    final events = await loadEvents(petId);
+    events.add(event);
+    await _persistEvents(petId, events);
+
+    if (!Platform.isWindows) {
+      await NotificationService().scheduleEventNotification(event);
+    }
+  }
+
+  Future<void> saveEvent(String petId, PetEvent event) async {
+    final events = await loadEvents(petId);
     final index = events.indexWhere((e) => e.id == event.id);
     if (index < 0) return;
 
     events[index] = event;
-    final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
-    await SharedPreferencesAsync().setStringList(_eventKey, encoded);
+    await _persistEvents(petId, events);
 
     if (!Platform.isWindows) {
       await NotificationService().cancelNotification(event.id);
@@ -163,21 +191,87 @@ class EventService {
     }
   }
 
-  Future<void> deleteEvent(PetEvent event) async {
-    final events = await loadEvents();
+  Future<void> deleteEvent(String petId, PetEvent event) async {
+    final events = await loadEvents(petId);
     events.removeWhere((e) => e.id == event.id);
-    final encoded = events.map((e) => jsonEncode(e.toJson())).toList();
-    await SharedPreferencesAsync().setStringList(_eventKey, encoded);
+    await _persistEvents(petId, events);
 
-    if (!Platform.isWindows) await NotificationService().cancelNotification(event.id);
-  }
-
-  Future<void> clearEvents() async {
-    final events = await loadEvents();
-    for (var event in events) {
+    if (!Platform.isWindows) {
       await NotificationService().cancelNotification(event.id);
     }
-    await SharedPreferencesAsync().remove(_eventKey);
+  }
+
+  // ─── Очистка ──────────────────────────────────────────────────────────────
+
+  /// Удаляет все события конкретного питомца (например, при удалении профиля).
+  Future<void> clearEvents(String petId) async {
+    final events = await loadEvents(petId);
+    if (!Platform.isWindows) {
+      for (final event in events) {
+        await NotificationService().cancelNotification(event.id);
+      }
+    }
+    await SharedPreferencesAsync().remove(_eventsKey(petId));
+  }
+
+  /// Удаляет события сразу нескольких питомцев. Вызывай при массовой очистке
+  /// или удалении нескольких профилей за раз.
+  Future<void> clearEventsForAll(List<String> petIds) async {
+    for (final id in petIds) {
+      await clearEvents(id);
+    }
+  }
+
+  // ─── Фильтрация ───────────────────────────────────────────────────────────
+
+  /// Ближайшие события питомца, начиная с [from] (по умолчанию — сейчас).
+  Future<List<PetEvent>> upcomingEvents(
+      String petId, {
+        DateTime? from,
+        int limit = 10,
+      }) async {
+    final now = from ?? DateTime.now();
+    final events = await loadEvents(petId);
+    return events
+        .where((e) => e.dateTime.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime))
+      ..take(limit); // toList уже создан, take не обрезает — см. ниже
+    // Dart: take на List не работает in-place, поэтому:
+  }
+
+  /// То же, что [upcomingEvents], но возвращает не более [limit] элементов.
+  Future<List<PetEvent>> upcomingEventsLimited(
+      String petId, {
+        DateTime? from,
+        int limit = 10,
+      }) async {
+    final now = from ?? DateTime.now();
+    final events = await loadEvents(petId);
+    final sorted = events
+        .where((e) => e.dateTime.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    return sorted.take(limit).toList();
+  }
+
+  /// Starred-события питомца, отсортированные по дате.
+  Future<List<PetEvent>> starredEvents(String petId) async {
+    final events = await loadEvents(petId);
+    return events.where((e) => e.starred).toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+  }
+
+  /// События питомца по категории.
+  Future<List<PetEvent>> eventsByCategory(
+      String petId,
+      EventCategory category,
+      ) async {
+    final events = await loadEvents(petId);
+    return events
+        .where((e) => e.category.id == category.id)
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
   }
 }
 

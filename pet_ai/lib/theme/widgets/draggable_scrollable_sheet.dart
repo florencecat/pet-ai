@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
 import '../../services/event_service.dart';
@@ -167,18 +168,21 @@ class _EventDraggableSheetState extends State<EventDraggableSheet>
 
     if (confirmed != true) return;
 
-    await EventService().deleteEvent(event);
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) await EventService().deleteEvent(profileId, event);
 
     if (context.mounted) closeSheet(context);
   }
 
   Future<void> createEvent(BuildContext context, PetEvent event) async {
-    await EventService().createEvent(event);
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) await EventService().createEvent(profileId, event);
     if (context.mounted) closeSheet(context);
   }
 
   Future<void> editEvent(BuildContext context, PetEvent event) async {
-    await EventService().saveEvent(event);
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) await EventService().saveEvent(profileId, event);
     if (context.mounted) closeSheet(context);
   }
 

@@ -13,6 +13,8 @@ class PetProfilePage extends StatefulWidget {
 }
 
 class _PetProfilePageState extends State<PetProfilePage> {
+  PetProfile? _profile;
+
   final _formKey = GlobalKey<FormState>();
 
   final _dateFormat = 'd MMMM yyyy';
@@ -35,7 +37,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _loadProfile() async {
-    final profile = await ProfileService().loadProfile();
+    final profile = await ProfileService().loadActiveProfile();
 
     if (profile == null) {
       if (mounted) {
@@ -44,11 +46,12 @@ class _PetProfilePageState extends State<PetProfilePage> {
       return;
     }
 
-    _nameController.text = profile.name;
-    _breedController.text = profile.breed;
-    _dateController.text = _formatDate(profile.birthDate);
-    _gender = profile.gender;
-    _profileImage = profile.profileImage;
+    _profile = profile;
+    _nameController.text = _profile!.name;
+    _breedController.text = _profile!.breed;
+    _dateController.text = _formatDate(_profile!.birthDate);
+    _gender = _profile!.gender;
+    _profileImage = _profile!.profileImage;
 
     if (mounted) setState(() => _loading = false);
   }
@@ -143,7 +146,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                         child: GestureDetector(
                           onTap: () async {
                             final path = await ProfileService()
-                                .pickProfileImage();
+                                .pickProfileImage(_profile!.id);
                             if (path != null) {
                               setState(() => _profileImage = File(path));
                             }
