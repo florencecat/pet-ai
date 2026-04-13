@@ -5,6 +5,7 @@ import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/weight_stepper.dart';
 import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/weight.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -72,7 +73,7 @@ class UpdateWeightModal extends StatefulWidget {
 }
 
 class _UpdateWeightModalState extends State<UpdateWeightModal> {
-  WeightPeriod period = WeightPeriod.month;
+  HistoryPeriod period = HistoryPeriod.month;
 
   final controller = TextEditingController();
 
@@ -176,16 +177,16 @@ class _UpdateWeightModalState extends State<UpdateWeightModal> {
 
           const SizedBox(height: 12),
 
-          SegmentedButton<WeightPeriod>(
+          SegmentedButton<HistoryPeriod>(
             style: SegmentedButton.styleFrom(
               side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
               foregroundColor: Theme.of(context).dividerColor,
               selectedForegroundColor: Theme.of(context).colorScheme.surface,
             ),
             segments: [
-              ButtonSegment(value: WeightPeriod.month, label: Text("Месяц")),
-              ButtonSegment(value: WeightPeriod.year, label: Text("Год")),
-              ButtonSegment(value: WeightPeriod.all, label: Text("Все")),
+              ButtonSegment(value: HistoryPeriod.month, label: Text("Месяц")),
+              ButtonSegment(value: HistoryPeriod.year, label: Text("Год")),
+              ButtonSegment(value: HistoryPeriod.all, label: Text("Все")),
             ],
             selected: {period},
             onSelectionChanged: (value) {
@@ -328,7 +329,7 @@ class UpdateMoodModal extends StatefulWidget {
 }
 
 class _UpdateMoodModalState extends State<UpdateMoodModal> {
-  WeightPeriod period = WeightPeriod.month;
+  HistoryPeriod period = HistoryPeriod.month;
 
   bool change = false;
 
@@ -411,16 +412,16 @@ class _UpdateMoodModalState extends State<UpdateMoodModal> {
 
           const SizedBox(height: 12),
 
-          SegmentedButton<WeightPeriod>(
+          SegmentedButton<HistoryPeriod>(
             style: SegmentedButton.styleFrom(
               side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
               foregroundColor: Theme.of(context).dividerColor,
               selectedForegroundColor: Theme.of(context).colorScheme.surface,
             ),
             segments: const [
-              ButtonSegment(value: WeightPeriod.month, label: Text("Месяц")),
-              ButtonSegment(value: WeightPeriod.year, label: Text("Год")),
-              ButtonSegment(value: WeightPeriod.all, label: Text("Все")),
+              ButtonSegment(value: HistoryPeriod.month, label: Text("Месяц")),
+              ButtonSegment(value: HistoryPeriod.year, label: Text("Год")),
+              ButtonSegment(value: HistoryPeriod.all, label: Text("Все")),
             ],
             selected: {period},
             onSelectionChanged: (value) {
@@ -675,6 +676,18 @@ class _UpdateNotesModalState extends State<UpdateNotesModal> {
   final stt.SpeechToText _speech = stt.SpeechToText();
 
   bool _isListening = false;
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      final hasText = _controller.text.isNotEmpty;
+      if (hasText != _hasText) {
+        setState(() => _hasText = hasText);
+      }
+    });
+  }
 
   Future<void> _toggleListening() async {
     if (!_isListening) {
@@ -740,7 +753,7 @@ class _UpdateNotesModalState extends State<UpdateNotesModal> {
                 icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
               ),
               ElevatedButton(
-                onPressed: _controller.text.isEmpty
+                onPressed: !_hasText
                     ? null
                     : () {
                         ProfileService().addNote(widget.profile.id, _controller.text);

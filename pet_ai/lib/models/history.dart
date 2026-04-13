@@ -1,4 +1,4 @@
-import 'package:pet_ai/models/weight.dart';
+enum HistoryPeriod { month, year, all }
 
 abstract class BaseEntry {
   DateTime get date;
@@ -29,19 +29,19 @@ class History<T extends BaseEntry> {
 
 
 
-  List<T> filterByPeriod(WeightPeriod period) {
+  List<T> filterByPeriod(HistoryPeriod period) {
     final now = DateTime.now();
 
     switch (period) {
-      case WeightPeriod.month:
+      case HistoryPeriod.month:
         final start = now.subtract(const Duration(days: 30));
         return entries.where((e) => e.date.isAfter(start)).toList();
 
-      case WeightPeriod.year:
+      case HistoryPeriod.year:
         final start = DateTime(now.year - 1, now.month, now.day);
         return entries.where((e) => e.date.isAfter(start)).toList();
 
-      case WeightPeriod.all:
+      case HistoryPeriod.all:
         return entries;
     }
   }

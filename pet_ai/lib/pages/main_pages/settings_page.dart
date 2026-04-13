@@ -8,15 +8,15 @@ import '../../services/profile_service.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
-  Future<void> _clearAppData(BuildContext context) async {
+  Future<bool> _confirmClear(BuildContext context, {
+    String title = 'Очистить данные?',
+    required String content,
+  }) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Очистить данные?'),
-        content: const Text(
-          'Будут удалены все данные питомца, события и настройки. '
-          'Приложение будет выглядеть как при первом запуске.',
-        ),
+        title: Text(title),
+        content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -30,11 +30,21 @@ class SettingsPage extends StatelessWidget {
         ],
       ),
     );
+    return confirmed == true;
+  }
 
-    if (confirmed != true) return;
+  Future<void> _clearAppData(BuildContext context) async {
+    if (!await _confirmClear(context, content:
+      'Будут удалены все данные питомца, события и настройки. '
+      'Приложение будет выглядеть как при первом запуске.',
+    )) {
+      return;
+    }
 
-    final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) await ProfileService().deleteProfile(profileId);
+    final profiles = await ProfileService().loadAllProfiles();
+    await EventService().clearEventsForAll(profiles.map((p) => p.id).toList());
+    await ProfileService().clearAll();
+    await AIChatController.clearMessageHistory();
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,93 +55,48 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _clearEvents(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Очистить данные?'),
-        content: const Text('Будут удалены все события питомца. '),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Очистить'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
+    if (!await _confirmClear(context, content: 'Будут удалены все события питомца.')) {
+      return;
+    }
 
     final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) await EventService().clearEvents(profileId);
+    if (profileId != null) {
+      await EventService().clearEvents(profileId);
+    }
 
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('События удалены')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('События удалены')),
+      );
     }
   }
 
   Future<void> _clearWeightHistory(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Очистить данные?'),
-        content: const Text('Будет удалена вся история веса. '),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Очистить'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
+    if (!await _confirmClear(context, content: 'Будет удалена вся история веса.')) {
+      return;
+    }
 
     final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) await ProfileService().clearWeightHistory(profileId);
+    if (profileId != null) {
+      await ProfileService().clearWeightHistory(profileId);
+    }
 
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('История веса удалена')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('История веса удалена')),
+      );
     }
   }
 
   Future<void> _clearMoodHistory(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Очистить данные?'),
-        content: const Text('Будет удалена вся история настроения. '),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Очистить'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
+    if (!await _confirmClear(context, content: 'Будет удалена вся история настроения.')) {
+      return;
+    }
 
     final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) await ProfileService().clearMoodHistory(profileId);
+    if (profileId != null) {
+      await ProfileService().clearMoodHistory(profileId);
+    }
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,32 +106,18 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _clearMessageHistory(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Очистить диалог?'),
-        content: const Text('Будет удалена вся история общения с ИИ. '),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Очистить'),
-          ),
-        ],
-      ),
-    );
+    if (!await _confirmClear(context,
+      title: 'Очистить диалог?',
+      content: 'Будет удалена вся история общения с ИИ.',
+    )) {
+      return;
+    }
 
-    if (confirmed != true) return;
-
-    AIChatController.clearMessageHistory();
+    await AIChatController.clearMessageHistory();
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('История настроения удалена')),
+        const SnackBar(content: Text('История сообщений удалена')),
       );
     }
   }
@@ -176,15 +127,7 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            tileMode: TileMode.mirror,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              ThemeColors.gradientBegin.withAlpha(96),
-              ThemeColors.gradientEnd.withAlpha(64),
-            ],
-          ),
+          gradient: pageGradientDecoration.gradient,
         ),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 125),

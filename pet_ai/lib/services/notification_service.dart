@@ -4,7 +4,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'event_service.dart' as events;
-import 'dart:io'; // Добавьте импорт
+import 'dart:io';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();

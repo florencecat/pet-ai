@@ -1,7 +1,5 @@
 import 'package:pet_ai/models/history.dart';
 
-enum WeightPeriod { month, year, all }
-
 class WeightEntry implements BaseEntry {
   @override
   final DateTime date;

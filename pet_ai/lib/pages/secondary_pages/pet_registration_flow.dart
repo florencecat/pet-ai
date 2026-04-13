@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:pet_ai/models/species.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/breed_selector.dart';
@@ -24,6 +25,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   Gender _gender = Gender.none;
   File? _profileImage;
   final _notesCtrl = TextEditingController();
+  PetSpecies _selectedSpecies = BuiltInSpecies.other;
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
@@ -52,6 +54,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     }
 
     _profile.name = _nameCtrl.text.trim();
+    _profile.species = _selectedSpecies;
     _profile.breed = _breedCtrl.text.trim();
     _profile.birthDate = _birthDate;
     _profile.gender = _gender;
@@ -76,24 +79,16 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
             ),
             const SizedBox(height: 8),
 
-            GestureDetector(
-              onTap: () async {
-                final result = await showBreedSelector(context);
-                if (result != null && result.isNotEmpty) {
-                  setState(() {
-                    _breedCtrl.text = result;
-                  });
-                }
+            DropdownButtonFormField<PetSpecies>(
+              initialValue: _selectedSpecies,
+              decoration: const InputDecoration(labelText: 'Вид'),
+              items: BuiltInSpecies.all.map((s) => DropdownMenuItem(
+                value: s,
+                child: Text('${s.emoji} ${s.name}'),
+              )).toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _selectedSpecies = v);
               },
-              child: AbsorbPointer(
-                child: TextField(
-                  controller: _breedCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Вид',
-                    suffixIcon: Icon(Icons.arrow_drop_down),
-                  ),
-                ),
-              ),
             ),
 
             const SizedBox(height: 8),
@@ -193,6 +188,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Имя: ${_nameCtrl.text.isEmpty ? "не указано" : _nameCtrl.text}'),
+            Text('Вид: ${_selectedSpecies.name}'),
             Text('Порода: ${_breedCtrl.text.isEmpty ? "не указано" : _breedCtrl.text}'),
             Text('Дата рождения: ${_formatDate(_birthDate)}'),
             Text('Пол: ${_gender.label.toLowerCase()}'),

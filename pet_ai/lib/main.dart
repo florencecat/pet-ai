@@ -92,10 +92,6 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  // void _onRegistrationComplete() {
-  //   setState(() => _hasProfile = true);
-  // }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) {

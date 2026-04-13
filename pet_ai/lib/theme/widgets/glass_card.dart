@@ -166,7 +166,7 @@ class GlassSettingsCard extends StatelessWidget {
   }) : color = ThemeColors.white,
        textColor = ThemeColors.border;
 
-  GlassSettingsCard.debug({
+  const GlassSettingsCard.debug({
     super.key,
     this.callback,
     required this.leadingIcon,
@@ -182,30 +182,27 @@ class GlassSettingsCard extends StatelessWidget {
       padding: EdgeInsetsGeometry.symmetric(vertical: 8),
       child: GlassPlate(
         color: color,
-        child: InkWell(
-          onTap: callback,
-          child: ListTile(
-            leading: Icon(leadingIcon, color: textColor),
-            title: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge!.copyWith(inherit: true, color: textColor),
-            ),
-            subtitle: subtitle != null
-                ? Text(
-                    subtitle!,
-                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                      inherit: true,
-                      color: textColor,
-                    ),
-                  )
-                : null,
-            trailing: trailingIcon != null
-                ? Icon(trailingIcon!, color: textColor)
-                : null,
-            onTap: callback,
+        child: ListTile(
+          leading: Icon(leadingIcon, color: textColor),
+          title: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge!.copyWith(inherit: true, color: textColor),
           ),
+          subtitle: subtitle != null
+              ? Text(
+                  subtitle!,
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                    inherit: true,
+                    color: textColor,
+                  ),
+                )
+              : null,
+          trailing: trailingIcon != null
+              ? Icon(trailingIcon!, color: textColor)
+              : null,
+          onTap: callback,
         ),
       ),
     );

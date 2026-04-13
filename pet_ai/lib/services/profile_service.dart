@@ -171,8 +171,6 @@ class PetProfile {
   }
 }
 
-enum FormattingType { year, month }
-
 class ProfileService {
   static const _profilesKey = 'pet_profiles';
   static const _activeIdKey = 'active_pet_id';
@@ -342,7 +340,7 @@ class ProfileService {
     }
   }
 
-  // ─── Работа с изображением ────────────────────────────────────────────────
+  // ─── Работа с изображением ──────────────────────────────────────────────
 
   Future<String> _saveAvatarToAppDir(String petId, String tempPath) async {
     final directory = await getApplicationDocumentsDirectory();
@@ -377,35 +375,36 @@ class ProfileService {
     return await _saveAvatarToAppDir(petId, cropped.path);
   }
 
-  String localizeDuration(int amount, FormattingType type) {
-    if ((amount >= 5 && amount <= 20) || amount % 10 == 0) {
-      return type == FormattingType.year ? 'лет' : 'мес.';
-    }
-    if ((amount % 10) >= 2 && (amount % 10) <= 4) {
-      return type == FormattingType.year ? 'года' : 'мес.';
-    }
-    return type == FormattingType.year ? 'год' : 'мес.';
-  }
+}
 
-  String formatAge(Duration duration) {
-    String description = '';
-    final inYears = duration.inDays.abs();
-    final fullYears = (inYears / 365).toInt();
-    if (fullYears > 0) {
-      description +=
-      '$fullYears ${localizeDuration(fullYears, FormattingType.year)}';
-    }
-    final fullMonths = ((inYears % 365) / 30).toInt();
-    if (fullYears > 0 && fullMonths > 0) {
-      description += ' и ';
-    }
-    if (fullMonths > 0) {
-      description +=
-      '$fullMonths ${localizeDuration(fullMonths, FormattingType.month)}';
-    }
-    if (description.isEmpty) {
-      description += 'совсем маленький';
-    }
-    return description;
+enum _DurationUnit { year, month }
+
+String _localizeDuration(int amount, _DurationUnit type) {
+  if ((amount >= 5 && amount <= 20) || amount % 10 == 0) {
+    return type == _DurationUnit.year ? 'лет' : 'мес.';
   }
+  if ((amount % 10) >= 2 && (amount % 10) <= 4) {
+    return type == _DurationUnit.year ? 'года' : 'мес.';
+  }
+  return type == _DurationUnit.year ? 'год' : 'мес.';
+}
+
+String formatPetAge(Duration duration) {
+  String description = '';
+  final inDays = duration.inDays.abs();
+  final fullYears = inDays ~/ 365;
+  if (fullYears > 0) {
+    description += '$fullYears ${_localizeDuration(fullYears, _DurationUnit.year)}';
+  }
+  final fullMonths = (inDays % 365) ~/ 30;
+  if (fullYears > 0 && fullMonths > 0) {
+    description += ' и ';
+  }
+  if (fullMonths > 0) {
+    description += '$fullMonths ${_localizeDuration(fullMonths, _DurationUnit.month)}';
+  }
+  if (description.isEmpty) {
+    description += 'совсем маленький';
+  }
+  return description;
 }

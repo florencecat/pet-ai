@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../theme/app_colors.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 
 class DraggableBottomSheet extends StatefulWidget {
   final List<String> allItems;

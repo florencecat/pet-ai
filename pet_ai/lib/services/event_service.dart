@@ -232,22 +232,6 @@ class EventService {
       }) async {
     final now = from ?? DateTime.now();
     final events = await loadEvents(petId);
-    return events
-        .where((e) => e.dateTime.isAfter(now))
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime))
-      ..take(limit); // toList уже создан, take не обрезает — см. ниже
-    // Dart: take на List не работает in-place, поэтому:
-  }
-
-  /// То же, что [upcomingEvents], но возвращает не более [limit] элементов.
-  Future<List<PetEvent>> upcomingEventsLimited(
-      String petId, {
-        DateTime? from,
-        int limit = 10,
-      }) async {
-    final now = from ?? DateTime.now();
-    final events = await loadEvents(petId);
     final sorted = events
         .where((e) => e.dateTime.isAfter(now))
         .toList()
@@ -275,22 +259,3 @@ class EventService {
   }
 }
 
-class NoteModal extends StatelessWidget {
-  const NoteModal({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      height: 250,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Заметка", style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 20),
-          const Text("Функция появится позже."),
-        ],
-      ),
-    );
-  }
-}

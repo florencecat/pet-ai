@@ -59,15 +59,13 @@ class _PetProfilePageState extends State<PetProfilePage> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final profile = PetProfile(
-      name: _nameController.text.trim(),
-      breed: _breedController.text.trim(),
-      birthDate: _parseDate(_dateController.text),
-      gender: _gender,
-      profileImage: _profileImage,
-    );
+    _profile!.name = _nameController.text.trim();
+    _profile!.breed = _breedController.text.trim();
+    _profile!.birthDate = _parseDate(_dateController.text);
+    _profile!.gender = _gender;
+    _profile!.profileImage = _profileImage;
 
-    await ProfileService().saveProfile(profile);
+    await ProfileService().saveProfile(_profile!);
 
     if (mounted) {
       ScaffoldMessenger.of(

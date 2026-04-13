@@ -48,15 +48,7 @@ class _AIChatPageState extends State<AIChatPage> {
               width: double.infinity,
               height: double.infinity,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  tileMode: TileMode.mirror,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    ThemeColors.gradientBegin.withAlpha(96),
-                    ThemeColors.gradientEnd.withAlpha(64),
-                  ],
-                ),
+                gradient: pageGradientDecoration.gradient,
               ),
               child: InlineLoading(isLoading: !snapshot.hasData),
             ),
@@ -123,7 +115,7 @@ class _ChatView extends StatelessWidget {
                 itemCount: controller.messages.length,
                 physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
-                  final msg = controller.messages.reversed.toList()[index];
+                  final msg = controller.messages[controller.messages.length - 1 - index];
                   return _MessageBubble(msg: msg);
                 },
               ),
@@ -238,19 +230,9 @@ class _InputBarState extends State<_InputBar> {
                     borderSide: BorderSide.none,
                   ),
                 ),
-                onChanged: (value) {
-                  setState(() {});
-                },
+                onChanged: (_) => setState(() {}),
               ),
             ),
-            // Material(
-            //   shape: RoundedRectangleBorder(
-            //     side: BorderSide(color: ThemeColors.primary, width: 3),
-            //     borderRadius: BorderRadius.circular(16),
-            //   ),
-            //   color: Colors.transparent,
-
-            // ),
           ),
           const SizedBox(width: 8),
 

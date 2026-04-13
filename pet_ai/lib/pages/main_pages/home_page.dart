@@ -1,11 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/events_preview_block.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
-import 'dart:core';
-
 import 'package:pet_ai/pages/secondary_pages/profile_page.dart';
 import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/event_service.dart';
@@ -83,12 +80,8 @@ class _HomePageState extends State<HomePage> {
   String _profileDescription() {
     String description = _profile?.breed ?? "";
     if (_profile != null && _profile!.birthDate != null) {
-      final duration = _profile!.birthDate?.difference(DateTime.now());
-      if (duration == null) {
-        return description;
-      } else {
-        return '$description - ${ProfileService().formatAge(duration)}';
-      }
+      final duration = _profile!.birthDate!.difference(DateTime.now());
+      return '$description - ${formatPetAge(duration)}';
     }
     return description;
   }
@@ -168,17 +161,7 @@ class _HomePageState extends State<HomePage> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            tileMode: TileMode.mirror,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              ThemeColors.gradientBegin.withAlpha(96),
-              ThemeColors.gradientEnd.withAlpha(64),
-            ],
-          ),
-        ),
+        decoration: pageGradientDecoration,
         child: Padding(
             padding: const EdgeInsets.all(16),
             child: ListView(

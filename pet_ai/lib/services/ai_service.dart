@@ -227,16 +227,21 @@ class AIChatController extends ChangeNotifier {
     await _repo!.add(botMsg);
 
     isLoading = false;
-    notifyListeners();
 
-    await for (final chunk in fakeStream(fullResponse)) {
-      botMsg.content = chunk;
+    if (kDebugMode) {
+      await for (final chunk in fakeStream(fullResponse)) {
+        botMsg.content = chunk;
+        await botMsg.save();
+        notifyListeners();
+      }
+    } else {
+      botMsg.content = fullResponse;
       await botMsg.save();
       notifyListeners();
     }
   }
 
-  static void clearMessageHistory() async {
+  static Future<void> clearMessageHistory() async {
     final repository = ChatRepository(
       await Hive.openBox<ChatMessage>('chat_box'),
     );

@@ -34,3 +34,15 @@ const RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
   borderRadius: BorderRadiusGeometry.all(Radius.circular(cardBorderRadius)),
   side: BorderSide(width: 2, color: Color.fromARGB(128, 244, 67, 54)),
 );
+
+const BoxDecoration pageGradientDecoration = BoxDecoration(
+  gradient: LinearGradient(
+    tileMode: TileMode.mirror,
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0x60B896FF), // ThemeColors.gradientBegin.withAlpha(96)
+      Color(0x4078d3a1), // ThemeColors.gradientEnd.withAlpha(64)
+    ],
+  ),
+);

@@ -4,9 +4,9 @@ import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../../../services/event_service.dart';
-import '../../../theme/widgets/draggable_scrollable_sheet.dart';
-import '../../../theme/app_colors.dart';
+import 'package:pet_ai/services/event_service.dart';
+import 'package:pet_ai/theme/widgets/draggable_scrollable_sheet.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 
 class CalendarPage extends StatefulWidget {
   final DateTime? initialDate;
@@ -97,15 +97,7 @@ class _CalendarPageState extends State<CalendarPage> {
       body: Container(
         padding: EdgeInsetsGeometry.fromLTRB(16, 16, 16, 100),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            tileMode: TileMode.mirror,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              ThemeColors.gradientBegin.withAlpha(96),
-              ThemeColors.gradientEnd.withAlpha(64),
-            ],
-          ),
+          gradient: pageGradientDecoration.gradient,
         ),
         child: InlineLoading(
           isLoading: _isLoadingEvents,
