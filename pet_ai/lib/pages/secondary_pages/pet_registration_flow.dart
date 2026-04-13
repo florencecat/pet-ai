@@ -297,7 +297,7 @@ class _StepBasic extends StatelessWidget {
           dropdownColor: ThemeColors.white,
           items: BuiltInSpecies.all.map((s) => DropdownMenuItem(
             value: s,
-            child: Text('${s.emoji} ${s.name}'),
+            child: Text('${s.emoji} ${s.name}', style: Theme.of(context).textTheme.bodyLarge),
           )).toList(),
           onChanged: (v) {
             if (v != null) onSpeciesChanged(v);
@@ -376,7 +376,6 @@ class _StepDetails extends StatelessWidget {
             selectedBackgroundColor: Theme.of(context).colorScheme.primary,
           ),
           segments: const <ButtonSegment<Gender>>[
-            ButtonSegment(value: Gender.none, label: Text("Не указан")),
             ButtonSegment(value: Gender.male, label: Text("Мальчик"), icon: Icon(Icons.male)),
             ButtonSegment(value: Gender.female, label: Text("Девочка"), icon: Icon(Icons.female)),
           ],
@@ -505,13 +504,9 @@ class _StepSummary extends StatelessWidget {
             child: Column(
               children: [
                 _summaryRow(context, Icons.pets, 'Имя', name.isEmpty ? 'не указано' : name),
-                const Divider(height: 1),
                 _summaryRow(context, Icons.category, 'Вид', '${species.emoji} ${species.name}'),
-                const Divider(height: 1),
                 _summaryRow(context, Icons.badge, 'Порода', breed.isEmpty ? 'не указана' : breed),
-                const Divider(height: 1),
                 _summaryRow(context, Icons.cake, 'Дата рождения', birthDate),
-                const Divider(height: 1),
                 _summaryRow(context, gender.icon ?? Icons.help_outline, 'Пол', gender.label),
               ],
             ),
