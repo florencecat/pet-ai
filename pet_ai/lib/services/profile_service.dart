@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/note.dart';
+import 'package:pet_ai/models/species.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -74,6 +75,7 @@ extension GenderX on Gender {
 class PetProfile {
   final String id;
   String name;
+  PetSpecies species;
   String breed;
   DateTime? birthDate;
   Gender gender;
@@ -85,6 +87,7 @@ class PetProfile {
 
   PetProfile({
     this.name = '',
+    this.species = BuiltInSpecies.other,
     this.breed = '',
     this.birthDate,
     this.gender = Gender.none,
@@ -98,6 +101,7 @@ class PetProfile {
   PetProfile.deserialize({
     required this.id,
     required this.name,
+    required this.species,
     required this.breed,
     required this.birthDate,
     required this.gender,
@@ -111,6 +115,7 @@ class PetProfile {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'species': species.toJson(),
     'breed': breed,
     'birthDate': birthDate?.toIso8601String(),
     'gender': gender.caption,
@@ -125,6 +130,9 @@ class PetProfile {
     return PetProfile.deserialize(
       id: json['id'],
       name: json['name'] ?? '',
+      species: json['species'] != null
+          ? PetSpecies.fromJson(json['species'] as Map<String, dynamic>)
+          : BuiltInSpecies.other,
       breed: json['breed'] ?? '',
       birthDate: json['birthDate'] != null
           ? DateTime.parse(json['birthDate'])

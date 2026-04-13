@@ -89,6 +89,28 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                 child: TextField(
                   controller: _breedCtrl,
                   decoration: const InputDecoration(
+                    labelText: 'Вид',
+                    suffixIcon: Icon(Icons.arrow_drop_down),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            GestureDetector(
+              onTap: () async {
+                final result = await showBreedSelector(context);
+                if (result != null && result.isNotEmpty) {
+                  setState(() {
+                    _breedCtrl.text = result;
+                  });
+                }
+              },
+              child: AbsorbPointer(
+                child: TextField(
+                  controller: _breedCtrl,
+                  decoration: const InputDecoration(
                     labelText: 'Порода',
                     suffixIcon: Icon(Icons.arrow_drop_down),
                   ),
