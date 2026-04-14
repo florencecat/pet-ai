@@ -109,6 +109,7 @@ class GlassEventCard extends StatelessWidget {
   final PetEvent event;
   final IconData? trailingIcon;
   final VoidCallback? trailingCallback;
+  final ValueChanged<bool>? onCompletedChanged;
 
   const GlassEventCard({
     super.key,
@@ -116,6 +117,7 @@ class GlassEventCard extends StatelessWidget {
     this.callback,
     this.trailingIcon,
     this.trailingCallback,
+    this.onCompletedChanged,
   });
 
   @override
@@ -129,12 +131,26 @@ class GlassEventCard extends StatelessWidget {
             if (callback != null) callback!.call();
           },
           child: ListTile(
-            leading: Icon(event.category.icon, color: event.category.color),
+            leading: onCompletedChanged != null
+                ? GestureDetector(
+                    onTap: () => onCompletedChanged!(!event.completed),
+                    child: Icon(
+                      event.completed
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: event.completed
+                          ? ThemeColors.primary
+                          : event.category.color,
+                      size: 28,
+                    ),
+                  )
+                : Icon(event.category.icon, color: event.category.color),
             title: Text(
               event.name,
               style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 inherit: true,
                 color: ThemeColors.textPrimary,
+                decoration: event.completed ? TextDecoration.lineThrough : null,
               ),
             ),
             subtitle: Text(

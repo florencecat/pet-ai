@@ -74,6 +74,7 @@ class _HomePageState extends State<HomePage> {
           events
               .where(
                 (e) =>
+                    e.repeat != RepeatInterval.none ||
                     e.dateTime.isAfter(DateTime.now()) ||
                     e.dateTime.isAtSameMomentAs(DateTime.now()),
               )

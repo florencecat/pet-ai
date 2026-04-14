@@ -154,7 +154,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                     eventLoader: (day) {
                       return _events
-                          .where((e) => DateUtils.isSameDay(e.dateTime, day))
+                          .where((e) => e.occursOn(day))
                           .toList();
                     },
                     calendarStyle: CalendarStyle(
@@ -221,15 +221,17 @@ class _CalendarPageState extends State<CalendarPage> {
               const SizedBox(height: 8),
 
               if (_selectedDay != null && _events.isNotEmpty)
-                ...(_events.where(
-                  (e) =>
-                      e.dateTime.year == _selectedDay!.year &&
-                      e.dateTime.month == _selectedDay!.month &&
-                      e.dateTime.day == _selectedDay!.day,
-                )).map(
+                ...(_events.where((e) => e.occursOn(_selectedDay!))).map(
                   (e) => GlassEventCard(
                     event: e,
                     callback: () => openViewEventSheet(context, e),
+                    onCompletedChanged: (val) async {
+                      final profileId = await ProfileService().getActiveProfileId();
+                      if (profileId != null) {
+                        await EventService().toggleCompleted(profileId, e);
+                        _refresh();
+                      }
+                    },
                   ),
                 ),
             ],

@@ -4,7 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
-enum RepeatInterval { none, daily, weekly, monthly }
+enum RepeatInterval { none, daily, weekly, monthly, custom }
+
+/// Дни недели для custom-повторений (1=Пн, 7=Вс)
+class WeekDays {
+  static const int monday = 1;
+  static const int tuesday = 2;
+  static const int wednesday = 3;
+  static const int thursday = 4;
+  static const int friday = 5;
+  static const int saturday = 6;
+  static const int sunday = 7;
+
+  static const labels = {
+    monday: 'Пн',
+    tuesday: 'Вт',
+    wednesday: 'Ср',
+    thursday: 'Чт',
+    friday: 'Пт',
+    saturday: 'Сб',
+    sunday: 'Вс',
+  };
+}
 
 class EventCategory {
   final String id;
@@ -57,10 +78,42 @@ class EventCategories {
     icon: Icons.feed,
   );
 
-  static const all = [empty, health, grooming, food];
+  static const walk = EventCategory(
+    id: 'walk',
+    name: 'Прогулка',
+    description: 'Выгул, активности на улице',
+    colorValue: 0xFFFF9800,
+    icon: Icons.directions_walk,
+  );
+
+  static const training = EventCategory(
+    id: 'training',
+    name: 'Дрессировка',
+    description: 'Тренировки, обучение',
+    colorValue: 0xFF7B1FA2,
+    icon: Icons.school,
+  );
+
+  static const vaccination = EventCategory(
+    id: 'vaccination',
+    name: 'Вакцинация',
+    description: 'Прививки, профилактика',
+    colorValue: 0xFFD32F2F,
+    icon: Icons.vaccines,
+  );
+
+  static const other = EventCategory(
+    id: 'other',
+    name: 'Другое',
+    description: 'Прочие события',
+    colorValue: 0xFF607D8B,
+    icon: Icons.more_horiz,
+  );
+
+  static const all = [empty, health, grooming, food, walk, training, vaccination, other];
 
   static EventCategory byId(String id) {
-    return all.firstWhere((c) => c.id == id);
+    return all.firstWhere((c) => c.id == id, orElse: () => other);
   }
 }
 
@@ -70,7 +123,9 @@ class PetEvent {
   EventCategory category;
   DateTime dateTime;
   bool starred;
+  bool completed;
   RepeatInterval repeat;
+  List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
   int remindBeforeMinutes;
 
   PetEvent({
@@ -78,9 +133,11 @@ class PetEvent {
     required this.category,
     required this.dateTime,
     this.repeat = RepeatInterval.none,
+    this.customDays = const [],
     this.remindBeforeMinutes = 0,
   }) : id = UniqueKey().toString(),
-        starred = false;
+        starred = false,
+        completed = false;
 
   PetEvent.deserialize({
     required this.id,
@@ -88,7 +145,9 @@ class PetEvent {
     required this.category,
     required this.dateTime,
     required this.starred,
+    required this.completed,
     required this.repeat,
+    required this.customDays,
     required this.remindBeforeMinutes,
   });
 
@@ -98,7 +157,9 @@ class PetEvent {
         category = EventCategories.empty,
         dateTime = DateTime.now(),
         starred = false,
+        completed = false,
         repeat = RepeatInterval.none,
+        customDays = const [],
         remindBeforeMinutes = 0;
 
   void assign(
@@ -106,13 +167,37 @@ class PetEvent {
       EventCategory? category,
       DateTime? dateTime,
       RepeatInterval? repeat,
+      List<int>? customDays,
       int? remindBeforeMinutes,
       ) {
     this.name = name ?? this.name;
     this.category = category ?? this.category;
     this.dateTime = dateTime ?? this.dateTime;
     this.repeat = repeat ?? this.repeat;
+    this.customDays = customDays ?? this.customDays;
     this.remindBeforeMinutes = remindBeforeMinutes ?? this.remindBeforeMinutes;
+  }
+
+  /// Проверяет, приходится ли повторяющееся событие на заданный день.
+  bool occursOn(DateTime day) {
+    final base = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final target = DateTime(day.year, day.month, day.day);
+
+    if (base == target) return true;
+    if (target.isBefore(base)) return false;
+
+    switch (repeat) {
+      case RepeatInterval.none:
+        return false;
+      case RepeatInterval.daily:
+        return true;
+      case RepeatInterval.weekly:
+        return base.weekday == target.weekday;
+      case RepeatInterval.monthly:
+        return base.day == target.day;
+      case RepeatInterval.custom:
+        return customDays.contains(target.weekday);
+    }
   }
 
   Map<String, dynamic> toJson() => {
@@ -121,7 +206,9 @@ class PetEvent {
     'category': category.id,
     'dateTime': dateTime.toIso8601String(),
     'starred': starred,
+    'completed': completed,
     'repeat': repeat.index,
+    'customDays': customDays,
     'remindBeforeMinutes': remindBeforeMinutes,
   };
 
@@ -130,8 +217,11 @@ class PetEvent {
     name: json['name'],
     category: EventCategories.byId(json['category']),
     dateTime: DateTime.parse(json['dateTime']),
-    starred: json['starred'],
+    starred: json['starred'] ?? false,
+    completed: json['completed'] ?? false,
     repeat: RepeatInterval.values[json['repeat'] ?? 0],
+    customDays: (json['customDays'] as List<dynamic>?)
+        ?.map((e) => e as int).toList() ?? const [],
     remindBeforeMinutes: json['remindBeforeMinutes'] ?? 0,
   );
 }
@@ -189,6 +279,17 @@ class EventService {
       await NotificationService().cancelNotification(event.id);
       await NotificationService().scheduleEventNotification(event);
     }
+  }
+
+  Future<void> toggleCompleted(String petId, PetEvent event) async {
+    event.completed = !event.completed;
+    await saveEvent(petId, event);
+  }
+
+  /// Все события, которые приходятся на конкретный день (включая повторяющиеся).
+  Future<List<PetEvent>> eventsForDay(String petId, DateTime day) async {
+    final events = await loadEvents(petId);
+    return events.where((e) => e.occursOn(day)).toList();
   }
 
   Future<void> deleteEvent(String petId, PetEvent event) async {
