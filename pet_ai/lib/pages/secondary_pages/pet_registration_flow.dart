@@ -54,9 +54,9 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
 
   void _nextStep() {
     if (_currentStep == 0 && _nameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите имя питомца')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Введите имя питомца')));
       return;
     }
     if (_currentStep < _totalSteps - 1) {
@@ -177,7 +177,10 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
 
               // Step indicator
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 16,
+                ),
                 child: Row(
                   children: List.generate(_totalSteps, (i) {
                     return Expanded(
@@ -222,14 +225,18 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.check, color: ThemeColors.white),
+                                const Icon(
+                                  Icons.check,
+                                  color: ThemeColors.white,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Завершить и сохранить',
-                                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                    color: ThemeColors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium!
+                                      .copyWith(
+                                        color: ThemeColors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                 ),
                               ],
                             ),
@@ -245,13 +252,17 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                               children: [
                                 Text(
                                   'Далее',
-                                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                    color: ThemeColors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium!
+                                      .copyWith(
+                                        color: ThemeColors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                 ),
                                 const SizedBox(width: 6),
-                                const Icon(Icons.arrow_forward, color: ThemeColors.white),
+                                const Icon(
+                                  Icons.arrow_forward,
+                                  color: ThemeColors.white,
+                                ),
                               ],
                             ),
                           ),
@@ -297,10 +308,17 @@ class _StepBasic extends StatelessWidget {
           initialValue: selectedSpecies,
           decoration: inputDecoration('Вид'),
           dropdownColor: ThemeColors.white,
-          items: BuiltInSpecies.all.map((s) => DropdownMenuItem(
-            value: s,
-            child: Text('${s.emoji} ${s.name}', style: Theme.of(context).textTheme.bodyLarge),
-          )).toList(),
+          items: BuiltInSpecies.all
+              .map(
+                (s) => DropdownMenuItem(
+                  value: s,
+                  child: Text(
+                    '${s.emoji} ${s.name}',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+              )
+              .toList(),
           onChanged: (v) {
             if (v != null) onSpeciesChanged(v);
           },
@@ -360,7 +378,11 @@ class _StepDetails extends StatelessWidget {
                 'Дата рождения',
                 suffixIcon: Padding(
                   padding: const EdgeInsets.only(right: 6),
-                  child: Icon(Icons.calendar_today, color: Theme.of(context).dividerColor, size: 18),
+                  child: Icon(
+                    Icons.calendar_today,
+                    color: Theme.of(context).dividerColor,
+                    size: 18,
+                  ),
                 ),
               ),
               controller: TextEditingController(text: formatDate(birthDate)),
@@ -378,8 +400,16 @@ class _StepDetails extends StatelessWidget {
             selectedBackgroundColor: Theme.of(context).colorScheme.primary,
           ),
           segments: const <ButtonSegment<Gender>>[
-            ButtonSegment(value: Gender.male, label: Text("Мальчик"), icon: Icon(Icons.male)),
-            ButtonSegment(value: Gender.female, label: Text("Девочка"), icon: Icon(Icons.female)),
+            ButtonSegment(
+              value: Gender.male,
+              label: Text("Мальчик"),
+              icon: Icon(Icons.male),
+            ),
+            ButtonSegment(
+              value: Gender.female,
+              label: Text("Девочка"),
+              icon: Icon(Icons.female),
+            ),
           ],
           selected: {gender},
           onSelectionChanged: (v) => onGenderChanged(v.first),
@@ -434,7 +464,11 @@ class _StepPhoto extends StatelessWidget {
                   ),
                   child: ClipOval(
                     child: profileImage == null
-                        ? const Icon(Icons.pets, size: 70, color: ThemeColors.primary)
+                        ? const Icon(
+                            Icons.pets,
+                            size: 70,
+                            color: ThemeColors.primary,
+                          )
                         : Image.file(profileImage!, fit: BoxFit.cover),
                   ),
                 ),
@@ -447,7 +481,11 @@ class _StepPhoto extends StatelessWidget {
                       color: theme.colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -456,7 +494,9 @@ class _StepPhoto extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          profileImage == null ? 'Нажмите, чтобы выбрать фото' : 'Нажмите, чтобы заменить',
+          profileImage == null
+              ? 'Нажмите, чтобы выбрать фото'
+              : 'Нажмите, чтобы заменить',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -489,10 +529,7 @@ class _StepSummary extends StatelessWidget {
       children: [
         const SizedBox(height: 16),
         if (profileImage != null)
-          CircleAvatar(
-            radius: 50,
-            backgroundImage: FileImage(profileImage!),
-          )
+          CircleAvatar(radius: 50, backgroundImage: FileImage(profileImage!))
         else
           CircleAvatar(
             radius: 50,
@@ -505,11 +542,31 @@ class _StepSummary extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             child: Column(
               children: [
-                _summaryRow(context, Icons.pets, 'Имя', name.isEmpty ? 'не указано' : name),
-                _summaryRow(context, Icons.category, 'Вид', '${species.emoji} ${species.name}'),
-                _summaryRow(context, Icons.badge, 'Порода', breed.isEmpty ? 'не указана' : breed),
+                _summaryRow(
+                  context,
+                  Icons.pets,
+                  'Имя',
+                  name.isEmpty ? 'не указано' : name,
+                ),
+                _summaryRow(
+                  context,
+                  Icons.category,
+                  'Вид',
+                  '${species.emoji} ${species.name}',
+                ),
+                _summaryRow(
+                  context,
+                  Icons.badge,
+                  'Порода',
+                  breed.isEmpty ? 'не указана' : breed,
+                ),
                 _summaryRow(context, Icons.cake, 'Дата рождения', birthDate),
-                _summaryRow(context, gender.icon ?? Icons.help_outline, 'Пол', gender.label),
+                _summaryRow(
+                  context,
+                  gender.icon ?? Icons.help_outline,
+                  'Пол',
+                  gender.label,
+                ),
               ],
             ),
           ),
@@ -518,7 +575,12 @@ class _StepSummary extends StatelessWidget {
     );
   }
 
-  Widget _summaryRow(BuildContext context, IconData icon, String label, String value) {
+  Widget _summaryRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       child: Row(

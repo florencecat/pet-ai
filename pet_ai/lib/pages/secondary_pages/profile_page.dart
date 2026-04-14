@@ -68,9 +68,12 @@ class _PetProfilePageState extends State<PetProfilePage> {
     await ProfileService().saveProfile(_profile!);
 
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Профиль сохранён'), backgroundColor: ThemeColors.gradientEnd));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Профиль сохранён'),
+          backgroundColor: ThemeColors.gradientEnd,
+        ),
+      );
     }
   }
 
@@ -155,7 +158,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                 width: 120,
                                 height: 120,
                                 decoration: BoxDecoration(
-                                  border: BoxBorder.all(color: ThemeColors.primary, width: 4),
+                                  border: BoxBorder.all(
+                                    color: ThemeColors.primary,
+                                    width: 4,
+                                  ),
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: [
@@ -242,7 +248,11 @@ class _PetProfilePageState extends State<PetProfilePage> {
                           ),
                           suffixIcon: Padding(
                             padding: EdgeInsetsGeometry.only(right: 6),
-                            child: Icon(Icons.calendar_today, color: Theme.of(context).dividerColor, size: 18),
+                            child: Icon(
+                              Icons.calendar_today,
+                              color: Theme.of(context).dividerColor,
+                              size: 18,
+                            ),
                           ),
                         ),
                         validator: (v) => v == null || v.trim().isEmpty
@@ -263,21 +273,17 @@ class _PetProfilePageState extends State<PetProfilePage> {
                           ).colorScheme.surface,
                           selectedBackgroundColor: Theme.of(
                             context,
-                          ).colorScheme.primary
+                          ).colorScheme.primary,
                         ),
                         segments: const <ButtonSegment<Gender>>[
-                          ButtonSegment<Gender>(
-                            value: Gender.none,
-                            label: Text("Не указан"),
-                          ),
-                          ButtonSegment<Gender>(
+                          ButtonSegment(
                             value: Gender.male,
-                            label: Text("Мужской"),
+                            label: Text("Мальчик"),
                             icon: Icon(Icons.male),
                           ),
-                          ButtonSegment<Gender>(
+                          ButtonSegment(
                             value: Gender.female,
-                            label: Text("Женский"),
+                            label: Text("Девочка"),
                             icon: Icon(Icons.female),
                           ),
                         ],
