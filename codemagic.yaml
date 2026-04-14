@@ -7,3 +7,4 @@ workflows:
         script: |
           cd pet_ai
           flutter pub get
+          flutter build ipa --release
