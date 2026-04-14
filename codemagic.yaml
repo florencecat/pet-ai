@@ -1,0 +1,9 @@
+workflows:
+  ios-workflow:
+    environment:
+      flutter: stable
+    scripts:
+      - name: Set project directory
+        script: |
+          cd pet_ai
+          flutter pub get
