@@ -107,7 +107,7 @@ class _CalendarPageState extends State<CalendarPage> {
             children: [
               GlassPlate(
                 child: Padding(
-                  padding: EdgeInsetsGeometry.all(16),
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16),
                   child: TableCalendar(
                     locale: 'ru_RU',
                     startingDayOfWeek: StartingDayOfWeek.monday,
