@@ -5,7 +5,7 @@ import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/widgets/draggable_scrollable_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/event_draggable_sheet.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
 class CalendarPage extends StatefulWidget {

@@ -5,7 +5,6 @@ import 'package:pet_ai/models/history.dart';
 enum PetMood {
   happy,
   calm,
-  sad,
   sick,
   playful,
 }
@@ -17,8 +16,6 @@ extension PetMoodX on PetMood {
         return "Счастлив";
       case PetMood.calm:
         return "Спокойный";
-      case PetMood.sad:
-        return "Грустный";
       case PetMood.sick:
         return "Болеет";
       case PetMood.playful:
@@ -30,14 +27,12 @@ extension PetMoodX on PetMood {
     switch (this) {
       case PetMood.sick:
         return 1;
-      case PetMood.sad:
-        return 2;
       case PetMood.calm:
-        return 3;
+        return 2;
       case PetMood.playful:
-        return 4;
+        return 3;
       case PetMood.happy:
-        return 5;
+        return 4;
     }
   }
 
@@ -45,8 +40,6 @@ extension PetMoodX on PetMood {
     switch (this) {
       case PetMood.sick:
         return Icons.sick_outlined;
-      case PetMood.sad:
-        return Icons.sentiment_very_dissatisfied;
       case PetMood.calm:
         return Icons.sentiment_neutral;
       case PetMood.playful:

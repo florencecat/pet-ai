@@ -79,6 +79,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     _profile.profileImage = _profileImage;
 
     await ProfileService().saveProfile(_profile);
+    await ProfileService().setActiveProfile(_profile.id);
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/');
     }
@@ -87,6 +88,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   InputDecoration _input(String label, {Widget? suffixIcon}) {
     return InputDecoration(
       labelText: label,
+      labelStyle: Theme.of(context).textTheme.bodyLarge,
       filled: true,
       fillColor: ThemeColors.white,
       border: OutlineInputBorder(

@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
-class WeightStepper extends StatefulWidget {
-  final double weight;
+class PillStepper extends StatefulWidget {
+  final double value;
   final ValueChanged<double> onChanged;
 
-  const WeightStepper({
+  const PillStepper({
     super.key,
-    required this.weight,
+    required this.value,
     required this.onChanged,
   });
 
   @override
-  State<WeightStepper> createState() => _WeightStepperState();
+  State<PillStepper> createState() => _PillStepperState();
 }
 
-class _WeightStepperState extends State<WeightStepper> {
+class _PillStepperState extends State<PillStepper> {
   late TextEditingController controller;
   late double weight;
 
@@ -26,7 +26,7 @@ class _WeightStepperState extends State<WeightStepper> {
   void initState() {
     super.initState();
 
-    weight = widget.weight;
+    weight = widget.value;
 
     controller = TextEditingController(text: weight.toStringAsFixed(1));
   }

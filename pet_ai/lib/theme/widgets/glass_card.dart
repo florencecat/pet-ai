@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
@@ -92,7 +93,13 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassPlate(
       color: color,
-      child: InkWell(onTap: callback, child: child),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          if (callback != null) callback!.call();
+        },
+        child: child,
+      ),
     );
   }
 }
@@ -117,7 +124,10 @@ class GlassEventCard extends StatelessWidget {
       padding: EdgeInsetsGeometry.symmetric(vertical: 8),
       child: GlassPlate(
         child: InkWell(
-          onTap: callback,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            if (callback != null) callback!.call();
+          },
           child: ListTile(
             leading: Icon(event.category.icon, color: event.category.color),
             title: Text(
@@ -179,7 +189,7 @@ class GlassSettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsetsGeometry.symmetric(vertical: 8),
+      padding: EdgeInsetsGeometry.only(bottom: 8),
       child: GlassPlate(
         color: color,
         child: ListTile(
