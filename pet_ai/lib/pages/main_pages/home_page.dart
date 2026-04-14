@@ -423,7 +423,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: GlassPlate(
-                color: isActive ? ThemeColors.primary : Colors.white,
+                color: isActive ? profile.color : Colors.white,
                 child: ListTile(
                   leading: CircleAvatar(
                     radius: 22,

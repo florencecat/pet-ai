@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/note.dart';
 import 'package:pet_ai/models/species.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -84,6 +85,7 @@ class PetProfile {
   WeightHistory weightHistory;
   MoodHistory moodHistory;
   NoteHistory noteHistory;
+  Color color;
 
   PetProfile({
     this.name = '',
@@ -96,7 +98,8 @@ class PetProfile {
   }) : id = UniqueKey().toString(),
         weightHistory = WeightHistory.empty(),
         moodHistory = MoodHistory.empty(),
-        noteHistory = NoteHistory.empty();
+        noteHistory = NoteHistory.empty(),
+    color = ThemeColors.defaultProfileColor;
 
   PetProfile.deserialize({
     required this.id,
@@ -110,6 +113,7 @@ class PetProfile {
     required this.weightHistory,
     required this.moodHistory,
     required this.noteHistory,
+    required this.color
   });
 
   Map<String, dynamic> toJson() => {
@@ -124,6 +128,7 @@ class PetProfile {
     'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
     'moodHistory': MoodHistory.moodSerializer.toJsonList(moodHistory),
     'noteHistory': NoteHistory.noteSerializer.toJsonList(noteHistory),
+    'color': color.toARGB32(),
   };
 
   factory PetProfile.fromJson(Map<String, dynamic> json) {
@@ -167,6 +172,7 @@ class PetProfile {
             .entries,
       )
           : NoteHistory.empty(),
+      color: json['color'] != null ? Color(json['color'] as int) : ThemeColors.defaultProfileColor
     );
   }
 }

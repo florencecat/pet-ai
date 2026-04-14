@@ -25,6 +25,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   final _dateController = TextEditingController();
   final _notesController = TextEditingController();
 
+  Color _profileColor = ThemeColors.defaultProfileColor;
   Gender _gender = Gender.none;
   File? _profileImage;
 
@@ -52,6 +53,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     _dateController.text = _formatDate(_profile!.birthDate);
     _gender = _profile!.gender;
     _profileImage = _profile!.profileImage;
+    _profileColor = _profile!.color;
 
     if (mounted) setState(() => _loading = false);
   }
@@ -64,6 +66,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     _profile!.birthDate = _parseDate(_dateController.text);
     _profile!.gender = _gender;
     _profile!.profileImage = _profileImage;
+    _profile!.color = _profileColor;
 
     await ProfileService().saveProfile(_profile!);
 
@@ -294,6 +297,49 @@ class _PetProfilePageState extends State<PetProfilePage> {
                           });
                         },
                       ),
+
+                      const SizedBox(height: 24),
+                      Text("Цвет профиля", style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 50,
+                        child: ListView.separated(
+                          clipBehavior: Clip.none,
+                          scrollDirection: Axis.horizontal,
+                          itemCount: ThemeColors.profileColors.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final color = ThemeColors.profileColors[index];
+                            final isSelected = _profileColor == color;
+                            return GestureDetector(
+                              onTap: () => setState(() => _profileColor = color),
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected ? Colors.black : Colors.transparent,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    if (isSelected)
+                                      BoxShadow(
+                                        color: color.withAlpha(100),
+                                        blurRadius: 8,
+                                        spreadRadius: 2,
+                                      )
+                                  ],
+                                ),
+                                child: isSelected
+                                    ? const Icon(Icons.check, color: Colors.white)
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      )
                     ],
                   ),
                 ),

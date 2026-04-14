@@ -16,6 +16,16 @@ class ThemeColors {
 
   static const gradientColors = [gradientBegin, gradientEnd];
 
+  static const defaultProfileColor = primary;
+  static const profileColors = [
+    Color(0xFFB896FF),
+    Color(0xFF96FFE0),
+    Color(0xFFFFF896),
+    Color(0xFFFFAD96),
+    Color(0xFF9C95AA),
+    Color(0xFF5B8075)
+  ];
+
   static const textPrimary = Color(0xFF41355b);
   static const border = secondary;
   static const splash = Color(0x40698583);
