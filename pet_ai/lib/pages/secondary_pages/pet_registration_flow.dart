@@ -305,7 +305,6 @@ class _StepBasic extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<PetSpecies>(
-          initialValue: selectedSpecies,
           decoration: inputDecoration('Вид'),
           dropdownColor: ThemeColors.white,
           items: BuiltInSpecies.all
