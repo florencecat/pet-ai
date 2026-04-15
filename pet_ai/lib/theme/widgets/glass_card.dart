@@ -1,10 +1,18 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
+/// Имитация liquid-glass карточки без BackdropFilter.
+///
+/// Раньше использовался настоящий blur через [BackdropFilter] —
+/// он крайне дорогой (каждая карточка читает фрейм-буфер и блюрит его),
+/// поэтому при множестве карточек на странице UI заметно подтормаживал.
+///
+/// Сейчас рисуем плоский полупрозрачный фон с лёгким верхним хайлайтом
+/// и тенью — визуально близко к стеклу, но без чтения буфера.
+/// Обёрнут в [RepaintBoundary], чтобы изолировать перерисовки.
 class GlassPlate extends StatelessWidget {
   final Widget child;
   final Color color;
@@ -13,65 +21,53 @@ class GlassPlate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(28);
+    const borderRadius = BorderRadius.all(Radius.circular(28));
+    final borderColor = color.withAlpha(180);
+    final fillColor = color.withAlpha(220);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: borderRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(30),
-                    blurRadius: 40,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
+    return RepaintBoundary(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          color: fillColor,
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(20),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-          ),
-
-          ClipRRect(
-            borderRadius: borderRadius,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: borderRadius,
-                  color: color.withAlpha(128),
-                  border: Border.all(color: color.withAlpha(153), width: 1.2),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 28,
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(28),
-                          ),
-                          gradient: LinearGradient(
-                            colors: [color.withAlpha(180), color.withAlpha(0)],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                        ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: Stack(
+            children: [
+              // Лёгкий хайлайт сверху — имитация преломления стекла
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withAlpha(80),
+                          Colors.white.withAlpha(0),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
                       ),
                     ),
-
-                    Padding(padding: const EdgeInsets.all(8), child: child),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              Padding(padding: const EdgeInsets.all(8), child: child),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

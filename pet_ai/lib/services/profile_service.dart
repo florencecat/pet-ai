@@ -13,6 +13,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:pet_ai/models/weight.dart';
 import 'package:pet_ai/models/mood.dart';
+import 'package:pet_ai/models/treatment.dart';
 
 class PetContextBuilder {
   static String build(PetProfile pet) {
@@ -85,6 +86,7 @@ class PetProfile {
   WeightHistory weightHistory;
   MoodHistory moodHistory;
   NoteHistory noteHistory;
+  TreatmentHistory treatmentHistory;
   Color color;
 
   PetProfile({
@@ -99,6 +101,7 @@ class PetProfile {
         weightHistory = WeightHistory.empty(),
         moodHistory = MoodHistory.empty(),
         noteHistory = NoteHistory.empty(),
+        treatmentHistory = TreatmentHistory.empty(),
     color = ThemeColors.defaultProfileColor;
 
   PetProfile.deserialize({
@@ -113,6 +116,7 @@ class PetProfile {
     required this.weightHistory,
     required this.moodHistory,
     required this.noteHistory,
+    required this.treatmentHistory,
     required this.color
   });
 
@@ -128,6 +132,8 @@ class PetProfile {
     'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
     'moodHistory': MoodHistory.moodSerializer.toJsonList(moodHistory),
     'noteHistory': NoteHistory.noteSerializer.toJsonList(noteHistory),
+    'treatmentHistory':
+        TreatmentHistory.treatmentSerializer.toJsonList(treatmentHistory),
     'color': color.toARGB32(),
   };
 
@@ -172,6 +178,13 @@ class PetProfile {
             .entries,
       )
           : NoteHistory.empty(),
+      treatmentHistory: json['treatmentHistory'] != null
+          ? TreatmentHistory(
+              entries: TreatmentHistory.treatmentSerializer
+                  .fromJsonList(json['treatmentHistory'])
+                  .entries,
+            )
+          : TreatmentHistory.empty(),
       color: json['color'] != null ? Color(json['color'] as int) : ThemeColors.defaultProfileColor
     );
   }
@@ -347,6 +360,14 @@ class ProfileService {
     final profile = await loadProfile(petId);
     if (profile != null) {
       profile.moodHistory.clear();
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> clearTreatmentHistory(String petId) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      profile.treatmentHistory.clear();
       await saveProfile(profile);
     }
   }
