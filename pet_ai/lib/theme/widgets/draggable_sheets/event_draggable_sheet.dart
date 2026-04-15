@@ -15,12 +15,12 @@ extension EventSheetModeX on EventSheetMode {
   bool get isEditable => isEdit || isCreate;
 
   String get label {
-    switch(this) {
+    switch (this) {
       case EventSheetMode.view:
         return 'Просмотр события';
       case EventSheetMode.create:
         return 'Новое событие';
-        case EventSheetMode.edit:
+      case EventSheetMode.edit:
         return 'Изменение события';
     }
   }
@@ -31,15 +31,22 @@ class EventDraggableSheet extends StatefulWidget {
   final PetEvent? event;
   final DateTime? dateTime;
 
-  const EventDraggableSheet({super.key, required this.event})
-    : mode = EventSheetMode.view,
-      dateTime = null;
+  /// Дата вхождения, для которой проверяется/переключается статус выполнения.
+  /// Актуально при открытии из календаря (selectedDay).
+  /// Если null — используется event.dateTime.
+  final DateTime? completionDate;
+
+  const EventDraggableSheet({super.key, required this.event, this.completionDate})
+      : mode = EventSheetMode.view,
+        dateTime = null;
   const EventDraggableSheet.edit({super.key, required this.event})
-    : mode = EventSheetMode.edit,
-      dateTime = null;
+      : mode = EventSheetMode.edit,
+        dateTime = null,
+        completionDate = null;
   const EventDraggableSheet.create({super.key, required this.dateTime})
-    : mode = EventSheetMode.create,
-      event = null;
+      : mode = EventSheetMode.create,
+        event = null,
+        completionDate = null;
 
   @override
   State<EventDraggableSheet> createState() => _EventDraggableSheetState();
@@ -58,6 +65,11 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
   List<int> _customDays = [];
   int _remindBeforeMinutes = 0;
 
+  /// Профили для выбора питомцев
+  List<PetProfile> _allProfiles = [];
+  List<String> _selectedPetIds = [];
+  bool _profilesLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +87,29 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
       _remindBeforeMinutes = widget.event!.remindBeforeMinutes;
     }
     _mode = widget.mode;
+    _loadProfiles();
+  }
+
+  Future<void> _loadProfiles() async {
+    final profiles = await ProfileService().loadAllProfiles();
+    final activeId = await ProfileService().getActiveProfileId();
+
+    List<String> preselected;
+    if (widget.mode == EventSheetMode.create) {
+      preselected = activeId != null ? [activeId] : [];
+    } else if (widget.event != null && widget.event!.petIds.isNotEmpty) {
+      preselected = List.of(widget.event!.petIds);
+    } else {
+      preselected = activeId != null ? [activeId] : [];
+    }
+
+    if (mounted) {
+      setState(() {
+        _allProfiles = profiles;
+        _selectedPetIds = preselected;
+        _profilesLoaded = true;
+      });
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -123,30 +158,33 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
     if (confirmed != true) return;
 
-    final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) await EventService().deleteEvent(profileId, event);
+    await EventService().deleteEvent(event);
     if (context.mounted) Navigator.of(context).pop(true);
   }
 
   Future<void> _createEvent(BuildContext context, PetEvent event) async {
-    final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) await EventService().createEvent(profileId, event);
+    await EventService().createEvent(event);
     if (context.mounted) Navigator.of(context).pop(true);
   }
 
   Future<void> _editEvent(BuildContext context, PetEvent event) async {
-    final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) await EventService().saveEvent(profileId, event);
+    await EventService().saveEvent(event);
     if (context.mounted) Navigator.of(context).pop(true);
   }
 
   Future<void> _toggleCompleted() async {
     final event = widget.event!;
-    final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) {
-      await EventService().toggleCompleted(profileId, event);
-      setState(() {});
-    }
+    final date = widget.completionDate ?? event.dateTime;
+    event.toggleCompletedOn(date);
+    await EventService().saveEvent(event);
+    setState(() {});
+  }
+
+  bool get _isCompletedForDate {
+    final event = widget.event;
+    if (event == null) return false;
+    final date = widget.completionDate ?? event.dateTime;
+    return event.isCompletedOn(date);
   }
 
   bool _verifyForm() {
@@ -174,6 +212,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
     final repeat = _isRepeating ? _selectedRepeat : RepeatInterval.none;
     final customDays = repeat == RepeatInterval.custom ? _customDays : <int>[];
+    final petIds = _selectedPetIds.isNotEmpty ? _selectedPetIds : <String>[];
 
     if (EventSheetModeX(_mode).isCreate) {
       _createEvent(
@@ -185,12 +224,14 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
           repeat: repeat,
           customDays: customDays,
           remindBeforeMinutes: _remindBeforeMinutes,
+          petIds: petIds,
         ),
       );
     }
     if (EventSheetModeX(_mode).isEdit) {
       PetEvent event = widget.event!;
-      event.assign(name, category, dateTime, repeat, customDays, _remindBeforeMinutes);
+      event.assign(
+          name, category, dateTime, repeat, customDays, _remindBeforeMinutes, petIds);
       _editEvent(context, event);
     }
   }
@@ -272,11 +313,12 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
   List<Widget> _buildViewContent() {
     final event = widget.event!;
+    final isCompleted = _isCompletedForDate;
 
     return [
-      // Completion status
+      // Статус выполнения
       GlassPlate(
-        color: event.completed ? ThemeColors.primary : Colors.white,
+        color: isCompleted ? ThemeColors.primary : Colors.white,
         child: InkWell(
           onTap: _toggleCompleted,
           child: Padding(
@@ -284,15 +326,17 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
             child: Row(
               children: [
                 Icon(
-                  event.completed ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: event.completed ? Colors.white : ThemeColors.primary,
+                  isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                  color: isCompleted ? Colors.white : ThemeColors.primary,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    event.completed ? 'Выполнено' : 'Отметить выполненным',
+                    isCompleted ? 'Выполнено' : 'Отметить выполненным',
                     style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      color: event.completed ? Colors.white : ThemeColors.textPrimary,
+                      color: isCompleted
+                          ? Colors.white
+                          : ThemeColors.textPrimary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -305,18 +349,18 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
       const SizedBox(height: 12),
 
-      // Event name
+      // Название
       Text(
         event.name,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleLarge!.copyWith(
-          decoration: event.completed ? TextDecoration.lineThrough : null,
+          decoration: isCompleted ? TextDecoration.lineThrough : null,
         ),
       ),
 
       const SizedBox(height: 8),
 
-      // Category
+      // Категория
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -333,7 +377,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
       const SizedBox(height: 8),
 
-      // Date/time
+      // Дата/время
       GlassPlate(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
@@ -351,7 +395,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
         ),
       ),
 
-      // Repeat info
+      // Повтор
       if (event.repeat != RepeatInterval.none) ...[
         const SizedBox(height: 8),
         GlassPlate(
@@ -390,14 +434,59 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
           ),
         ),
       ],
+
+      // Питомцы, связанные с событием
+      if (event.petIds.isNotEmpty && _profilesLoaded) ...[
+        const SizedBox(height: 8),
+        _buildPetBadges(event.petIds),
+      ],
     ];
+  }
+
+  Widget _buildPetBadges(List<String> petIds) {
+    final linked = _allProfiles.where((p) => petIds.contains(p.id)).toList();
+    if (linked.isEmpty) return const SizedBox.shrink();
+
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        child: Row(
+          children: [
+            const Icon(Icons.pets, size: 20, color: ThemeColors.border),
+            const SizedBox(width: 8),
+            Wrap(
+              spacing: 6,
+              children: linked.map((p) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: p.color.withAlpha(60),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: p.color.withAlpha(120)),
+                  ),
+                  child: Text(
+                    p.name.isEmpty ? 'Питомец' : p.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: p.color.withAlpha(220),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ─── Edit/Create Mode ──────────────────────────────────────────────────────
 
   List<Widget> _buildEditableContent() {
     return [
-      // Name field
+      // Название
       GlassPlate(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -415,7 +504,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
       const SizedBox(height: 8),
 
-      // Category picker
+      // Категория
       GlassPlate(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -437,7 +526,8 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                       children: [
                         Icon(c.icon, color: c.color),
                         const SizedBox(width: 8),
-                        Text(c.name, style: Theme.of(context).textTheme.bodyMedium),
+                        Text(c.name,
+                            style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ),
                   ),
@@ -452,18 +542,20 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
       const SizedBox(height: 8),
 
-      // Date & Time row
+      // Дата и время
       Row(
         children: [
           Expanded(
             child: GlassCard(
               callback: () => _selectDate(context),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.calendar_today,
+                    Icon(
+                      Icons.calendar_today,
                       size: 18,
                       color: _selectedDate == null
                           ? ThemeColors.danger
@@ -486,11 +578,13 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
             child: GlassCard(
               callback: () => _selectTime(context),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.access_time,
+                    Icon(
+                      Icons.access_time,
                       size: 18,
                       color: _selectedTime == null
                           ? ThemeColors.danger
@@ -513,7 +607,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
       const SizedBox(height: 8),
 
-      // Repeat toggle
+      // Повтор
       GlassPlate(
         child: SwitchListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
@@ -538,7 +632,6 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
         ),
       ),
 
-      // Repeat options (animated)
       AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         transitionBuilder: (child, animation) =>
@@ -550,7 +643,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
 
       const SizedBox(height: 8),
 
-      // Remind before
+      // Напомнить за
       GlassPlate(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -593,7 +686,61 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
           ),
         ),
       ),
+
+      // Связанные питомцы (только если профилей > 1)
+      if (_profilesLoaded && _allProfiles.length > 1) ...[
+        const SizedBox(height: 8),
+        _buildPetSelector(),
+      ],
     ];
+  }
+
+  Widget _buildPetSelector() {
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Питомцы',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: _allProfiles.map((p) {
+                final selected = _selectedPetIds.contains(p.id);
+                return FilterChip(
+                  label: Text(p.name.isEmpty ? 'Без имени' : p.name),
+                  selected: selected,
+                  selectedColor: p.color.withAlpha(180),
+                  backgroundColor: Colors.white.withAlpha(150),
+                  labelStyle: TextStyle(
+                    fontSize: 13,
+                    color: selected ? Colors.white : ThemeColors.textPrimary,
+                    fontWeight:
+                        selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                  checkmarkColor: Colors.white,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _selectedPetIds.add(p.id);
+                      } else if (_selectedPetIds.length > 1) {
+                        // Оставляем хотя бы одного питомца
+                        _selectedPetIds.remove(p.id);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildRepeatOptions() {
@@ -602,7 +749,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
       children: [
         const SizedBox(height: 8),
 
-        // Repeat interval selector as chips
+        // Интервал повторения
         GlassPlate(
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -638,7 +785,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
           ),
         ),
 
-        // Custom weekday picker
+        // Выбор дней недели для custom
         if (_selectedRepeat == RepeatInterval.custom) ...[
           const SizedBox(height: 8),
           GlassPlate(

@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pet_ai/pages/main_pages/settings_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
+import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 
@@ -85,6 +86,11 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _checkProfile() async {
+    // Однократная миграция событий из старого per-pet хранилища в глобальное v2
+    final profiles = await ProfileService().loadAllProfiles();
+    await EventService()
+        .migrateFromLegacy(profiles.map((p) => p.id).toList());
+
     final hasProfile = await ProfileService().hasProfiles();
     setState(() {
       _hasProfile = hasProfile;

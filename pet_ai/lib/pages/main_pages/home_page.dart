@@ -56,7 +56,7 @@ class _HomePageState extends State<HomePage> {
       } else {
         throw Exception("Failed navigate to registration flow");
       }
-      return; // прерываем — дальше работать не с чем
+      return;
     }
 
     setState(() {
@@ -64,22 +64,31 @@ class _HomePageState extends State<HomePage> {
       _isLoadingProfile = false;
     });
 
-    // Профиль есть — загружаем события
     final events = await EventService().loadEvents(profile.id);
 
     if (!mounted) return;
 
+    final now = DateTime.now();
+
+    // Просроченные: не повторяющиеся, дата в прошлом, не выполнены
+    final overdue = events
+        .where((e) => e.isOverdue)
+        .toList()
+      ..sort((a, b) => b.dateTime.compareTo(a.dateTime)); // свежие сначала
+
+    // Предстоящие: повторяющиеся или дата ≥ сейчас
+    final upcoming = events
+        .where(
+          (e) =>
+              e.repeat != RepeatInterval.none ||
+              e.dateTime.isAfter(now) ||
+              e.dateTime.isAtSameMomentAs(now),
+        )
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
     setState(() {
-      _events =
-          events
-              .where(
-                (e) =>
-                    e.repeat != RepeatInterval.none ||
-                    e.dateTime.isAfter(DateTime.now()) ||
-                    e.dateTime.isAtSameMomentAs(DateTime.now()),
-              )
-              .toList()
-            ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      _events = [...overdue, ...upcoming];
       _isLoadingEvents = false;
     });
   }
@@ -180,7 +189,6 @@ class _HomePageState extends State<HomePage> {
     if (result == '__create_new__') {
       if (context.mounted) {
         await Navigator.pushNamed(context, '/registration');
-        // After returning from registration, refresh
         widget.onProfileSwitched?.call();
       }
     } else {
@@ -194,6 +202,8 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final description = _profileDescription();
     final topPadding = MediaQuery.of(context).padding.top;
+    final profileColor = _profile?.color ?? ThemeColors.primary;
+
     return Scaffold(
       backgroundColor: ThemeColors.white,
       body: Container(
@@ -205,25 +215,72 @@ class _HomePageState extends State<HomePage> {
           children: [
             Row(
               children: [
+                // ── Аватарка с обводкой и шевроном ──────────────────────
                 GestureDetector(
                   onTap: () => _showProfileSwitcher(context),
                   child: InlineLoading(
                     isLoading: _isLoadingProfile,
-                    child: CircleAvatar(
-                      radius: 42,
-                      backgroundColor: Colors.white.withValues(alpha: 0.3),
-                      child: _profile?.profileImage == null
-                          ? const Icon(
-                              Icons.pets,
-                              size: 40,
-                              color: Colors.white,
-                            )
-                          : CircleAvatar(
-                              radius: 40,
-                              backgroundImage: FileImage(
-                                _profile!.profileImage!,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Обводка цвета профиля
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: profileColor,
+                              width: 2.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: profileColor.withAlpha(80),
+                                blurRadius: 10,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.3),
+                            child: _profile?.profileImage == null
+                                ? const Icon(
+                                    Icons.pets,
+                                    size: 38,
+                                    color: Colors.white,
+                                  )
+                                : CircleAvatar(
+                                    radius: 38,
+                                    backgroundImage: FileImage(
+                                      _profile!.profileImage!,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        // Шеврон-индикатор переключения профиля
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: profileColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
                               ),
                             ),
+                            child: const Icon(
+                              Icons.expand_more_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -251,7 +308,8 @@ class _HomePageState extends State<HomePage> {
                                 _profile == null || _profile!.name.isEmpty
                                     ? "Загружаем..."
                                     : _profile!.name,
-                                style: Theme.of(context).textTheme.titleLarge,
+                                style:
+                                    Theme.of(context).textTheme.titleLarge,
                               ),
                             ],
                           ),

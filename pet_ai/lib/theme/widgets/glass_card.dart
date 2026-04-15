@@ -111,6 +111,16 @@ class GlassEventCard extends StatelessWidget {
   final VoidCallback? trailingCallback;
   final ValueChanged<bool>? onCompletedChanged;
 
+  /// Дата вхождения, для которой проверяется/переключается статус выполнения.
+  /// Если не задана — используется event.dateTime.
+  final DateTime? selectedDate;
+
+  /// Цвет профиля питомца (для режима «все питомцы»)
+  final Color? petColor;
+
+  /// Имя питомца (для режима «все питомцы»)
+  final String? petName;
+
   const GlassEventCard({
     super.key,
     required this.event,
@@ -118,13 +128,24 @@ class GlassEventCard extends StatelessWidget {
     this.trailingIcon,
     this.trailingCallback,
     this.onCompletedChanged,
+    this.selectedDate,
+    this.petColor,
+    this.petName,
   });
+
+  DateTime get _effectiveDate => selectedDate ?? event.dateTime;
+
+  bool get _isCompleted => event.isCompletedOn(_effectiveDate);
 
   @override
   Widget build(BuildContext context) {
+    final overdue = event.isOverdue;
+    final cardColor = overdue ? const Color(0xFFFFAD96) : Colors.white;
+
     return Padding(
       padding: EdgeInsetsGeometry.symmetric(vertical: 8),
       child: GlassPlate(
+        color: cardColor,
         child: InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
@@ -133,12 +154,12 @@ class GlassEventCard extends StatelessWidget {
           child: ListTile(
             leading: onCompletedChanged != null
                 ? GestureDetector(
-                    onTap: () => onCompletedChanged!(!event.completed),
+                    onTap: () => onCompletedChanged!(!_isCompleted),
                     child: Icon(
-                      event.completed
+                      _isCompleted
                           ? Icons.check_circle
                           : Icons.radio_button_unchecked,
-                      color: event.completed
+                      color: _isCompleted
                           ? ThemeColors.primary
                           : event.category.color,
                       size: 28,
@@ -150,15 +171,31 @@ class GlassEventCard extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 inherit: true,
                 color: ThemeColors.textPrimary,
-                decoration: event.completed ? TextDecoration.lineThrough : null,
+                decoration: _isCompleted ? TextDecoration.lineThrough : null,
               ),
             ),
-            subtitle: Text(
-              DateFormat('dd.MM.yyyy – HH:mm').format(event.dateTime),
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                inherit: true,
-                color: ThemeColors.textPrimary,
-              ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  overdue
+                      ? '⚠ ${DateFormat('dd.MM.yyyy – HH:mm').format(event.dateTime)}'
+                      : DateFormat('dd.MM.yyyy – HH:mm').format(event.dateTime),
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    inherit: true,
+                    color: overdue
+                        ? const Color(0xFFB85C00)
+                        : ThemeColors.textPrimary,
+                    fontWeight:
+                        overdue ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+                if (petName != null) ...[
+                  const SizedBox(height: 3),
+                  _PetBadge(name: petName!, color: petColor ?? ThemeColors.primary),
+                ],
+              ],
             ),
             trailing: trailingIcon != null
                 ? IconButton(
@@ -167,6 +204,33 @@ class GlassEventCard extends StatelessWidget {
                   )
                 : null,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PetBadge extends StatelessWidget {
+  final String name;
+  final Color color;
+
+  const _PetBadge({required this.name, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withAlpha(60),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withAlpha(100), width: 0.8),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color.withAlpha(200),
         ),
       ),
     );

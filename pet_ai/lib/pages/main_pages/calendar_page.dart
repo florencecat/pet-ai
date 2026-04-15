@@ -24,16 +24,22 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime? _selectedDay;
 
   bool _isLoadingEvents = true;
+  bool _showAllPets = false;
+
   List<PetEvent> _events = [];
 
+  /// Все профили (для режима «все питомцы»)
+  List<PetProfile> _allProfiles = [];
+
+  /// Активный профиль
+  PetProfile? _activeProfile;
+
+  /// Map petId → цвет и имя (для меток на календаре и бейджей на карточках)
+  Map<String, Color> _petColors = {};
+  Map<String, String> _petNames = {};
+
   void _refresh() async {
-    final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) {
-      final events = await EventService().loadEvents(profileId);
-      setState(() {
-        _events = events;
-      });
-    }
+    await _loadEvents();
   }
 
   void openCreateEventSheet(BuildContext context, DateTime dateTime) async {
@@ -49,35 +55,65 @@ class _CalendarPageState extends State<CalendarPage> {
     if (updated == true) _refresh();
   }
 
-  void openViewEventSheet(BuildContext context, PetEvent event) async {
+  void openViewEventSheet(
+    BuildContext context,
+    PetEvent event, {
+    DateTime? completionDate,
+  }) async {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet(event: event),
+      builder: (_) => EventDraggableSheet(
+        event: event,
+        completionDate: completionDate,
+      ),
     );
 
     if (updated == true) _refresh();
   }
 
   Future<void> _loadEvents() async {
-    setState(() {
-      _isLoadingEvents = true;
-    });
+    setState(() => _isLoadingEvents = true);
 
-    final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) {
-      final events = await EventService().loadEvents(profileId);
-      if (events.length > 1) {
-        events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
-      }
-      setState(() {
-        _isLoadingEvents = false;
-        _events = events;
-      });
+    final allProfiles = await ProfileService().loadAllProfiles();
+    final activeId = await ProfileService().getActiveProfileId();
+
+    final petColors = <String, Color>{};
+    final petNames = <String, String>{};
+    PetProfile? activeProfile;
+
+    for (final p in allProfiles) {
+      petColors[p.id] = p.color;
+      petNames[p.id] = p.name.isEmpty ? 'Питомец' : p.name;
+      if (p.id == activeId) activeProfile = p;
     }
+
+    List<PetEvent> events;
+    if (_showAllPets) {
+      final allIds = allProfiles.map((p) => p.id).toList();
+      events = await EventService().loadEventsForPets(allIds);
+    } else if (activeId != null) {
+      events = await EventService().loadEvents(activeId);
+    } else {
+      events = [];
+    }
+
+    if (events.length > 1) {
+      events.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isLoadingEvents = false;
+      _events = events;
+      _allProfiles = allProfiles;
+      _activeProfile = activeProfile;
+      _petColors = petColors;
+      _petNames = petNames;
+    });
   }
 
   @override
@@ -86,9 +122,33 @@ class _CalendarPageState extends State<CalendarPage> {
     _loadEvents();
 
     final initial = widget.initialDate ?? DateTime.now();
-
     _focusedDay = initial;
     _selectedDay = initial;
+  }
+
+  /// Возвращает цвет точки для события в зависимости от режима отображения
+  Color _markerColor(PetEvent event) {
+    if (_showAllPets && event.petIds.isNotEmpty) {
+      return _petColors[event.petIds.first] ?? event.category.color;
+    }
+    return event.category.color;
+  }
+
+  /// Возвращает имя питомца для карточки (только в режиме «все питомцы»)
+  String? _petNameFor(PetEvent event) {
+    if (!_showAllPets) return null;
+    if (event.petIds.isEmpty) return null;
+    // Если у события несколько питомцев — перечисляем через запятую
+    return event.petIds
+        .map((id) => _petNames[id] ?? '')
+        .where((n) => n.isNotEmpty)
+        .join(', ');
+  }
+
+  /// Возвращает цвет первого питомца события (для бейджа)
+  Color? _petColorFor(PetEvent event) {
+    if (!_showAllPets || event.petIds.isEmpty) return null;
+    return _petColors[event.petIds.first];
   }
 
   @override
@@ -105,6 +165,48 @@ class _CalendarPageState extends State<CalendarPage> {
             clipBehavior: Clip.none,
             padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
             children: [
+              // ── Переключатель «текущий питомец / все питомцы» ───────────
+              if (_allProfiles.length > 1) ...[
+                GlassPlate(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _PetToggleChip(
+                          label: _activeProfile?.name.isNotEmpty == true
+                              ? _activeProfile!.name
+                              : 'Текущий',
+                          selected: !_showAllPets,
+                          color: _activeProfile?.color ?? ThemeColors.primary,
+                          onTap: () {
+                            if (_showAllPets) {
+                              setState(() => _showAllPets = false);
+                              _loadEvents();
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _PetToggleChip(
+                          label: 'Все питомцы',
+                          selected: _showAllPets,
+                          color: ThemeColors.secondary,
+                          onTap: () {
+                            if (!_showAllPets) {
+                              setState(() => _showAllPets = true);
+                              _loadEvents();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // ── Календарь ────────────────────────────────────────────────
               GlassPlate(
                 child: Padding(
                   padding: EdgeInsetsGeometry.symmetric(horizontal: 16),
@@ -124,6 +226,7 @@ class _CalendarPageState extends State<CalendarPage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: events.take(3).map((event) {
+                              final e = event as PetEvent;
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 2,
@@ -132,7 +235,7 @@ class _CalendarPageState extends State<CalendarPage> {
                                   width: 8,
                                   height: 8,
                                   decoration: BoxDecoration(
-                                    color: (event as PetEvent).category.color,
+                                    color: _markerColor(e),
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -175,19 +278,14 @@ class _CalendarPageState extends State<CalendarPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
+                    selectedDayPredicate: (day) =>
+                        isSameDay(day, _selectedDay),
                     onDaySelected: (selectedDay, focusedDay) async {
                       setState(() {
                         _selectedDay = selectedDay;
                         _focusedDay = focusedDay;
                       });
-                      final profileId = await ProfileService().getActiveProfileId();
-                      if (profileId != null) {
-                        final events = await EventService().loadEvents(profileId);
-                        setState(() {
-                          _events = events;
-                        });
-                      }
+                      await _loadEvents();
                     },
                     onFormatChanged: (format) {
                       setState(() => _format = format);
@@ -197,6 +295,7 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
               const SizedBox(height: 16),
 
+              // ── Кнопка «Добавить событие» ───────────────────────────────
               GlassCard(
                 color: ThemeColors.primary,
                 callback: _selectedDay == null
@@ -220,21 +319,74 @@ class _CalendarPageState extends State<CalendarPage> {
 
               const SizedBox(height: 8),
 
+              // ── Список событий выбранного дня ───────────────────────────
               if (_selectedDay != null && _events.isNotEmpty)
                 ...(_events.where((e) => e.occursOn(_selectedDay!))).map(
                   (e) => GlassEventCard(
                     event: e,
-                    callback: () => openViewEventSheet(context, e),
+                    selectedDate: _selectedDay,
+                    petColor: _petColorFor(e),
+                    petName: _petNameFor(e),
+                    callback: () => openViewEventSheet(
+                      context,
+                      e,
+                      completionDate: _selectedDay,
+                    ),
                     onCompletedChanged: (val) async {
-                      final profileId = await ProfileService().getActiveProfileId();
+                      final profileId =
+                          await ProfileService().getActiveProfileId();
                       if (profileId != null) {
-                        await EventService().toggleCompleted(profileId, e);
+                        await EventService()
+                            .toggleCompleted(profileId, e, _selectedDay!);
                         _refresh();
                       }
                     },
                   ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Chip-переключатель ──────────────────────────────────────────────────────
+
+class _PetToggleChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _PetToggleChip({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? color.withAlpha(200) : color.withAlpha(40),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? color : color.withAlpha(80),
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : color.withAlpha(200),
           ),
         ),
       ),
