@@ -355,7 +355,6 @@ class _HomePageState extends State<HomePage> {
               spacing: 16,
               children: [
                 Expanded(
-                  flex: 1,
                   child: GlassCard(
                     callback: () => _openFilesHistory(context),
                     child: Column(
@@ -372,7 +371,7 @@ class _HomePageState extends State<HomePage> {
                                 style: Theme.of(context).textTheme.titleLarge,
                               ),
                               Text(
-                                'Документы, сертификаты и другое',
+                                'Документы, справки и другое',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -391,11 +390,10 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 Expanded(
-                  flex: 1,
                   child: GlassCard(
-                    callback: () {},
+                    callback: () => _openFilesHistory(context),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Padding(
                           padding: EdgeInsetsGeometry.all(10),
@@ -414,15 +412,18 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        HomeActionButton(
-                          icon: Icons.note_alt_outlined,
-                          label: 'Записать',
-                          onPressed: () => _openNotes(context),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                          child: HomeActionButton(
+                            icon: Icons.note_add_outlined,
+                            label: 'Записать',
+                            onPressed: () { },
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
+                )
               ],
             ),
 

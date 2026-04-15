@@ -19,14 +19,14 @@ class AppTheme {
         color: ThemeColors.textPrimary,
       ),
       bodySmall: GoogleFonts.rubikTextTheme().bodySmall!.copyWith(
-        fontSize: 14,
+        fontSize: 12,
         color: ThemeColors.textPrimary,
       ),
       bodyLarge: GoogleFonts.rubikTextTheme().bodyLarge!.copyWith(
         color: ThemeColors.textPrimary,
       ),
       titleLarge: GoogleFonts.rubikTextTheme().titleLarge!.copyWith(
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: FontWeight.w800,
         color: ThemeColors.textPrimary,
       ),
