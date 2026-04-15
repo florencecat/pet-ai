@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
-class HealthActionButton extends StatelessWidget {
+class HomeActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
 
-  const HealthActionButton({
+  const HomeActionButton({
     super.key,
     required this.icon,
     required this.label,

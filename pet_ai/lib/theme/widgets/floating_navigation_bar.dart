@@ -18,7 +18,7 @@ class FloatingNavigationBar extends StatelessWidget {
     Icons.settings,
   ];
 
-  static const _labels = ["Главная", "Чат", "Календарь", "Настройки"];
+  static const _labels = ["Главная", "Чат", "События", "Настройки"];
 
   @override
   Widget build(BuildContext context) {

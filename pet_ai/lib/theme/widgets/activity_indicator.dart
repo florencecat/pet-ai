@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 class InlineLoading extends StatelessWidget {
   final bool isLoading;
   final Widget? child;
-  final double minHeight;
 
   const InlineLoading({
     super.key,
     required this.isLoading,
     this.child,
-    this.minHeight = 120,
   });
 
   @override

@@ -297,6 +297,11 @@ class ProfileService {
     return profiles.isNotEmpty;
   }
 
+  Future<bool> hasMultipleProfiles() async {
+    final profiles = await loadAllProfiles();
+    return profiles.length > 1;
+  }
+
   /// Удаляет все профили и сбрасывает активный id.
   Future<void> clearAll() async {
     final prefs = SharedPreferencesAsync();

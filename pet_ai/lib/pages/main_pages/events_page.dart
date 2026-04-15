@@ -8,17 +8,17 @@ import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/event_draggable_sheet.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
-class CalendarPage extends StatefulWidget {
+class EventsPage extends StatefulWidget {
   final DateTime? initialDate;
   final DateTime selectedDate;
 
-  CalendarPage({super.key, this.initialDate}) : selectedDate = DateTime.now();
+  EventsPage({super.key, this.initialDate}) : selectedDate = DateTime.now();
 
   @override
-  State<CalendarPage> createState() => _CalendarPageState();
+  State<EventsPage> createState() => _EventsPageState();
 }
 
-class _CalendarPageState extends State<CalendarPage> {
+class _EventsPageState extends State<EventsPage> {
   CalendarFormat _format = CalendarFormat.month;
   late DateTime _focusedDay = DateTime.now();
   late DateTime? _selectedDay;

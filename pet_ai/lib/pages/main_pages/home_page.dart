@@ -31,6 +31,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   PetProfile? _profile;
+  bool? _multipleProfiles;
 
   bool _isLoadingProfile = true;
   bool _isLoadingEvents = true;
@@ -59,8 +60,11 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    final multipleProfiles = await ProfileService().hasMultipleProfiles();
+
     setState(() {
       _profile = profile;
+      _multipleProfiles = multipleProfiles;
       _isLoadingProfile = false;
     });
 
@@ -71,21 +75,20 @@ class _HomePageState extends State<HomePage> {
     final now = DateTime.now();
 
     // Просроченные: не повторяющиеся, дата в прошлом, не выполнены
-    final overdue = events
-        .where((e) => e.isOverdue)
-        .toList()
+    final overdue = events.where((e) => e.isOverdue).toList()
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime)); // свежие сначала
 
     // Предстоящие: повторяющиеся или дата ≥ сейчас
-    final upcoming = events
-        .where(
-          (e) =>
-              e.repeat != RepeatInterval.none ||
-              e.dateTime.isAfter(now) ||
-              e.dateTime.isAtSameMomentAs(now),
-        )
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final upcoming =
+        events
+            .where(
+              (e) =>
+                  e.repeat != RepeatInterval.none ||
+                  e.dateTime.isAfter(now) ||
+                  e.dateTime.isAtSameMomentAs(now),
+            )
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     setState(() {
       _events = [...overdue, ...upcoming];
@@ -215,7 +218,6 @@ class _HomePageState extends State<HomePage> {
           children: [
             Row(
               children: [
-                // ── Аватарка с обводкой и шевроном ──────────────────────
                 GestureDetector(
                   onTap: () => _showProfileSwitcher(context),
                   child: InlineLoading(
@@ -223,15 +225,11 @@ class _HomePageState extends State<HomePage> {
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Обводка цвета профиля
                         Container(
                           padding: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: profileColor,
-                              width: 2.5,
-                            ),
+                            border: Border.all(color: profileColor, width: 2.5),
                             boxShadow: [
                               BoxShadow(
                                 color: profileColor.withAlpha(80),
@@ -241,9 +239,10 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                           child: CircleAvatar(
-                            radius: 40,
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.3),
+                            radius: 37,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.3,
+                            ),
                             child: _profile?.profileImage == null
                                 ? const Icon(
                                     Icons.pets,
@@ -258,7 +257,6 @@ class _HomePageState extends State<HomePage> {
                                   ),
                           ),
                         ),
-                        // Шеврон-индикатор переключения профиля
                         Positioned(
                           bottom: 0,
                           right: 0,
@@ -268,13 +266,12 @@ class _HomePageState extends State<HomePage> {
                             decoration: BoxDecoration(
                               color: profileColor,
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
+                              border: Border.all(color: Colors.white, width: 2),
                             ),
-                            child: const Icon(
-                              Icons.expand_more_rounded,
+                            child: Icon(
+                              _multipleProfiles == true
+                                  ? Icons.expand_more_rounded
+                                  : Icons.add,
                               size: 14,
                               color: Colors.white,
                             ),
@@ -308,8 +305,7 @@ class _HomePageState extends State<HomePage> {
                                 _profile == null || _profile!.name.isEmpty
                                     ? "Загружаем..."
                                     : _profile!.name,
-                                style:
-                                    Theme.of(context).textTheme.titleLarge,
+                                style: Theme.of(context).textTheme.titleLarge,
                               ),
                             ],
                           ),
@@ -321,6 +317,80 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            Row(
+              spacing: 16,
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: GlassCard(
+                    callback: () {},
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Padding(
+                          padding: EdgeInsetsGeometry.all(10),
+                          child: Column(
+                            spacing: 6,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Файлы',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              Text(
+                                'Документы, сертификаты и другое',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        HomeActionButton(
+                          icon: Icons.add_circle_outline,
+                          label: 'Добавить',
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: GlassCard(
+                    callback: () {},
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Padding(
+                          padding: EdgeInsetsGeometry.all(10),
+                          child: Column(
+                            spacing: 6,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Заметка',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              Text(
+                                'Зафиксируйте важное событие',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        HomeActionButton(
+                          icon: Icons.note_alt_outlined,
+                          label: 'Записать',
+                          onPressed: () => _openNotes(context),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -344,7 +414,7 @@ class _HomePageState extends State<HomePage> {
                   InlineLoading(
                     isLoading: _isLoadingProfile,
                     child: Padding(
-                      padding: EdgeInsetsGeometry.all(16),
+                      padding: EdgeInsetsGeometry.all(10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -378,7 +448,7 @@ class _HomePageState extends State<HomePage> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: HealthActionButton(
+                          child: HomeActionButton(
                             icon: Icons.monitor_weight_outlined,
                             label: 'Вес',
                             onPressed: () => _openWeightHistory(context),
@@ -386,7 +456,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: HealthActionButton(
+                          child: HomeActionButton(
                             icon: Icons.mood_outlined,
                             label: 'Настроение',
                             onPressed: () => _openMoodHistory(context),
@@ -394,10 +464,10 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: HealthActionButton(
+                          child: HomeActionButton(
                             icon: Icons.note_alt_outlined,
-                            label: 'Заметка',
-                            onPressed: () => _openNotes(context),
+                            label: 'Питание',
+                            onPressed: () { },
                           ),
                         ),
                       ],
@@ -416,12 +486,24 @@ class _HomePageState extends State<HomePage> {
                   'Ближайшие события',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                GlassCard(
-                  callback: widget.onOpenCalendar,
-                  child: Icon(
-                    Icons.add_circle_outline,
-                    color: ThemeColors.primary,
-                  ),
+                Row(
+                  children: [
+                    GlassCard(
+                      callback: widget.onOpenCalendar,
+                      child: Icon(
+                        Icons.notifications,
+                        color: ThemeColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GlassCard(
+                      callback: widget.onOpenCalendar,
+                      child: Icon(
+                        Icons.add_circle_outline,
+                        color: ThemeColors.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -440,8 +522,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-// ─── Profile Switcher Bottom Sheet ─────────────────────────────────────────
 
 class _ProfileSwitcherSheet extends StatelessWidget {
   final List<PetProfile> profiles;

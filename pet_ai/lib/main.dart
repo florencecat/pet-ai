@@ -11,7 +11,7 @@ import 'package:pet_ai/services/profile_service.dart';
 
 import 'package:pet_ai/pages/main_pages/home_page.dart';
 import 'package:pet_ai/pages/main_pages/ai_chat_page.dart';
-import 'package:pet_ai/pages/main_pages/calendar_page.dart';
+import 'package:pet_ai/pages/main_pages/events_page.dart';
 import 'package:pet_ai/pages/secondary_pages/pet_registration_flow.dart';
 import 'package:pet_ai/theme/app_theme.dart';
 import 'package:pet_ai/theme/widgets/floating_navigation_bar.dart';
@@ -117,7 +117,7 @@ class _MainPageState extends State<MainPage> {
         },
       ),
       const AIChatPage(),
-      CalendarPage(initialDate: _calendarInitialDate),
+      EventsPage(initialDate: _calendarInitialDate),
       const SettingsPage(),
     ];
 
