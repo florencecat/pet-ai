@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:pet_ai/services/file_storage_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
 
@@ -19,6 +20,7 @@ class FileUploadSheet extends StatefulWidget {
 class _FileUploadSheetState extends State<FileUploadSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _dateController = TextEditingController();
 
   DateTime? _selectedDate;
   DocumentCategory? _selectedCategory;
@@ -61,9 +63,9 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось выбрать файл: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Не удалось выбрать файл: $e')));
       }
     }
   }
@@ -93,6 +95,8 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
 
   // ─── Выбор даты ───────────────────────────────────────────────────────────
 
+  // ─── Сохранение ───────────────────────────────────────────────────────────
+
   Future<void> _selectDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -102,17 +106,23 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
       lastDate: now.add(const Duration(days: 365 * 5)),
       locale: const Locale('ru'),
     );
-    if (picked != null) setState(() => _selectedDate = picked);
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text = DateFormat(
+          'd MMMM yyyy',
+          'ru_RU',
+        ).format(_selectedDate!);
+      });
+    }
   }
-
-  // ─── Сохранение ───────────────────────────────────────────────────────────
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Укажите дату документа')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Укажите дату документа')));
       return;
     }
     if (_pickedFilePath == null) {
@@ -139,9 +149,9 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка сохранения: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка сохранения: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -178,65 +188,49 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Название (обязательно) ────────────────────────────────────
-            GlassPlate(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Название документа *',
-                    border: InputBorder.none,
-                  ),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Введите название' : null,
-                  textCapitalization: TextCapitalization.sentences,
-                ),
-              ),
+            TextFormField(
+              controller: _nameController,
+              decoration: baseInputDecoration('Название документа'),
+              style: Theme.of(context).textTheme.bodyMedium,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Введите название' : null,
+              textCapitalization: TextCapitalization.sentences,
             ),
 
             const SizedBox(height: 8),
 
             // ── Дата (обязательна) ────────────────────────────────────────
-            GlassCard(
-              callback: _selectDate,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 20,
-                      color: _selectedDate == null
-                          ? ThemeColors.danger
-                          : ThemeColors.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      _selectedDate == null
-                          ? 'Дата документа *'
-                          : DateFormat('d MMMM yyyy', 'ru_RU')
-                              .format(_selectedDate!),
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: _selectedDate == null
-                            ? ThemeColors.secondary
-                            : ThemeColors.textPrimary,
-                      ),
-                    ),
-                  ],
+            TextFormField(
+              keyboardType: TextInputType.none,
+              onTap: _selectDate,
+              controller: _dateController,
+              decoration: baseInputDecoration(
+                'Дата документа',
+                suffixIcon: Icon(
+                  Icons.calendar_today,
+                  color: Theme.of(context).dividerColor,
+                  size: 18,
                 ),
               ),
+              style: Theme.of(context).textTheme.bodyMedium,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Выберите дату' : null,
             ),
 
             const SizedBox(height: 8),
 
             // ── Категория (опционально) ───────────────────────────────────
-            GlassPlate(
+
+            Container(
+              decoration: BoxDecoration(
+                color: ThemeColors.white,
+                borderRadius: BorderRadius.circular(16)
+
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'Категория (необязательно)',
@@ -244,14 +238,17 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
                     ),
                     const SizedBox(height: 8),
                     Wrap(
+                      alignment: WrapAlignment.center,
                       spacing: 8,
                       runSpacing: 6,
                       children: DocumentCategories.all.map((cat) {
                         final selected = _selectedCategory?.id == cat.id;
                         return FilterChip(
-                          avatar: Icon(cat.icon,
-                              size: 16,
-                              color: selected ? Colors.white : cat.color),
+                          avatar: Icon(
+                            cat.icon,
+                            size: 16,
+                            color: selected ? Colors.white : cat.color,
+                          ),
                           label: Text(cat.name),
                           selected: selected,
                           selectedColor: cat.color.withAlpha(200),
@@ -266,8 +263,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
                           onSelected: (_) {
                             setState(() {
                               // повторный тап снимает выбор
-                              _selectedCategory =
-                                  selected ? null : cat;
+                              _selectedCategory = selected ? null : cat;
                             });
                           },
                         );
@@ -277,6 +273,10 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
                 ),
               ),
             ),
+
+            // GlassPlate(
+            //   child: ,
+            // ),
 
             const SizedBox(height: 8),
 
@@ -323,8 +323,11 @@ class _AttachButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.attach_file_rounded,
-                color: ThemeColors.primary, size: 32),
+            Icon(
+              Icons.attach_file_rounded,
+              color: ThemeColors.primary,
+              size: 32,
+            ),
             const SizedBox(height: 6),
             Text(
               'Прикрепить файл или снимок',
@@ -379,8 +382,11 @@ class _FilePreview extends StatelessWidget {
                       width: 60,
                       height: 60,
                       color: ThemeColors.primary.withAlpha(30),
-                      child: Icon(Icons.insert_drive_file_outlined,
-                          color: ThemeColors.primary, size: 32),
+                      child: Icon(
+                        Icons.insert_drive_file_outlined,
+                        color: ThemeColors.primary,
+                        size: 32,
+                      ),
                     ),
             ),
             const SizedBox(width: 12),

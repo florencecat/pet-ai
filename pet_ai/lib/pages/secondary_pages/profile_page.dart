@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/profile_service.dart';
+import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/breed_selector.dart';
 
 class PetProfilePage extends StatefulWidget {
@@ -21,6 +22,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   final _locale = 'ru-RU';
 
   final _nameController = TextEditingController();
+  final _speciesController = TextEditingController();
   final _breedController = TextEditingController();
   final _dateController = TextEditingController();
   final _notesController = TextEditingController();
@@ -215,7 +217,34 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
                       const SizedBox(height: 12),
 
-                      GestureDetector(
+                      TextFormField(
+                        keyboardType: TextInputType.none,
+                        onTap: () async {
+                          final result = await showBreedSelector(context);
+                          if (result != null && result.isNotEmpty) {
+                            setState(() {
+                              _speciesController.text = result;
+                            });
+                          }
+                        },
+                        showCursor: false,
+                        controller: _speciesController,
+                        decoration: baseInputDecoration(
+                          'Вид',
+                          suffixIcon: Icon(
+                            Icons.arrow_drop_down,
+                            color: Theme.of(context).dividerColor,
+                            size: 18,
+                          ),
+                        ),
+                        // validator: (v) => v == null || v.trim().isEmpty
+                        //     ? 'Выберите вид'
+                        //     : null,
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        keyboardType: TextInputType.none,
                         onTap: () async {
                           final result = await showBreedSelector(context);
                           if (result != null && result.isNotEmpty) {
@@ -224,20 +253,25 @@ class _PetProfilePageState extends State<PetProfilePage> {
                             });
                           }
                         },
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            controller: _breedController,
-                            decoration: _input('Порода'),
-                            validator: (v) => v == null || v.trim().isEmpty
-                                ? 'Выберите породу'
-                                : null,
+                        showCursor: false,
+                        controller: _breedController,
+                        decoration: baseInputDecoration(
+                          'Порода',
+                          suffixIcon: Icon(
+                            Icons.arrow_drop_down,
+                            color: Theme.of(context).dividerColor,
+                            size: 18,
                           ),
                         ),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Выберите породу'
+                            : null,
                       ),
 
                       const SizedBox(height: 12),
 
                       TextFormField(
+                        keyboardType: TextInputType.none,
                         onTap: _pickBirthDate,
                         showCursor: false,
                         controller: _dateController,
@@ -298,7 +332,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                         },
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 12),
                       Text("Цвет профиля", style: theme.textTheme.titleMedium),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -307,12 +341,14 @@ class _PetProfilePageState extends State<PetProfilePage> {
                           clipBehavior: Clip.none,
                           scrollDirection: Axis.horizontal,
                           itemCount: ThemeColors.profileColors.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
                           itemBuilder: (context, index) {
                             final color = ThemeColors.profileColors[index];
                             final isSelected = _profileColor == color;
                             return GestureDetector(
-                              onTap: () => setState(() => _profileColor = color),
+                              onTap: () =>
+                                  setState(() => _profileColor = color),
                               child: Container(
                                 width: 50,
                                 height: 50,
@@ -320,7 +356,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                   color: color,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: isSelected ? Colors.black : Colors.transparent,
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.transparent,
                                     width: 3,
                                   ),
                                   boxShadow: [
@@ -329,17 +367,20 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                         color: color.withAlpha(100),
                                         blurRadius: 8,
                                         spreadRadius: 2,
-                                      )
+                                      ),
                                   ],
                                 ),
                                 child: isSelected
-                                    ? const Icon(Icons.check, color: Colors.white)
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                      )
                                     : null,
                               ),
                             );
                           },
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
