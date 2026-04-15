@@ -66,10 +66,8 @@ class _CalendarPageState extends State<CalendarPage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet(
-        event: event,
-        completionDate: completionDate,
-      ),
+      builder: (_) =>
+          EventDraggableSheet(event: event, completionDate: completionDate),
     );
 
     if (updated == true) _refresh();
@@ -156,9 +154,7 @@ class _CalendarPageState extends State<CalendarPage> {
     final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: pageGradientDecoration.gradient,
-        ),
+        decoration: BoxDecoration(gradient: pageGradientDecoration.gradient),
         child: InlineLoading(
           isLoading: _isLoadingEvents,
           child: ListView(
@@ -167,40 +163,40 @@ class _CalendarPageState extends State<CalendarPage> {
             children: [
               // ── Переключатель «текущий питомец / все питомцы» ───────────
               if (_allProfiles.length > 1) ...[
-                GlassPlate(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _PetToggleChip(
-                          label: _activeProfile?.name.isNotEmpty == true
-                              ? _activeProfile!.name
-                              : 'Текущий',
-                          selected: !_showAllPets,
-                          color: _activeProfile?.color ?? ThemeColors.primary,
-                          onTap: () {
-                            if (_showAllPets) {
-                              setState(() => _showAllPets = false);
-                              _loadEvents();
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _PetToggleChip(
-                          label: 'Все питомцы',
-                          selected: _showAllPets,
-                          color: ThemeColors.secondary,
-                          onTap: () {
-                            if (!_showAllPets) {
-                              setState(() => _showAllPets = true);
-                              _loadEvents();
-                            }
-                          },
-                        ),
-                      ],
-                    ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _PetToggleChip(
+                        label: _activeProfile?.name.isNotEmpty == true
+                            ? _activeProfile!.name
+                            : 'Текущий',
+                        selected: !_showAllPets,
+                        color: _activeProfile?.color ?? ThemeColors.primary,
+                        onTap: () {
+                          if (_showAllPets) {
+                            setState(() => _showAllPets = false);
+                            _loadEvents();
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _PetToggleChip(
+                        label: 'Все питомцы',
+                        selected: _showAllPets,
+                        color: ThemeColors.secondary,
+                        onTap: () {
+                          if (!_showAllPets) {
+                            setState(() => _showAllPets = true);
+                            _loadEvents();
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -256,9 +252,7 @@ class _CalendarPageState extends State<CalendarPage> {
                           .copyWith(inherit: true, fontSize: 13),
                     ),
                     eventLoader: (day) {
-                      return _events
-                          .where((e) => e.occursOn(day))
-                          .toList();
+                      return _events.where((e) => e.occursOn(day)).toList();
                     },
                     calendarStyle: CalendarStyle(
                       todayDecoration: BoxDecoration(
@@ -278,8 +272,7 @@ class _CalendarPageState extends State<CalendarPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    selectedDayPredicate: (day) =>
-                        isSameDay(day, _selectedDay),
+                    selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
                     onDaySelected: (selectedDay, focusedDay) async {
                       setState(() {
                         _selectedDay = selectedDay;
@@ -333,11 +326,14 @@ class _CalendarPageState extends State<CalendarPage> {
                       completionDate: _selectedDay,
                     ),
                     onCompletedChanged: (val) async {
-                      final profileId =
-                          await ProfileService().getActiveProfileId();
+                      final profileId = await ProfileService()
+                          .getActiveProfileId();
                       if (profileId != null) {
-                        await EventService()
-                            .toggleCompleted(profileId, e, _selectedDay!);
+                        await EventService().toggleCompleted(
+                          profileId,
+                          e,
+                          _selectedDay!,
+                        );
                         _refresh();
                       }
                     },
@@ -350,8 +346,6 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 }
-
-// ─── Chip-переключатель ──────────────────────────────────────────────────────
 
 class _PetToggleChip extends StatelessWidget {
   final String label;
