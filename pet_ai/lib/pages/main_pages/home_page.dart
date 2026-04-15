@@ -107,6 +107,41 @@ class _HomePageState extends State<HomePage> {
     return description;
   }
 
+  /// Компактная сводка из 1–2 наиболее важных бейджей здоровья
+  /// для отображения в карточке «Здоровье» на главной.
+  List<Widget> _buildHealthSummary() {
+    if (_profile == null) return const [];
+
+    final badges = HealthAnalyzer.analyze(_profile!, _events);
+    // Сортируем по убыванию серьёзности
+    badges.sort((a, b) => b.severity.index.compareTo(a.severity.index));
+    final top = badges.take(2).toList();
+
+    return top
+        .map((b) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Icon(b.icon ?? b.severity.icon,
+                      size: 16, color: b.severity.color),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      b.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                            color: ThemeColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ))
+        .toList();
+  }
+
   void _openEventSheet(BuildContext context, PetEvent event) async {
     final updated = await showModalBottomSheet<bool>(
       context: context,
@@ -431,18 +466,22 @@ class _HomePageState extends State<HomePage> {
 
             // блок здоровья
             GlassCard(
-              callback: () {
-                showModalBottomSheet(
+              callback: () async {
+                await showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
+                  useSafeArea: true,
+                  enableDrag: true,
+                  backgroundColor: Colors.transparent,
                   builder: (_) => const HealthSummaryModal(),
                 );
+                await _initScreen();
               },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InlineLoading(
-                    isLoading: _isLoadingProfile,
+                    isLoading: _isLoadingProfile || _isLoadingEvents,
                     child: Padding(
                       padding: EdgeInsetsGeometry.all(10),
                       child: Column(
@@ -452,21 +491,8 @@ class _HomePageState extends State<HomePage> {
                             'Здоровье',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Последний осмотр: 10.09.2025',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          Text(
-                            'Активность: высокая',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          Text(
-                            _profile?.weightHistory.lastWeight == null
-                                ? 'Вес не зафиксирован'
-                                : '${_profile?.weightHistory.lastWeight.toString()} кг',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
+                          const SizedBox(height: 8),
+                          ..._buildHealthSummary(),
                         ],
                       ),
                     ),
