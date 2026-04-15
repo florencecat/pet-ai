@@ -11,6 +11,8 @@ import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/event_draggable_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/file_upload_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/files_history_sheet.dart';
 import 'package:pet_ai/theme/widgets/health_action_button.dart';
 
 class HomePage extends StatefulWidget {
@@ -163,6 +165,30 @@ class _HomePageState extends State<HomePage> {
     if (updated == true) {
       await _initScreen();
     }
+  }
+
+  void _openFileUpload(BuildContext context) async {
+    final uploaded = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const FileUploadSheet(),
+    );
+    if (uploaded == true) await _initScreen();
+  }
+
+  void _openFilesHistory(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const FilesHistorySheet(),
+    );
+    await _initScreen();
   }
 
   void _openProfile(BuildContext context) async {
@@ -331,9 +357,9 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   flex: 1,
                   child: GlassCard(
-                    callback: () {},
+                    callback: () => _openFilesHistory(context),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Padding(
                           padding: EdgeInsetsGeometry.all(10),
@@ -352,10 +378,13 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        HomeActionButton(
-                          icon: Icons.add_circle_outline,
-                          label: 'Добавить',
-                          onPressed: () {},
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                          child: HomeActionButton(
+                            icon: Icons.add_circle_outline,
+                            label: 'Добавить',
+                            onPressed: () => _openFileUpload(context),
+                          ),
                         ),
                       ],
                     ),
