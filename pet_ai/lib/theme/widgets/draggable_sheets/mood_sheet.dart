@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/chart_placeholder.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 class MoodSheet extends StatefulWidget {
   final PetProfile profile;
@@ -44,13 +46,32 @@ class _MoodSheetState extends State<MoodSheet> {
       );
     }
 
-    if (Navigator.of(context).mounted) {
+    if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop(true);
     }
   }
 
-  void close() {
-    Navigator.of(context).pop(false);
+  Future<void> _deleteEntry(MoodEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить запись?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ProfileService().deleteMoodEntry(widget.profile.id, entry.date);
+    if (mounted) setState(() => history.deleteEntry(entry.date));
   }
 
   @override
@@ -62,9 +83,9 @@ class _MoodSheetState extends State<MoodSheet> {
       title: "История настроения",
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(false),
-      initialSize: 0.675,
+      initialSize: 0.85,
       minSize: 0.5,
-      maxSize: 0.7,
+      maxSize: 1.0,
       actions: [
         IconButton(
           icon: const Icon(Icons.save),
@@ -95,6 +116,7 @@ class _MoodSheetState extends State<MoodSheet> {
 
           const SizedBox(height: 16),
 
+          // ── Chart ─────────────────────────────────────────────────────────
           if (entries.isEmpty)
             const ChartPlaceholder(message: "История настроения пуста")
           else if (entries.length <= 3)
@@ -108,21 +130,12 @@ class _MoodSheetState extends State<MoodSheet> {
                   LineChartData(
                     gridData: FlGridData(
                       show: true,
-                      drawVerticalLine: true,
+                      drawVerticalLine: false,
                       horizontalInterval: 1,
-                      verticalInterval: 1,
-                      getDrawingHorizontalLine: (value) {
-                        return const FlLine(
-                          color: ThemeColors.primary,
-                          strokeWidth: 1,
-                        );
-                      },
-                      getDrawingVerticalLine: (value) {
-                        return const FlLine(
-                          color: ThemeColors.primary,
-                          strokeWidth: 1,
-                        );
-                      },
+                      getDrawingHorizontalLine: (_) => const FlLine(
+                        color: ThemeColors.primary,
+                        strokeWidth: 0.5,
+                      ),
                     ),
                     borderData: FlBorderData(
                       show: true,
@@ -138,30 +151,32 @@ class _MoodSheetState extends State<MoodSheet> {
                         sideTitles: SideTitles(
                           reservedSize: 30,
                           showTitles: true,
+                          interval: (entries.length / 5).ceilToDouble().clamp(1, 9999),
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
-
-                            if (index >= entries.length || index == 0) {
-                              return const SizedBox();
-                            }
-
+                            if (index >= entries.length) return const SizedBox();
                             final date = entries[index].date;
-
-                            return Text(
-                              "${date.day}.${date.month}",
-                              style: Theme.of(context).textTheme.titleSmall,
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                DateFormat('dd.MM').format(date),
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
                             );
                           },
                         ),
                       ),
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
-                          reservedSize: 42,
+                          reservedSize: 30,
                           showTitles: true,
                           interval: 1,
                           getTitlesWidget: (value, meta) {
+                            final v = value.toInt();
+                            // Only show integers in the 1-4 range (mood values)
+                            if (v < 1 || v > 4) return const SizedBox();
                             return Text(
-                              value.toInt().toString(),
+                              '$v',
                               style: Theme.of(context).textTheme.titleSmall,
                             );
                           },
@@ -169,7 +184,7 @@ class _MoodSheetState extends State<MoodSheet> {
                       ),
                     ),
                     minY: 1,
-                    maxY: 5,
+                    maxY: 4,
                     lineBarsData: [
                       LineChartBarData(
                         spots: spots,
@@ -194,6 +209,7 @@ class _MoodSheetState extends State<MoodSheet> {
               ),
             ),
 
+          // ── Mood picker ───────────────────────────────────────────────────
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -232,12 +248,12 @@ class _MoodSheetState extends State<MoodSheet> {
                         mood.label,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                          inherit: true,
-                          fontSize: 8,
-                          color: isSelected
-                              ? ThemeColors.background
-                              : ThemeColors.textPrimary,
-                        ),
+                              inherit: true,
+                              fontSize: 8,
+                              color: isSelected
+                                  ? ThemeColors.background
+                                  : ThemeColors.textPrimary,
+                            ),
                       ),
                     ],
                   ),
@@ -245,7 +261,74 @@ class _MoodSheetState extends State<MoodSheet> {
               );
             }).toList(),
           ),
+
+          // ── History list ──────────────────────────────────────────────────
+          if (history.entries.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'История',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...List.from(history.entries.reversed).map<Widget>(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _MoodEntryCard(
+                  entry: e as MoodEntry,
+                  onDelete: () => _deleteEntry(e),
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _MoodEntryCard extends StatelessWidget {
+  final MoodEntry entry;
+  final VoidCallback onDelete;
+
+  const _MoodEntryCard({required this.entry, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Icon(entry.mood.icon, color: ThemeColors.primary, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.mood.label,
+                    style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                          color: ThemeColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  Text(
+                    DateFormat('d MMMM yyyy', 'ru_RU').format(entry.date),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              color: ThemeColors.danger.withAlpha(180),
+              onPressed: onDelete,
+            ),
+          ],
+        ),
       ),
     );
   }

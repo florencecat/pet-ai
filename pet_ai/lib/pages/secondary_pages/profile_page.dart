@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/base_widgets.dart';
+import 'package:pet_ai/models/species.dart';
 import 'package:pet_ai/theme/widgets/breed_selector.dart';
 
 class PetProfilePage extends StatefulWidget {
@@ -27,6 +28,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   final _dateController = TextEditingController();
   final _notesController = TextEditingController();
 
+  PetSpecies _selectedSpecies = BuiltInSpecies.other;
   Color _profileColor = ThemeColors.defaultProfileColor;
   Gender _gender = Gender.none;
   File? _profileImage;
@@ -51,6 +53,8 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
     _profile = profile;
     _nameController.text = _profile!.name;
+    _speciesController.text = _profile!.species.name;
+    _selectedSpecies = _profile!.species;
     _breedController.text = _profile!.breed;
     _dateController.text = _formatDate(_profile!.birthDate);
     _gender = _profile!.gender;
@@ -64,6 +68,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     if (!_formKey.currentState!.validate()) return;
 
     _profile!.name = _nameController.text.trim();
+    _profile!.species = _selectedSpecies;
     _profile!.breed = _breedController.text.trim();
     _profile!.birthDate = _parseDate(_dateController.text);
     _profile!.gender = _gender;
@@ -220,10 +225,24 @@ class _PetProfilePageState extends State<PetProfilePage> {
                       TextFormField(
                         keyboardType: TextInputType.none,
                         onTap: () async {
-                          final result = await showBreedSelector(context);
+                          final speciesNames = BuiltInSpecies.all
+                              .map((s) => '${s.emoji} ${s.name}')
+                              .toList();
+                          final result = await showItemSelector(
+                            context,
+                            items: speciesNames,
+                            hintText: 'Поиск вида...',
+                            leadingIcon: Icons.category_outlined,
+                          );
                           if (result != null && result.isNotEmpty) {
+                            // Strip emoji prefix to find the species by name
+                            final matched = BuiltInSpecies.all.firstWhere(
+                              (s) => result.contains(s.name),
+                              orElse: () => BuiltInSpecies.other,
+                            );
                             setState(() {
-                              _speciesController.text = result;
+                              _selectedSpecies = matched;
+                              _speciesController.text = matched.name;
                             });
                           }
                         },
@@ -237,9 +256,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
                             size: 18,
                           ),
                         ),
-                        // validator: (v) => v == null || v.trim().isEmpty
-                        //     ? 'Выберите вид'
-                        //     : null,
                       ),
                       const SizedBox(height: 12),
 

@@ -14,6 +14,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pet_ai/models/weight.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/models/treatment.dart';
+import 'package:pet_ai/models/food.dart';
 
 class PetContextBuilder {
   static String build(PetProfile pet) {
@@ -87,6 +88,7 @@ class PetProfile {
   MoodHistory moodHistory;
   NoteHistory noteHistory;
   TreatmentHistory treatmentHistory;
+  FoodHistory foodHistory;
   Color color;
 
   PetProfile({
@@ -102,7 +104,8 @@ class PetProfile {
         moodHistory = MoodHistory.empty(),
         noteHistory = NoteHistory.empty(),
         treatmentHistory = TreatmentHistory.empty(),
-    color = ThemeColors.defaultProfileColor;
+        foodHistory = FoodHistory.empty(),
+        color = ThemeColors.defaultProfileColor;
 
   PetProfile.deserialize({
     required this.id,
@@ -117,7 +120,8 @@ class PetProfile {
     required this.moodHistory,
     required this.noteHistory,
     required this.treatmentHistory,
-    required this.color
+    required this.foodHistory,
+    required this.color,
   });
 
   Map<String, dynamic> toJson() => {
@@ -134,6 +138,7 @@ class PetProfile {
     'noteHistory': NoteHistory.noteSerializer.toJsonList(noteHistory),
     'treatmentHistory':
         TreatmentHistory.treatmentSerializer.toJsonList(treatmentHistory),
+    'foodHistory': FoodHistory.foodSerializer.toJsonList(foodHistory),
     'color': color.toARGB32(),
   };
 
@@ -185,7 +190,16 @@ class PetProfile {
                   .entries,
             )
           : TreatmentHistory.empty(),
-      color: json['color'] != null ? Color(json['color'] as int) : ThemeColors.defaultProfileColor
+      foodHistory: json['foodHistory'] != null
+          ? FoodHistory(
+              entries: FoodHistory.foodSerializer
+                  .fromJsonList(json['foodHistory'])
+                  .entries,
+            )
+          : FoodHistory.empty(),
+      color: json['color'] != null
+          ? Color(json['color'] as int)
+          : ThemeColors.defaultProfileColor,
     );
   }
 }
@@ -336,6 +350,38 @@ class ProfileService {
     final profile = await loadProfile(petId);
     if (profile != null) {
       profile.moodHistory.add(entry);
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> updateFoodHistory(String petId, FoodEntry entry) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      profile.foodHistory.add(entry);
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> deleteFoodEntry(String petId, DateTime date) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      profile.foodHistory.deleteEntry(date);
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> deleteWeightEntry(String petId, DateTime date) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      profile.weightHistory.deleteEntry(date);
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> deleteMoodEntry(String petId, DateTime date) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      profile.moodHistory.deleteEntry(date);
       await saveProfile(profile);
     }
   }

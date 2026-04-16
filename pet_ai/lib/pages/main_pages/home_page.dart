@@ -13,6 +13,7 @@ import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/file_upload_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/files_history_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_ai/theme/widgets/health_action_button.dart';
 
 class HomePage extends StatefulWidget {
@@ -76,21 +77,26 @@ class _HomePageState extends State<HomePage> {
 
     final now = DateTime.now();
 
+    // Прививки показываются только в календаре / блоке здоровья
+    bool _notVaccination(PetEvent e) => e.category.id != 'vaccination';
+
     // Просроченные: не повторяющиеся, дата в прошлом, не выполнены
-    final overdue = events.where((e) => e.isOverdue).toList()
+    final overdue = events
+        .where((e) => e.isOverdue && _notVaccination(e))
+        .toList()
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime)); // свежие сначала
 
     // Предстоящие: повторяющиеся или дата ≥ сейчас
-    final upcoming =
-        events
-            .where(
-              (e) =>
-                  e.repeat != RepeatInterval.none ||
+    final upcoming = events
+        .where(
+          (e) =>
+              _notVaccination(e) &&
+              (e.repeat != RepeatInterval.none ||
                   e.dateTime.isAfter(now) ||
-                  e.dateTime.isAtSameMomentAs(now),
-            )
-            .toList()
-          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+                  e.dateTime.isAtSameMomentAs(now)),
+        )
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     setState(() {
       _events = [...overdue, ...upcoming];
@@ -211,6 +217,18 @@ class _HomePageState extends State<HomePage> {
       builder: (_) => const FileUploadSheet(),
     );
     if (uploaded == true) await _initScreen();
+  }
+
+  void _openFoodHistory(BuildContext context) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FoodSheet(profile: _profile!),
+    );
+    if (updated == true) await _initScreen();
   }
 
   void _openFilesHistory(BuildContext context) async {
@@ -520,9 +538,9 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: HomeActionButton(
-                            icon: Icons.note_alt_outlined,
+                            icon: Icons.restaurant_outlined,
                             label: 'Питание',
-                            onPressed: () {},
+                            onPressed: () => _openFoodHistory(context),
                           ),
                         ),
                       ],

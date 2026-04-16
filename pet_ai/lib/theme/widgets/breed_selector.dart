@@ -1,36 +1,15 @@
-import 'package:pet_ai/theme/widgets/draggable_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:pet_ai/theme/widgets/draggable_bottom_sheet.dart';
 
-Future<String?> showBreedSelector(BuildContext context) async {
-  final List<String> allBreeds = [
-    'Абиссинская',
-    'Акита-ину',
-    'Алабай',
-    'Английский бульдог',
-    'Бигль',
-    'Бишон фризе',
-    'Бордоский дог',
-    'Вельш-корги пемброк',
-    'Вельш-корги кардиган',
-    'Доберман',
-    'Йоркширский терьер',
-    'Кане-корсо',
-    'Лабрадор ретривер',
-    'Мопс',
-    'Немецкая овчарка',
-    'Померанский шпиц',
-    'Ретривер (золотистый)',
-    'Русский той',
-    'Самоед',
-    'Сибирский хаски',
-    'Такса',
-    'Французский бульдог',
-    'Чихуахуа',
-    'Шпиц',
-    'Ши-тцу',
-    'Шнауцер',
-  ];
-
+/// Generic bottom-sheet selector backed by [DraggableBottomSheet].
+///
+/// Returns the chosen string, or `null` if the user dismissed without selecting.
+Future<String?> showItemSelector(
+  BuildContext context, {
+  required List<String> items,
+  required String hintText,
+  IconData leadingIcon = Icons.list,
+}) async {
   final result = await showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
@@ -56,9 +35,9 @@ Future<String?> showBreedSelector(BuildContext context) async {
               ],
             ),
             child: DraggableBottomSheet(
-              allItems: allBreeds,
-              hintText: 'Поиск породы...',
-              leadingIcon: Icons.pets,
+              allItems: items,
+              hintText: hintText,
+              leadingIcon: leadingIcon,
               scrollController: scrollController,
             ),
           );
@@ -66,6 +45,46 @@ Future<String?> showBreedSelector(BuildContext context) async {
       );
     },
   );
-
   return result;
+}
+
+/// Convenience wrapper: breed selector.
+Future<String?> showBreedSelector(BuildContext context) async {
+  const allBreeds = [
+    'Абиссинская',
+    'Акита-ину',
+    'Алабай',
+    'Английский бульдог',
+    'Бигль',
+    'Бишон фризе',
+    'Бордоский дог',
+    'Вельш-корги пемброк',
+    'Вельш-корги кардиган',
+    'Доберман',
+    'Йоркширский терьер',
+    'Кане-корсо',
+    'Лабрадор ретривер',
+    'Мопс',
+    'Немецкая овчарка',
+    'Першерон',
+    'Польская низинная овчарка',
+    'Померанский шпиц',
+    'Ретривер (золотистый)',
+    'Русский той',
+    'Самоед',
+    'Сибирский хаски',
+    'Такса',
+    'Французский бульдог',
+    'Чихуахуа',
+    'Шпиц',
+    'Ши-тцу',
+    'Шнауцер',
+  ];
+
+  return showItemSelector(
+    context,
+    items: allBreeds,
+    hintText: 'Поиск породы...',
+    leadingIcon: Icons.pets,
+  );
 }
