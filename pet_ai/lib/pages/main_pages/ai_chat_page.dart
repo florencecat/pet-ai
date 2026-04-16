@@ -6,7 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 import '../../theme/widgets/draggable_bottom_sheet.dart';
 

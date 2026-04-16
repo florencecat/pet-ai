@@ -7,7 +7,7 @@ import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/treatment_sheet.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 class WeightInputFormatter extends TextInputFormatter {
   final RegExp regex = RegExp(r'^\d+(\.\d?)?$');
@@ -128,9 +128,9 @@ class HealthAnalyzer {
       final last = profile.treatmentHistory.lastOfKind(kind);
       if (last == null) {
         badges.add(HealthBadge(
-          title: 'Не зафиксировано: ${kind.label}',
+          title: kind.label,
           subtitle: 'Добавьте запись, чтобы получать напоминания',
-          severity: HealthBadgeSeverity.info,
+          severity: HealthBadgeSeverity.warning,
           icon: kind.icon,
         ));
       }

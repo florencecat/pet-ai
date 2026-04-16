@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pet_ai/services/event_service.dart';

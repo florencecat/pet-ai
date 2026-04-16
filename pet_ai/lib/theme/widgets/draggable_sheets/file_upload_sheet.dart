@@ -8,7 +8,7 @@ import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 class FileUploadSheet extends StatefulWidget {
   const FileUploadSheet({super.key});

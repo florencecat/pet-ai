@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 class EventPreviewBlock extends StatelessWidget {
   final List<PetEvent> events;

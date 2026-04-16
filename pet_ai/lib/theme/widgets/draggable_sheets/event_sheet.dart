@@ -4,7 +4,7 @@ import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 enum EventSheetMode { view, create, edit }
 
@@ -37,16 +37,16 @@ class EventSheet extends StatefulWidget {
   final DateTime? completionDate;
 
   const EventSheet({super.key, required this.event, this.completionDate})
-      : mode = EventSheetMode.view,
-        dateTime = null;
+    : mode = EventSheetMode.view,
+      dateTime = null;
   const EventSheet.edit({super.key, required this.event})
-      : mode = EventSheetMode.edit,
-        dateTime = null,
-        completionDate = null;
+    : mode = EventSheetMode.edit,
+      dateTime = null,
+      completionDate = null;
   const EventSheet.create({super.key, required this.dateTime})
-      : mode = EventSheetMode.create,
-        event = null,
-        completionDate = null;
+    : mode = EventSheetMode.create,
+      event = null,
+      completionDate = null;
 
   @override
   State<EventSheet> createState() => _EventSheetState();
@@ -231,7 +231,14 @@ class _EventSheetState extends State<EventSheet> {
     if (EventSheetModeX(_mode).isEdit) {
       PetEvent event = widget.event!;
       event.assign(
-          name, category, dateTime, repeat, customDays, _remindBeforeMinutes, petIds);
+        name,
+        category,
+        dateTime,
+        repeat,
+        customDays,
+        _remindBeforeMinutes,
+        petIds,
+      );
       _editEvent(context, event);
     }
   }
@@ -326,7 +333,9 @@ class _EventSheetState extends State<EventSheet> {
             child: Row(
               children: [
                 Icon(
-                  isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                  isCompleted
+                      ? Icons.check_circle
+                      : Icons.radio_button_unchecked,
                   color: isCompleted ? Colors.white : ThemeColors.primary,
                 ),
                 const SizedBox(width: 12),
@@ -368,9 +377,9 @@ class _EventSheetState extends State<EventSheet> {
           const SizedBox(width: 6),
           Text(
             event.category.name,
-            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-              fontWeight: FontWeight.w400,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.w400),
           ),
         ],
       ),
@@ -458,8 +467,10 @@ class _EventSheetState extends State<EventSheet> {
               spacing: 6,
               children: linked.map((p) {
                 return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: p.color.withAlpha(60),
                     borderRadius: BorderRadius.circular(12),
@@ -497,7 +508,8 @@ class _EventSheetState extends State<EventSheet> {
               border: InputBorder.none,
             ),
             style: Theme.of(context).textTheme.bodyMedium,
-            validator: (v) => v == null || v.isEmpty ? 'Введите название' : null,
+            validator: (v) =>
+                v == null || v.isEmpty ? 'Введите название' : null,
           ),
         ),
       ),
@@ -509,7 +521,8 @@ class _EventSheetState extends State<EventSheet> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: DropdownButtonFormField<String>(
-            validator: (v) => v == null || v.isEmpty ? 'Выберите категорию' : null,
+            validator: (v) =>
+                v == null || v.isEmpty ? 'Выберите категорию' : null,
             decoration: const InputDecoration(
               labelText: 'Категория',
               border: InputBorder.none,
@@ -526,8 +539,10 @@ class _EventSheetState extends State<EventSheet> {
                       children: [
                         Icon(c.icon, color: c.color),
                         const SizedBox(width: 8),
-                        Text(c.name,
-                            style: Theme.of(context).textTheme.bodyMedium),
+                        Text(
+                          c.name,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ],
                     ),
                   ),
@@ -549,8 +564,10 @@ class _EventSheetState extends State<EventSheet> {
             child: GlassCard(
               callback: () => _selectDate(context),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -578,8 +595,10 @@ class _EventSheetState extends State<EventSheet> {
             child: GlassCard(
               callback: () => _selectTime(context),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -636,9 +655,7 @@ class _EventSheetState extends State<EventSheet> {
         duration: const Duration(milliseconds: 300),
         transitionBuilder: (child, animation) =>
             SizeTransition(sizeFactor: animation, child: child),
-        child: _isRepeating
-            ? _buildRepeatOptions()
-            : const SizedBox.shrink(),
+        child: _isRepeating ? _buildRepeatOptions() : const SizedBox.shrink(),
       ),
 
       const SizedBox(height: 8),
@@ -649,13 +666,16 @@ class _EventSheetState extends State<EventSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
             children: [
-              const Icon(Icons.notifications_outlined,
-                  size: 20, color: ThemeColors.primary),
+              const Icon(
+                Icons.notifications_outlined,
+                size: 20,
+                color: ThemeColors.primary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Напомнить за (мин):',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ),
               IconButton(
@@ -670,9 +690,9 @@ class _EventSheetState extends State<EventSheet> {
                 child: Text(
                   '$_remindBeforeMinutes',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               IconButton(
@@ -699,13 +719,10 @@ class _EventSheetState extends State<EventSheet> {
     return GlassPlate(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child:  Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Питомцы',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text('Питомцы', style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -720,8 +737,7 @@ class _EventSheetState extends State<EventSheet> {
                   labelStyle: TextStyle(
                     fontSize: 13,
                     color: selected ? Colors.white : ThemeColors.textPrimary,
-                    fontWeight:
-                        selected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                   ),
                   checkmarkColor: Colors.white,
                   onSelected: (val) {
@@ -766,19 +782,22 @@ class _EventSheetState extends State<EventSheet> {
                   children: RepeatInterval.values
                       .where((e) => e != RepeatInterval.none)
                       .map((interval) {
-                    final selected = _selectedRepeat == interval;
-                    return ChoiceChip(
-                      label: Text(_getRepeatText(interval)),
-                      selected: selected,
-                      selectedColor: ThemeColors.primary,
-                      labelStyle: TextStyle(
-                        color: selected ? Colors.white : ThemeColors.textPrimary,
-                      ),
-                      onSelected: (_) {
-                        setState(() => _selectedRepeat = interval);
-                      },
-                    );
-                  }).toList(),
+                        final selected = _selectedRepeat == interval;
+                        return ChoiceChip(
+                          label: Text(_getRepeatText(interval)),
+                          selected: selected,
+                          selectedColor: ThemeColors.primary,
+                          labelStyle: TextStyle(
+                            color: selected
+                                ? Colors.white
+                                : ThemeColors.textPrimary,
+                          ),
+                          onSelected: (_) {
+                            setState(() => _selectedRepeat = interval);
+                          },
+                        );
+                      })
+                      .toList(),
                 ),
               ],
             ),

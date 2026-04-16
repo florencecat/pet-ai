@@ -183,13 +183,15 @@ class GlassEventCard extends StatelessWidget {
                     color: overdue
                         ? const Color(0xFFB85C00)
                         : ThemeColors.textPrimary,
-                    fontWeight:
-                        overdue ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: overdue ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
                 if (petName != null) ...[
                   const SizedBox(height: 3),
-                  _PetBadge(name: petName!, color: petColor ?? ThemeColors.primary),
+                  GlassBadge(
+                    name: petName!,
+                    color: petColor ?? ThemeColors.primary,
+                  ),
                 ],
               ],
             ),
@@ -200,33 +202,6 @@ class GlassEventCard extends StatelessWidget {
                   )
                 : null,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PetBadge extends StatelessWidget {
-  final String name;
-  final Color color;
-
-  const _PetBadge({required this.name, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withAlpha(60),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withAlpha(100), width: 0.8),
-      ),
-      child: Text(
-        name,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color.withAlpha(200),
         ),
       ),
     );
@@ -289,6 +264,46 @@ class GlassSettingsCard extends StatelessWidget {
               ? Icon(trailingIcon!, color: textColor)
               : null,
           onTap: callback,
+        ),
+      ),
+    );
+  }
+}
+
+class GlassBadge extends StatelessWidget {
+  final Icon? icon;
+  final String name;
+  final Color color;
+
+  const GlassBadge({
+    super.key,
+    this.icon,
+    required this.name,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () {},
+      icon: icon,
+      style: OutlinedButton.styleFrom(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: color.withAlpha(200), width: 0.8),
+        ),
+        backgroundColor: color.withAlpha(60),
+        foregroundColor: color.withAlpha(200),
+        padding: EdgeInsetsGeometry.all(8),
+        alignment: AlignmentGeometry.center
+
+      ),
+      label: Text(
+        name,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color.withAlpha(200),
         ),
       ),
     );

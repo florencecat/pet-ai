@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import '../../services/profile_service.dart';
 
 class SettingsPage extends StatelessWidget {

@@ -5,7 +5,7 @@ import 'package:pet_ai/theme/widgets/draggable_sheets/mood_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_ai/theme/widgets/events_preview_block.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:pet_ai/pages/secondary_pages/profile_page.dart';
 import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/event_service.dart';
@@ -115,30 +115,29 @@ class _HomePageState extends State<HomePage> {
     final badges = HealthAnalyzer.analyze(_profile!, _events);
     // Сортируем по убыванию серьёзности
     badges.sort((a, b) => b.severity.index.compareTo(a.severity.index));
-    final top = badges.take(2).toList();
+    final top = badges.take(3).toList();
 
     return top
-        .map((b) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  Icon(b.icon ?? b.severity.icon,
-                      size: 16, color: b.severity.color),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      b.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                            color: ThemeColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
+        .map(
+          (b) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                GlassBadge(
+                  icon: Icon(
+                    b.icon ?? b.severity.icon,
+                    size: 16,
+                    color: b.severity.color,
                   ),
-                ],
-              ),
-            ))
+                  name: b.title,
+                  color: b.severity.color,
+                ),
+              ],
+            ),
+          ),
+        )
         .toList();
   }
 
@@ -458,7 +457,7 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                )
+                ),
               ],
             ),
 
@@ -523,7 +522,7 @@ class _HomePageState extends State<HomePage> {
                           child: HomeActionButton(
                             icon: Icons.note_alt_outlined,
                             label: 'Питание',
-                            onPressed: () { },
+                            onPressed: () {},
                           ),
                         ),
                       ],

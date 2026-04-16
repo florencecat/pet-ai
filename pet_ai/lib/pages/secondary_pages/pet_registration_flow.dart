@@ -7,7 +7,7 @@ import 'package:pet_ai/models/species.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/breed_selector.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 class PetRegistrationFlow extends StatefulWidget {
   const PetRegistrationFlow({super.key});

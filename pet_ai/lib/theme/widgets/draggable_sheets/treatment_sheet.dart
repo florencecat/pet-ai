@@ -5,7 +5,7 @@ import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/services/treatment_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/glass_card.dart';
+import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 /// Шит для добавления и просмотра мед. мероприятий.
 class TreatmentSheet extends StatefulWidget {
