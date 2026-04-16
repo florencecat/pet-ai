@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/mood_draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/note_draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/weight_draggable_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/mood_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/note_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_ai/theme/widgets/events_preview_block.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'package:pet_ai/pages/secondary_pages/profile_page.dart';
 import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/event_draggable_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/file_upload_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/files_history_sheet.dart';
 import 'package:pet_ai/theme/widgets/health_action_button.dart';
@@ -149,7 +149,7 @@ class _HomePageState extends State<HomePage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet(event: event),
+      builder: (_) => EventSheet(event: event),
     );
 
     if (updated == true) {
@@ -164,7 +164,7 @@ class _HomePageState extends State<HomePage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => WeightDraggableSheet(profile: _profile!),
+      builder: (_) => WeightSheet(profile: _profile!),
     );
 
     if (updated == true) {
@@ -179,7 +179,7 @@ class _HomePageState extends State<HomePage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => MoodDraggableSheet(profile: _profile!),
+      builder: (_) => MoodSheet(profile: _profile!),
     );
 
     if (updated == true) {
@@ -194,7 +194,7 @@ class _HomePageState extends State<HomePage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => NoteDraggableSheet(profile: _profile!),
+      builder: (_) => NoteSheet(profile: _profile!),
     );
 
     if (updated == true) {
@@ -452,7 +452,7 @@ class _HomePageState extends State<HomePage> {
                           child: HomeActionButton(
                             icon: Icons.note_add_outlined,
                             label: 'Записать',
-                            onPressed: () { },
+                            onPressed: () => _openNotes(context),
                           ),
                         ),
                       ],

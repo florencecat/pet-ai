@@ -6,7 +6,7 @@ import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/treatment_draggable_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
 
 class WeightInputFormatter extends TextInputFormatter {
@@ -295,7 +295,7 @@ class _HealthSummaryModalState extends State<HealthSummaryModal> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => TreatmentDraggableSheet(profile: _profile!),
+      builder: (_) => TreatmentSheet(profile: _profile!),
     );
     if (updated == true) await _load();
   }

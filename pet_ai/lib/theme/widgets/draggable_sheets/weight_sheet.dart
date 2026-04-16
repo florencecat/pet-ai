@@ -9,16 +9,16 @@ import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/weight.dart';
 
-class WeightDraggableSheet extends StatefulWidget {
+class WeightSheet extends StatefulWidget {
   final PetProfile profile;
 
-  const WeightDraggableSheet({super.key, required this.profile});
+  const WeightSheet({super.key, required this.profile});
 
   @override
-  State<WeightDraggableSheet> createState() => _WeightDraggableSheetState();
+  State<WeightSheet> createState() => _WeightSheetState();
 }
 
-class _WeightDraggableSheetState extends State<WeightDraggableSheet> {
+class _WeightSheetState extends State<WeightSheet> {
   HistoryPeriod period = HistoryPeriod.month;
 
   final controller = TextEditingController();

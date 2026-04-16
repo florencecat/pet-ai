@@ -26,7 +26,7 @@ extension EventSheetModeX on EventSheetMode {
   }
 }
 
-class EventDraggableSheet extends StatefulWidget {
+class EventSheet extends StatefulWidget {
   final EventSheetMode mode;
   final PetEvent? event;
   final DateTime? dateTime;
@@ -36,23 +36,23 @@ class EventDraggableSheet extends StatefulWidget {
   /// Если null — используется event.dateTime.
   final DateTime? completionDate;
 
-  const EventDraggableSheet({super.key, required this.event, this.completionDate})
+  const EventSheet({super.key, required this.event, this.completionDate})
       : mode = EventSheetMode.view,
         dateTime = null;
-  const EventDraggableSheet.edit({super.key, required this.event})
+  const EventSheet.edit({super.key, required this.event})
       : mode = EventSheetMode.edit,
         dateTime = null,
         completionDate = null;
-  const EventDraggableSheet.create({super.key, required this.dateTime})
+  const EventSheet.create({super.key, required this.dateTime})
       : mode = EventSheetMode.create,
         event = null,
         completionDate = null;
 
   @override
-  State<EventDraggableSheet> createState() => _EventDraggableSheetState();
+  State<EventSheet> createState() => _EventSheetState();
 }
 
-class _EventDraggableSheetState extends State<EventDraggableSheet> {
+class _EventSheetState extends State<EventSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   DateTime? _selectedDate;

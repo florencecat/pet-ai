@@ -8,17 +8,17 @@ import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_card.dart';
 
 /// Шит для добавления и просмотра мед. мероприятий.
-class TreatmentDraggableSheet extends StatefulWidget {
+class TreatmentSheet extends StatefulWidget {
   final PetProfile profile;
 
-  const TreatmentDraggableSheet({super.key, required this.profile});
+  const TreatmentSheet({super.key, required this.profile});
 
   @override
-  State<TreatmentDraggableSheet> createState() =>
-      _TreatmentDraggableSheetState();
+  State<TreatmentSheet> createState() =>
+      _TreatmentSheetState();
 }
 
-class _TreatmentDraggableSheetState extends State<TreatmentDraggableSheet> {
+class _TreatmentSheetState extends State<TreatmentSheet> {
   TreatmentKind _kind = TreatmentKind.rabies;
   final _nameCtrl = TextEditingController();
   DateTime _date = DateTime.now();

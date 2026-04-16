@@ -4,16 +4,16 @@ import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-class NoteDraggableSheet extends StatefulWidget {
+class NoteSheet extends StatefulWidget {
   final PetProfile profile;
 
-  const NoteDraggableSheet({super.key, required this.profile});
+  const NoteSheet({super.key, required this.profile});
 
   @override
-  State<NoteDraggableSheet> createState() => _NoteDraggableSheet();
+  State<NoteSheet> createState() => _NoteDraggableSheet();
 }
 
-class _NoteDraggableSheet extends State<NoteDraggableSheet> {
+class _NoteDraggableSheet extends State<NoteSheet> {
   final TextEditingController _controller = TextEditingController();
   final stt.SpeechToText _speech = stt.SpeechToText();
 

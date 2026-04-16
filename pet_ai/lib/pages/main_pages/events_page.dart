@@ -5,7 +5,7 @@ import 'package:pet_ai/theme/widgets/glass_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/event_draggable_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
 class EventsPage extends StatefulWidget {
@@ -49,7 +49,7 @@ class _EventsPageState extends State<EventsPage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventDraggableSheet.create(dateTime: dateTime),
+      builder: (_) => EventSheet.create(dateTime: dateTime),
     );
 
     if (updated == true) _refresh();
@@ -67,7 +67,7 @@ class _EventsPageState extends State<EventsPage> {
       enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) =>
-          EventDraggableSheet(event: event, completionDate: completionDate),
+          EventSheet(event: event, completionDate: completionDate),
     );
 
     if (updated == true) _refresh();

@@ -7,16 +7,16 @@ import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 
-class MoodDraggableSheet extends StatefulWidget {
+class MoodSheet extends StatefulWidget {
   final PetProfile profile;
 
-  const MoodDraggableSheet({super.key, required this.profile});
+  const MoodSheet({super.key, required this.profile});
 
   @override
-  State<MoodDraggableSheet> createState() => _MoodDraggableSheetState();
+  State<MoodSheet> createState() => _MoodSheetState();
 }
 
-class _MoodDraggableSheetState extends State<MoodDraggableSheet> {
+class _MoodSheetState extends State<MoodSheet> {
   HistoryPeriod period = HistoryPeriod.month;
 
   bool change = false;
