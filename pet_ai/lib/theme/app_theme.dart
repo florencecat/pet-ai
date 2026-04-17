@@ -3,6 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  /// Builds a theme with a custom primary color (used for "use pet color" option).
+  static ThemeData withPrimaryColor(Color primary) {
+    final base = lightTheme;
+    return base.copyWith(
+      colorScheme: base.colorScheme.copyWith(primary: primary),
+      dividerColor: primary,
+      textSelectionTheme: TextSelectionThemeData(cursorColor: primary),
+    );
+  }
+
   static final lightTheme = ThemeData(
     scaffoldBackgroundColor: ThemeColors.background,
 

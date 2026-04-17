@@ -78,11 +78,11 @@ class _HomePageState extends State<HomePage> {
     final now = DateTime.now();
 
     // Прививки показываются только в календаре / блоке здоровья
-    bool _notVaccination(PetEvent e) => e.category.id != 'vaccination';
+    bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
 
     // Просроченные: не повторяющиеся, дата в прошлом, не выполнены
     final overdue = events
-        .where((e) => e.isOverdue && _notVaccination(e))
+        .where((e) => e.isOverdue && notVaccination(e))
         .toList()
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime)); // свежие сначала
 
@@ -90,7 +90,7 @@ class _HomePageState extends State<HomePage> {
     final upcoming = events
         .where(
           (e) =>
-              _notVaccination(e) &&
+              notVaccination(e) &&
               (e.repeat != RepeatInterval.none ||
                   e.dateTime.isAfter(now) ||
                   e.dateTime.isAtSameMomentAs(now)),
@@ -160,6 +160,84 @@ class _HomePageState extends State<HomePage> {
     if (updated == true) {
       await _initScreen();
     }
+  }
+
+  void _editEvent(BuildContext context, PetEvent event) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventSheet(event: event),
+    );
+    if (updated == true) await _initScreen();
+  }
+
+  Future<void> _deleteEvent(BuildContext context, PetEvent event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить событие?'),
+        content: Text('«${event.name}» будет удалено без возможности восстановления.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await EventService().deleteEvent(event);
+    if (mounted) await _initScreen();
+  }
+
+  /// Отмечает событие выполненным и через [_kCompletionDelay] убирает его
+  /// из списка с плавным обновлением (без мигания спиннера).
+  static const _kCompletionDelay = Duration(seconds: 3);
+  final Set<String> _completionPending = {};
+
+  void _onEventCompletedChanged(
+      BuildContext context, PetEvent event, bool completed) async {
+    if (_profile == null) return;
+    await EventService().toggleCompleted(_profile!.id, event, event.dateTime);
+
+    setState(() => _completionPending.add(event.id));
+
+    await Future.delayed(_kCompletionDelay);
+    if (!mounted) return;
+
+    // Silently reload without showing the loading spinner
+    final events = await EventService().loadEvents(_profile!.id);
+    if (!mounted) return;
+    final now = DateTime.now();
+
+    bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
+
+    final overdue = events
+        .where((e) => e.isOverdue && notVaccination(e))
+        .toList()
+      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
+    final upcoming = events
+        .where((e) =>
+            notVaccination(e) &&
+            (e.repeat != RepeatInterval.none ||
+                e.dateTime.isAfter(now) ||
+                e.dateTime.isAtSameMomentAs(now)))
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    setState(() {
+      _events = [...overdue, ...upcoming];
+      _completionPending.remove(event.id);
+    });
   }
 
   void _openWeightHistory(BuildContext context) async {
@@ -587,6 +665,10 @@ class _HomePageState extends State<HomePage> {
                 events: _events,
                 onTap: (event) => _openEventSheet(context, event),
                 onOpenCalendar: widget.onOpenCalendarByEvent,
+                onEdit: (event) => _editEvent(context, event),
+                onDelete: (event) => _deleteEvent(context, event),
+                onCompletedChanged: (event, completed) =>
+                    _onEventCompletedChanged(context, event, completed),
               ),
             ),
           ],

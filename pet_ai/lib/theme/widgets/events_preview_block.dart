@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_ai/theme/widgets/swipeable_event_card.dart';
 
 class EventPreviewBlock extends StatelessWidget {
   final List<PetEvent> events;
   final void Function(PetEvent event) onTap;
   final void Function(DateTime date) onOpenCalendar;
+  final void Function(PetEvent event)? onEdit;
+  final void Function(PetEvent event)? onDelete;
+
+  /// Callback for the completion checkbox. When provided, a checkbox is shown
+  /// on each card; when the user taps it the event is toggled.
+  final void Function(PetEvent event, bool completed)? onCompletedChanged;
 
   const EventPreviewBlock({
     super.key,
     required this.events,
     required this.onTap,
     required this.onOpenCalendar,
+    this.onEdit,
+    this.onDelete,
+    this.onCompletedChanged,
   });
 
   @override
@@ -28,7 +37,7 @@ class EventPreviewBlock extends StatelessWidget {
                 size: 86,
                 color: Theme.of(context).colorScheme.primary.withAlpha(64),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text(
                 'Нет запланированных событий',
                 style: TextStyle(
@@ -46,11 +55,15 @@ class EventPreviewBlock extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: events.take(4).map((event) {
-        return GlassEventCard(
+        return SwipeableEventCard(
           event: event,
-          callback: () => onTap(event),
-          trailingIcon: Icons.chevron_right,
-          trailingCallback: () => onOpenCalendar(event.dateTime)
+          onTap: () => onTap(event),
+          onEdit: onEdit != null ? () => onEdit!(event) : null,
+          onDelete: onDelete != null ? () => onDelete!(event) : null,
+          trailingCallback: () => onOpenCalendar(event.dateTime),
+          onCompletedChanged: onCompletedChanged != null
+              ? (val) => onCompletedChanged!(event, val)
+              : null,
         );
       }).toList(),
     );

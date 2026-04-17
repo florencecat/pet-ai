@@ -386,10 +386,19 @@ class ProfileService {
     }
   }
 
-  Future<void> addNote(String petId, String note) async {
+  Future<void> addNote(String petId, String note,
+      {String? symptomId}) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      profile.noteHistory.addNote(note);
+      profile.noteHistory.addNote(note, symptomId: symptomId);
+      await saveProfile(profile);
+    }
+  }
+
+  Future<void> deleteNoteEntry(String petId, DateTime date) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      profile.noteHistory.deleteEntry(date);
       await saveProfile(profile);
     }
   }
