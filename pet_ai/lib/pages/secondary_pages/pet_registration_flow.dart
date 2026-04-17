@@ -49,7 +49,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
 
   String _formatDate(DateTime? d) {
     if (d == null) return 'не указана';
-    return DateFormat('dd.MM.yyyy').format(d);
+    return formatSmartDate(d);
   }
 
   void _nextStep() {
@@ -160,6 +160,12 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                         icon: const Icon(Icons.arrow_back),
                         color: ThemeColors.textPrimary,
                         onPressed: _prevStep,
+                      )
+                    else if (Navigator.of(context).canPop())
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        color: ThemeColors.textPrimary,
+                        onPressed: () => Navigator.of(context).pop(),
                       )
                     else
                       const SizedBox(width: 48),

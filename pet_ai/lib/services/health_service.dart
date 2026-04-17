@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
@@ -102,7 +101,7 @@ class HealthAnalyzer {
       badges.add(HealthBadge(
         title: 'Просрочено: ${t.displayName}',
         subtitle:
-            'Должно было быть ${DateFormat('dd.MM.yyyy').format(t.nextDate)}',
+            'Должно было быть ${formatSmartDate(t.nextDate)}',
         severity: HealthBadgeSeverity.danger,
         icon: t.kind.icon,
       ));
@@ -116,7 +115,7 @@ class HealthAnalyzer {
         subtitle: daysLeft == 0
             ? 'Сегодня'
             : 'Через $daysLeft ${_daysWord(daysLeft)}'
-                ' • ${DateFormat('dd.MM.yyyy').format(t.nextDate)}',
+                ' • ${formatSmartDate(t.nextDate)}',
         severity: HealthBadgeSeverity.warning,
         icon: t.kind.icon,
       ));
@@ -153,7 +152,7 @@ class HealthAnalyzer {
         badges.add(HealthBadge(
           title: 'Пора обновить вес',
           subtitle:
-              'Последняя запись: ${DateFormat('dd.MM.yyyy').format(lastWeight.date)} '
+              'Последняя запись: ${formatSmartDate(lastWeight.date)} '
               '($daysSince ${_daysWord(daysSince)} назад)',
           severity: HealthBadgeSeverity.warning,
           icon: Icons.monitor_weight_outlined,
@@ -166,7 +165,7 @@ class HealthAnalyzer {
       final lastMood = profile.moodHistory.lastEntry;
       final subtitle = lastMood == null
           ? 'Отметьте, как себя чувствует питомец'
-          : 'Последняя запись: ${DateFormat('dd.MM.yyyy').format(lastMood.date)}';
+          : 'Последняя запись: ${formatSmartDate(lastMood.date)}';
       badges.add(HealthBadge(
         title: 'Зафиксируйте настроение',
         subtitle: subtitle,
@@ -197,6 +196,43 @@ class HealthAnalyzer {
     }
 
     return badges;
+  }
+
+  /// Оценка здоровья на основе бейджей.
+  /// Возвращает строку + цвет.
+  static ({String label, Color color, IconData icon}) score(
+      List<HealthBadge> badges) {
+    final dangerCount =
+        badges.where((b) => b.severity == HealthBadgeSeverity.danger).length;
+    final warningCount =
+        badges.where((b) => b.severity == HealthBadgeSeverity.warning).length;
+
+    if (dangerCount > 0) {
+      return (
+        label: 'Критично',
+        color: HealthBadgeSeverity.danger.color,
+        icon: Icons.error_outline,
+      );
+    }
+    if (warningCount >= 3) {
+      return (
+        label: 'Внимание',
+        color: HealthBadgeSeverity.warning.color,
+        icon: Icons.warning_amber_rounded,
+      );
+    }
+    if (warningCount >= 1) {
+      return (
+        label: 'Заметки',
+        color: HealthBadgeSeverity.warning.color,
+        icon: Icons.info_outline,
+      );
+    }
+    return (
+      label: 'OK',
+      color: HealthBadgeSeverity.ok.color,
+      icon: Icons.check_circle_outline,
+    );
   }
 
   static String _daysWord(int n) {

@@ -387,7 +387,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
               const Icon(Icons.event, size: 20, color: ThemeColors.border),
               const SizedBox(width: 6),
               Text(
-                DateFormat('d MMMM в HH:mm', 'ru-RU').format(event.dateTime),
+                formatSmartDateTime(event.dateTime),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -565,7 +565,7 @@ class _EventDraggableSheetState extends State<EventDraggableSheet> {
                     Text(
                       _selectedDate == null
                           ? 'Дата'
-                          : DateFormat('dd.MM.yyyy').format(_selectedDate!),
+                          : formatSmartDate(_selectedDate!),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],

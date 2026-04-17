@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 
@@ -176,8 +175,8 @@ class GlassEventCard extends StatelessWidget {
               children: [
                 Text(
                   overdue
-                      ? '⚠ ${DateFormat('dd.MM.yyyy – HH:mm').format(event.dateTime)}'
-                      : DateFormat('dd.MM.yyyy – HH:mm').format(event.dateTime),
+                      ? '⚠ ${formatSmartDateTime(event.dateTime)}'
+                      : formatSmartDateTime(event.dateTime),
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                     inherit: true,
                     color: overdue

@@ -23,6 +23,7 @@ class _MoodDraggableSheetState extends State<MoodDraggableSheet> {
 
   late MoodHistory history;
   PetMood? selectedMood;
+  DayPart selectedDayPart = DayPartX.now();
 
   @override
   void initState() {
@@ -38,19 +39,37 @@ class _MoodDraggableSheetState extends State<MoodDraggableSheet> {
 
   void save() async {
     if (selectedMood != null) {
+      final entry = MoodEntry(
+        date: DateTime.now(),
+        mood: selectedMood!,
+        dayPart: selectedDayPart,
+      );
+
+      // Если за сегодня уже есть запись с таким же настроением и другим
+      // временем суток — объединяем (не дублируем).
+      final now = DateTime.now();
+      final existingIdx = history.entries.indexWhere((e) =>
+          e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.date.day == now.day &&
+          e.dayPart == selectedDayPart);
+
+      if (existingIdx >= 0) {
+        // Заменяем запись за это время суток
+        history.entries[existingIdx] = entry;
+      } else {
+        history.entries.add(entry);
+      }
+
       await ProfileService().updateMoodHistory(
         widget.profile.id,
-        MoodEntry(date: DateTime.now(), mood: selectedMood!),
+        entry,
       );
     }
 
     if (Navigator.of(context).mounted) {
       Navigator.of(context).pop(true);
     }
-  }
-
-  void close() {
-    Navigator.of(context).pop(false);
   }
 
   @override
@@ -62,9 +81,9 @@ class _MoodDraggableSheetState extends State<MoodDraggableSheet> {
       title: "История настроения",
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(false),
-      initialSize: 0.675,
+      initialSize: 0.75,
       minSize: 0.5,
-      maxSize: 0.7,
+      maxSize: 0.95,
       actions: [
         IconButton(
           icon: const Icon(Icons.save),
@@ -194,6 +213,36 @@ class _MoodDraggableSheetState extends State<MoodDraggableSheet> {
               ),
             ),
 
+          const SizedBox(height: 8),
+
+          // ─── Время суток ───────────────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: DayPart.values.map((part) {
+              final selected = selectedDayPart == part;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ChoiceChip(
+                  avatar: Icon(part.icon, size: 16,
+                    color: selected ? Colors.white : ThemeColors.primary),
+                  label: Text(part.label),
+                  selected: selected,
+                  selectedColor: ThemeColors.primary,
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.white : ThemeColors.textPrimary,
+                  ),
+                  onSelected: (_) => setState(() {
+                    selectedDayPart = part;
+                    change = selectedMood != null;
+                  }),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ─── Выбор настроения ──────────────────────────────────────────
           Wrap(
             spacing: 12,
             runSpacing: 12,
