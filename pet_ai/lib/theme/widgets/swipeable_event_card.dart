@@ -5,29 +5,16 @@ import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 
 /// Обёртка над [GlassEventCard], добавляющая свайп влево для
-/// отображения кнопок «Редактировать» и «Удалить».
+/// отображения круглых кнопок «Редактировать» и «Удалить».
 class SwipeableEventCard extends StatefulWidget {
   final PetEvent event;
-
-  /// Вызывается при нажатии на карточку (открывает EventSheet)
   final VoidCallback? onTap;
-
-  /// Вызывается при нажатии «Редактировать»
   final VoidCallback? onEdit;
-
-  /// Вызывается при нажатии «Удалить»
   final VoidCallback? onDelete;
-
-  /// Параметры для режима «все питомцы»
   final Color? petColor;
   final String? petName;
-
-  /// Дата для отметки выполнения (completionDate)
   final DateTime? selectedDate;
-
-  /// Колбэк отметки выполнения (если задан — показывает чекбокс)
   final ValueChanged<bool>? onCompletedChanged;
-
   final VoidCallback? trailingCallback;
 
   const SwipeableEventCard({
@@ -49,10 +36,14 @@ class SwipeableEventCard extends StatefulWidget {
 
 class _SwipeableEventCardState extends State<SwipeableEventCard>
     with SingleTickerProviderStateMixin {
-  static const _actionWidth = 140.0; // total width of edit+delete buttons
+  /// Width revealed by the slide = 2 × button diameter + gap + right padding
+  static const double _btnSize = 52.0;
+  static const double _btnGap = 10.0;
+  static const double _sidePad = 12.0;
+  static const double _actionWidth = _sidePad + _btnSize + _btnGap + _btnSize + _sidePad;
 
   late final AnimationController _ctrl;
-  late final Animation<double> _offset;
+  late final Animation<double> _slide;
 
   bool _revealed = false;
 
@@ -61,10 +52,11 @@ class _SwipeableEventCardState extends State<SwipeableEventCard>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 260),
     );
-    _offset = Tween<double>(begin: 0, end: -_actionWidth)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _slide = Tween<double>(begin: 0, end: -_actionWidth).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
+    );
   }
 
   @override
@@ -73,132 +65,139 @@ class _SwipeableEventCardState extends State<SwipeableEventCard>
     super.dispose();
   }
 
-  void _toggleReveal() {
+  void _open() {
     HapticFeedback.selectionClick();
-    if (_revealed) {
-      _ctrl.reverse();
-    } else {
-      _ctrl.forward();
-    }
-    _revealed = !_revealed;
+    _ctrl.forward();
+    _revealed = true;
   }
 
   void _close() {
-    if (_revealed) {
-      _ctrl.reverse();
-      _revealed = false;
-    }
+    _ctrl.reverse();
+    _revealed = false;
   }
 
-  void _onHorizontalDragUpdate(DragUpdateDetails details) {
-    // Positive dx = swipe right; negative = swipe left
-    if (details.primaryDelta! < -4 && !_revealed) {
-      _toggleReveal();
-    } else if (details.primaryDelta! > 4 && _revealed) {
-      _close();
-    }
+  void _onHorizontalDrag(DragUpdateDetails d) {
+    final dx = d.primaryDelta ?? 0;
+    if (dx < -6 && !_revealed) _open();
+    if (dx > 6 && _revealed) _close();
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onHorizontalDragUpdate: _onHorizontalDragUpdate,
+      onHorizontalDragUpdate: _onHorizontalDrag,
       onTap: _revealed ? _close : null,
       behavior: HitTestBehavior.translucent,
-      child: Stack(
-        alignment: Alignment.centerRight,
-        children: [
-          // ── Action buttons (revealed on swipe left) ─────────────────
-          SizedBox(
-            width: _actionWidth,
-            child: Row(
-              children: [
-                // Edit
-                Expanded(
-                  child: GestureDetector(
+      child: ClipRect(                          // ← prevents overflow bleed
+        child: Stack(
+          children: [
+            // ── 1. Solid background: blocks any see-through ──────────────
+            Positioned.fill(
+              child: Container(color: ThemeColors.background),
+            ),
+
+            // ── 2. Action buttons (always at the right edge) ─────────────
+            Positioned(
+              right: _sidePad,
+              top: 0,
+              bottom: 0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ActionButton(
+                    icon: Icons.edit_outlined,
+                    color: ThemeColors.secondary,
+                    label: 'Изм.',
                     onTap: () {
                       _close();
                       widget.onEdit?.call();
                     },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: ThemeColors.secondary.withAlpha(200),
-                      ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.edit_outlined,
-                              color: Colors.white, size: 20),
-                          SizedBox(height: 4),
-                          Text(
-                            'Изм.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
-                ),
-                // Delete
-                Expanded(
-                  child: GestureDetector(
+                  const SizedBox(width: _btnGap),
+                  _ActionButton(
+                    icon: Icons.delete_outline,
+                    color: ThemeColors.danger,
+                    label: 'Удалить',
                     onTap: () {
                       _close();
                       widget.onDelete?.call();
                     },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: ThemeColors.danger.withAlpha(200),
-                      ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.delete_outline,
-                              color: Colors.white, size: 20),
-                          SizedBox(height: 4),
-                          Text(
-                            'Удалить',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
+                ],
+              ),
+            ),
+
+            // ── 3. Card slides left to reveal buttons ─────────────────────
+            AnimatedBuilder(
+              animation: _slide,
+              builder: (_, child) => Transform.translate(
+                offset: Offset(_slide.value, 0),
+                child: child,
+              ),
+              child: GlassEventCard(
+                event: widget.event,
+                callback: widget.onTap,
+                trailingIcon: Icons.chevron_right,
+                trailingCallback: widget.trailingCallback,
+                selectedDate: widget.selectedDate,
+                onCompletedChanged: widget.onCompletedChanged,
+                petColor: widget.petColor,
+                petName: widget.petName,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Круглая кнопка действия ─────────────────────────────────────────────────
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: _SwipeableEventCardState._btnSize,
+            height: _SwipeableEventCardState._btnSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withAlpha(80),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
+            child: Icon(icon, color: Colors.white, size: 22),
           ),
-
-          // ── Card (slides left to reveal buttons) ─────────────────────
-          AnimatedBuilder(
-            animation: _offset,
-            builder: (_, child) => Transform.translate(
-              offset: Offset(_offset.value, 0),
-              child: child,
-            ),
-            child: GlassEventCard(
-              event: widget.event,
-              callback: widget.onTap,
-              trailingIcon: Icons.chevron_right,
-              trailingCallback: widget.trailingCallback,
-              selectedDate: widget.selectedDate,
-              onCompletedChanged: widget.onCompletedChanged,
-              petColor: widget.petColor,
-              petName: widget.petName,
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],
