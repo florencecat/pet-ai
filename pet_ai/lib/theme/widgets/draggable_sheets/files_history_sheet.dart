@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:pet_ai/services/file_storage_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
@@ -100,13 +101,41 @@ class _DocCard extends StatelessWidget {
 
   const _DocCard({required this.doc, required this.onDelete});
 
+  Future<void> _open(BuildContext context) async {
+    if (!doc.file.existsSync()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Файл не найден на устройстве')),
+        );
+      }
+      return;
+    }
+    // For images — show full-screen preview in the app
+    if (doc.isImage && context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _ImagePreviewDialog(doc: doc),
+      );
+      return;
+    }
+    // For other files — open with system viewer
+    final result = await OpenFilex.open(doc.filePath);
+    if (result.type != ResultType.done && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось открыть файл: ${result.message}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cat = doc.category;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: GlassPlate(
+      child: GestureDetector(
+        onTap: () => _open(context),
+        child: GlassPlate(
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -154,6 +183,7 @@ class _DocCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -249,6 +279,41 @@ class _EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Full-screen image preview ───────────────────────────────────────────────
+
+class _ImagePreviewDialog extends StatelessWidget {
+  final PetDocument doc;
+  const _ImagePreviewDialog({required this.doc});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          title: Text(doc.name,
+              style: const TextStyle(color: Colors.white, fontSize: 16)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+        body: Center(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Image.file(doc.file, fit: BoxFit.contain),
+          ),
         ),
       ),
     );

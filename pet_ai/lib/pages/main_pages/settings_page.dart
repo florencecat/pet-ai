@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_ai/pages/secondary_pages/appearance_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
@@ -150,6 +151,10 @@ class SettingsPage extends StatelessWidget {
               title: 'Внешний вид',
               subtitle: 'Тема, цвета, оформление',
               trailingIcon: Icons.chevron_right,
+              callback: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AppearancePage()),
+              ),
             ),
 
             GlassSettingsCard(

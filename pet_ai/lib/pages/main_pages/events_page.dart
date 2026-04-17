@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_ai/theme/widgets/swipeable_event_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pet_ai/services/event_service.dart';
@@ -53,6 +54,31 @@ class _EventsPageState extends State<EventsPage> {
     );
 
     if (updated == true) _refresh();
+  }
+
+  Future<void> _deleteEvent(BuildContext context, PetEvent event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить событие?'),
+        content: Text(
+            '«${event.name}» будет удалено без возможности восстановления.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await EventService().deleteEvent(event);
+    _refresh();
   }
 
   void openViewEventSheet(
@@ -315,19 +341,30 @@ class _EventsPageState extends State<EventsPage> {
               // ── Список событий выбранного дня ───────────────────────────
               if (_selectedDay != null && _events.isNotEmpty)
                 ...(_events.where((e) => e.occursOn(_selectedDay!))).map(
-                  (e) => GlassEventCard(
+                  (e) => SwipeableEventCard(
                     event: e,
                     selectedDate: _selectedDay,
                     petColor: _petColorFor(e),
                     petName: _petNameFor(e),
-                    callback: () => openViewEventSheet(
+                    onTap: () => openViewEventSheet(
+                      context,
+                      e,
+                      completionDate: _selectedDay,
+                    ),
+                    onEdit: () => openViewEventSheet(
+                      context,
+                      e,
+                      completionDate: _selectedDay,
+                    ),
+                    onDelete: () => _deleteEvent(context, e),
+                    trailingCallback: () => openViewEventSheet(
                       context,
                       e,
                       completionDate: _selectedDay,
                     ),
                     onCompletedChanged: (val) async {
-                      final profileId = await ProfileService()
-                          .getActiveProfileId();
+                      final profileId =
+                          await ProfileService().getActiveProfileId();
                       if (profileId != null) {
                         await EventService().toggleCompleted(
                           profileId,

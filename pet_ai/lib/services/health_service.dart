@@ -175,8 +175,69 @@ class HealthAnalyzer {
       ));
     }
 
+    // ── Тренд веса (снижение за последние 3+ записи) ────────────────────
+    final weightEntries = profile.weightHistory.entries;
+    if (weightEntries.length >= 3) {
+      final recent = weightEntries.reversed.take(3).toList();
+      // recent[0] = newest, recent[2] = oldest
+      final newest = recent[0].weight;
+      final oldest = recent[2].weight;
+      if (newest < oldest) {
+        final diff = (oldest - newest);
+        badges.add(HealthBadge(
+          title: 'Снижение веса',
+          subtitle:
+              'Последние 3 записи: потеря ${diff.toStringAsFixed(1)} кг',
+          severity: HealthBadgeSeverity.warning,
+          icon: Icons.trending_down,
+        ));
+      }
+    }
+
+    // ── Низкий аппетит (последние 3 дня средний балл < 3) ───────────────
+    final foodEntries = profile.foodHistory.entries;
+    if (foodEntries.isNotEmpty) {
+      final threeDaysAgo = today.subtract(const Duration(days: 3));
+      final recentFood = foodEntries
+          .where((f) =>
+              !DateTime(f.date.year, f.date.month, f.date.day)
+                  .isBefore(threeDaysAgo))
+          .toList();
+      if (recentFood.isNotEmpty) {
+        final avgScore = recentFood
+                .map((f) => f.appetiteScore)
+                .reduce((a, b) => a + b) /
+            recentFood.length;
+        if (avgScore < 3.0) {
+          final avgStr = avgScore.toStringAsFixed(1);
+          badges.add(HealthBadge(
+            title: 'Плохой аппетит',
+            subtitle:
+                'Средний балл за 3 дня: $avgStr / 5 — питомец плохо ест',
+            severity: HealthBadgeSeverity.warning,
+            icon: Icons.no_food_outlined,
+          ));
+        }
+      }
+    }
+
+    // ── Просроченные прививки из PetEvent ───────────────────────────────
+    final overdueVaccinations = events
+        .where((e) => e.category.id == 'vaccination' && e.isOverdue)
+        .toList();
+    for (final v in overdueVaccinations) {
+      badges.add(HealthBadge(
+        title: '⚠ Просрочена прививка',
+        subtitle:
+            '${v.name} · ${DateFormat('dd.MM.yyyy').format(v.dateTime)}',
+        severity: HealthBadgeSeverity.danger,
+        icon: Icons.vaccines,
+      ));
+    }
+
     // ── Просроченные события ────────────────────────────────────────────
-    final overdueEvents = events.where((e) => e.isOverdue).toList();
+    final overdueEvents =
+        events.where((e) => e.isOverdue && e.category.id != 'vaccination').toList();
     if (overdueEvents.isNotEmpty) {
       badges.add(HealthBadge(
         title: 'Просроченные события: ${overdueEvents.length}',

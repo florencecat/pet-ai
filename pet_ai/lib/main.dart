@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pet_ai/pages/main_pages/settings_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
+import 'package:pet_ai/services/appearance_service.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
@@ -29,8 +30,31 @@ void main() async {
   runApp(const PetHealthApp());
 }
 
-class PetHealthApp extends StatelessWidget {
+class PetHealthApp extends StatefulWidget {
   const PetHealthApp({super.key});
+
+  @override
+  State<PetHealthApp> createState() => _PetHealthAppState();
+}
+
+class _PetHealthAppState extends State<PetHealthApp> {
+  ThemeData _theme = AppTheme.lightTheme;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final usePetColor = await AppearanceService().getUsePetColor();
+    if (!usePetColor) return;
+    final profile = await ProfileService().loadActiveProfile();
+    if (profile == null || !mounted) return;
+    setState(() {
+      _theme = AppTheme.withPrimaryColor(profile.color);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +62,7 @@ class PetHealthApp extends StatelessWidget {
       title: 'Pet Health Tracker',
       initialRoute: '/',
       routes: {'/registration': (context) => const PetRegistrationFlow()},
-      theme: AppTheme.lightTheme,
+      theme: _theme,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

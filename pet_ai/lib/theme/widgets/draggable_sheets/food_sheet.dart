@@ -7,7 +7,7 @@ import 'package:pet_ai/theme/widgets/appetite_stepper.dart';
 import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
-import 'package:pet_ai/theme/widgets/pill_stepper.dart';
+
 
 class FoodSheet extends StatefulWidget {
   final PetProfile profile;
