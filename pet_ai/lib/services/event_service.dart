@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
@@ -337,7 +338,7 @@ class EventService {
     all.add(event);
     await _persistAll(all);
 
-    if (!Platform.isWindows) {
+    if (!kIsWeb && !Platform.isWindows) {
       await NotificationService().scheduleEventNotification(event);
     }
   }
@@ -350,7 +351,7 @@ class EventService {
     all[index] = event;
     await _persistAll(all);
 
-    if (!Platform.isWindows) {
+    if (!kIsWeb && !Platform.isWindows) {
       await NotificationService().cancelNotification(event.id);
       await NotificationService().scheduleEventNotification(event);
     }
@@ -374,7 +375,7 @@ class EventService {
     all.removeWhere((e) => e.id == event.id);
     await _persistAll(all);
 
-    if (!Platform.isWindows) {
+    if (!kIsWeb && !Platform.isWindows) {
       await NotificationService().cancelNotification(event.id);
     }
   }
@@ -389,7 +390,7 @@ class EventService {
       if (e.petIds.contains(petId)) {
         e.petIds.remove(petId);
         if (e.petIds.isEmpty) {
-          if (!Platform.isWindows) {
+          if (!kIsWeb && !Platform.isWindows) {
             await NotificationService().cancelNotification(e.id);
           }
           continue; // удаляем осиротевшее событие

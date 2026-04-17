@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/note.dart';
 import 'package:pet_ai/models/species.dart';
@@ -430,6 +431,10 @@ class ProfileService {
   }
 
   Future<String?> pickProfileImage(String petId) async {
+    if (kIsWeb) {
+      throw UnimplementedError("pickProfileImage() is not supported on web");
+    }
+
     final picker = ImagePicker();
 
     final pickedFile = await picker.pickImage(
