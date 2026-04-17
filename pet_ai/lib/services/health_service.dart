@@ -282,7 +282,7 @@ class HealthBadgeTile extends StatelessWidget {
     final color = badge.severity.color;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: GlassPlate(
+      child: SoftGlassPlate(
         color: color.withAlpha(60),
         child: ListTile(
           leading: Container(

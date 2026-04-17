@@ -169,7 +169,7 @@ class _HomePageState extends State<HomePage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EventSheet(event: event),
+      builder: (_) => EventSheet.edit(event: event),
     );
     if (updated == true) await _initScreen();
   }
@@ -521,7 +521,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 Expanded(
                   child: GlassCard(
-                    callback: () => _openFilesHistory(context),
+                    callback: () { },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

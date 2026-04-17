@@ -16,14 +16,15 @@ import 'package:pet_ai/theme/app_colors.dart';
 class GlassPlate extends StatelessWidget {
   final Widget child;
   final Color color;
+  final bool transparent;
 
-  const GlassPlate({super.key, required this.child, this.color = Colors.white});
+  const GlassPlate({super.key, required this.child, this.color = Colors.white, this.transparent = true});
 
   @override
   Widget build(BuildContext context) {
     const borderRadius = BorderRadius.all(Radius.circular(28));
-    final borderColor = color.withAlpha(180);
-    final fillColor = color.withAlpha(220);
+    final borderColor = transparent ? color.withAlpha(180) : color;
+    final fillColor = transparent ? color.withAlpha(220) : color;
 
     return RepaintBoundary(
       child: DecoratedBox(
@@ -61,6 +62,49 @@ class GlassPlate extends StatelessWidget {
                         end: Alignment.bottomCenter,
                       ),
                     ),
+                  ),
+                ),
+              ),
+              Padding(padding: const EdgeInsets.all(8), child: child),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SoftGlassPlate extends StatelessWidget {
+  final Widget child;
+  final Color color;
+
+  const SoftGlassPlate({super.key, required this.child, this.color = Colors.white});
+
+  @override
+  Widget build(BuildContext context) {
+    const borderRadius = BorderRadius.all(Radius.circular(28));
+    final borderColor = color.withAlpha(180);
+    final fillColor = color.withAlpha(64);
+
+    return RepaintBoundary(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          color: fillColor,
+          border: Border.all(color: borderColor, width: 1.2),
+        ),
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: Stack(
+            children: [
+              // Лёгкий хайлайт сверху — имитация преломления стекла
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 28,
                   ),
                 ),
               ),
@@ -141,6 +185,7 @@ class GlassEventCard extends StatelessWidget {
     return Padding(
       padding: EdgeInsetsGeometry.symmetric(vertical: 8),
       child: GlassPlate(
+        transparent: false,
         color: cardColor,
         child: InkWell(
           onTap: () {

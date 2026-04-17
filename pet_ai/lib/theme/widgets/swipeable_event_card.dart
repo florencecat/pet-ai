@@ -88,14 +88,8 @@ class _SwipeableEventCardState extends State<SwipeableEventCard>
       onHorizontalDragUpdate: _onHorizontalDrag,
       onTap: _revealed ? _close : null,
       behavior: HitTestBehavior.translucent,
-      child: ClipRect(                          // ← prevents overflow bleed
-        child: Stack(
+      child: Stack(
           children: [
-            // ── 1. Solid background: blocks any see-through ──────────────
-            Positioned.fill(
-              child: Container(color: ThemeColors.background),
-            ),
-
             // ── 2. Action buttons (always at the right edge) ─────────────
             Positioned(
               right: _sidePad,
@@ -147,7 +141,6 @@ class _SwipeableEventCardState extends State<SwipeableEventCard>
             ),
           ],
         ),
-      ),
     );
   }
 }

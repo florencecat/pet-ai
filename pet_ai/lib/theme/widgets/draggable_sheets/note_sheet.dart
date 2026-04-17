@@ -155,7 +155,7 @@ class _NoteSheetState extends State<NoteSheet> {
           ),
       ],
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Quick symptom chips ───────────────────────────────────────
           GlassPlate(
@@ -245,7 +245,7 @@ class _NoteSheetState extends State<NoteSheet> {
                     minLines: 2,
                     keyboardType: TextInputType.multiline,
                     decoration: baseInputDecoration(
-                      'Своя заметка (или уточнение к симптому)...',
+                      'Своя заметка (или уточнение к симптому) ...',
                     ).copyWith(
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
