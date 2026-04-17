@@ -169,14 +169,14 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                 height: 120,
                                 decoration: BoxDecoration(
                                   border: BoxBorder.all(
-                                    color: ThemeColors.primary,
+                                    color: _profileColor,
                                     width: 4,
                                   ),
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: [
-                                      theme.colorScheme.primary.withAlpha(64),
-                                      theme.colorScheme.primary.withAlpha(2),
+                                      _profileColor.withAlpha(64),
+                                      _profileColor.withAlpha(2),
                                     ],
                                   ),
                                 ),
