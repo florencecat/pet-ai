@@ -44,6 +44,7 @@ class EventPreviewBlock extends StatelessWidget {
 
     return ListView(
       shrinkWrap: true,
+      padding: EdgeInsetsGeometry.only(bottom: 88),
       physics: const NeverScrollableScrollPhysics(),
       children: events.take(4).map((event) {
         return GlassEventCard(
