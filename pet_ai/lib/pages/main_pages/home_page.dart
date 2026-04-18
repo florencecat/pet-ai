@@ -85,22 +85,22 @@ class _HomePageState extends State<HomePage> {
     bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
 
     // Просроченные: не повторяющиеся, дата в прошлом, не выполнены
-    final overdue = events
-        .where((e) => e.isOverdue && notVaccination(e))
-        .toList()
-      ..sort((a, b) => b.dateTime.compareTo(a.dateTime)); // свежие сначала
+    final overdue =
+        events.where((e) => e.isOverdue && notVaccination(e)).toList()
+          ..sort((a, b) => b.dateTime.compareTo(a.dateTime)); // свежие сначала
 
     // Предстоящие: повторяющиеся или дата ≥ сейчас
-    final upcoming = events
-        .where(
-          (e) =>
-              notVaccination(e) &&
-              (e.repeat != RepeatInterval.none ||
-                  e.dateTime.isAfter(now) ||
-                  e.dateTime.isAtSameMomentAs(now)),
-        )
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final upcoming =
+        events
+            .where(
+              (e) =>
+                  notVaccination(e) &&
+                  (e.repeat != RepeatInterval.none ||
+                      e.dateTime.isAfter(now) ||
+                      e.dateTime.isAtSameMomentAs(now)),
+            )
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     setState(() {
       _events = [...overdue, ...upcoming];
@@ -135,14 +135,11 @@ class _HomePageState extends State<HomePage> {
               spacing: 8,
               runSpacing: 6,
               children: [
-                GlassBadge(
-                  icon: Icon(
-                    b.icon ?? b.severity.icon,
-                    size: 16,
-                    color: b.severity.color,
-                  ),
-                  name: b.title,
+                SoftGlassBadge(
+                  icon: b.icon ?? b.severity.icon,
+                  label: b.title,
                   color: b.severity.color,
+                  selected: false,
                 ),
               ],
             ),
@@ -157,8 +154,8 @@ class _HomePageState extends State<HomePage> {
     final s = HealthAnalyzer.score(badges);
 
     return Container(
-      width: 56,
-      height: 56,
+      width: 64,
+      height: 64,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: s.color.withAlpha(40),
@@ -213,7 +210,9 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Удалить событие?'),
-        content: Text('«${event.name}» будет удалено без возможности восстановления.'),
+        content: Text(
+          '«${event.name}» будет удалено без возможности восстановления.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -238,7 +237,10 @@ class _HomePageState extends State<HomePage> {
   final Set<String> _completionPending = {};
 
   void _onEventCompletedChanged(
-      BuildContext context, PetEvent event, bool completed) async {
+    BuildContext context,
+    PetEvent event,
+    bool completed,
+  ) async {
     if (_profile == null) return;
     await EventService().toggleCompleted(_profile!.id, event, event.dateTime);
 
@@ -254,19 +256,21 @@ class _HomePageState extends State<HomePage> {
 
     bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
 
-    final overdue = events
-        .where((e) => e.isOverdue && notVaccination(e))
-        .toList()
-      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+    final overdue =
+        events.where((e) => e.isOverdue && notVaccination(e)).toList()
+          ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
-    final upcoming = events
-        .where((e) =>
-            notVaccination(e) &&
-            (e.repeat != RepeatInterval.none ||
-                e.dateTime.isAfter(now) ||
-                e.dateTime.isAtSameMomentAs(now)))
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final upcoming =
+        events
+            .where(
+              (e) =>
+                  notVaccination(e) &&
+                  (e.repeat != RepeatInterval.none ||
+                      e.dateTime.isAfter(now) ||
+                      e.dateTime.isAtSameMomentAs(now)),
+            )
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     setState(() {
       _events = [...overdue, ...upcoming];
@@ -351,10 +355,7 @@ class _HomePageState extends State<HomePage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _VetCardSheet(
-        profile: _profile!,
-        events: _events,
-      ),
+      builder: (_) => _VetCardSheet(profile: _profile!, events: _events),
     );
   }
 
@@ -524,7 +525,9 @@ class _HomePageState extends State<HomePage> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.medical_information_outlined),
+                            icon: const Icon(
+                              Icons.medical_information_outlined,
+                            ),
                             color: ThemeColors.primary,
                             tooltip: 'Карточка для ветеринара',
                             onPressed: () => _openVetCard(context),
@@ -579,7 +582,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 Expanded(
                   child: GlassCard(
-                    callback: () { },
+                    callback: () {},
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -642,6 +645,7 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           // Левая часть — заголовок + бейджи
                           Expanded(
+                            flex: 4,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -654,9 +658,13 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Правая часть — оценка здоровья
-                          _buildHealthScore(),
+                          Expanded(
+                            flex: 1,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [_buildHealthScore()],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -895,9 +903,17 @@ class _VetCardSheet extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _infoRow(context, 'Имя', profile.name.isEmpty ? '—' : profile.name),
+                  _infoRow(
+                    context,
+                    'Имя',
+                    profile.name.isEmpty ? '—' : profile.name,
+                  ),
                   _infoRow(context, 'Вид', profile.species.name),
-                  _infoRow(context, 'Порода', profile.breed.isEmpty ? '—' : profile.breed),
+                  _infoRow(
+                    context,
+                    'Порода',
+                    profile.breed.isEmpty ? '—' : profile.breed,
+                  ),
                   _infoRow(context, 'Пол', profile.gender.caption),
                   _infoRow(context, 'Возраст', _formatAge()),
                   _infoRow(context, 'Дата рождения', _formatBirthDate()),
@@ -964,9 +980,9 @@ class _VetCardSheet extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium!.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -1036,10 +1052,11 @@ class _VetCardSheet extends StatelessWidget {
   Widget _buildMoodWeek(BuildContext context) {
     final now = DateTime.now();
     final weekAgo = now.subtract(const Duration(days: 7));
-    final recentMoods = profile.moodHistory.entries
-        .where((e) => e.date.isAfter(weekAgo))
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final recentMoods =
+        profile.moodHistory.entries
+            .where((e) => e.date.isAfter(weekAgo))
+            .toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
 
     if (recentMoods.isEmpty) {
       return GlassPlate(
@@ -1106,8 +1123,7 @@ class _VetCardSheet extends StatelessWidget {
         child: Column(
           children: grouped.entries.map((group) {
             final kind = group.key;
-            final items = group.value
-              ..sort((a, b) => b.date.compareTo(a.date));
+            final items = group.value..sort((a, b) => b.date.compareTo(a.date));
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1125,39 +1141,42 @@ class _VetCardSheet extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                ...items.map((t) => Padding(
-                  padding: const EdgeInsets.only(left: 24, bottom: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          t.displayName,
-                          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                            color: ThemeColors.textPrimary,
+                ...items.map(
+                  (t) => Padding(
+                    padding: const EdgeInsets.only(left: 24, bottom: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            t.displayName,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(color: ThemeColors.textPrimary),
                           ),
                         ),
-                      ),
-                      Text(
-                        formatSmartDate(t.date),
-                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: ThemeColors.textPrimary.withAlpha(153),
+                        Text(
+                          formatSmartDate(t.date),
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(
+                                color: ThemeColors.textPrimary.withAlpha(153),
+                              ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '→ ${formatSmartDate(t.nextDate)}',
-                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: t.nextDate.isBefore(DateTime.now())
-                              ? HealthBadgeSeverity.danger.color
-                              : ThemeColors.textPrimary.withAlpha(153),
-                          fontWeight: t.nextDate.isBefore(DateTime.now())
-                              ? FontWeight.w700
-                              : FontWeight.w400,
+                        const SizedBox(width: 8),
+                        Text(
+                          '→ ${formatSmartDate(t.nextDate)}',
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(
+                                color: t.nextDate.isBefore(DateTime.now())
+                                    ? HealthBadgeSeverity.danger.color
+                                    : ThemeColors.textPrimary.withAlpha(153),
+                                fontWeight: t.nextDate.isBefore(DateTime.now())
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
+                              ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                )),
+                ),
                 const SizedBox(height: 8),
               ],
             );
@@ -1178,31 +1197,34 @@ class _VetCardSheet extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: recent.map((n) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  formatSmartDate(n.date),
-                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    color: ThemeColors.textPrimary.withAlpha(153),
+          children: recent
+              .map(
+                (n) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        formatSmartDate(n.date),
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: ThemeColors.textPrimary.withAlpha(153),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          n.note,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(color: ThemeColors.textPrimary),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    n.note,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                      color: ThemeColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )).toList(),
+              )
+              .toList(),
         ),
       ),
     );

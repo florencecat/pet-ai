@@ -242,31 +242,38 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
                       spacing: 8,
                       runSpacing: 6,
                       children: DocumentCategories.all.map((cat) {
-                        final selected = _selectedCategory?.id == cat.id;
-                        return FilterChip(
-                          avatar: Icon(
-                            cat.icon,
-                            size: 16,
-                            color: selected ? Colors.white : cat.color,
-                          ),
-                          label: Text(cat.name),
-                          selected: selected,
-                          selectedColor: cat.color.withAlpha(200),
-                          backgroundColor: Colors.white.withAlpha(150),
-                          labelStyle: TextStyle(
-                            fontSize: 12,
-                            color: selected
-                                ? Colors.white
-                                : ThemeColors.textPrimary,
-                          ),
-                          checkmarkColor: Colors.white,
-                          onSelected: (_) {
-                            setState(() {
-                              // повторный тап снимает выбор
-                              _selectedCategory = selected ? null : cat;
-                            });
-                          },
-                        );
+                        return SoftGlassBadge(
+                            color: cat.color,
+                            icon: cat.icon,
+                            label: cat.name,
+                            selected: _selectedCategory == cat,
+                            onChanged: (selected) { setState(() {
+                              _selectedCategory = selected ? cat : null;
+                            });});
+                        // return FilterChip(
+                        //   avatar: Icon(
+                        //     cat.icon,
+                        //     size: 16,
+                        //     color: selected ? Colors.white : cat.color,
+                        //   ),
+                        //   label: Text(cat.name),
+                        //   selected: selected,
+                        //   selectedColor: cat.color.withAlpha(200),
+                        //   backgroundColor: Colors.white.withAlpha(150),
+                        //   labelStyle: TextStyle(
+                        //     fontSize: 12,
+                        //     color: selected
+                        //         ? Colors.white
+                        //         : ThemeColors.textPrimary,
+                        //   ),
+                        //   checkmarkColor: Colors.white,
+                        //   onSelected: (_) {
+                        //     setState(() {
+                        //       // повторный тап снимает выбор
+                        //       _selectedCategory = selected ? null : cat;
+                        //     });
+                        //   },
+                        // );
                       }).toList(),
                     ),
                   ],

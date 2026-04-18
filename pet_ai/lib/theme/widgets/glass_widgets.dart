@@ -353,3 +353,114 @@ class GlassBadge extends StatelessWidget {
     );
   }
 }
+
+class SoftGlassBadge extends StatefulWidget {
+  final Color color;
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final ValueChanged<bool>? onChanged;
+
+  const SoftGlassBadge({
+    super.key,
+    required this.color,
+    required this.icon,
+    required this.label,
+    required this.selected,
+    this.onChanged,
+  });
+
+  @override
+  State<SoftGlassBadge> createState() => _SoftGlassBadgeState();
+}
+
+class _SoftGlassBadgeState extends State<SoftGlassBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.92,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  Future<void> _onTap() async {
+    await _controller.forward();
+    await _controller.reverse();
+
+    if (widget.onChanged != null) {
+      widget.onChanged!(!widget.selected);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.color;
+    final selected = widget.selected;
+
+    return GestureDetector(
+      onTap: _onTap,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: selected
+                ? color.withAlpha(200)
+                : color.withAlpha(25),
+            border: Border.all(
+              color: selected
+                  ? color
+                  : color.withAlpha(80),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 14,
+                color: selected ? Colors.white : color,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? Colors.white : color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

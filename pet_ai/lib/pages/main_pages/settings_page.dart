@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/pages/secondary_pages/appearance_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
@@ -9,7 +10,8 @@ import '../../services/profile_service.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
-  Future<bool> _confirmClear(BuildContext context, {
+  Future<bool> _confirmClear(
+    BuildContext context, {
     String title = 'Очистить данные?',
     required String content,
   }) async {
@@ -35,9 +37,11 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _clearAppData(BuildContext context) async {
-    if (!await _confirmClear(context, content:
-      'Будут удалены все данные питомца, события и настройки. '
-      'Приложение будет выглядеть как при первом запуске.',
+    if (!await _confirmClear(
+      context,
+      content:
+          'Будут удалены все данные питомца, события и настройки. '
+          'Приложение будет выглядеть как при первом запуске.',
     )) {
       return;
     }
@@ -56,7 +60,10 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _clearEvents(BuildContext context) async {
-    if (!await _confirmClear(context, content: 'Будут удалены все события питомца.')) {
+    if (!await _confirmClear(
+      context,
+      content: 'Будут удалены все события питомца.',
+    )) {
       return;
     }
 
@@ -66,14 +73,17 @@ class SettingsPage extends StatelessWidget {
     }
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('События удалены')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('События удалены')));
     }
   }
 
   Future<void> _clearWeightHistory(BuildContext context) async {
-    if (!await _confirmClear(context, content: 'Будет удалена вся история веса.')) {
+    if (!await _confirmClear(
+      context,
+      content: 'Будет удалена вся история веса.',
+    )) {
       return;
     }
 
@@ -83,14 +93,17 @@ class SettingsPage extends StatelessWidget {
     }
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('История веса удалена')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('История веса удалена')));
     }
   }
 
   Future<void> _clearMoodHistory(BuildContext context) async {
-    if (!await _confirmClear(context, content: 'Будет удалена вся история настроения.')) {
+    if (!await _confirmClear(
+      context,
+      content: 'Будет удалена вся история настроения.',
+    )) {
       return;
     }
 
@@ -107,7 +120,8 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _clearMessageHistory(BuildContext context) async {
-    if (!await _confirmClear(context,
+    if (!await _confirmClear(
+      context,
       title: 'Очистить диалог?',
       content: 'Будет удалена вся история общения с ИИ.',
     )) {
@@ -127,9 +141,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: pageGradientDecoration.gradient,
-        ),
+        decoration: BoxDecoration(gradient: pageGradientDecoration.gradient),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 125),
           children: [
@@ -166,46 +178,47 @@ class SettingsPage extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            /// 🧪 Отладка
-            Text('Отладка', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            if (kDebugMode) ...[
+              Text('Отладка', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
 
-            GlassSettingsCard.debug(
-              leadingIcon: Icons.delete_forever,
-              title: 'Очистить данные приложения',
-              subtitle: 'Сброс SharedPreferences',
-              callback: () => _clearAppData(context),
-            ),
+              GlassSettingsCard.debug(
+                leadingIcon: Icons.delete_forever,
+                title: 'Очистить данные приложения',
+                subtitle: 'Сброс SharedPreferences',
+                callback: () => _clearAppData(context),
+              ),
 
-            GlassSettingsCard.debug(
-              leadingIcon: Icons.delete_forever,
-              title: 'Очистить все события',
-              subtitle: 'Удалить все события на устройстве',
-              callback: () => _clearEvents(context),
-            ),
+              GlassSettingsCard.debug(
+                leadingIcon: Icons.delete_forever,
+                title: 'Очистить все события',
+                subtitle: 'Удалить все события на устройстве',
+                callback: () => _clearEvents(context),
+              ),
 
-            GlassSettingsCard.debug(
-              leadingIcon: Icons.delete_forever,
-              title: 'Очистить историю веса',
-              subtitle: 'Удалить все записи в истории веса',
-              callback: () => _clearWeightHistory(context),
-            ),
+              GlassSettingsCard.debug(
+                leadingIcon: Icons.delete_forever,
+                title: 'Очистить историю веса',
+                subtitle: 'Удалить все записи в истории веса',
+                callback: () => _clearWeightHistory(context),
+              ),
 
-            GlassSettingsCard.debug(
-              leadingIcon: Icons.delete_forever,
-              title: 'Очистить историю настроения',
-              subtitle: 'Удалить все записи в истории настроения',
-              callback: () => _clearMoodHistory(context),
-            ),
+              GlassSettingsCard.debug(
+                leadingIcon: Icons.delete_forever,
+                title: 'Очистить историю настроения',
+                subtitle: 'Удалить все записи в истории настроения',
+                callback: () => _clearMoodHistory(context),
+              ),
 
-            GlassSettingsCard.debug(
-              leadingIcon: Icons.delete_forever,
-              title: 'Очистить историю сообщений в чате',
-              subtitle: 'Удалить все сообщения',
-              callback: () => _clearMessageHistory(context),
-            ),
+              GlassSettingsCard.debug(
+                leadingIcon: Icons.delete_forever,
+                title: 'Очистить историю сообщений в чате',
+                subtitle: 'Удалить все сообщения',
+                callback: () => _clearMessageHistory(context),
+              ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
+            ],
 
             /// ℹ️ Версия
             Center(

@@ -50,11 +50,13 @@ class _MoodSheetState extends State<MoodSheet> {
       // Если за сегодня уже есть запись с таким же настроением и другим
       // временем суток — объединяем (не дублируем).
       final now = DateTime.now();
-      final existingIdx = history.entries.indexWhere((e) =>
-          e.date.year == now.year &&
-          e.date.month == now.month &&
-          e.date.day == now.day &&
-          e.dayPart == selectedDayPart);
+      final existingIdx = history.entries.indexWhere(
+        (e) =>
+            e.date.year == now.year &&
+            e.date.month == now.month &&
+            e.date.day == now.day &&
+            e.dayPart == selectedDayPart,
+      );
 
       if (existingIdx >= 0) {
         // Заменяем запись за это время суток
@@ -63,10 +65,7 @@ class _MoodSheetState extends State<MoodSheet> {
         history.entries.add(entry);
       }
 
-      await ProfileService().updateMoodHistory(
-        widget.profile.id,
-        entry,
-      );
+      await ProfileService().updateMoodHistory(widget.profile.id, entry);
     }
 
     if (mounted && Navigator.of(context).canPop()) {
@@ -174,10 +173,14 @@ class _MoodSheetState extends State<MoodSheet> {
                         sideTitles: SideTitles(
                           reservedSize: 30,
                           showTitles: true,
-                          interval: (entries.length / 5).ceilToDouble().clamp(1, 9999),
+                          interval: (entries.length / 5).ceilToDouble().clamp(
+                            1,
+                            9999,
+                          ),
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
-                            if (index >= entries.length) return const SizedBox();
+                            if (index >= entries.length)
+                              return const SizedBox();
                             final date = entries[index].date;
                             return Padding(
                               padding: const EdgeInsets.only(top: 4),
@@ -234,85 +237,143 @@ class _MoodSheetState extends State<MoodSheet> {
 
           const SizedBox(height: 8),
 
-          // ─── Время суток ───────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: DayPart.values.map((part) {
-              final selected = selectedDayPart == part;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: ChoiceChip(
-                  avatar: Icon(part.icon, size: 16,
-                    color: selected ? Colors.white : ThemeColors.primary),
-                  label: Text(part.label),
-                  selected: selected,
-                  selectedColor: ThemeColors.primary,
-                  labelStyle: TextStyle(
-                    color: selected ? Colors.white : ThemeColors.textPrimary,
-                  ),
-                  onSelected: (_) => setState(() {
-                    selectedDayPart = part;
-                    change = selectedMood != null;
-                  }),
-                ),
-              );
-            }).toList(),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ─── Выбор настроения ──────────────────────────────────────────
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: PetMood.values.map((mood) {
-              final isSelected = selectedMood == mood;
-
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedMood = mood;
-                    change = true;
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 65,
-                  height: 65,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected
-                        ? ThemeColors.primary
-                        : ThemeColors.primary.withValues(alpha: 0.1),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        mood.icon,
-                        size: 26,
-                        color: isSelected
-                            ? ThemeColors.background
-                            : ThemeColors.border,
-                      ),
-                      Text(
-                        mood.label,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                              inherit: true,
-                              fontSize: 8,
-                              color: isSelected
-                                  ? ThemeColors.background
-                                  : ThemeColors.textPrimary,
+          GlassPlate(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                spacing: 16,
+                children: [
+                  Row(
+                    children: DayPart.values.map((mt) {
+                      final selected = selectedDayPart == mt;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => selectedDayPart = mt),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: selected
+                                  ? ThemeColors.primary.withAlpha(200)
+                                  : ThemeColors.primary.withAlpha(20),
+                              border: Border.all(
+                                color: selected
+                                    ? ThemeColors.primary
+                                    : ThemeColors.primary.withAlpha(60),
+                              ),
                             ),
-                      ),
-                    ],
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  mt.icon,
+                                  size: 18,
+                                  color: selected
+                                      ? Colors.white
+                                      : ThemeColors.primary,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  mt.label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: selected
+                                        ? Colors.white
+                                        : ThemeColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                ),
-              );
-            }).toList(),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: PetMood.values.map((mood) {
+                      final isSelected = selectedMood == mood;
+
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedMood = mood;
+                            change = true;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 65,
+                          height: 65,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? ThemeColors.primary
+                                : ThemeColors.primary.withValues(alpha: 0.1),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                mood.icon,
+                                size: 26,
+                                color: isSelected
+                                    ? ThemeColors.background
+                                    : ThemeColors.border,
+                              ),
+                              Text(
+                                mood.label,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.titleSmall!
+                                    .copyWith(
+                                      inherit: true,
+                                      fontSize: 8,
+                                      color: isSelected
+                                          ? ThemeColors.background
+                                          : ThemeColors.textPrimary,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
           ),
+
+          // ─── Время суток ───────────────────────────────────────────────
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.center,
+          //   children: DayPart.values.map((part) {
+          //     final selected = selectedDayPart == part;
+          //     return Padding(
+          //       padding: const EdgeInsets.symmetric(horizontal: 4),
+          //       child: ChoiceChip(
+          //         avatar: Icon(part.icon, size: 16,
+          //           color: selected ? Colors.white : ThemeColors.primary),
+          //         label: Text(part.label),
+          //         selected: selected,
+          //         selectedColor: ThemeColors.primary,
+          //         labelStyle: TextStyle(
+          //           color: selected ? Colors.white : ThemeColors.textPrimary,
+          //         ),
+          //         onSelected: (_) => setState(() {
+          //           selectedDayPart = part;
+          //           change = selectedMood != null;
+          //         }),
+          //       ),
+          //     );
+          //   }).toList(),
+          // ),
+          const SizedBox(height: 12),
 
           // ── History list ──────────────────────────────────────────────────
           if (history.entries.isNotEmpty) ...[
@@ -363,9 +424,9 @@ class _MoodEntryCard extends StatelessWidget {
                   Text(
                     entry.mood.label,
                     style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                          color: ThemeColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: ThemeColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
                     DateFormat('d MMMM yyyy', 'ru_RU').format(entry.date),

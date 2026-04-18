@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/profile_service.dart';

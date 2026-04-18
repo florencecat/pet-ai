@@ -78,8 +78,7 @@ class _NoteSheetState extends State<NoteSheet> {
     final text = _controller.text.trim();
     if (text.isEmpty && _selectedSymptom == null) return;
 
-    final noteText =
-        text.isNotEmpty ? text : (_selectedSymptom?.label ?? '');
+    final noteText = text.isNotEmpty ? text : (_selectedSymptom?.label ?? '');
     setState(() => _isSaving = true);
     try {
       await ProfileService().addNote(
@@ -104,8 +103,7 @@ class _NoteSheetState extends State<NoteSheet> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: ThemeColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -149,8 +147,7 @@ class _NoteSheetState extends State<NoteSheet> {
         else
           IconButton(
             icon: const Icon(Icons.check),
-            color:
-                hasContent ? ThemeColors.primary : ThemeColors.secondary,
+            color: hasContent ? ThemeColors.primary : ThemeColors.secondary,
             onPressed: hasContent ? _save : null,
           ),
       ],
@@ -173,56 +170,20 @@ class _NoteSheetState extends State<NoteSheet> {
                     spacing: 8,
                     runSpacing: 8,
                     children: SymptomTags.all.map((tag) {
-                      final selected = _selectedSymptom?.id == tag.id;
-                      return GestureDetector(
-                        onTap: () {
+                      return SoftGlassBadge(
+                        color: tag.color,
+                        icon: tag.icon,
+                        label: tag.label,
+                        selected: _selectedSymptom == tag,
+                        onChanged: (isSelected) {
                           setState(() {
-                            _selectedSymptom =
-                                selected ? null : tag;
-                            if (!selected && _controller.text.isEmpty) {
+                            _selectedSymptom = isSelected ? tag : null;
+
+                            if (isSelected && _controller.text.isEmpty) {
                               _controller.text = tag.label;
                             }
                           });
                         },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            color: selected
-                                ? tag.color.withAlpha(200)
-                                : tag.color.withAlpha(25),
-                            border: Border.all(
-                              color: selected
-                                  ? tag.color
-                                  : tag.color.withAlpha(80),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                tag.icon,
-                                size: 14,
-                                color: selected
-                                    ? Colors.white
-                                    : tag.color,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                tag.label,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: selected
-                                      ? Colors.white
-                                      : tag.color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       );
                     }).toList(),
                   ),
@@ -244,14 +205,15 @@ class _NoteSheetState extends State<NoteSheet> {
                     maxLines: 4,
                     minLines: 2,
                     keyboardType: TextInputType.multiline,
-                    decoration: baseInputDecoration(
-                      'Своя заметка (или уточнение к симптому) ...',
-                    ).copyWith(
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                    ),
+                    decoration:
+                        baseInputDecoration(
+                          'Своя заметка (или уточнение к симптому) ...',
+                        ).copyWith(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          filled: false,
+                        ),
                     onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 8),
@@ -267,8 +229,7 @@ class _NoteSheetState extends State<NoteSheet> {
                               : ThemeColors.secondary.withAlpha(40),
                         ),
                         child: IconButton(
-                          onPressed:
-                              _speechAvailable ? _toggleListening : null,
+                          onPressed: _speechAvailable ? _toggleListening : null,
                           icon: Icon(
                             _isListening ? Icons.mic : Icons.mic_none,
                             size: 26,
@@ -276,12 +237,12 @@ class _NoteSheetState extends State<NoteSheet> {
                           color: _isListening
                               ? Colors.white
                               : _speechAvailable
-                                  ? ThemeColors.secondary
-                                  : ThemeColors.secondary.withAlpha(80),
+                              ? ThemeColors.secondary
+                              : ThemeColors.secondary.withAlpha(80),
                           tooltip: _speechAvailable
                               ? (_isListening
-                                  ? 'Остановить запись'
-                                  : 'Голосовой ввод')
+                                    ? 'Остановить запись'
+                                    : 'Голосовой ввод')
                               : 'Голосовой ввод недоступен',
                         ),
                       ),
@@ -309,27 +270,21 @@ class _NoteSheetState extends State<NoteSheet> {
                     const SizedBox(height: 10),
                     Text(
                       'История дневника пуста',
-                      style:
-                          Theme.of(context).textTheme.bodyLarge!.copyWith(
-                                color:
-                                    ThemeColors.primary.withAlpha(120),
-                              ),
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        color: ThemeColors.primary.withAlpha(120),
+                      ),
                     ),
                   ],
                 ),
               ),
             )
           else ...[
-            Text('История',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('История', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             ...entries.map(
               (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _NoteEntryCard(
-                  entry: e,
-                  onDelete: () => _delete(e),
-                ),
+                child: _NoteEntryCard(entry: e, onDelete: () => _delete(e)),
               ),
             ),
           ],
@@ -370,8 +325,11 @@ class _NoteEntryCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
             ] else ...[
-              Icon(Icons.notes,
-                  size: 20, color: ThemeColors.secondary.withAlpha(160)),
+              Icon(
+                Icons.notes,
+                size: 20,
+                color: ThemeColors.secondary.withAlpha(160),
+              ),
               const SizedBox(width: 10),
             ],
             Expanded(
@@ -380,15 +338,16 @@ class _NoteEntryCard extends StatelessWidget {
                 children: [
                   Text(
                     entry.note,
-                    style:
-                        Theme.of(context).textTheme.bodyMedium!.copyWith(
-                              color: ThemeColors.textPrimary,
-                            ),
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: ThemeColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    DateFormat('d MMMM yyyy, HH:mm', 'ru_RU')
-                        .format(entry.date),
+                    DateFormat(
+                      'd MMMM yyyy, HH:mm',
+                      'ru_RU',
+                    ).format(entry.date),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
