@@ -357,7 +357,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                           clipBehavior: Clip.none,
                           scrollDirection: Axis.horizontal,
                           itemCount: ThemeColors.profileColors.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(width: 12),
                           itemBuilder: (context, index) {
                             final color = ThemeColors.profileColors[index];

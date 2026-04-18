@@ -28,24 +28,28 @@ class EventPreviewBlock extends StatelessWidget {
     if (events.isEmpty) {
       return SizedBox(
         height: MediaQuery.of(context).size.height * 0.35,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.pets_sharp,
-                size: 86,
-                color: Theme.of(context).colorScheme.primary.withAlpha(64),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Нет запланированных событий',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary.withAlpha(128),
-                  fontSize: 16,
+        child: Align(
+          alignment: AlignmentGeometry.topCenter,
+          child: Padding(
+            padding: EdgeInsetsGeometry.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.pets_sharp,
+                  size: 86,
+                  color: Theme.of(context).colorScheme.primary.withAlpha(64),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Text(
+                  'Нет запланированных событий',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary.withAlpha(128),
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
