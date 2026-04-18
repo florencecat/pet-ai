@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:pet_ai/models/mood.dart';
+import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/mood_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/weight_sheet.dart';
@@ -145,6 +149,36 @@ class _HomePageState extends State<HomePage> {
           ),
         )
         .toList();
+  }
+
+  Widget _buildHealthScore() {
+    if (_profile == null) return const SizedBox();
+    final badges = HealthAnalyzer.analyze(_profile!, _events);
+    final s = HealthAnalyzer.score(badges);
+
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: s.color.withAlpha(40),
+        border: Border.all(color: s.color.withAlpha(120), width: 2),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(s.icon, size: 20, color: s.color),
+          Text(
+            s.label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: s.color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openEventSheet(BuildContext context, PetEvent event) async {
@@ -309,6 +343,21 @@ class _HomePageState extends State<HomePage> {
     if (updated == true) await _initScreen();
   }
 
+  void _openVetCard(BuildContext context) {
+    if (_profile == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _VetCardSheet(
+        profile: _profile!,
+        events: _events,
+      ),
+    );
+  }
+
   void _openFilesHistory(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -457,11 +506,14 @@ class _HomePageState extends State<HomePage> {
                                   color: ThemeColors.textPrimary,
                                 ),
                               const SizedBox(width: 3),
-                              Text(
-                                _profile == null || _profile!.name.isEmpty
-                                    ? "Загружаем..."
-                                    : _profile!.name,
-                                style: Theme.of(context).textTheme.titleLarge,
+                              Expanded(
+                                child: Text(
+                                  _profile == null || _profile!.name.isEmpty
+                                      ? "Загружаем..."
+                                      : _profile!.name,
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -470,6 +522,12 @@ class _HomePageState extends State<HomePage> {
                                 ? "Здесь будет имя и порода..."
                                 : description,
                             style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.medical_information_outlined),
+                            color: ThemeColors.primary,
+                            tooltip: 'Карточка для ветеринара',
+                            onPressed: () => _openVetCard(context),
                           ),
                         ),
                       ),
@@ -579,15 +637,26 @@ class _HomePageState extends State<HomePage> {
                     isLoading: _isLoadingProfile || _isLoadingEvents,
                     child: Padding(
                       padding: EdgeInsetsGeometry.all(10),
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Здоровье',
-                            style: Theme.of(context).textTheme.titleLarge,
+                          // Левая часть — заголовок + бейджи
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Здоровье',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 8),
+                                ..._buildHealthSummary(),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          ..._buildHealthSummary(),
+                          const SizedBox(width: 8),
+                          // Правая часть — оценка здоровья
+                          _buildHealthScore(),
                         ],
                       ),
                     ),
@@ -794,6 +863,347 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Карточка для ветеринара ────────────────────────────────────────────────
+
+class _VetCardSheet extends StatelessWidget {
+  final PetProfile profile;
+  final List<PetEvent> events;
+
+  const _VetCardSheet({required this.profile, required this.events});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableSheet(
+      title: 'Карточка для ветеринара',
+      centerTitle: true,
+      onBack: () => Navigator.of(context).pop(),
+      initialSize: 0.85,
+      minSize: 0.5,
+      maxSize: 1.0,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Основная информация ──────────────────────────────────────
+          _sectionTitle(context, 'Основная информация'),
+          GlassPlate(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _infoRow(context, 'Имя', profile.name.isEmpty ? '—' : profile.name),
+                  _infoRow(context, 'Вид', profile.species.name),
+                  _infoRow(context, 'Порода', profile.breed.isEmpty ? '—' : profile.breed),
+                  _infoRow(context, 'Пол', profile.gender.caption),
+                  _infoRow(context, 'Возраст', _formatAge()),
+                  _infoRow(context, 'Дата рождения', _formatBirthDate()),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Вес ──────────────────────────────────────────────────────
+          _sectionTitle(context, 'Вес'),
+          GlassPlate(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _infoRow(
+                    context,
+                    'Текущий вес',
+                    profile.weightHistory.lastWeight != null
+                        ? '${profile.weightHistory.lastWeight!.toStringAsFixed(1)} кг'
+                        : 'Нет данных',
+                  ),
+                  if (profile.weightHistory.lastEntry != null)
+                    _infoRow(
+                      context,
+                      'Дата взвешивания',
+                      formatSmartDate(profile.weightHistory.lastEntry!.date),
+                    ),
+                  _buildWeightDynamics(context),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Настроение за неделю ─────────────────────────────────────
+          _sectionTitle(context, 'Настроение за последнюю неделю'),
+          _buildMoodWeek(context),
+
+          const SizedBox(height: 16),
+
+          // ── Прививки и обработки ─────────────────────────────────────
+          _sectionTitle(context, 'Прививки и обработки'),
+          _buildTreatments(context),
+
+          // ── Заметки ──────────────────────────────────────────────────
+          if (profile.noteHistory.entries.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _sectionTitle(context, 'Важные заметки'),
+            _buildNotes(context),
+          ],
+
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium!.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                color: ThemeColors.textPrimary.withAlpha(153),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.w600,
+                color: ThemeColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatAge() {
+    if (profile.birthDate == null) return 'Нет данных';
+    final duration = profile.birthDate!.difference(DateTime.now());
+    return formatPetAge(duration);
+  }
+
+  String _formatBirthDate() {
+    if (profile.birthDate == null) return 'Нет данных';
+    return DateFormat('dd.MM.yyyy', 'ru').format(profile.birthDate!);
+  }
+
+  Widget _buildWeightDynamics(BuildContext context) {
+    final entries = profile.weightHistory.entries;
+    if (entries.length < 2) {
+      return _infoRow(context, 'Динамика', 'Недостаточно данных');
+    }
+
+    // Последние 5 записей
+    final recent = entries.length > 5
+        ? entries.sublist(entries.length - 5)
+        : entries;
+
+    final first = recent.first.weight;
+    final last = recent.last.weight;
+    final diff = last - first;
+    final sign = diff > 0 ? '+' : '';
+    final trend = diff.abs() < 0.05
+        ? 'Стабильный'
+        : '$sign${diff.toStringAsFixed(1)} кг';
+
+    return _infoRow(context, 'Динамика', trend);
+  }
+
+  Widget _buildMoodWeek(BuildContext context) {
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
+    final recentMoods = profile.moodHistory.entries
+        .where((e) => e.date.isAfter(weekAgo))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    if (recentMoods.isEmpty) {
+      return GlassPlate(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Нет записей за последнюю неделю',
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              color: ThemeColors.textPrimary.withAlpha(153),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: recentMoods.map((entry) {
+            return Chip(
+              avatar: Icon(entry.mood.icon, size: 16),
+              label: Text(
+                '${DateFormat('dd.MM').format(entry.date)} '
+                '${entry.dayPart.label} — ${entry.mood.label}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTreatments(BuildContext context) {
+    final treatments = profile.treatmentHistory.entries;
+    if (treatments.isEmpty) {
+      return GlassPlate(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Нет записей о прививках и обработках',
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              color: ThemeColors.textPrimary.withAlpha(153),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Группируем по виду
+    final grouped = <TreatmentKind, List<TreatmentEntry>>{};
+    for (final t in treatments) {
+      grouped.putIfAbsent(t.kind, () => []).add(t);
+    }
+
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: grouped.entries.map((group) {
+            final kind = group.key;
+            final items = group.value
+              ..sort((a, b) => b.date.compareTo(a.date));
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(kind.icon, size: 18, color: kind.color),
+                    const SizedBox(width: 6),
+                    Text(
+                      kind.label,
+                      style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ...items.map((t) => Padding(
+                  padding: const EdgeInsets.only(left: 24, bottom: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          t.displayName,
+                          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                            color: ThemeColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        formatSmartDate(t.date),
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: ThemeColors.textPrimary.withAlpha(153),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '→ ${formatSmartDate(t.nextDate)}',
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: t.nextDate.isBefore(DateTime.now())
+                              ? HealthBadgeSeverity.danger.color
+                              : ThemeColors.textPrimary.withAlpha(153),
+                          fontWeight: t.nextDate.isBefore(DateTime.now())
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+                const SizedBox(height: 8),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotes(BuildContext context) {
+    // Показываем последние 5 заметок
+    final notes = profile.noteHistory.entries.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    final recent = notes.take(5).toList();
+
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: recent.map((n) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  formatSmartDate(n.date),
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                    color: ThemeColors.textPrimary.withAlpha(153),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    n.note,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: ThemeColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )).toList(),
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ThemeColors {
   static const background = Color(0xFFf4f3ee);
@@ -44,6 +45,27 @@ const RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
   borderRadius: BorderRadiusGeometry.all(Radius.circular(cardBorderRadius)),
   side: BorderSide(width: 2, color: Color.fromARGB(128, 244, 67, 54)),
 );
+
+/// Форматирует дату: "Сегодня", "Вчера", "Завтра" или [pattern].
+String formatSmartDate(DateTime d, {String pattern = 'dd.MM.yyyy', String locale = 'ru'}) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(d.year, d.month, d.day);
+  final diff = target.difference(today).inDays;
+
+  if (diff == 0) return 'Сегодня';
+  if (diff == -1) return 'Вчера';
+  if (diff == 1) return 'Завтра';
+  return DateFormat(pattern, locale).format(d);
+}
+
+/// Форматирует дату + время: "Сегодня в 14:30" или "dd.MM.yyyy – HH:mm".
+String formatSmartDateTime(DateTime d) {
+  final datePart = formatSmartDate(d);
+  final timePart = DateFormat('HH:mm').format(d);
+  final isRelative = datePart == 'Сегодня' || datePart == 'Вчера' || datePart == 'Завтра';
+  return isRelative ? '$datePart в $timePart' : '${DateFormat('dd.MM.yyyy').format(d)} – $timePart';
+}
 
 const BoxDecoration pageGradientDecoration = BoxDecoration(
   gradient: LinearGradient(

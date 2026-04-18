@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/services/treatment_service.dart';
@@ -298,8 +297,8 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                   leading: Icon(entry.kind.icon, color: entry.kind.color),
                   title: Text(entry.displayName),
                   subtitle: Text(
-                    'Сделано: ${DateFormat('dd.MM.yyyy').format(entry.date)} • '
-                    'Следующее: ${DateFormat('dd.MM.yyyy').format(entry.nextDate)}',
+                    'Сделано: ${formatSmartDate(entry.date)} • '
+                    'Следующее: ${formatSmartDate(entry.nextDate)}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   trailing: IconButton(
@@ -351,7 +350,7 @@ class _DateField extends StatelessWidget {
               children: [
                 Icon(icon, size: 16, color: ThemeColors.primary),
                 const SizedBox(width: 6),
-                Text(DateFormat('dd.MM.yyyy').format(date)),
+                Text(formatSmartDate(date)),
               ],
             ),
           ],

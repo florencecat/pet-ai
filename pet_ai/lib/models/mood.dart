@@ -1,6 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/history.dart';
 
+/// Время суток для записи настроения / питания.
+enum DayPart { morning, afternoon, evening }
+
+extension DayPartX on DayPart {
+  String get label {
+    switch (this) {
+      case DayPart.morning:
+        return 'Утро';
+      case DayPart.afternoon:
+        return 'День';
+      case DayPart.evening:
+        return 'Вечер';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case DayPart.morning:
+        return Icons.wb_sunny_outlined;
+      case DayPart.afternoon:
+        return Icons.light_mode_outlined;
+      case DayPart.evening:
+        return Icons.nightlight_outlined;
+    }
+  }
+
+  /// Текущее время суток на основе часа.
+  static DayPart fromHour(int hour) {
+    if (hour < 12) return DayPart.morning;
+    if (hour < 18) return DayPart.afternoon;
+    return DayPart.evening;
+  }
+
+  static DayPart now() => fromHour(DateTime.now().hour);
+}
+
 // Настроение
 enum PetMood {
   happy,
@@ -54,18 +90,26 @@ class MoodEntry implements BaseEntry {
   @override
   final DateTime date;
   final PetMood mood;
+  final DayPart dayPart;
 
   MoodEntry({
     required this.date,
     required this.mood,
+    required this.dayPart,
   });
 
+  /// Обратная совместимость: если dayPart не сохранён — угадываем по часу.
   factory MoodEntry.fromJson(Map<String, dynamic> json) {
+    final date = DateTime.parse(json["date"]);
     return MoodEntry(
-      date: DateTime.parse(json["date"]),
-      mood: PetMood.values.firstWhere(
-            (e) => e.name == json["mood"],
-      ),
+      date: date,
+      mood: PetMood.values.firstWhere((e) => e.name == json["mood"]),
+      dayPart: json["dayPart"] != null
+          ? DayPart.values.firstWhere(
+              (e) => e.name == json["dayPart"],
+              orElse: () => DayPartX.fromHour(date.hour),
+            )
+          : DayPartX.fromHour(date.hour),
     );
   }
 
@@ -73,6 +117,7 @@ class MoodEntry implements BaseEntry {
   Map<String, dynamic> toJson() => {
     "date": date.toIso8601String(),
     "mood": mood.name,
+    "dayPart": dayPart.name,
   };
 }
 
@@ -82,11 +127,20 @@ class MoodHistory extends History<MoodEntry> {
 
   bool hasTodayEntry() {
     final now = DateTime.now();
-
     return entries.any((e) =>
-    e.date.year == now.year &&
+        e.date.year == now.year &&
         e.date.month == now.month &&
         e.date.day == now.day);
+  }
+
+  /// Проверяет, есть ли запись за сегодня с указанным временем суток.
+  bool hasTodayEntryForPart(DayPart part) {
+    final now = DateTime.now();
+    return entries.any((e) =>
+        e.date.year == now.year &&
+        e.date.month == now.month &&
+        e.date.day == now.day &&
+        e.dayPart == part);
   }
 
   static final moodSerializer = HistorySerializer<MoodEntry>(
