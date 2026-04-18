@@ -55,7 +55,7 @@ class GlassPlate extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Colors.white.withAlpha(80),
+                          Colors.white.withAlpha(64),
                           Colors.white.withAlpha(0),
                         ],
                         begin: Alignment.topCenter,
