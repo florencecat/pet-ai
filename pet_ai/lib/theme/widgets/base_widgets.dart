@@ -5,7 +5,10 @@ import 'package:pet_ai/theme/app_theme.dart';
 InputDecoration baseInputDecoration(String label, {Widget? suffixIcon}) {
   return InputDecoration(
     labelText: label,
-    labelStyle: AppTheme.lightTheme.textTheme.bodyLarge,
+    labelStyle: AppTheme.lightTheme.textTheme.bodyLarge!.copyWith(
+      inherit: true,
+      color: ThemeColors.textPrimary.withAlpha(128)
+    ),
     filled: true,
     fillColor: ThemeColors.white,
     border: OutlineInputBorder(
