@@ -51,6 +51,10 @@ class _HomePageState extends State<HomePage> {
   late String? _moodStatus = "...";
   late String? _foodStatus = "...";
 
+  late String? _weightStatus = "...";
+  late String? _moodStatus = "...";
+  late String? _foodStatus = "...";
+
   @override
   void initState() {
     super.initState();
