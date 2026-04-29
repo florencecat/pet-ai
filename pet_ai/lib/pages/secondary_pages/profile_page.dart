@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/models/species.dart';
 import 'package:pet_ai/theme/widgets/breed_selector.dart';
+import 'package:provider/provider.dart';
 
 class PetProfilePage extends StatefulWidget {
   const PetProfilePage({super.key});
@@ -29,7 +31,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   final _notesController = TextEditingController();
 
   PetSpecies _selectedSpecies = BuiltInSpecies.other;
-  Color _profileColor = ThemeColors.defaultProfileColor;
+  ProfileColorPalette _profilePalette = ThemeColors.defaultProfilePalette;
   Gender _gender = Gender.none;
   File? _profileImage;
 
@@ -59,7 +61,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     _dateController.text = _formatDate(_profile!.birthDate);
     _gender = _profile!.gender;
     _profileImage = _profile!.profileImage;
-    _profileColor = _profile!.color;
+    _profilePalette = _profile!.palette;
 
     if (mounted) setState(() => _loading = false);
   }
@@ -73,11 +75,12 @@ class _PetProfilePageState extends State<PetProfilePage> {
     _profile!.birthDate = _parseDate(_dateController.text);
     _profile!.gender = _gender;
     _profile!.profileImage = _profileImage;
-    _profile!.color = _profileColor;
+    _profile!.palette = _profilePalette;
 
     await ProfileService().saveProfile(_profile!);
 
     if (mounted) {
+      context.read<AppearanceController>().updatePetPalette(_profilePalette);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Профиль сохранён'),
@@ -140,6 +143,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     return Scaffold(
       appBar: AppBar(),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: context.watch<AppearanceController>().primaryColor,
         onPressed: _saveProfile,
         label: const Text('Сохранить'),
         icon: const Icon(Icons.check),
@@ -169,14 +173,14 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                 height: 120,
                                 decoration: BoxDecoration(
                                   border: BoxBorder.all(
-                                    color: _profileColor,
+                                    color: _profilePalette.mainColor,
                                     width: 4,
                                   ),
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: [
-                                      _profileColor.withAlpha(64),
-                                      _profileColor.withAlpha(2),
+                                      _profilePalette.mainColor.withAlpha(64),
+                                      _profilePalette.mainColor.withAlpha(2),
                                     ],
                                   ),
                                 ),
@@ -356,21 +360,28 @@ class _PetProfilePageState extends State<PetProfilePage> {
                         child: ListView.separated(
                           clipBehavior: Clip.none,
                           scrollDirection: Axis.horizontal,
-                          itemCount: ThemeColors.profileColors.length,
+                          itemCount: ThemeColors.profilePalettes.length,
                           separatorBuilder: (_, _) =>
                               const SizedBox(width: 12),
                           itemBuilder: (context, index) {
-                            final color = ThemeColors.profileColors[index];
-                            final isSelected = _profileColor == color;
+                            final palette = ThemeColors.profilePalettes[index];
+                            final isSelected = _profilePalette == palette;
+
                             return GestureDetector(
-                              onTap: () =>
-                                  setState(() => _profileColor = color),
+                              onTap: () {
+                                setState(() => _profilePalette = palette);
+                              },
                               child: Container(
                                 width: 50,
                                 height: 50,
                                 decoration: BoxDecoration(
-                                  color: color,
                                   shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                     stops: [0.5, 0.5],
+                                      colors: [
+                                        palette.mainColor,
+                                        palette.darkShade
+                                      ]),
                                   border: Border.all(
                                     color: isSelected
                                         ? Colors.black
@@ -380,7 +391,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
                                   boxShadow: [
                                     if (isSelected)
                                       BoxShadow(
-                                        color: color.withAlpha(100),
+                                        color: palette.mainColor.withAlpha(100),
                                         blurRadius: 8,
                                         spreadRadius: 2,
                                       ),

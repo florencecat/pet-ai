@@ -1,4 +1,4 @@
-enum HistoryPeriod { month, year, all }
+enum HistoryPeriod { day, month, year, all }
 
 abstract class BaseEntry {
   DateTime get date;
@@ -33,6 +33,10 @@ class History<T extends BaseEntry> {
     final now = DateTime.now();
 
     switch (period) {
+      case HistoryPeriod.day:
+        final start = DateTime(now.year, now.month, now.day);
+        return entries.where((e) => e.date.isAfter(start)).toList();
+
       case HistoryPeriod.month:
         final start = now.subtract(const Duration(days: 30));
         return entries.where((e) => e.date.isAfter(start)).toList();

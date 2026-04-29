@@ -7,7 +7,9 @@ import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/event_sheet.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class EventsPage extends StatefulWidget {
   final DateTime? initialDate;
@@ -110,7 +112,7 @@ class _EventsPageState extends State<EventsPage> {
     PetProfile? activeProfile;
 
     for (final p in allProfiles) {
-      petColors[p.id] = p.color;
+      petColors[p.id] = p.palette.mainColor;
       petNames[p.id] = p.name.isEmpty ? 'Питомец' : p.name;
       if (p.id == activeId) activeProfile = p;
     }
@@ -180,7 +182,7 @@ class _EventsPageState extends State<EventsPage> {
     final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(gradient: pageGradientDecoration.gradient),
+        decoration: context.watch<AppearanceController>().gradientDecoration,
         child: InlineLoading(
           isLoading: _isLoadingEvents,
           child: ListView(
@@ -202,7 +204,7 @@ class _EventsPageState extends State<EventsPage> {
                             ? _activeProfile!.name
                             : 'Текущий',
                         selected: !_showAllPets,
-                        color: _activeProfile?.color ?? ThemeColors.primary,
+                        color: _activeProfile?.palette.mainColor ?? context.watch<AppearanceController>().primaryColor,
                         onTap: () {
                           if (_showAllPets) {
                             setState(() => _showAllPets = false);
@@ -316,7 +318,7 @@ class _EventsPageState extends State<EventsPage> {
 
               // ── Кнопка «Добавить событие» ───────────────────────────────
               GlassCard(
-                color: ThemeColors.primary,
+                color: context.watch<AppearanceController>().primaryColor,
                 callback: _selectedDay == null
                     ? null
                     : () => openCreateEventSheet(context, _selectedDay!),

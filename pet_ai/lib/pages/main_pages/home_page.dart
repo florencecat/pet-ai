@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/services/profile_service.dart';
+import 'package:pet_ai/theme/font_awesome_icons.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/mood_sheet.dart';
@@ -13,9 +14,11 @@ import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:pet_ai/pages/secondary_pages/profile_page.dart';
 import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/event_service.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/file_upload_sheet.dart';
+import 'package:provider/provider.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/files_history_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_ai/theme/widgets/health_action_button.dart';
@@ -44,6 +47,10 @@ class _HomePageState extends State<HomePage> {
   bool _isLoadingEvents = true;
   List<PetEvent> _events = [];
 
+  late String? _weightStatus = "...";
+  late String? _moodStatus = "...";
+  late String? _foodStatus = "...";
+
   @override
   void initState() {
     super.initState();
@@ -69,10 +76,18 @@ class _HomePageState extends State<HomePage> {
 
     final multipleProfiles = await ProfileService().hasMultipleProfiles();
 
+    final weightStatus = await ProfileService().lastWeightString();
+    final foodStatus = await ProfileService().lastFoodString();
+    final moodStatus = await ProfileService().lastMoodString();
+
     setState(() {
       _profile = profile;
       _multipleProfiles = multipleProfiles;
       _isLoadingProfile = false;
+
+      _weightStatus = weightStatus;
+      _foodStatus = foodStatus;
+      _moodStatus = moodStatus;
     });
 
     final events = await EventService().loadEvents(profile.id);
@@ -411,133 +426,234 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final description = _profileDescription();
     final topPadding = MediaQuery.of(context).padding.top;
-    final profileColor = _profile?.color ?? ThemeColors.primary;
 
     return Scaffold(
       backgroundColor: ThemeColors.white,
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: pageGradientDecoration,
+        decoration: context.watch<AppearanceController>().gradientDecoration,
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 16),
           children: [
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () => _showProfileSwitcher(context),
-                  child: InlineLoading(
-                    isLoading: _isLoadingProfile,
-                    child: Stack(
-                      clipBehavior: Clip.none,
+            GlassCard(
+              padding: 0,
+              callback: () => _openProfile(context),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsetsGeometry.all(24),
+                    child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: profileColor, width: 2.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: profileColor.withAlpha(80),
-                                blurRadius: 10,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 37,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.3,
-                            ),
-                            child: _profile?.profileImage == null
-                                ? const Icon(
-                                    Icons.pets,
-                                    size: 38,
-                                    color: Colors.white,
-                                  )
-                                : CircleAvatar(
-                                    radius: 38,
-                                    backgroundImage: FileImage(
-                                      _profile!.profileImage!,
+                        Expanded(
+                          flex: 1,
+                          child: GestureDetector(
+                            onTap: () => _showProfileSwitcher(context),
+                            child: InlineLoading(
+                              isLoading: _isLoadingProfile,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: context.watch<AppearanceController>().primaryColor,
+                                        width: 2.5,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: context.watch<AppearanceController>().primaryColor.withAlpha(80),
+                                          blurRadius: 10,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 30,
+                                      backgroundColor: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      child: _profile?.profileImage == null
+                                          ? const Icon(
+                                              Icons.pets,
+                                              size: 38,
+                                              color: Colors.white,
+                                            )
+                                          : CircleAvatar(
+                                              radius: 38,
+                                              backgroundImage: FileImage(
+                                                _profile!.profileImage!,
+                                              ),
+                                            ),
                                     ),
                                   ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: context.watch<AppearanceController>().primaryColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        _multipleProfiles == true
+                                            ? Icons.expand_more_rounded
+                                            : Icons.add,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: profileColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: Icon(
-                              _multipleProfiles == true
-                                  ? Icons.expand_more_rounded
-                                  : Icons.add,
-                              size: 14,
-                              color: Colors.white,
+
+                        Expanded(
+                          flex: 3,
+                          child: Center(
+                            child: InlineLoading(
+                              isLoading: _isLoadingProfile,
+                              child: ListTile(
+                                title: Row(
+                                  spacing: 4,
+                                  children: [
+                                    if (_profile != null &&
+                                        _profile!.gender.icon != null)
+                                      Icon(
+                                        _profile!.gender.icon,
+                                        color: ThemeColors.textPrimary,
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        _profile == null ||
+                                                _profile!.name.isEmpty
+                                            ? "Загружаем..."
+                                            : _profile!.name,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Text(
+                                  description.isEmpty
+                                      ? "Здесь будет имя и порода..."
+                                      : description,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                  const Divider(height: 2, color: Colors.black12),
+
+                  ListTile(
+                    leading: const Icon(FontAwesome.medkit, size: 18),
+                    title: Text("Карточка для ветеринара"),
+                    titleTextStyle: Theme.of(context).textTheme.bodySmall,
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _openVetCard(context)
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // быстрые действия
+            Row(
+              spacing: 8,
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _HomeActionButton(
+                  callback: () => _openWeightHistory(context),
+                  emoji: "⚖️",
+                  category: "Вес",
+                  caption: _weightStatus,
                 ),
+                _HomeActionButton(
+                  callback: () => _openMoodHistory(context),
+                  emoji: "😊",
+                  category: "Настроение",
+                  caption: _moodStatus,
+                ),
+                _HomeActionButton(
+                  callback: () => _openFoodHistory(context),
+                  emoji: "🥣",
+                  category: "Питание",
+                  caption: _foodStatus,
+                ),
+              ],
+            ),
 
-                const SizedBox(width: 16),
+            const SizedBox(height: 16),
 
-                Expanded(
-                  flex: 3,
-                  child: GlassCard(
-                    callback: () => _openProfile(context),
-                    child: Center(
-                      child: InlineLoading(
-                        isLoading: _isLoadingProfile,
-                        child: ListTile(
-                          title: Row(
-                            children: [
-                              if (_profile != null &&
-                                  _profile!.gender.icon != null)
-                                Icon(
-                                  _profile!.gender.icon,
-                                  color: ThemeColors.textPrimary,
-                                ),
-                              const SizedBox(width: 3),
-                              Expanded(
-                                child: Text(
-                                  _profile == null || _profile!.name.isEmpty
-                                      ? "Загружаем..."
-                                      : _profile!.name,
+            // блок здоровья
+            GlassCard(
+              callback: () async {
+                await showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  enableDrag: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const HealthSummaryModal(),
+                );
+                await _initScreen();
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  InlineLoading(
+                    isLoading: _isLoadingProfile || _isLoadingEvents,
+                    child: Padding(
+                      padding: EdgeInsetsGeometry.all(10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Левая часть — заголовок + бейджи
+                          Expanded(
+                            flex: 4,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Здоровье',
                                   style: Theme.of(context).textTheme.titleLarge,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Text(
-                            description.isEmpty
-                                ? "Здесь будет имя и порода..."
-                                : description,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(
-                              Icons.medical_information_outlined,
+                                const SizedBox(height: 8),
+                                ..._buildHealthSummary(),
+                              ],
                             ),
-                            color: ThemeColors.primary,
-                            tooltip: 'Карточка для ветеринара',
-                            onPressed: () => _openVetCard(context),
                           ),
-                        ),
+                          Expanded(
+                            flex: 1,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [_buildHealthScore()],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             const SizedBox(height: 16),
@@ -620,93 +736,6 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 16),
 
-            // блок здоровья
-            GlassCard(
-              callback: () async {
-                await showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  useSafeArea: true,
-                  enableDrag: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => const HealthSummaryModal(),
-                );
-                await _initScreen();
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  InlineLoading(
-                    isLoading: _isLoadingProfile || _isLoadingEvents,
-                    child: Padding(
-                      padding: EdgeInsetsGeometry.all(10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Левая часть — заголовок + бейджи
-                          Expanded(
-                            flex: 4,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Здоровье',
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                ..._buildHealthSummary(),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [_buildHealthScore()],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // быстрые действия
-                  Padding(
-                    padding: EdgeInsetsGeometry.only(left: 8, right: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: HomeActionButton(
-                            icon: Icons.monitor_weight_outlined,
-                            label: 'Вес',
-                            onPressed: () => _openWeightHistory(context),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: HomeActionButton(
-                            icon: Icons.mood_outlined,
-                            label: 'Настроение',
-                            onPressed: () => _openMoodHistory(context),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: HomeActionButton(
-                            icon: Icons.restaurant_outlined,
-                            label: 'Питание',
-                            onPressed: () => _openFoodHistory(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -720,7 +749,7 @@ class _HomePageState extends State<HomePage> {
                       callback: widget.onOpenCalendar,
                       child: Icon(
                         Icons.notifications,
-                        color: ThemeColors.primary,
+                        color: context.watch<AppearanceController>().primaryColor,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -728,7 +757,7 @@ class _HomePageState extends State<HomePage> {
                       callback: widget.onOpenCalendar,
                       child: Icon(
                         Icons.add_circle_outline,
-                        color: ThemeColors.primary,
+                        color: context.watch<AppearanceController>().primaryColor,
                       ),
                     ),
                   ],
@@ -746,6 +775,65 @@ class _HomePageState extends State<HomePage> {
                 onDelete: (event) => _deleteEvent(context, event),
                 onCompletedChanged: (event, completed) =>
                     _onEventCompletedChanged(context, event, completed),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeActionButton extends StatelessWidget {
+  final VoidCallback callback;
+  final String emoji;
+  final String category;
+  final String? caption;
+
+  const _HomeActionButton({
+    required this.callback,
+    required this.emoji,
+    required this.category,
+    required this.caption,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GlassCard(
+        callback: callback,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsetsGeometry.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    emoji,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      inherit: true,
+                      fontSize: 26,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    category,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      inherit: true,
+                      fontSize: 10,
+                    ),
+                  ),
+                  ?caption != null
+                      ? Text(
+                          caption!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleSmall!
+                              .copyWith(inherit: true, fontSize: 11),
+                        )
+                      : null,
+                ],
               ),
             ),
           ],
@@ -794,7 +882,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: GlassPlate(
-                color: isActive ? profile.color : Colors.white,
+                color: isActive ? context.watch<AppearanceController>().primaryColor : Colors.white,
                 child: ListTile(
                   leading: CircleAvatar(
                     radius: 22,

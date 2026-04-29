@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pet_ai/services/ai_service.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
@@ -47,9 +48,7 @@ class _AIChatPageState extends State<AIChatPage> {
             body: Container(
               width: double.infinity,
               height: double.infinity,
-              decoration: BoxDecoration(
-                gradient: pageGradientDecoration.gradient,
-              ),
+              decoration: context.watch<AppearanceController>().gradientDecoration,
               child: InlineLoading(isLoading: !snapshot.hasData),
             ),
           );
@@ -62,17 +61,7 @@ class _AIChatPageState extends State<AIChatPage> {
               return Scaffold(
                 body: Container(
                   padding: EdgeInsets.only(bottom: 0),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      tileMode: TileMode.mirror,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        ThemeColors.gradientBegin.withAlpha(96),
-                        ThemeColors.gradientEnd.withAlpha(64),
-                      ],
-                    ),
-                  ),
+                  decoration: context.watch<AppearanceController>().gradientDecoration,
                   child: const _ChatView(),
                 ),
               );
@@ -137,7 +126,7 @@ class _ChatView extends StatelessWidget {
                 final controller = context.read<AIChatController>();
                 _openHistorySheet(context, controller);
               },
-              child: const Icon(Icons.history, color: ThemeColors.primary),
+              child: Icon(Icons.history, color: context.watch<AppearanceController>().primaryColor),
             ),
           ),
         ),

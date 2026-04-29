@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:pet_ai/pages/secondary_pages/appearance_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 import '../../services/profile_service.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -141,7 +142,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(gradient: pageGradientDecoration.gradient),
+        decoration: context.watch<AppearanceController>().gradientDecoration,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 125),
           children: [

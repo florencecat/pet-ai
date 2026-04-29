@@ -5,10 +5,11 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pet_ai/pages/main_pages/settings_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
-import 'package:pet_ai/services/appearance_service.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
+import 'package:provider/provider.dart';
 
 import 'package:pet_ai/pages/main_pages/home_page.dart';
 import 'package:pet_ai/pages/main_pages/ai_chat_page.dart';
@@ -30,47 +31,33 @@ void main() async {
   runApp(const PetHealthApp());
 }
 
-class PetHealthApp extends StatefulWidget {
+class PetHealthApp extends StatelessWidget {
   const PetHealthApp({super.key});
 
   @override
-  State<PetHealthApp> createState() => _PetHealthAppState();
-}
-
-class _PetHealthAppState extends State<PetHealthApp> {
-  ThemeData _theme = AppTheme.lightTheme;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTheme();
-  }
-
-  Future<void> _loadTheme() async {
-    final usePetColor = await AppearanceService().getUsePetColor();
-    if (!usePetColor) return;
-    final profile = await ProfileService().loadActiveProfile();
-    if (profile == null || !mounted) return;
-    setState(() {
-      _theme = AppTheme.withPrimaryColor(profile.color);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Pet Health Tracker',
-      initialRoute: '/',
-      routes: {'/registration': (context) => const PetRegistrationFlow()},
-      theme: _theme,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('en'), Locale('ru')],
-      locale: const Locale('ru'),
-      home: const MainPage(),
+    return ChangeNotifierProvider(
+      create: (_) => AppearanceController()..load(),
+      child: Consumer<AppearanceController>(
+        builder: (context, appearance, _) {
+          return MaterialApp(
+            title: 'Pet Health Tracker',
+            initialRoute: '/',
+            routes: {'/registration': (context) => const PetRegistrationFlow()},
+            theme: appearance.usePetColor
+                ? AppTheme.withPalette(appearance.primaryPalette)
+                : AppTheme.lightTheme,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [Locale('en'), Locale('ru')],
+            locale: const Locale('ru'),
+            home: const MainPage(),
+          );
+        },
+      ),
     );
   }
 }
@@ -138,6 +125,7 @@ class _MainPageState extends State<MainPage> {
         onOpenCalendarByEvent: _onOpenCalendarByEvent,
         onProfileSwitched: () {
           _checkProfile();
+          context.read<AppearanceController>().reloadProfile();
         },
       ),
       const AIChatPage(),

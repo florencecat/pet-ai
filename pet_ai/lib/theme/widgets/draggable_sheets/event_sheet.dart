@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/event_service.dart';
@@ -472,16 +471,16 @@ class _EventSheetState extends State<EventSheet> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: p.color.withAlpha(60),
+                    color: p.palette.mainColor.withAlpha(60),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: p.color.withAlpha(120)),
+                    border: Border.all(color: p.palette.mainColor.withAlpha(120)),
                   ),
                   child: Text(
                     p.name.isEmpty ? 'Питомец' : p.name,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: p.color.withAlpha(220),
+                      color: p.palette.mainColor.withAlpha(220),
                     ),
                   ),
                 );
@@ -732,7 +731,7 @@ class _EventSheetState extends State<EventSheet> {
                 return FilterChip(
                   label: Text(p.name.isEmpty ? 'Без имени' : p.name),
                   selected: selected,
-                  selectedColor: p.color.withAlpha(180),
+                  selectedColor: p.palette.mainColor.withAlpha(180),
                   backgroundColor: Colors.white.withAlpha(150),
                   labelStyle: TextStyle(
                     fontSize: 13,

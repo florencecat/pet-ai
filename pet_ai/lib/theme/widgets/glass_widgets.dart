@@ -16,8 +16,15 @@ class GlassPlate extends StatelessWidget {
   final Widget child;
   final Color color;
   final bool transparent;
+  final double padding;
 
-  const GlassPlate({super.key, required this.child, this.color = Colors.white, this.transparent = true});
+  const GlassPlate({
+    super.key,
+    required this.child,
+    this.color = Colors.white,
+    this.transparent = true,
+    this.padding = 8
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +71,7 @@ class GlassPlate extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(padding: const EdgeInsets.all(8), child: child),
+              Padding(padding: EdgeInsets.all(padding), child: child),
             ],
           ),
         ),
@@ -77,7 +84,11 @@ class SoftGlassPlate extends StatelessWidget {
   final Widget child;
   final Color color;
 
-  const SoftGlassPlate({super.key, required this.child, this.color = Colors.white});
+  const SoftGlassPlate({
+    super.key,
+    required this.child,
+    this.color = Colors.white,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -101,11 +112,7 @@ class SoftGlassPlate extends StatelessWidget {
                 top: 0,
                 left: 0,
                 right: 0,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 28,
-                  ),
-                ),
+                child: IgnorePointer(child: Container(height: 28)),
               ),
               Padding(padding: const EdgeInsets.all(8), child: child),
             ],
@@ -120,17 +127,20 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? callback;
   final Widget child;
   final Color color;
+  final double padding;
 
   const GlassCard({
     super.key,
     required this.callback,
     required this.child,
     this.color = Colors.white,
+    this.padding = 8
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
+      padding: padding,
       color: color,
       child: InkWell(
         onTap: () {
@@ -339,8 +349,7 @@ class GlassBadge extends StatelessWidget {
         backgroundColor: color.withAlpha(60),
         foregroundColor: color.withAlpha(200),
         padding: EdgeInsetsGeometry.all(8),
-        alignment: AlignmentGeometry.center
-
+        alignment: AlignmentGeometry.center,
       ),
       label: Text(
         name,
@@ -391,9 +400,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.92,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   Future<void> _onTap() async {
@@ -421,24 +428,14 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          );
+          return Transform.scale(scale: _scaleAnimation.value, child: child);
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            color: selected
-                ? color.withAlpha(200)
-                : color.withAlpha(25),
-            border: Border.all(
-              color: selected
-                  ? color
-                  : color.withAlpha(80),
-            ),
+            color: selected ? color.withAlpha(200) : color.withAlpha(25)
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -1,6 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+class ProfileColorPalette {
+  final Color mainColor;
+  final Color darkShade;
+
+  const ProfileColorPalette(this.mainColor, this.darkShade);
+
+  Map<String, dynamic> toJson() => {
+    'mainColor': mainColor.toARGB32(),
+    'darkShade': darkShade.toARGB32(),
+  };
+
+  factory ProfileColorPalette.fromJson(Map<String, dynamic> json) =>
+      ProfileColorPalette(Color(json['mainColor'] as int), Color(json['darkShade'] as int));
+}
+
 class ThemeColors {
   static const background = Color(0xFFf4f3ee);
   static const primary = Color(0xFFB896FF);
@@ -18,13 +33,37 @@ class ThemeColors {
   static const gradientColors = [gradientBegin, gradientEnd];
 
   static const defaultProfileColor = primary;
+
+  static const defaultProfilePalette = ProfileColorPalette(
+    Color(0xFFB896FF),
+    Color(0xFF50416F),
+  );
+
   static const profileColors = [
     Color(0xFFB896FF),
     Color(0xFF96FFE0),
-    Color(0xFFFFF896),
+    Color(0xFFF6F091),
     Color(0xFFFFAD96),
     Color(0xFF9C95AA),
-    Color(0xFF5B8075)
+    Color(0xFF5B8075),
+  ];
+
+  static const darkProfileColors = [
+    Color(0xFF50416F),
+    Color(0xFF416F61),
+    Color(0xFF6F6B41),
+    Color(0xFF6F4B41),
+    Color(0xFF38353C),
+    Color(0xFF3C554E),
+  ];
+
+  static const List<ProfileColorPalette> profilePalettes = [
+    ProfileColorPalette(Color(0xFFB896FF), Color(0xFF50416F)),
+    ProfileColorPalette(Color(0xFF96FFE0), Color(0xFF416F61)),
+    ProfileColorPalette(Color(0xFFF6F091), Color(0xFF6F6B41)),
+    ProfileColorPalette(Color(0xFFFFAD96), Color(0xFF6F4B41)),
+    ProfileColorPalette(Color(0xFF9C95AA), Color(0xFF38353C)),
+    ProfileColorPalette(Color(0xFF5B8075), Color(0xFF3C554E)),
   ];
 
   static const textPrimary = Color(0xFF41355b);
@@ -47,7 +86,11 @@ const RoundedRectangleBorder dangerCardBorder = RoundedRectangleBorder(
 );
 
 /// Форматирует дату: "Сегодня", "Вчера", "Завтра" или [pattern].
-String formatSmartDate(DateTime d, {String pattern = 'dd.MM.yyyy', String locale = 'ru'}) {
+String formatSmartDate(
+  DateTime d, {
+  String pattern = 'dd.MM.yyyy',
+  String locale = 'ru',
+}) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final target = DateTime(d.year, d.month, d.day);
@@ -63,8 +106,11 @@ String formatSmartDate(DateTime d, {String pattern = 'dd.MM.yyyy', String locale
 String formatSmartDateTime(DateTime d) {
   final datePart = formatSmartDate(d);
   final timePart = DateFormat('HH:mm').format(d);
-  final isRelative = datePart == 'Сегодня' || datePart == 'Вчера' || datePart == 'Завтра';
-  return isRelative ? '$datePart в $timePart' : '${DateFormat('dd.MM.yyyy').format(d)} – $timePart';
+  final isRelative =
+      datePart == 'Сегодня' || datePart == 'Вчера' || datePart == 'Завтра';
+  return isRelative
+      ? '$datePart в $timePart'
+      : '${DateFormat('dd.MM.yyyy').format(d)} – $timePart';
 }
 
 const BoxDecoration pageGradientDecoration = BoxDecoration(

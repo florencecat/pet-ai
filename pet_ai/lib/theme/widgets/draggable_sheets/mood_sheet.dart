@@ -179,8 +179,9 @@ class _MoodSheetState extends State<MoodSheet> {
                           ),
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
-                            if (index >= entries.length)
+                            if (index >= entries.length) {
                               return const SizedBox();
+                            }
                             final date = entries[index].date;
                             return Padding(
                               padding: const EdgeInsets.only(top: 4),

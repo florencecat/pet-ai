@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/note.dart';
 import 'package:pet_ai/models/species.dart';
 import 'package:pet_ai/theme/app_colors.dart';
@@ -90,7 +91,7 @@ class PetProfile {
   NoteHistory noteHistory;
   TreatmentHistory treatmentHistory;
   FoodHistory foodHistory;
-  Color color;
+  ProfileColorPalette palette;
 
   PetProfile({
     this.name = '',
@@ -106,7 +107,7 @@ class PetProfile {
         noteHistory = NoteHistory.empty(),
         treatmentHistory = TreatmentHistory.empty(),
         foodHistory = FoodHistory.empty(),
-        color = ThemeColors.defaultProfileColor;
+        palette = ThemeColors.defaultProfilePalette;
 
   PetProfile.deserialize({
     required this.id,
@@ -122,7 +123,7 @@ class PetProfile {
     required this.noteHistory,
     required this.treatmentHistory,
     required this.foodHistory,
-    required this.color,
+    required this.palette,
   });
 
   Map<String, dynamic> toJson() => {
@@ -140,7 +141,7 @@ class PetProfile {
     'treatmentHistory':
         TreatmentHistory.treatmentSerializer.toJsonList(treatmentHistory),
     'foodHistory': FoodHistory.foodSerializer.toJsonList(foodHistory),
-    'color': color.toARGB32(),
+    'palette': palette.toJson(),
   };
 
   factory PetProfile.fromJson(Map<String, dynamic> json) {
@@ -198,9 +199,9 @@ class PetProfile {
                   .entries,
             )
           : FoodHistory.empty(),
-      color: json['color'] != null
-          ? Color(json['color'] as int)
-          : ThemeColors.defaultProfileColor,
+      palette: json['palette'] != null
+          ? ProfileColorPalette.fromJson(json['palette'])
+          : ThemeColors.defaultProfilePalette,
     );
   }
 }
@@ -465,6 +466,34 @@ class ProfileService {
     if (cropped == null) return null;
 
     return await _saveAvatarToAppDir(petId, cropped.path);
+  }
+
+  Future<String> lastWeightString() async {
+    final profile = await loadActiveProfile();
+    if (profile != null && profile.weightHistory.lastWeight != null) {
+      return "${profile.weightHistory.lastWeight!.toStringAsFixed(1)} кг";
+    } else {
+      return "Нет данных";
+    }
+  }
+
+  Future<String> lastMoodString() async {
+    final profile = await loadActiveProfile();
+    if (profile != null && profile.moodHistory.lastEntry != null) {
+      return profile.moodHistory.lastEntry!.mood.label;
+    } else {
+      return "Нет данных";
+    }
+  }
+
+  Future<String> lastFoodString() async {
+    final profile = await loadActiveProfile();
+    final result = profile?.foodHistory.filterByPeriod(HistoryPeriod.day).length.toString();
+    if (result != null) {
+      return "$result x сегодня";
+    } else {
+      return "Нет данных";
+    }
   }
 
 }

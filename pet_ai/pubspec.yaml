@@ -54,6 +54,7 @@ dependencies:
   file_picker: ^8.0.0
   path: ^1.9.0
   open_filex: ^4.3.4
+  flutter_svg: ^2.2.4
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -87,6 +88,11 @@ flutter:
   assets:
     - assets/certs/russian_trusted_root_ca.pem
     - .env
+
+  fonts:
+    - family: FontAwesome
+      fonts:
+        - asset: assets/fonts/FontAwesome.ttf
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
