@@ -71,7 +71,7 @@ class _EventsPageState extends State<EventsPage> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),

@@ -54,7 +54,7 @@ class _FilesHistorySheetState extends State<FilesHistorySheet> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -178,7 +178,7 @@ class _DocCard extends StatelessWidget {
               // ── Удалить ──────────────────────────────────────────────
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 20),
-                color: ThemeColors.danger.withAlpha(180),
+                color: ThemeColors.dangerZone.withAlpha(180),
                 onPressed: onDelete,
               ),
             ],

@@ -37,13 +37,13 @@ extension HealthBadgeSeverityX on HealthBadgeSeverity {
   Color get color {
     switch (this) {
       case HealthBadgeSeverity.ok:
-        return const Color(0xFF43A047);
+        return ThemeColors.ok;
       case HealthBadgeSeverity.info:
-        return const Color(0xFF1976D2);
+        return ThemeColors.info;
       case HealthBadgeSeverity.warning:
-        return const Color(0xFFFB8C00);
+        return ThemeColors.warning;
       case HealthBadgeSeverity.danger:
-        return const Color(0xFFE53935);
+        return ThemeColors.danger;
     }
   }
 
@@ -77,10 +77,7 @@ class HealthBadge {
 
 /// Анализатор: на основе данных профиля + событий формирует список бейджей.
 class HealthAnalyzer {
-  static List<HealthBadge> analyze(
-    PetProfile profile,
-    List<PetEvent> events,
-  ) {
+  static List<HealthBadge> analyze(PetProfile profile, List<PetEvent> events) {
     final badges = <HealthBadge>[];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -99,27 +96,32 @@ class HealthAnalyzer {
     }
 
     for (final t in overdueTreatments) {
-      badges.add(HealthBadge(
-        title: 'Просрочено: ${t.displayName}',
-        subtitle:
-            'Должно было быть ${formatSmartDate(t.nextDate)}',
-        severity: HealthBadgeSeverity.danger,
-        icon: t.kind.icon,
-      ));
+      badges.add(
+        HealthBadge(
+          title: 'Просрочено: ${t.displayName}',
+          subtitle: 'Должно было быть ${formatSmartDate(t.nextDate)}',
+          severity: HealthBadgeSeverity.danger,
+          icon: t.kind.icon,
+        ),
+      );
     }
     for (final t in upcomingTreatments) {
       final daysLeft = DateTime(
-        t.nextDate.year, t.nextDate.month, t.nextDate.day,
+        t.nextDate.year,
+        t.nextDate.month,
+        t.nextDate.day,
       ).difference(today).inDays;
-      badges.add(HealthBadge(
-        title: 'Скоро: ${t.displayName}',
-        subtitle: daysLeft == 0
-            ? 'Сегодня'
-            : 'Через $daysLeft ${_daysWord(daysLeft)}'
-                ' • ${formatSmartDate(t.nextDate)}',
-        severity: HealthBadgeSeverity.warning,
-        icon: t.kind.icon,
-      ));
+      badges.add(
+        HealthBadge(
+          title: 'Скоро: ${t.displayName}',
+          subtitle: daysLeft == 0
+              ? 'Сегодня'
+              : 'Через $daysLeft ${_daysWord(daysLeft)}'
+                    ' • ${formatSmartDate(t.nextDate)}',
+          severity: HealthBadgeSeverity.warning,
+          icon: t.kind.icon,
+        ),
+      );
     }
 
     // ── Базовые рекомендации по типам мероприятий ────────────────────────
@@ -127,37 +129,49 @@ class HealthAnalyzer {
       if (kind == TreatmentKind.vaccine) continue;
       final last = profile.treatmentHistory.lastOfKind(kind);
       if (last == null) {
-        badges.add(HealthBadge(
-          title: kind.label,
-          subtitle: 'Добавьте запись, чтобы получать напоминания',
-          severity: HealthBadgeSeverity.warning,
-          icon: kind.icon,
-        ));
+        badges.add(
+          HealthBadge(
+            title: kind.label,
+            subtitle: 'Добавьте запись, чтобы получать напоминания',
+            severity: HealthBadgeSeverity.warning,
+            icon: kind.icon,
+          ),
+        );
       }
     }
 
     // ── Вес ──────────────────────────────────────────────────────────────
     final lastWeight = profile.weightHistory.lastEntry;
     if (lastWeight == null) {
-      badges.add(const HealthBadge(
-        title: 'Зафиксируйте вес',
-        subtitle: 'Помогает отслеживать динамику здоровья',
-        severity: HealthBadgeSeverity.info,
-        icon: Icons.monitor_weight_outlined,
-      ));
-    } else {
-      final daysSince = today.difference(
-        DateTime(lastWeight.date.year, lastWeight.date.month, lastWeight.date.day),
-      ).inDays;
-      if (daysSince >= 30) {
-        badges.add(HealthBadge(
-          title: 'Пора обновить вес',
-          subtitle:
-              'Последняя запись: ${formatSmartDate(lastWeight.date)} '
-              '($daysSince ${_daysWord(daysSince)} назад)',
-          severity: HealthBadgeSeverity.warning,
+      badges.add(
+        const HealthBadge(
+          title: 'Зафиксируйте вес',
+          subtitle: 'Помогает отслеживать динамику здоровья',
+          severity: HealthBadgeSeverity.info,
           icon: Icons.monitor_weight_outlined,
-        ));
+        ),
+      );
+    } else {
+      final daysSince = today
+          .difference(
+            DateTime(
+              lastWeight.date.year,
+              lastWeight.date.month,
+              lastWeight.date.day,
+            ),
+          )
+          .inDays;
+      if (daysSince >= 30) {
+        badges.add(
+          HealthBadge(
+            title: 'Пора обновить вес',
+            subtitle:
+                'Последняя запись: ${formatSmartDate(lastWeight.date)} '
+                '($daysSince ${_daysWord(daysSince)} назад)',
+            severity: HealthBadgeSeverity.warning,
+            icon: Icons.monitor_weight_outlined,
+          ),
+        );
       }
     }
 
@@ -167,12 +181,14 @@ class HealthAnalyzer {
       final subtitle = lastMood == null
           ? 'Отметьте, как себя чувствует питомец'
           : 'Последняя запись: ${formatSmartDate(lastMood.date)}';
-      badges.add(HealthBadge(
-        title: 'Зафиксируйте настроение',
-        subtitle: subtitle,
-        severity: HealthBadgeSeverity.info,
-        icon: Icons.mood_outlined,
-      ));
+      badges.add(
+        HealthBadge(
+          title: 'Зафиксируйте настроение',
+          subtitle: subtitle,
+          severity: HealthBadgeSeverity.info,
+          icon: Icons.mood_outlined,
+        ),
+      );
     }
 
     // ── Тренд веса (снижение за последние 3+ записи) ────────────────────
@@ -184,13 +200,15 @@ class HealthAnalyzer {
       final oldest = recent[2].weight;
       if (newest < oldest) {
         final diff = (oldest - newest);
-        badges.add(HealthBadge(
-          title: 'Снижение веса',
-          subtitle:
-              'Последние 3 записи: потеря ${diff.toStringAsFixed(1)} кг',
-          severity: HealthBadgeSeverity.warning,
-          icon: Icons.trending_down,
-        ));
+        badges.add(
+          HealthBadge(
+            title: 'Снижение веса',
+            subtitle:
+                'Последние 3 записи: потеря ${diff.toStringAsFixed(1)} кг',
+            severity: HealthBadgeSeverity.warning,
+            icon: Icons.trending_down,
+          ),
+        );
       }
     }
 
@@ -199,24 +217,29 @@ class HealthAnalyzer {
     if (foodEntries.isNotEmpty) {
       final threeDaysAgo = today.subtract(const Duration(days: 3));
       final recentFood = foodEntries
-          .where((f) =>
-              !DateTime(f.date.year, f.date.month, f.date.day)
-                  .isBefore(threeDaysAgo))
+          .where(
+            (f) => !DateTime(
+              f.date.year,
+              f.date.month,
+              f.date.day,
+            ).isBefore(threeDaysAgo),
+          )
           .toList();
       if (recentFood.isNotEmpty) {
-        final avgScore = recentFood
-                .map((f) => f.appetiteScore)
-                .reduce((a, b) => a + b) /
+        final avgScore =
+            recentFood.map((f) => f.appetiteScore).reduce((a, b) => a + b) /
             recentFood.length;
         if (avgScore < 3.0) {
           final avgStr = avgScore.toStringAsFixed(1);
-          badges.add(HealthBadge(
-            title: 'Плохой аппетит',
-            subtitle:
-                'Средний балл за 3 дня: $avgStr / 5 — питомец плохо ест',
-            severity: HealthBadgeSeverity.warning,
-            icon: Icons.no_food_outlined,
-          ));
+          badges.add(
+            HealthBadge(
+              title: 'Плохой аппетит',
+              subtitle:
+                  'Средний балл за 3 дня: $avgStr / 5 — питомец плохо ест',
+              severity: HealthBadgeSeverity.warning,
+              icon: Icons.no_food_outlined,
+            ),
+          );
         }
       }
     }
@@ -226,35 +249,42 @@ class HealthAnalyzer {
         .where((e) => e.category.id == 'vaccination' && e.isOverdue)
         .toList();
     for (final v in overdueVaccinations) {
-      badges.add(HealthBadge(
-        title: '⚠ Просрочена прививка',
-        subtitle:
-            '${v.name} · ${DateFormat('dd.MM.yyyy').format(v.dateTime)}',
-        severity: HealthBadgeSeverity.danger,
-        icon: Icons.vaccines,
-      ));
+      badges.add(
+        HealthBadge(
+          title: '⚠ Просрочена прививка',
+          subtitle:
+              '${v.name} · ${DateFormat('dd.MM.yyyy').format(v.dateTime)}',
+          severity: HealthBadgeSeverity.danger,
+          icon: Icons.vaccines,
+        ),
+      );
     }
 
     // ── Просроченные события ────────────────────────────────────────────
-    final overdueEvents =
-        events.where((e) => e.isOverdue && e.category.id != 'vaccination').toList();
+    final overdueEvents = events
+        .where((e) => e.isOverdue && e.category.id != 'vaccination')
+        .toList();
     if (overdueEvents.isNotEmpty) {
-      badges.add(HealthBadge(
-        title: 'Просроченные события: ${overdueEvents.length}',
-        subtitle: overdueEvents.first.name,
-        severity: HealthBadgeSeverity.warning,
-        icon: Icons.event_busy,
-      ));
+      badges.add(
+        HealthBadge(
+          title: 'Просроченные события: ${overdueEvents.length}',
+          subtitle: overdueEvents.first.name,
+          severity: HealthBadgeSeverity.warning,
+          icon: Icons.event_busy,
+        ),
+      );
     }
 
     // ── Если нечего показать — общий "всё хорошо" ──────────────────────
     if (badges.isEmpty) {
-      badges.add(const HealthBadge(
-        title: 'Всё в порядке',
-        subtitle: 'Записи актуальны, ближайших мероприятий нет',
-        severity: HealthBadgeSeverity.ok,
-        icon: Icons.favorite,
-      ));
+      badges.add(
+        const HealthBadge(
+          title: 'Всё в порядке',
+          subtitle: 'Записи актуальны, ближайших мероприятий нет',
+          severity: HealthBadgeSeverity.ok,
+          icon: Icons.favorite,
+        ),
+      );
     }
 
     return badges;
@@ -263,11 +293,14 @@ class HealthAnalyzer {
   /// Оценка здоровья на основе бейджей.
   /// Возвращает строку + цвет.
   static ({String label, Color color, IconData icon}) score(
-      List<HealthBadge> badges) {
-    final dangerCount =
-        badges.where((b) => b.severity == HealthBadgeSeverity.danger).length;
-    final warningCount =
-        badges.where((b) => b.severity == HealthBadgeSeverity.warning).length;
+    List<HealthBadge> badges,
+  ) {
+    final dangerCount = badges
+        .where((b) => b.severity == HealthBadgeSeverity.danger)
+        .length;
+    final warningCount = badges
+        .where((b) => b.severity == HealthBadgeSeverity.warning)
+        .length;
 
     if (dangerCount > 0) {
       return (

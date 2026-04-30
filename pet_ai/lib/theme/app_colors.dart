@@ -21,7 +21,7 @@ class ThemeColors {
   static const primary = Color(0xFFB896FF);
   static const secondary = Color(0xFF786B96);
   static const unselected = Color(0x603B807B);
-  static const danger = Color(0xFFF44336);
+  static const dangerZone = Color(0xFFF44336);
   static const error = Color(0xFFBA1A1A);
 
   static const gradientBegin = Color(0xFFB896FF);
@@ -71,6 +71,11 @@ class ThemeColors {
   static const splash = Color(0x40698583);
 
   static const white = Colors.white;
+
+  static const ok = Color(0xFF43A047);
+  static const info = Color(0xFF1976D2);
+  static const warning = Color(0xFFFB8C00);
+  static const danger = Color(0xFFE53935);
 }
 
 const double cardBorderRadius = 20;

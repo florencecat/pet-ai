@@ -147,7 +147,7 @@ class _EventSheetState extends State<EventSheet> {
             child: const Text('Нет'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -289,7 +289,7 @@ class _EventSheetState extends State<EventSheet> {
       if (EventSheetModeX(_mode).isView)
         IconButton(
           icon: const Icon(Icons.delete),
-          color: ThemeColors.danger,
+          color: ThemeColors.dangerZone,
           onPressed: () => _deleteEvent(context, widget.event!),
         ),
       if (EventSheetModeX(_mode).isEditable)
@@ -574,7 +574,7 @@ class _EventSheetState extends State<EventSheet> {
                       Icons.calendar_today,
                       size: 18,
                       color: _selectedDate == null
-                          ? ThemeColors.danger
+                          ? ThemeColors.dangerZone
                           : ThemeColors.primary,
                     ),
                     const SizedBox(width: 6),
@@ -605,7 +605,7 @@ class _EventSheetState extends State<EventSheet> {
                       Icons.access_time,
                       size: 18,
                       color: _selectedTime == null
-                          ? ThemeColors.danger
+                          ? ThemeColors.dangerZone
                           : ThemeColors.primary,
                     ),
                     const SizedBox(width: 6),

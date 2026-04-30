@@ -110,7 +110,7 @@ class _SwipeableEventCardState extends State<SwipeableEventCard>
                   const SizedBox(width: _btnGap),
                   _ActionButton(
                     icon: Icons.delete_outline,
-                    color: ThemeColors.danger,
+                    color: ThemeColors.dangerZone,
                     label: 'Удалить',
                     onTap: () {
                       _close();

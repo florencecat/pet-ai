@@ -308,7 +308,7 @@ class GlassSettingsCard extends StatelessWidget {
     this.subtitle,
     this.trailingIcon,
   }) : color = ThemeColors.white,
-       textColor = ThemeColors.danger;
+       textColor = ThemeColors.dangerZone;
 
   @override
   Widget build(BuildContext context) {

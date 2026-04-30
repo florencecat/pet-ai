@@ -259,7 +259,7 @@ class _HomePageState extends State<HomePage> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -1133,6 +1133,13 @@ class _VetCardSheet extends StatelessWidget {
   }
 
   Widget _infoRow(BuildContext context, String label, String value) {
+    Color textColor = context.watch<AppearanceController>().secondaryColor;
+    if (value.startsWith('+')) {
+      textColor = ThemeColors.ok;
+    } else if (value.startsWith('-')) {
+      textColor = ThemeColors.warning;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -1152,7 +1159,7 @@ class _VetCardSheet extends StatelessWidget {
               value,
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                 fontWeight: FontWeight.w600,
-                color: context.watch<AppearanceController>().secondaryColor,
+                color: textColor,
               ),
             ),
           ),

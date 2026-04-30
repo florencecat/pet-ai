@@ -110,7 +110,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
           ),
           FilledButton(
             style:
-                FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+                FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -303,7 +303,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline,
-                        color: ThemeColors.danger),
+                        color: ThemeColors.dangerZone),
                     onPressed: () => _delete(entry),
                   ),
                 ),

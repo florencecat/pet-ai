@@ -87,7 +87,7 @@ class _MoodSheetState extends State<MoodSheet> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -468,7 +468,7 @@ class _MoodEntryCard extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
-              color: ThemeColors.danger.withAlpha(180),
+              color: ThemeColors.dangerZone.withAlpha(180),
               onPressed: onDelete,
             ),
           ],
