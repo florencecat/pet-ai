@@ -8,6 +8,9 @@ import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
+
+import '../../../services/appearance_controller.dart';
 
 class MoodSheet extends StatefulWidget {
   final PetProfile profile;
@@ -110,8 +113,8 @@ class _MoodSheetState extends State<MoodSheet> {
       maxSize: 0.95,
       actions: [
         IconButton(
-          icon: const Icon(Icons.save),
-          color: Theme.of(context).dividerColor,
+          icon: const Icon(Icons.check),
+          color: context.watch<AppearanceController>().primaryColor,
           onPressed: change ? save : null,
         ),
       ],
@@ -119,8 +122,16 @@ class _MoodSheetState extends State<MoodSheet> {
         children: [
           SegmentedButton<HistoryPeriod>(
             style: SegmentedButton.styleFrom(
-              side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
-              foregroundColor: Theme.of(context).dividerColor,
+              side: BorderSide(
+                color: context.watch<AppearanceController>().secondaryColor,
+                width: 2,
+              ),
+              foregroundColor: context
+                  .watch<AppearanceController>()
+                  .secondaryColor,
+              selectedBackgroundColor: context
+                  .watch<AppearanceController>()
+                  .secondaryColor,
               selectedForegroundColor: Theme.of(context).colorScheme.surface,
             ),
             segments: const [
@@ -257,12 +268,23 @@ class _MoodSheetState extends State<MoodSheet> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               color: selected
-                                  ? ThemeColors.primary.withAlpha(200)
-                                  : ThemeColors.primary.withAlpha(20),
+                                  ? context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                        .withAlpha(200)
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                        .withAlpha(20),
                               border: Border.all(
                                 color: selected
-                                    ? ThemeColors.primary
-                                    : ThemeColors.primary.withAlpha(60),
+                                    ? context
+                                          .watch<AppearanceController>()
+                                          .primaryColor
+                                    : context
+                                          .watch<AppearanceController>()
+                                          .primaryColor
+                                          .withAlpha(60),
                               ),
                             ),
                             child: Column(
@@ -273,7 +295,9 @@ class _MoodSheetState extends State<MoodSheet> {
                                   size: 18,
                                   color: selected
                                       ? Colors.white
-                                      : ThemeColors.primary,
+                                      : context
+                                            .watch<AppearanceController>()
+                                            .primaryColor,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -283,7 +307,9 @@ class _MoodSheetState extends State<MoodSheet> {
                                     fontWeight: FontWeight.w600,
                                     color: selected
                                         ? Colors.white
-                                        : ThemeColors.primary,
+                                        : context
+                                              .watch<AppearanceController>()
+                                              .primaryColor,
                                   ),
                                 ),
                               ],
@@ -294,8 +320,8 @@ class _MoodSheetState extends State<MoodSheet> {
                     }).toList(),
                   ),
                   Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
+                    spacing: 8,
+                    runSpacing: 8,
                     alignment: WrapAlignment.center,
                     children: PetMood.values.map((mood) {
                       final isSelected = selectedMood == mood;
@@ -309,13 +335,18 @@ class _MoodSheetState extends State<MoodSheet> {
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          width: 65,
-                          height: 65,
+                          width: 60,
+                          height: 60,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isSelected
-                                ? ThemeColors.primary
-                                : ThemeColors.primary.withValues(alpha: 0.1),
+                                ? context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                : context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withValues(alpha: 0.1),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -325,7 +356,9 @@ class _MoodSheetState extends State<MoodSheet> {
                                 size: 26,
                                 color: isSelected
                                     ? ThemeColors.background
-                                    : ThemeColors.border,
+                                    : context
+                                          .watch<AppearanceController>()
+                                          .secondaryColor,
                               ),
                               Text(
                                 mood.label,
@@ -336,7 +369,9 @@ class _MoodSheetState extends State<MoodSheet> {
                                       fontSize: 8,
                                       color: isSelected
                                           ? ThemeColors.background
-                                          : ThemeColors.textPrimary,
+                                          : context
+                                                .watch<AppearanceController>()
+                                                .secondaryColor,
                                     ),
                               ),
                             ],
@@ -350,30 +385,6 @@ class _MoodSheetState extends State<MoodSheet> {
             ),
           ),
 
-          // ─── Время суток ───────────────────────────────────────────────
-          // Row(
-          //   mainAxisAlignment: MainAxisAlignment.center,
-          //   children: DayPart.values.map((part) {
-          //     final selected = selectedDayPart == part;
-          //     return Padding(
-          //       padding: const EdgeInsets.symmetric(horizontal: 4),
-          //       child: ChoiceChip(
-          //         avatar: Icon(part.icon, size: 16,
-          //           color: selected ? Colors.white : ThemeColors.primary),
-          //         label: Text(part.label),
-          //         selected: selected,
-          //         selectedColor: ThemeColors.primary,
-          //         labelStyle: TextStyle(
-          //           color: selected ? Colors.white : ThemeColors.textPrimary,
-          //         ),
-          //         onSelected: (_) => setState(() {
-          //           selectedDayPart = part;
-          //           change = selectedMood != null;
-          //         }),
-          //       ),
-          //     );
-          //   }).toList(),
-          // ),
           const SizedBox(height: 12),
 
           // ── History list ──────────────────────────────────────────────────
@@ -416,21 +427,40 @@ class _MoodEntryCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            Icon(entry.mood.icon, color: ThemeColors.primary, size: 22),
+            Icon(
+              entry.mood.icon,
+              color: context.watch<AppearanceController>().primaryColor,
+              size: 22,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    entry.mood.label,
-                    style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                      color: ThemeColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Row(
+                    spacing: 4,
+                    children: [
+                      Icon(
+                        entry.dayPart.icon,
+                        size: 14,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
+                      ),
+                      Text(
+                        entry.dayPart.label
+                      ),
+                      Text("-"),
+                      Text(
+                        entry.mood.label,
+                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
-                    DateFormat('d MMMM yyyy', 'ru_RU').format(entry.date),
+                    formatSmartDate(entry.date),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

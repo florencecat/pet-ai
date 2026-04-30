@@ -51,6 +51,8 @@ class _HomePageState extends State<HomePage> {
   late String? _moodStatus = "...";
   late String? _foodStatus = "...";
 
+  List<Color>? _healthGradient = null;
+
   @override
   void initState() {
     super.initState();
@@ -140,27 +142,50 @@ class _HomePageState extends State<HomePage> {
     final badges = HealthAnalyzer.analyze(_profile!, _events);
     // Сортируем по убыванию серьёзности
     badges.sort((a, b) => b.severity.index.compareTo(a.severity.index));
-    final top = badges.take(3).toList();
+    final top = badges.take(2).toList();
 
-    return top
-        .map(
-          (b) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                SoftGlassBadge(
-                  icon: b.icon ?? b.severity.icon,
-                  label: b.title,
-                  color: b.severity.color,
-                  selected: false,
-                ),
-              ],
-            ),
+    String summary = "Всё в порядке";
+    Color summaryColor = HealthBadgeSeverity.ok.color;
+    if (badges
+            .where(
+              (b) =>
+                  b.severity == HealthBadgeSeverity.warning ||
+                  b.severity == HealthBadgeSeverity.danger,
+            )
+            .length >
+        2) {
+      summary = "Обратите внимание";
+      summaryColor = HealthBadgeSeverity.warning.color;
+    }
+
+    _healthGradient = [ThemeColors.white, summaryColor.withAlpha(128)];
+
+    return [
+      Text(
+        summary,
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge!.copyWith(inherit: true, color: summaryColor),
+      ),
+      const SizedBox(height: 16),
+      ...top.map(
+        (b) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              SoftGlassBadge(
+                icon: b.icon ?? b.severity.icon,
+                label: b.title,
+                color: b.severity.color,
+                selected: false,
+              ),
+            ],
           ),
-        )
-        .toList();
+        ),
+      ),
+    ];
   }
 
   Widget _buildHealthScore() {
@@ -457,12 +482,17 @@ class _HomePageState extends State<HomePage> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: context.watch<AppearanceController>().primaryColor,
+                                        color: context
+                                            .watch<AppearanceController>()
+                                            .primaryColor,
                                         width: 2.5,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: context.watch<AppearanceController>().primaryColor.withAlpha(80),
+                                          color: context
+                                              .watch<AppearanceController>()
+                                              .primaryColor
+                                              .withAlpha(80),
                                           blurRadius: 10,
                                           spreadRadius: 1,
                                         ),
@@ -494,7 +524,9 @@ class _HomePageState extends State<HomePage> {
                                       width: 22,
                                       height: 22,
                                       decoration: BoxDecoration(
-                                        color: context.watch<AppearanceController>().primaryColor,
+                                        color: context
+                                            .watch<AppearanceController>()
+                                            .primaryColor,
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: Colors.white,
@@ -529,7 +561,7 @@ class _HomePageState extends State<HomePage> {
                                         _profile!.gender.icon != null)
                                       Icon(
                                         _profile!.gender.icon,
-                                        color: ThemeColors.textPrimary,
+                                        color: context.watch<AppearanceController>().secondaryColor,
                                       ),
                                     Expanded(
                                       child: Text(
@@ -562,11 +594,29 @@ class _HomePageState extends State<HomePage> {
                   const Divider(height: 2, color: Colors.black12),
 
                   ListTile(
-                    leading: const Icon(FontAwesome.medkit, size: 18),
-                    title: Text("Карточка для ветеринара"),
+                    minTileHeight: 50,
+                    title: Row(
+                      spacing: 8,
+                      children: [
+                        Icon(
+                          FontAwesome.medkit,
+                          size: 20,
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor,
+                        ),
+                        Text("Карточка для ветеринара"),
+                      ],
+                    ),
                     titleTextStyle: Theme.of(context).textTheme.bodySmall,
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _openVetCard(context)
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
+                    ),
+                    onTap: () => _openVetCard(context),
                   ),
                 ],
               ),
@@ -605,6 +655,8 @@ class _HomePageState extends State<HomePage> {
 
             // блок здоровья
             GlassCard(
+              transparent: false,
+              gradientColors: _healthGradient,
               callback: () async {
                 await showModalBottomSheet(
                   context: context,
@@ -634,9 +686,8 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Text(
                                   'Здоровье',
-                                  style: Theme.of(context).textTheme.titleLarge,
+                                  style: Theme.of(context).textTheme.titleSmall,
                                 ),
-                                const SizedBox(height: 8),
                                 ..._buildHealthSummary(),
                               ],
                             ),
@@ -749,7 +800,9 @@ class _HomePageState extends State<HomePage> {
                       callback: widget.onOpenCalendar,
                       child: Icon(
                         Icons.notifications,
-                        color: context.watch<AppearanceController>().primaryColor,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -757,7 +810,9 @@ class _HomePageState extends State<HomePage> {
                       callback: widget.onOpenCalendar,
                       child: Icon(
                         Icons.add_circle_outline,
-                        color: context.watch<AppearanceController>().primaryColor,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
                       ),
                     ),
                   ],
@@ -882,7 +937,9 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: GlassPlate(
-                color: isActive ? context.watch<AppearanceController>().primaryColor : Colors.white,
+                color: isActive
+                    ? context.watch<AppearanceController>().primaryColor
+                    : Colors.white,
                 child: ListTile(
                   leading: CircleAvatar(
                     radius: 22,
@@ -905,7 +962,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                   title: Text(
                     profile.name.isEmpty ? 'Без имени' : profile.name,
                     style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      color: isActive ? Colors.white : ThemeColors.textPrimary,
+                      color: isActive ? Colors.white : context.watch<AppearanceController>().secondaryColor,
                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                     ),
                   ),
@@ -916,7 +973,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(
                       color: isActive
                           ? Colors.white.withAlpha(204)
-                          : ThemeColors.textPrimary.withAlpha(153),
+                          : context.watch<AppearanceController>().secondaryColor.withAlpha(153),
                     ),
                   ),
                   trailing: isActive
@@ -1086,7 +1143,7 @@ class _VetCardSheet extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                color: ThemeColors.textPrimary.withAlpha(153),
+                color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
               ),
             ),
           ),
@@ -1095,7 +1152,7 @@ class _VetCardSheet extends StatelessWidget {
               value,
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                 fontWeight: FontWeight.w600,
-                color: ThemeColors.textPrimary,
+                color: context.watch<AppearanceController>().secondaryColor,
               ),
             ),
           ),
@@ -1153,7 +1210,10 @@ class _VetCardSheet extends StatelessWidget {
           child: Text(
             'Нет записей за последнюю неделю',
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-              color: ThemeColors.textPrimary.withAlpha(153),
+              color: context
+                  .watch<AppearanceController>()
+                  .secondaryColor
+                  .withAlpha(153),
             ),
           ),
         ),
@@ -1192,7 +1252,7 @@ class _VetCardSheet extends StatelessWidget {
           child: Text(
             'Нет записей о прививках и обработках',
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-              color: ThemeColors.textPrimary.withAlpha(153),
+              color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
             ),
           ),
         ),
@@ -1238,14 +1298,14 @@ class _VetCardSheet extends StatelessWidget {
                           child: Text(
                             t.displayName,
                             style: Theme.of(context).textTheme.bodySmall!
-                                .copyWith(color: ThemeColors.textPrimary),
+                                .copyWith(color: context.watch<AppearanceController>().secondaryColor),
                           ),
                         ),
                         Text(
                           formatSmartDate(t.date),
                           style: Theme.of(context).textTheme.bodySmall!
                               .copyWith(
-                                color: ThemeColors.textPrimary.withAlpha(153),
+                                color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
                               ),
                         ),
                         const SizedBox(width: 8),
@@ -1255,7 +1315,7 @@ class _VetCardSheet extends StatelessWidget {
                               .copyWith(
                                 color: t.nextDate.isBefore(DateTime.now())
                                     ? HealthBadgeSeverity.danger.color
-                                    : ThemeColors.textPrimary.withAlpha(153),
+                                    : context.watch<AppearanceController>().secondaryColor.withAlpha(153),
                                 fontWeight: t.nextDate.isBefore(DateTime.now())
                                     ? FontWeight.w700
                                     : FontWeight.w400,
@@ -1295,7 +1355,7 @@ class _VetCardSheet extends StatelessWidget {
                       Text(
                         formatSmartDate(n.date),
                         style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: ThemeColors.textPrimary.withAlpha(153),
+                          color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1305,7 +1365,7 @@ class _VetCardSheet extends StatelessWidget {
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall!
-                              .copyWith(color: ThemeColors.textPrimary),
+                              .copyWith(color: context.watch<AppearanceController>().secondaryColor),
                         ),
                       ),
                     ],

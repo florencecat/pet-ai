@@ -157,6 +157,7 @@ class SettingsPage extends StatelessWidget {
               title: 'Уведомления',
               subtitle: 'Настройка напоминаний и событий',
               trailingIcon: Icons.chevron_right,
+              textColor: context.watch<AppearanceController>().secondaryColor,
             ),
 
             GlassSettingsCard(
@@ -168,6 +169,7 @@ class SettingsPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (_) => const AppearancePage()),
               ),
+              textColor: context.watch<AppearanceController>().secondaryColor,
             ),
 
             GlassSettingsCard(
@@ -175,6 +177,7 @@ class SettingsPage extends StatelessWidget {
               title: 'Профиль питомца',
               subtitle: 'Редактирование данных питомца',
               trailingIcon: Icons.chevron_right,
+              textColor: context.watch<AppearanceController>().secondaryColor,
             ),
 
             const SizedBox(height: 24),

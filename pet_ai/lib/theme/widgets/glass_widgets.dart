@@ -17,13 +17,15 @@ class GlassPlate extends StatelessWidget {
   final Color color;
   final bool transparent;
   final double padding;
+  final List<Color>? gradientColors;
 
   const GlassPlate({
     super.key,
     required this.child,
     this.color = Colors.white,
     this.transparent = true,
-    this.padding = 8
+    this.padding = 8,
+    this.gradientColors,
   });
 
   @override
@@ -31,6 +33,36 @@ class GlassPlate extends StatelessWidget {
     const borderRadius = BorderRadius.all(Radius.circular(28));
     final borderColor = transparent ? color.withAlpha(180) : color;
     final fillColor = transparent ? color.withAlpha(220) : color;
+
+    final content = ClipRRect(
+      borderRadius: borderRadius,
+      child: Stack(
+        children: [
+          // Лёгкий хайлайт сверху — имитация преломления стекла
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: 28,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withAlpha(64),
+                      Colors.white.withAlpha(0),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(padding: EdgeInsets.all(padding), child: child),
+        ],
+      ),
+    );
 
     return RepaintBoundary(
       child: DecoratedBox(
@@ -46,35 +78,16 @@ class GlassPlate extends StatelessWidget {
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: borderRadius,
-          child: Stack(
-            children: [
-              // Лёгкий хайлайт сверху — имитация преломления стекла
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withAlpha(64),
-                          Colors.white.withAlpha(0),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
+        child: gradientColors != null
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  backgroundBlendMode: BlendMode.screen,
+                  borderRadius: borderRadius,
+                  gradient: LinearGradient(colors: gradientColors!),
                 ),
-              ),
-              Padding(padding: EdgeInsets.all(padding), child: child),
-            ],
-          ),
-        ),
+                child: content,
+              )
+            : content,
       ),
     );
   }
@@ -128,13 +141,17 @@ class GlassCard extends StatelessWidget {
   final Widget child;
   final Color color;
   final double padding;
+  final List<Color>? gradientColors;
+  final bool transparent;
 
   const GlassCard({
     super.key,
     required this.callback,
     required this.child,
     this.color = Colors.white,
-    this.padding = 8
+    this.padding = 8,
+    this.transparent = false,
+    this.gradientColors,
   });
 
   @override
@@ -142,6 +159,8 @@ class GlassCard extends StatelessWidget {
     return GlassPlate(
       padding: padding,
       color: color,
+      transparent: transparent,
+      gradientColors: gradientColors,
       child: InkWell(
         onTap: () {
           HapticFeedback.mediumImpact();
@@ -278,8 +297,8 @@ class GlassSettingsCard extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailingIcon,
-  }) : color = ThemeColors.white,
-       textColor = ThemeColors.border;
+    this.textColor = ThemeColors.border
+  }) : color = ThemeColors.white;
 
   const GlassSettingsCard.debug({
     super.key,
@@ -435,7 +454,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            color: selected ? color.withAlpha(200) : color.withAlpha(25)
+            color: selected ? color.withAlpha(200) : color.withAlpha(25),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

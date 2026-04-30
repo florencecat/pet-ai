@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/chart_placeholder.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
@@ -9,6 +10,7 @@ import 'package:pet_ai/theme/widgets/pill_stepper.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/weight.dart';
+import 'package:provider/provider.dart';
 
 class WeightSheet extends StatefulWidget {
   final PetProfile profile;
@@ -92,17 +94,25 @@ class _WeightSheetState extends State<WeightSheet> {
       maxSize: 1.0,
       actions: [
         IconButton(
-          icon: const Icon(Icons.save),
-          color: Theme.of(context).dividerColor,
+          icon: const Icon(Icons.check),
+          color: context.watch<AppearanceController>().secondaryColor,
           onPressed: change ? () async => save() : null,
-        )
+        ),
       ],
       body: Column(
         children: [
           SegmentedButton<HistoryPeriod>(
             style: SegmentedButton.styleFrom(
-              side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
-              foregroundColor: Theme.of(context).dividerColor,
+              side: BorderSide(
+                color: context.watch<AppearanceController>().secondaryColor,
+                width: 2,
+              ),
+              foregroundColor: context
+                  .watch<AppearanceController>()
+                  .secondaryColor,
+              selectedBackgroundColor: context
+                  .watch<AppearanceController>()
+                  .secondaryColor,
               selectedForegroundColor: Theme.of(context).colorScheme.surface,
             ),
             segments: const [
@@ -124,9 +134,7 @@ class _WeightSheetState extends State<WeightSheet> {
           if (entries.isEmpty)
             const ChartPlaceholder(message: "История веса пока пуста")
           else if (entries.length <= 3)
-            const ChartPlaceholder(
-              message: "Слишком мало записей для графика",
-            )
+            const ChartPlaceholder(message: "Слишком мало записей для графика")
           else
             Padding(
               padding: const EdgeInsets.fromLTRB(5, 10, 10, 10),
@@ -157,10 +165,15 @@ class _WeightSheetState extends State<WeightSheet> {
                         sideTitles: SideTitles(
                           reservedSize: 30,
                           showTitles: true,
-                          interval: (entries.length / 5).ceilToDouble().clamp(1, 9999),
+                          interval: (entries.length / 5).ceilToDouble().clamp(
+                            1,
+                            9999,
+                          ),
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
-                            if (index >= entries.length) return const SizedBox();
+                            if (index >= entries.length) {
+                              return const SizedBox();
+                            }
                             final date = entries[index].date;
                             return Padding(
                               padding: const EdgeInsets.only(top: 4),
@@ -186,7 +199,8 @@ class _WeightSheetState extends State<WeightSheet> {
                         ),
                       ),
                     ),
-                    minY: entries
+                    minY:
+                        entries
                             .map((e) => e.weight)
                             .reduce((a, b) => a < b ? a : b) *
                         0.975,
@@ -267,8 +281,11 @@ class _WeightEntryCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            Icon(Icons.monitor_weight_outlined,
-                color: ThemeColors.primary, size: 22),
+            Icon(
+              Icons.monitor_weight_outlined,
+              color: context.watch<AppearanceController>().primaryColor,
+              size: 22,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -277,12 +294,14 @@ class _WeightEntryCard extends StatelessWidget {
                   Text(
                     '${entry.weight.toStringAsFixed(1)} кг',
                     style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                          color: ThemeColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
-                    DateFormat('d MMMM yyyy', 'ru_RU').format(entry.date),
+                    formatSmartDate(entry.date),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

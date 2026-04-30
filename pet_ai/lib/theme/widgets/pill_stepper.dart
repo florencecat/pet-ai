@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
+import 'package:provider/provider.dart';
 
 class PillStepper extends StatefulWidget {
   final double value;
   final ValueChanged<double> onChanged;
 
-  const PillStepper({
-    super.key,
-    required this.value,
-    required this.onChanged,
-  });
+  const PillStepper({super.key, required this.value, required this.onChanged});
 
   @override
   State<PillStepper> createState() => _PillStepperState();
@@ -125,7 +122,11 @@ class _PillStepperState extends State<PillStepper> {
   Widget _circleButton(IconData icon, VoidCallback onPressed) {
     return IconButton(
       onPressed: onPressed,
-      icon: Icon(icon, size: 22, color: ThemeColors.border),
+      icon: Icon(
+        icon,
+        size: 22,
+        color: context.watch<AppearanceController>().secondaryColor,
+      ),
     );
   }
 }

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/models/food.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/appetite_stepper.dart';
 import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
-
+import 'package:provider/provider.dart';
 
 class FoodSheet extends StatefulWidget {
   final PetProfile profile;
@@ -79,9 +80,7 @@ class _FoodSheetState extends State<FoodSheet> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.danger,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.danger),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -118,7 +117,7 @@ class _FoodSheetState extends State<FoodSheet> {
         else
           IconButton(
             icon: const Icon(Icons.check),
-            color: ThemeColors.primary,
+            color: context.watch<AppearanceController>().primaryColor,
             onPressed: _save,
           ),
       ],
@@ -139,10 +138,7 @@ class _FoodSheetState extends State<FoodSheet> {
                   const SizedBox(height: 16),
 
                   // Appetite stepper
-                  Text(
-                    'Аппетит',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text('Аппетит', style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 8),
                   AppetiteStepper(
                     value: _appetiteScore,
@@ -165,7 +161,10 @@ class _FoodSheetState extends State<FoodSheet> {
                           ),
                         ),
                         controller: TextEditingController(
-                          text: DateFormat('d MMMM yyyy', 'ru_RU').format(_date),
+                          text: DateFormat(
+                            'd MMMM yyyy',
+                            'ru_RU',
+                          ).format(_date),
                         ),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
@@ -193,12 +192,23 @@ class _FoodSheetState extends State<FoodSheet> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               color: selected
-                                  ? ThemeColors.primary.withAlpha(200)
-                                  : ThemeColors.primary.withAlpha(20),
+                                  ? context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                        .withAlpha(200)
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                        .withAlpha(20),
                               border: Border.all(
                                 color: selected
-                                    ? ThemeColors.primary
-                                    : ThemeColors.primary.withAlpha(60),
+                                    ? context
+                                          .watch<AppearanceController>()
+                                          .primaryColor
+                                    : context
+                                          .watch<AppearanceController>()
+                                          .primaryColor
+                                          .withAlpha(60),
                               ),
                             ),
                             child: Column(
@@ -209,7 +219,9 @@ class _FoodSheetState extends State<FoodSheet> {
                                   size: 18,
                                   color: selected
                                       ? Colors.white
-                                      : ThemeColors.primary,
+                                      : context
+                                            .watch<AppearanceController>()
+                                            .primaryColor,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -219,7 +231,9 @@ class _FoodSheetState extends State<FoodSheet> {
                                     fontWeight: FontWeight.w600,
                                     color: selected
                                         ? Colors.white
-                                        : ThemeColors.primary,
+                                        : context
+                                              .watch<AppearanceController>()
+                                              .primaryColor,
                                   ),
                                 ),
                               ],
@@ -264,28 +278,21 @@ class _FoodSheetState extends State<FoodSheet> {
                     const SizedBox(height: 12),
                     Text(
                       'История питания пуста',
-                      style:
-                          Theme.of(context).textTheme.bodyLarge!.copyWith(
-                                color: ThemeColors.primary.withAlpha(120),
-                              ),
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        color: ThemeColors.primary.withAlpha(120),
+                      ),
                     ),
                   ],
                 ),
               ),
             )
           else ...[
-            Text(
-              'История',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('История', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             ...entries.map(
               (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _FoodEntryCard(
-                  entry: e,
-                  onDelete: () => _delete(e),
-                ),
+                child: _FoodEntryCard(entry: e, onDelete: () => _delete(e)),
               ),
             ),
           ],
@@ -339,21 +346,20 @@ class _GramStepperState extends State<_GramStepper> {
         children: [
           IconButton(
             icon: const Icon(Icons.remove, size: 22),
-            color: ThemeColors.border,
+            color: context.watch<AppearanceController>().secondaryColor,
             onPressed: () => _step(-5),
           ),
           const SizedBox(width: 8),
           Text(
             '${_val.toInt()} г',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge!
-                .copyWith(fontSize: 26),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge!.copyWith(fontSize: 26),
           ),
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.add, size: 22),
-            color: ThemeColors.border,
+            color: context.watch<AppearanceController>().secondaryColor,
             onPressed: () => _step(5),
           ),
         ],
@@ -412,29 +418,37 @@ class _FoodEntryCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(entry.mealTime.icon,
-                          size: 14, color: ThemeColors.secondary),
+                      Icon(
+                        entry.mealTime.icon,
+                        size: 14,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         entry.mealTime.label,
-                        style:
-                            Theme.of(context).textTheme.titleSmall!.copyWith(
-                                  color: ThemeColors.textPrimary,
-                                ),
+                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         '${entry.grams} г',
                         style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                              color: ThemeColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          color: context
+                              .watch<AppearanceController>()
+                              .primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    DateFormat('d MMMM yyyy', 'ru_RU').format(entry.date),
+                    formatSmartDate(entry.date),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
