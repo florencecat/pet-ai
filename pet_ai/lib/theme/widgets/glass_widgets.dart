@@ -81,7 +81,6 @@ class GlassPlate extends StatelessWidget {
         child: gradientColors != null
             ? DecoratedBox(
                 decoration: BoxDecoration(
-                  backgroundBlendMode: BlendMode.screen,
                   borderRadius: borderRadius,
                   gradient: LinearGradient(colors: gradientColors!),
                 ),

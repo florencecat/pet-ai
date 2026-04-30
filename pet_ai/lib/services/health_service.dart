@@ -292,7 +292,7 @@ class HealthAnalyzer {
 
   /// Оценка здоровья на основе бейджей.
   /// Возвращает строку + цвет.
-  static ({String label, Color color, IconData icon}) score(
+  static ({String caption, String label, Color color, IconData icon}) score(
     List<HealthBadge> badges,
   ) {
     final dangerCount = badges
@@ -304,6 +304,7 @@ class HealthAnalyzer {
 
     if (dangerCount > 0) {
       return (
+        caption: 'Критично',
         label: 'Критично',
         color: HealthBadgeSeverity.danger.color,
         icon: Icons.error_outline,
@@ -311,19 +312,14 @@ class HealthAnalyzer {
     }
     if (warningCount >= 3) {
       return (
+        caption: 'Обратите внимание',
         label: 'Внимание',
         color: HealthBadgeSeverity.warning.color,
         icon: Icons.warning_amber_rounded,
       );
     }
-    if (warningCount >= 1) {
-      return (
-        label: 'Заметки',
-        color: HealthBadgeSeverity.warning.color,
-        icon: Icons.info_outline,
-      );
-    }
     return (
+      caption: 'Всё хорошо',
       label: 'OK',
       color: HealthBadgeSeverity.ok.color,
       icon: Icons.check_circle_outline,

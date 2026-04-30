@@ -46,12 +46,11 @@ class _HomePageState extends State<HomePage> {
   bool _isLoadingProfile = true;
   bool _isLoadingEvents = true;
   List<PetEvent> _events = [];
+  List<PetEvent> _allEvents = [];
 
   late String? _weightStatus = "...";
   late String? _moodStatus = "...";
   late String? _foodStatus = "...";
-
-  List<Color>? _healthGradient = null;
 
   @override
   void initState() {
@@ -120,6 +119,7 @@ class _HomePageState extends State<HomePage> {
           ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     setState(() {
+      _allEvents = events;
       _events = [...overdue, ...upcoming];
       _isLoadingEvents = false;
     });
@@ -139,33 +139,17 @@ class _HomePageState extends State<HomePage> {
   List<Widget> _buildHealthSummary() {
     if (_profile == null) return const [];
 
-    final badges = HealthAnalyzer.analyze(_profile!, _events);
-    // Сортируем по убыванию серьёзности
+    final badges = HealthAnalyzer.analyze(_profile!, _allEvents);
     badges.sort((a, b) => b.severity.index.compareTo(a.severity.index));
     final top = badges.take(2).toList();
 
-    String summary = "Всё в порядке";
-    Color summaryColor = HealthBadgeSeverity.ok.color;
-    if (badges
-            .where(
-              (b) =>
-                  b.severity == HealthBadgeSeverity.warning ||
-                  b.severity == HealthBadgeSeverity.danger,
-            )
-            .length >
-        2) {
-      summary = "Обратите внимание";
-      summaryColor = HealthBadgeSeverity.warning.color;
-    }
-
-    _healthGradient = [ThemeColors.white, summaryColor.withAlpha(128)];
-
+    final score = HealthAnalyzer.score(badges);
     return [
       Text(
-        summary,
+        score.caption,
         style: Theme.of(
           context,
-        ).textTheme.titleLarge!.copyWith(inherit: true, color: summaryColor),
+        ).textTheme.titleLarge!.copyWith(inherit: true, color: score.color),
       ),
       const SizedBox(height: 16),
       ...top.map(
@@ -190,7 +174,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildHealthScore() {
     if (_profile == null) return const SizedBox();
-    final badges = HealthAnalyzer.analyze(_profile!, _events);
+    final badges = HealthAnalyzer.analyze(_profile!, _allEvents);
     final s = HealthAnalyzer.score(badges);
 
     return Container(
@@ -452,6 +436,13 @@ class _HomePageState extends State<HomePage> {
     final description = _profileDescription();
     final topPadding = MediaQuery.of(context).padding.top;
 
+    List<Color>? healthGradient;
+    if (_profile != null && !_isLoadingEvents) {
+      final badges = HealthAnalyzer.analyze(_profile!, _allEvents);
+      final score = HealthAnalyzer.score(badges);
+      healthGradient = [Colors.transparent, score.color.withAlpha(72)];
+    }
+
     return Scaffold(
       backgroundColor: ThemeColors.white,
       body: Container(
@@ -656,7 +647,7 @@ class _HomePageState extends State<HomePage> {
             // блок здоровья
             GlassCard(
               transparent: false,
-              gradientColors: _healthGradient,
+              gradientColors: healthGradient,
               callback: () async {
                 await showModalBottomSheet(
                   context: context,

@@ -134,16 +134,21 @@ class _DraggableSheetState extends State<DraggableSheet>
   }
 
   Widget _buildHeader(BuildContext context) {
+    final hasBack = widget.onBack != null;
+    final hasActions = widget.actions != null && widget.actions!.isNotEmpty;
+
     return SizedBox(
       height: 48,
       child: Row(
         children: [
-          if (widget.onBack != null)
+          if (hasBack)
             IconButton(
               icon: const Icon(Icons.arrow_back),
               color: Theme.of(context).colorScheme.primary,
               onPressed: widget.onBack,
-            ),
+            )
+          else if (widget.centerTitle && hasActions)
+            const SizedBox(width: 48),
 
           if (widget.centerTitle) const Spacer(),
 
@@ -155,7 +160,10 @@ class _DraggableSheetState extends State<DraggableSheet>
 
           if (widget.centerTitle) const Spacer(),
 
-          if (widget.actions != null) ...widget.actions!,
+          if (hasActions)
+            ...widget.actions!
+          else if (widget.centerTitle && hasBack)
+            const SizedBox(width: 48),
         ],
       ),
     );
