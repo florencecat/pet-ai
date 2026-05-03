@@ -290,8 +290,6 @@ class HealthAnalyzer {
     return badges;
   }
 
-  /// Оценка здоровья на основе бейджей.
-  /// Возвращает строку + цвет.
   static ({String caption, String label, Color color, IconData icon}) score(
     List<HealthBadge> badges,
   ) {

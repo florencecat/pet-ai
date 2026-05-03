@@ -148,7 +148,7 @@ class _DraggableSheetState extends State<DraggableSheet>
               onPressed: widget.onBack,
             )
           else if (widget.centerTitle && hasActions)
-            const SizedBox(width: 48),
+            const SizedBox(width: kMinInteractiveDimension),
 
           if (widget.centerTitle) const Spacer(),
 
@@ -163,7 +163,7 @@ class _DraggableSheetState extends State<DraggableSheet>
           if (hasActions)
             ...widget.actions!
           else if (widget.centerTitle && hasBack)
-            const SizedBox(width: 48),
+            const SizedBox(width: kMinInteractiveDimension),
         ],
       ),
     );

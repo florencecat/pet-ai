@@ -95,32 +95,11 @@ class _HomePageState extends State<HomePage> {
 
     if (!mounted) return;
 
-    final now = DateTime.now();
-
-    // Прививки показываются только в календаре / блоке здоровья
-    bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
-
-    // Просроченные: не повторяющиеся, дата в прошлом, не выполнены
-    final overdue =
-        events.where((e) => e.isOverdue && notVaccination(e)).toList()
-          ..sort((a, b) => b.dateTime.compareTo(a.dateTime)); // свежие сначала
-
-    // Предстоящие: повторяющиеся или дата ≥ сейчас
-    final upcoming =
-        events
-            .where(
-              (e) =>
-                  notVaccination(e) &&
-                  (e.repeat != RepeatInterval.none ||
-                      e.dateTime.isAfter(now) ||
-                      e.dateTime.isAtSameMomentAs(now)),
-            )
-            .toList()
-          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final display = _filterEvents(events);
 
     setState(() {
       _allEvents = events;
-      _events = [...overdue, ...upcoming];
+      _events = display;
       _isLoadingEvents = false;
     });
   }
@@ -134,16 +113,27 @@ class _HomePageState extends State<HomePage> {
     return description;
   }
 
-  /// Компактная сводка из 1–2 наиболее важных бейджей здоровья
-  /// для отображения в карточке «Здоровье» на главной.
-  List<Widget> _buildHealthSummary() {
-    if (_profile == null) return const [];
+  List<PetEvent> _filterEvents(List<PetEvent> events) {
+    final now = DateTime.now();
+    bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
+    final overdue = events.where((e) => e.isOverdue && notVaccination(e)).toList()
+      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+    final upcoming = events
+        .where(
+          (e) =>
+              notVaccination(e) &&
+              (e.repeat != RepeatInterval.none ||
+                  e.dateTime.isAfter(now) ||
+                  e.dateTime.isAtSameMomentAs(now)),
+        )
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    return [...overdue, ...upcoming];
+  }
 
-    final badges = HealthAnalyzer.analyze(_profile!, _allEvents);
-    badges.sort((a, b) => b.severity.index.compareTo(a.severity.index));
-    final top = badges.take(2).toList();
+  List<Widget> _buildHealthSummary(List<HealthBadge> badges, ({String caption, String label, Color color, IconData icon}) score) {
+    final top = (badges.toList()..sort((a, b) => b.severity.index.compareTo(a.severity.index))).take(2).toList();
 
-    final score = HealthAnalyzer.score(badges);
     return [
       Text(
         score.caption,
@@ -172,10 +162,7 @@ class _HomePageState extends State<HomePage> {
     ];
   }
 
-  Widget _buildHealthScore() {
-    if (_profile == null) return const SizedBox();
-    final badges = HealthAnalyzer.analyze(_profile!, _allEvents);
-    final s = HealthAnalyzer.score(badges);
+  Widget _buildHealthScore(({String caption, String label, Color color, IconData icon}) s) {
 
     return Container(
       width: 64,
@@ -276,28 +263,10 @@ class _HomePageState extends State<HomePage> {
     // Silently reload without showing the loading spinner
     final events = await EventService().loadEvents(_profile!.id);
     if (!mounted) return;
-    final now = DateTime.now();
-
-    bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
-
-    final overdue =
-        events.where((e) => e.isOverdue && notVaccination(e)).toList()
-          ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
-
-    final upcoming =
-        events
-            .where(
-              (e) =>
-                  notVaccination(e) &&
-                  (e.repeat != RepeatInterval.none ||
-                      e.dateTime.isAfter(now) ||
-                      e.dateTime.isAtSameMomentAs(now)),
-            )
-            .toList()
-          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     setState(() {
-      _events = [...overdue, ...upcoming];
+      _allEvents = events;
+      _events = _filterEvents(events);
       _completionPending.remove(event.id);
     });
   }
@@ -436,11 +405,13 @@ class _HomePageState extends State<HomePage> {
     final description = _profileDescription();
     final topPadding = MediaQuery.of(context).padding.top;
 
+    List<HealthBadge>? healthBadges;
+    ({String caption, String label, Color color, IconData icon})? healthScore;
     List<Color>? healthGradient;
     if (_profile != null && !_isLoadingEvents) {
-      final badges = HealthAnalyzer.analyze(_profile!, _allEvents);
-      final score = HealthAnalyzer.score(badges);
-      healthGradient = [Colors.transparent, score.color.withAlpha(72)];
+      healthBadges = HealthAnalyzer.analyze(_profile!, _allEvents);
+      healthScore = HealthAnalyzer.score(healthBadges);
+      healthGradient = [Colors.transparent, healthScore.color.withAlpha(72)];
     }
 
     return Scaffold(
@@ -679,7 +650,8 @@ class _HomePageState extends State<HomePage> {
                                   'Здоровье',
                                   style: Theme.of(context).textTheme.titleSmall,
                                 ),
-                                ..._buildHealthSummary(),
+                                if (healthBadges != null && healthScore != null)
+                                  ..._buildHealthSummary(healthBadges, healthScore),
                               ],
                             ),
                           ),
@@ -687,7 +659,9 @@ class _HomePageState extends State<HomePage> {
                             flex: 1,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: [_buildHealthScore()],
+                              children: [
+                                if (healthScore != null) _buildHealthScore(healthScore),
+                              ],
                             ),
                           ),
                         ],
