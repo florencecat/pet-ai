@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/models/note.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class NoteSheet extends StatefulWidget {
@@ -103,7 +104,9 @@ class _NoteSheetState extends State<NoteSheet> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -147,7 +150,9 @@ class _NoteSheetState extends State<NoteSheet> {
         else
           IconButton(
             icon: const Icon(Icons.check),
-            color: hasContent ? ThemeColors.primary : ThemeColors.secondary,
+            color: hasContent
+                ? context.watch<AppearanceController>().primaryColor
+                : context.watch<AppearanceController>().secondaryColor,
             onPressed: hasContent ? _save : null,
           ),
       ],
@@ -226,7 +231,10 @@ class _NoteSheetState extends State<NoteSheet> {
                           shape: BoxShape.circle,
                           color: _isListening
                               ? ThemeColors.dangerZone
-                              : ThemeColors.secondary.withAlpha(40),
+                              : context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                                    .withAlpha(40),
                         ),
                         child: IconButton(
                           onPressed: _speechAvailable ? _toggleListening : null,
@@ -237,8 +245,13 @@ class _NoteSheetState extends State<NoteSheet> {
                           color: _isListening
                               ? Colors.white
                               : _speechAvailable
-                              ? ThemeColors.secondary
-                              : ThemeColors.secondary.withAlpha(80),
+                              ? context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                              : context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                                    .withAlpha(80),
                           tooltip: _speechAvailable
                               ? (_isListening
                                     ? 'Остановить запись'
@@ -265,13 +278,19 @@ class _NoteSheetState extends State<NoteSheet> {
                     Icon(
                       Icons.notes,
                       size: 52,
-                      color: ThemeColors.primary.withAlpha(60),
+                      color: context
+                          .watch<AppearanceController>()
+                          .primaryColor
+                          .withAlpha(60),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       'История дневника пуста',
                       style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        color: ThemeColors.primary.withAlpha(120),
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor
+                            .withAlpha(120),
                       ),
                     ),
                   ],
@@ -306,61 +325,52 @@ class _NoteEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tag = entry.symptomTag;
 
-    return GlassPlate(
+    return SoftGlassPlate(
       color: tag != null ? tag.color.withAlpha(15) : Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (tag != null) ...[
-              Container(
-                width: 34,
-                height: 34,
+
+      child: ListTile(
+        leading: tag != null
+            ? Container(
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: tag.color.withAlpha(40),
                 ),
-                child: Icon(tag.icon, size: 18, color: tag.color),
-              ),
-              const SizedBox(width: 10),
-            ] else ...[
-              Icon(
+                child: Icon(tag.icon, size: 20, color: tag.color),
+              )
+            : Icon(
                 Icons.notes,
                 size: 20,
-                color: ThemeColors.secondary.withAlpha(160),
+                color: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(160),
               ),
-              const SizedBox(width: 10),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.note,
-                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: ThemeColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    DateFormat(
-                      'd MMMM yyyy, HH:mm',
-                      'ru_RU',
-                    ).format(entry.date),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              color: ThemeColors.dangerZone.withAlpha(180),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              onPressed: onDelete,
-            ),
-          ],
+        title: Text(
+          entry.note,
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+            inherit: true,
+            color:
+                tag?.color ??
+                context.watch<AppearanceController>().secondaryColor,
+          ),
+        ),
+        subtitle: Text(
+          formatSmartDateTime(entry.date),
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            inherit: true,
+            color:
+                tag?.color ??
+                context.watch<AppearanceController>().secondaryColor.withAlpha(
+                  162,
+                ),
+          ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, size: 20),
+          color: ThemeColors.dangerZone.withAlpha(180),
+          onPressed: onDelete,
         ),
       ),
     );

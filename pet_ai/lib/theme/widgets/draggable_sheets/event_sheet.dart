@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 
 enum EventSheetMode { view, create, edit }
 
@@ -147,7 +149,9 @@ class _EventSheetState extends State<EventSheet> {
             child: const Text('Нет'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -283,7 +287,7 @@ class _EventSheetState extends State<EventSheet> {
       if (EventSheetModeX(_mode).isView)
         IconButton(
           icon: const Icon(Icons.edit),
-          color: ThemeColors.primary,
+          color: context.watch<AppearanceController>().primaryColor,
           onPressed: () => setState(() => _mode = EventSheetMode.edit),
         ),
       if (EventSheetModeX(_mode).isView)
@@ -297,7 +301,7 @@ class _EventSheetState extends State<EventSheet> {
           icon: widget.event?.starred == true
               ? const Icon(Icons.star_rounded)
               : const Icon(Icons.star_outline_rounded),
-          color: ThemeColors.primary,
+          color: context.watch<AppearanceController>().primaryColor,
           onPressed: () {
             setState(() {
               if (widget.event != null) {
@@ -309,7 +313,7 @@ class _EventSheetState extends State<EventSheet> {
       if (EventSheetModeX(_mode).isEditable)
         IconButton(
           icon: const Icon(Icons.check),
-          color: ThemeColors.primary,
+          color: context.watch<AppearanceController>().primaryColor,
           onPressed: _submitForm,
         ),
     ];
@@ -324,7 +328,9 @@ class _EventSheetState extends State<EventSheet> {
     return [
       // Статус выполнения
       GlassPlate(
-        color: isCompleted ? ThemeColors.primary : Colors.white,
+        color: isCompleted
+            ? context.watch<AppearanceController>().primaryColor
+            : Colors.white,
         child: InkWell(
           onTap: _toggleCompleted,
           child: Padding(
@@ -335,7 +341,9 @@ class _EventSheetState extends State<EventSheet> {
                   isCompleted
                       ? Icons.check_circle
                       : Icons.radio_button_unchecked,
-                  color: isCompleted ? Colors.white : ThemeColors.primary,
+                  color: isCompleted
+                      ? Colors.white
+                      : context.watch<AppearanceController>().primaryColor,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -386,22 +394,20 @@ class _EventSheetState extends State<EventSheet> {
       const SizedBox(height: 8),
 
       // Дата/время
-      GlassPlate(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.event, size: 20, color: ThemeColors.border),
-              const SizedBox(width: 6),
-              Text(
-                formatSmartDateTime(event.dateTime),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.event, size: 20, color: ThemeColors.border),
+          const SizedBox(width: 6),
+          Text(
+            formatSmartDateTime(event.dateTime),
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-        ),
+        ],
       ),
+
+      if (event.repeat != RepeatInterval.none)
+        const SizedBox(height: 8),
 
       // Повтор
       if (event.repeat != RepeatInterval.none) ...[
@@ -443,6 +449,8 @@ class _EventSheetState extends State<EventSheet> {
         ),
       ],
 
+      const SizedBox(height: 8),
+
       // Питомцы, связанные с событием
       if (event.petIds.isNotEmpty && _profilesLoaded) ...[
         const SizedBox(height: 8),
@@ -455,40 +463,31 @@ class _EventSheetState extends State<EventSheet> {
     final linked = _allProfiles.where((p) => petIds.contains(p.id)).toList();
     if (linked.isEmpty) return const SizedBox.shrink();
 
-    return GlassPlate(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        child: Row(
-          children: [
-            const Icon(Icons.pets, size: 20, color: ThemeColors.border),
-            const SizedBox(width: 8),
-            Wrap(
-              spacing: 6,
-              children: linked.map((p) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: p.palette.mainColor.withAlpha(60),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: p.palette.mainColor.withAlpha(120)),
-                  ),
-                  child: Text(
-                    p.name.isEmpty ? 'Питомец' : p.name,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: p.palette.mainColor.withAlpha(220),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Wrap(
+          spacing: 6,
+          children: linked.map((p) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: p.palette.mainColor.withAlpha(60),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: p.palette.mainColor.withAlpha(120)),
+              ),
+              child: Text(
+                p.name.isEmpty ? 'Питомец' : p.name,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: p.palette.mainColor.withAlpha(220),
+                ),
+              ),
+            );
+          }).toList(),
         ),
-      ),
+      ],
     );
   }
 
@@ -575,7 +574,7 @@ class _EventSheetState extends State<EventSheet> {
                       size: 18,
                       color: _selectedDate == null
                           ? ThemeColors.dangerZone
-                          : ThemeColors.primary,
+                          : context.watch<AppearanceController>().primaryColor,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -606,7 +605,7 @@ class _EventSheetState extends State<EventSheet> {
                       size: 18,
                       color: _selectedTime == null
                           ? ThemeColors.dangerZone
-                          : ThemeColors.primary,
+                          : context.watch<AppearanceController>().primaryColor,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -638,7 +637,7 @@ class _EventSheetState extends State<EventSheet> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           value: _isRepeating,
-          activeThumbColor: ThemeColors.primary,
+          activeThumbColor: context.watch<AppearanceController>().primaryColor,
           onChanged: (val) {
             setState(() {
               _isRepeating = val;
@@ -665,10 +664,10 @@ class _EventSheetState extends State<EventSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.notifications_outlined,
                 size: 20,
-                color: ThemeColors.primary,
+                color: context.watch<AppearanceController>().primaryColor,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -679,7 +678,7 @@ class _EventSheetState extends State<EventSheet> {
               ),
               IconButton(
                 icon: const Icon(Icons.remove_circle_outline),
-                color: ThemeColors.primary,
+                color: context.watch<AppearanceController>().primaryColor,
                 onPressed: _remindBeforeMinutes > 0
                     ? () => setState(() => _remindBeforeMinutes -= 5)
                     : null,
@@ -696,7 +695,7 @@ class _EventSheetState extends State<EventSheet> {
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline),
-                color: ThemeColors.primary,
+                color: context.watch<AppearanceController>().primaryColor,
                 onPressed: _remindBeforeMinutes < 120
                     ? () => setState(() => _remindBeforeMinutes += 5)
                     : null,
@@ -718,7 +717,7 @@ class _EventSheetState extends State<EventSheet> {
     return GlassPlate(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child:  Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Питомцы', style: Theme.of(context).textTheme.bodyLarge),
@@ -785,7 +784,9 @@ class _EventSheetState extends State<EventSheet> {
                         return ChoiceChip(
                           label: Text(_getRepeatText(interval)),
                           selected: selected,
-                          selectedColor: ThemeColors.primary,
+                          selectedColor: context
+                              .watch<AppearanceController>()
+                              .primaryColor,
                           labelStyle: TextStyle(
                             color: selected
                                 ? Colors.white
@@ -835,7 +836,9 @@ class _EventSheetState extends State<EventSheet> {
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: selected
-                              ? ThemeColors.primary
+                              ? context
+                                    .watch<AppearanceController>()
+                                    .primaryColor
                               : Colors.white.withAlpha(200),
                           child: Text(
                             WeekDays.labels[day]!,

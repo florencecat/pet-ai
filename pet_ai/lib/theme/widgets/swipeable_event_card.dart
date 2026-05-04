@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 
 /// Обёртка над [GlassEventCard], добавляющая свайп влево для
 /// отображения круглых кнопок «Редактировать» и «Удалить».
@@ -100,7 +102,7 @@ class _SwipeableEventCardState extends State<SwipeableEventCard>
                 children: [
                   _ActionButton(
                     icon: Icons.edit_outlined,
-                    color: ThemeColors.secondary,
+                    color: context.watch<AppearanceController>().secondaryColor,
                     label: 'Изм.',
                     onTap: () {
                       _close();

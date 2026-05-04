@@ -3,12 +3,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/file_storage_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 
 class FileUploadSheet extends StatefulWidget {
   const FileUploadSheet({super.key});
@@ -178,7 +180,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
         else
           IconButton(
             icon: const Icon(Icons.check),
-            color: ThemeColors.primary,
+            color: context.watch<AppearanceController>().primaryColor,
             onPressed: _save,
           ),
       ],
@@ -220,12 +222,10 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
             const SizedBox(height: 8),
 
             // ── Категория (опционально) ───────────────────────────────────
-
             Container(
               decoration: BoxDecoration(
                 color: ThemeColors.white,
-                borderRadius: BorderRadius.circular(16)
-
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -243,37 +243,16 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
                       runSpacing: 6,
                       children: DocumentCategories.all.map((cat) {
                         return SoftGlassBadge(
-                            color: cat.color,
-                            icon: cat.icon,
-                            label: cat.name,
-                            selected: _selectedCategory == cat,
-                            onChanged: (selected) { setState(() {
+                          color: cat.color,
+                          icon: cat.icon,
+                          label: cat.name,
+                          selected: _selectedCategory == cat,
+                          onChanged: (selected) {
+                            setState(() {
                               _selectedCategory = selected ? cat : null;
-                            });});
-                        // return FilterChip(
-                        //   avatar: Icon(
-                        //     cat.icon,
-                        //     size: 16,
-                        //     color: selected ? Colors.white : cat.color,
-                        //   ),
-                        //   label: Text(cat.name),
-                        //   selected: selected,
-                        //   selectedColor: cat.color.withAlpha(200),
-                        //   backgroundColor: Colors.white.withAlpha(150),
-                        //   labelStyle: TextStyle(
-                        //     fontSize: 12,
-                        //     color: selected
-                        //         ? Colors.white
-                        //         : ThemeColors.textPrimary,
-                        //   ),
-                        //   checkmarkColor: Colors.white,
-                        //   onSelected: (_) {
-                        //     setState(() {
-                        //       // повторный тап снимает выбор
-                        //       _selectedCategory = selected ? null : cat;
-                        //     });
-                        //   },
-                        // );
+                            });
+                          },
+                        );
                       }).toList(),
                     ),
                   ],
@@ -284,7 +263,6 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
             // GlassPlate(
             //   child: ,
             // ),
-
             const SizedBox(height: 8),
 
             // ── Прикрепить файл ───────────────────────────────────────────
@@ -321,25 +299,29 @@ class _AttachButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: ThemeColors.primary.withAlpha(120),
+            color: context.watch<AppearanceController>().primaryColor.withAlpha(
+              120,
+            ),
             width: 1.5,
             strokeAlign: BorderSide.strokeAlignInside,
           ),
-          color: ThemeColors.primary.withAlpha(20),
+          color: context.watch<AppearanceController>().primaryColor.withAlpha(
+            20,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.attach_file_rounded,
-              color: ThemeColors.primary,
+              color: context.watch<AppearanceController>().primaryColor,
               size: 32,
             ),
             const SizedBox(height: 6),
             Text(
               'Прикрепить файл или снимок',
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                color: ThemeColors.primary,
+                color: context.watch<AppearanceController>().primaryColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -388,10 +370,15 @@ class _FilePreview extends StatelessWidget {
                   : Container(
                       width: 60,
                       height: 60,
-                      color: ThemeColors.primary.withAlpha(30),
+                      color: context
+                          .watch<AppearanceController>()
+                          .primaryColor
+                          .withAlpha(30),
                       child: Icon(
                         Icons.insert_drive_file_outlined,
-                        color: ThemeColors.primary,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
                         size: 32,
                       ),
                     ),
@@ -407,7 +394,7 @@ class _FilePreview extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.close, size: 20),
-              color: ThemeColors.secondary,
+              color: context.watch<AppearanceController>().secondaryColor,
               onPressed: onRemove,
             ),
           ],
@@ -459,7 +446,7 @@ class _SourcePickerSheet extends StatelessWidget {
                 child: _SourceTile(
                   icon: Icons.folder_open_rounded,
                   label: 'Из файлов',
-                  color: ThemeColors.primary,
+                  color: context.watch<AppearanceController>().primaryColor,
                   onTap: onPickFile,
                 ),
               ),

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/models/treatment.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 
 class WeightInputFormatter extends TextInputFormatter {
   final RegExp regex = RegExp(r'^\d+(\.\d?)?$');
@@ -460,7 +462,7 @@ class _HealthSummaryModalState extends State<HealthSummaryModal> {
         children: [
           // Быстрое действие — добавить прививку/обработку
           GlassCard(
-            color: ThemeColors.primary,
+            color: context.watch<AppearanceController>().primaryColor,
             callback: _openTreatments,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),

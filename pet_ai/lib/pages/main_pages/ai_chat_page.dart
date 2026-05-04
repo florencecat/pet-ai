@@ -48,7 +48,9 @@ class _AIChatPageState extends State<AIChatPage> {
             body: Container(
               width: double.infinity,
               height: double.infinity,
-              decoration: context.watch<AppearanceController>().gradientDecoration,
+              decoration: context
+                  .watch<AppearanceController>()
+                  .gradientDecoration,
               child: InlineLoading(isLoading: !snapshot.hasData),
             ),
           );
@@ -61,7 +63,9 @@ class _AIChatPageState extends State<AIChatPage> {
               return Scaffold(
                 body: Container(
                   padding: EdgeInsets.only(bottom: 0),
-                  decoration: context.watch<AppearanceController>().gradientDecoration,
+                  decoration: context
+                      .watch<AppearanceController>()
+                      .gradientDecoration,
                   child: const _ChatView(),
                 ),
               );
@@ -104,7 +108,8 @@ class _ChatView extends StatelessWidget {
                 itemCount: controller.messages.length,
                 physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
-                  final msg = controller.messages[controller.messages.length - 1 - index];
+                  final msg = controller
+                      .messages[controller.messages.length - 1 - index];
                   return _MessageBubble(msg: msg);
                 },
               ),
@@ -126,7 +131,10 @@ class _ChatView extends StatelessWidget {
                 final controller = context.read<AIChatController>();
                 _openHistorySheet(context, controller);
               },
-              child: Icon(Icons.history, color: context.watch<AppearanceController>().primaryColor),
+              child: Icon(
+                Icons.history,
+                color: context.watch<AppearanceController>().primaryColor,
+              ),
             ),
           ),
         ),
@@ -173,7 +181,9 @@ class _MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
         constraints: const BoxConstraints(maxWidth: 300),
         child: GlassPlate(
-          color: isUser ? ThemeColors.primary : Colors.white,
+          color: isUser
+              ? context.watch<AppearanceController>().primaryColor
+              : Colors.white,
           child: Padding(
             padding: EdgeInsetsGeometry.symmetric(vertical: 8, horizontal: 14),
             child: Text(
@@ -242,7 +252,7 @@ class _InputBarState extends State<_InputBar> {
                 Icons.send,
                 color: controller.text.isEmpty
                     ? Colors.grey.shade400
-                    : ThemeColors.primary,
+                    : context.watch<AppearanceController>().primaryColor,
               ),
             ),
           ),

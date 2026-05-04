@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/treatment.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/services/treatment_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 
 /// Шит для добавления и просмотра мед. мероприятий.
 class TreatmentSheet extends StatefulWidget {
@@ -13,8 +16,7 @@ class TreatmentSheet extends StatefulWidget {
   const TreatmentSheet({super.key, required this.profile});
 
   @override
-  State<TreatmentSheet> createState() =>
-      _TreatmentSheetState();
+  State<TreatmentSheet> createState() => _TreatmentSheetState();
 }
 
 class _TreatmentSheetState extends State<TreatmentSheet> {
@@ -109,8 +111,9 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style:
-                FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -122,7 +125,10 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
     if (!mounted) return;
     setState(() {
       widget.profile.treatmentHistory.entries.removeWhere(
-        (e) => e.date == entry.date && e.kind == entry.kind && e.name == entry.name,
+        (e) =>
+            e.date == entry.date &&
+            e.kind == entry.kind &&
+            e.name == entry.name,
       );
     });
   }
@@ -143,7 +149,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
       actions: [
         IconButton(
           icon: const Icon(Icons.check),
-          color: ThemeColors.primary,
+          color: context.watch<AppearanceController>().primaryColor,
           onPressed: _saving ? null : _save,
         ),
       ],
@@ -166,36 +172,21 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                     spacing: 6,
                     runSpacing: 6,
                     children: TreatmentKind.values.map((k) {
-                      final selected = _kind == k;
-                      return ChoiceChip(
-                        label: Text(k.shortLabel),
-                        avatar: Icon(k.icon, size: 16,
-                          color: selected ? Colors.white : k.color,
-                        ),
-                        selected: selected,
-                        selectedColor: k.color,
-                        backgroundColor: Colors.white,
-                        labelStyle: TextStyle(
-                          color: selected
-                              ? Colors.white
-                              : ThemeColors.textPrimary,
-                        ),
-                        onSelected: (_) => _setKind(k),
+                      return SoftGlassBadge(
+                        color: k.color,
+                        icon: k.icon,
+                        label: k.shortLabel,
+                        selected: _kind == k,
+                        onChanged: (_) => _setKind(k),
                       );
                     }).toList(),
                   ),
 
-                  if (_kind == TreatmentKind.vaccine) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Название прививки',
-                        hintText: 'Напр. DHPPi+L, бордетеллёз...',
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _nameCtrl,
+                    decoration: baseInputDecoration('Название прививки')
+                  ),
 
                   const SizedBox(height: 12),
 
@@ -227,8 +218,13 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                   // Remind before
                   Row(
                     children: [
-                      const Icon(Icons.alarm,
-                          size: 18, color: ThemeColors.primary),
+                      Icon(
+                        Icons.alarm,
+                        size: 18,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -238,7 +234,9 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.remove_circle_outline),
-                        color: ThemeColors.primary,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
                         onPressed: _remindBeforeDays > 0
                             ? () => setState(() => _remindBeforeDays -= 1)
                             : null,
@@ -248,15 +246,15 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                         child: Text(
                           '$_remindBeforeDays',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge!
+                          style: Theme.of(context).textTheme.bodyLarge!
                               .copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline),
-                        color: ThemeColors.primary,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
                         onPressed: _remindBeforeDays < 60
                             ? () => setState(() => _remindBeforeDays += 1)
                             : null,
@@ -277,9 +275,9 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
               child: Text(
                 'Записей пока нет',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                  color: ThemeColors.border,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
               ),
             )
           else ...[
@@ -290,25 +288,29 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            ...entries.map((entry) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: GlassPlate(
-                child: ListTile(
-                  leading: Icon(entry.kind.icon, color: entry.kind.color),
-                  title: Text(entry.displayName),
-                  subtitle: Text(
-                    'Сделано: ${formatSmartDate(entry.date)} • '
-                    'Следующее: ${formatSmartDate(entry.nextDate)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        color: ThemeColors.dangerZone),
-                    onPressed: () => _delete(entry),
+            ...entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: GlassPlate(
+                  child: ListTile(
+                    leading: Icon(entry.kind.icon, color: entry.kind.color),
+                    title: Text(entry.displayName),
+                    subtitle: Text(
+                      'Сделано: ${formatSmartDate(entry.date)} • '
+                      'Следующее: ${formatSmartDate(entry.nextDate)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: ThemeColors.dangerZone,
+                      ),
+                      onPressed: () => _delete(entry),
+                    ),
                   ),
                 ),
               ),
-            )),
+            ),
           ],
         ],
       ),
@@ -348,7 +350,11 @@ class _DateField extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(icon, size: 16, color: ThemeColors.primary),
+                Icon(
+                  icon,
+                  size: 16,
+                  color: context.watch<AppearanceController>().primaryColor,
+                ),
                 const SizedBox(width: 6),
                 Text(formatSmartDate(date)),
               ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
+import 'package:provider/provider.dart';
 
 class DraggableBottomSheet extends StatefulWidget {
   final List<String> allItems;
@@ -91,7 +92,12 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
                     itemBuilder: (context, index) {
                       final result = _filtered[index];
                       return ListTile(
-                        leading: Icon(widget.leadingIcon, color: ThemeColors.primary),
+                        leading: Icon(
+                          widget.leadingIcon,
+                          color: context
+                              .watch<AppearanceController>()
+                              .primaryColor,
+                        ),
                         title: Text(result),
                         onTap: () => Navigator.pop(context, result),
                       );

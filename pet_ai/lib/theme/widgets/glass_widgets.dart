@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 /// Имитация liquid-glass карточки без BackdropFilter.
 ///
@@ -228,7 +230,7 @@ class GlassEventCard extends StatelessWidget {
                           ? Icons.check_circle
                           : Icons.radio_button_unchecked,
                       color: _isCompleted
-                          ? ThemeColors.primary
+                          ? context.watch<AppearanceController>().primaryColor
                           : event.category.color,
                       size: 28,
                     ),
@@ -262,7 +264,9 @@ class GlassEventCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   GlassBadge(
                     name: petName!,
-                    color: petColor ?? ThemeColors.primary,
+                    color:
+                        petColor ??
+                        context.watch<AppearanceController>().primaryColor,
                   ),
                 ],
               ],
@@ -296,7 +300,7 @@ class GlassSettingsCard extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailingIcon,
-    this.textColor = ThemeColors.border
+    this.textColor = ThemeColors.border,
   }) : color = ThemeColors.white;
 
   const GlassSettingsCard.debug({

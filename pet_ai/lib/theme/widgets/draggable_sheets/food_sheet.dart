@@ -273,13 +273,13 @@ class _FoodSheetState extends State<FoodSheet> {
                     Icon(
                       Icons.restaurant_outlined,
                       size: 56,
-                      color: ThemeColors.primary.withAlpha(60),
+                      color: context.watch<AppearanceController>().primaryColor.withAlpha(60),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'История питания пуста',
                       style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        color: ThemeColors.primary.withAlpha(120),
+                        color: context.watch<AppearanceController>().primaryColor.withAlpha(120),
                       ),
                     ),
                   ],

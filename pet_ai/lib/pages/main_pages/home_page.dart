@@ -116,23 +116,32 @@ class _HomePageState extends State<HomePage> {
   List<PetEvent> _filterEvents(List<PetEvent> events) {
     final now = DateTime.now();
     bool notVaccination(PetEvent e) => e.category.id != 'vaccination';
-    final overdue = events.where((e) => e.isOverdue && notVaccination(e)).toList()
-      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
-    final upcoming = events
-        .where(
-          (e) =>
-              notVaccination(e) &&
-              (e.repeat != RepeatInterval.none ||
-                  e.dateTime.isAfter(now) ||
-                  e.dateTime.isAtSameMomentAs(now)),
-        )
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final overdue =
+        events.where((e) => e.isOverdue && notVaccination(e)).toList()
+          ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+    final upcoming =
+        events
+            .where(
+              (e) =>
+                  notVaccination(e) &&
+                  (e.repeat != RepeatInterval.none ||
+                      e.dateTime.isAfter(now) ||
+                      e.dateTime.isAtSameMomentAs(now)),
+            )
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return [...overdue, ...upcoming];
   }
 
-  List<Widget> _buildHealthSummary(List<HealthBadge> badges, ({String caption, String label, Color color, IconData icon}) score) {
-    final top = (badges.toList()..sort((a, b) => b.severity.index.compareTo(a.severity.index))).take(2).toList();
+  List<Widget> _buildHealthSummary(
+    List<HealthBadge> badges,
+    ({String caption, String label, Color color, IconData icon}) score,
+  ) {
+    final top =
+        (badges.toList()
+              ..sort((a, b) => b.severity.index.compareTo(a.severity.index)))
+            .take(2)
+            .toList();
 
     return [
       Text(
@@ -162,8 +171,9 @@ class _HomePageState extends State<HomePage> {
     ];
   }
 
-  Widget _buildHealthScore(({String caption, String label, Color color, IconData icon}) s) {
-
+  Widget _buildHealthScore(
+    ({String caption, String label, Color color, IconData icon}) s,
+  ) {
     return Container(
       width: 64,
       height: 64,
@@ -230,7 +240,9 @@ class _HomePageState extends State<HomePage> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -523,7 +535,9 @@ class _HomePageState extends State<HomePage> {
                                         _profile!.gender.icon != null)
                                       Icon(
                                         _profile!.gender.icon,
-                                        color: context.watch<AppearanceController>().secondaryColor,
+                                        color: context
+                                            .watch<AppearanceController>()
+                                            .secondaryColor,
                                       ),
                                     Expanded(
                                       child: Text(
@@ -651,7 +665,10 @@ class _HomePageState extends State<HomePage> {
                                   style: Theme.of(context).textTheme.titleSmall,
                                 ),
                                 if (healthBadges != null && healthScore != null)
-                                  ..._buildHealthSummary(healthBadges, healthScore),
+                                  ..._buildHealthSummary(
+                                    healthBadges,
+                                    healthScore,
+                                  ),
                               ],
                             ),
                           ),
@@ -660,7 +677,8 @@ class _HomePageState extends State<HomePage> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                if (healthScore != null) _buildHealthScore(healthScore),
+                                if (healthScore != null)
+                                  _buildHealthScore(healthScore),
                               ],
                             ),
                           ),
@@ -761,16 +779,16 @@ class _HomePageState extends State<HomePage> {
                 ),
                 Row(
                   children: [
-                    GlassCard(
-                      callback: widget.onOpenCalendar,
-                      child: Icon(
-                        Icons.notifications,
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                    // GlassCard(
+                    //   callback: widget.onOpenCalendar,
+                    //   child: Icon(
+                    //     Icons.notifications,
+                    //     color: context
+                    //         .watch<AppearanceController>()
+                    //         .primaryColor,
+                    //   ),
+                    // ),
+                    // const SizedBox(width: 8),
                     GlassCard(
                       callback: widget.onOpenCalendar,
                       child: Icon(
@@ -910,7 +928,10 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                     radius: 22,
                     backgroundColor: isActive
                         ? Colors.white.withAlpha(77)
-                        : ThemeColors.primary.withAlpha(38),
+                        : context
+                              .watch<AppearanceController>()
+                              .primaryColor
+                              .withAlpha(38),
                     backgroundImage: profile.profileImage != null
                         ? FileImage(profile.profileImage!)
                         : null,
@@ -920,14 +941,20 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                             size: 20,
                             color: isActive
                                 ? Colors.white
-                                : ThemeColors.primary,
+                                : context
+                                      .watch<AppearanceController>()
+                                      .primaryColor,
                           )
                         : null,
                   ),
                   title: Text(
                     profile.name.isEmpty ? 'Без имени' : profile.name,
                     style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      color: isActive ? Colors.white : context.watch<AppearanceController>().secondaryColor,
+                      color: isActive
+                          ? Colors.white
+                          : context
+                                .watch<AppearanceController>()
+                                .secondaryColor,
                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                     ),
                   ),
@@ -938,7 +965,10 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(
                       color: isActive
                           ? Colors.white.withAlpha(204)
-                          : context.watch<AppearanceController>().secondaryColor.withAlpha(153),
+                          : context
+                                .watch<AppearanceController>()
+                                .secondaryColor
+                                .withAlpha(153),
                     ),
                   ),
                   trailing: isActive
@@ -963,15 +993,17 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.add_circle_outline,
-                      color: ThemeColors.primary,
+                      color: context.watch<AppearanceController>().primaryColor,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Добавить питомца',
                       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: ThemeColors.primary,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1115,7 +1147,10 @@ class _VetCardSheet extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
+                color: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(153),
               ),
             ),
           ),
@@ -1224,7 +1259,10 @@ class _VetCardSheet extends StatelessWidget {
           child: Text(
             'Нет записей о прививках и обработках',
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-              color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
+              color: context
+                  .watch<AppearanceController>()
+                  .secondaryColor
+                  .withAlpha(153),
             ),
           ),
         ),
@@ -1270,14 +1308,21 @@ class _VetCardSheet extends StatelessWidget {
                           child: Text(
                             t.displayName,
                             style: Theme.of(context).textTheme.bodySmall!
-                                .copyWith(color: context.watch<AppearanceController>().secondaryColor),
+                                .copyWith(
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor,
+                                ),
                           ),
                         ),
                         Text(
                           formatSmartDate(t.date),
                           style: Theme.of(context).textTheme.bodySmall!
                               .copyWith(
-                                color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
+                                color: context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                                    .withAlpha(153),
                               ),
                         ),
                         const SizedBox(width: 8),
@@ -1287,7 +1332,10 @@ class _VetCardSheet extends StatelessWidget {
                               .copyWith(
                                 color: t.nextDate.isBefore(DateTime.now())
                                     ? HealthBadgeSeverity.danger.color
-                                    : context.watch<AppearanceController>().secondaryColor.withAlpha(153),
+                                    : context
+                                          .watch<AppearanceController>()
+                                          .secondaryColor
+                                          .withAlpha(153),
                                 fontWeight: t.nextDate.isBefore(DateTime.now())
                                     ? FontWeight.w700
                                     : FontWeight.w400,
@@ -1327,7 +1375,10 @@ class _VetCardSheet extends StatelessWidget {
                       Text(
                         formatSmartDate(n.date),
                         style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: context.watch<AppearanceController>().secondaryColor.withAlpha(153),
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor
+                              .withAlpha(153),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1337,7 +1388,11 @@ class _VetCardSheet extends StatelessWidget {
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall!
-                              .copyWith(color: context.watch<AppearanceController>().secondaryColor),
+                              .copyWith(
+                                color: context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor,
+                              ),
                         ),
                       ),
                     ],

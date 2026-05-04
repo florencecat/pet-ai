@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/services/appearance_controller.dart';
+import 'package:provider/provider.dart';
 
 class HomeActionButton extends StatelessWidget {
   final IconData icon;
@@ -21,7 +22,7 @@ class HomeActionButton extends StatelessWidget {
       color: color,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        hoverColor: ThemeColors.secondary,
+        hoverColor: context.watch<AppearanceController>().secondaryColor,
         borderRadius: BorderRadius.circular(16),
         onTap: onPressed,
         child: Padding(

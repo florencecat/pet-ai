@@ -216,7 +216,7 @@ class _EventsPageState extends State<EventsPage> {
                       _PetToggleChip(
                         label: 'Все питомцы',
                         selected: _showAllPets,
-                        color: ThemeColors.secondary,
+                        color: context.watch<AppearanceController>().secondaryColor,
                         onTap: () {
                           if (!_showAllPets) {
                             setState(() => _showAllPets = true);
