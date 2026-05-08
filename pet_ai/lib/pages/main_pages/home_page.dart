@@ -19,7 +19,6 @@ import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/file_upload_sheet.dart';
 import 'package:provider/provider.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/files_history_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_ai/theme/widgets/health_action_button.dart';
 
@@ -328,8 +327,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _openFileUpload(BuildContext context) async {
-    final uploaded = await showModalBottomSheet<bool>(
+  void _openDocuments(BuildContext context) async {
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -337,7 +336,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.transparent,
       builder: (_) => const FileUploadSheet(),
     );
-    if (uploaded == true) await _initScreen();
+    await _initScreen();
   }
 
   void _openFoodHistory(BuildContext context) async {
@@ -364,17 +363,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _openFilesHistory(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const FilesHistorySheet(),
-    );
-    await _initScreen();
-  }
 
   void _openProfile(BuildContext context) async {
     await Navigator.push(
@@ -696,8 +684,7 @@ class _HomePageState extends State<HomePage> {
               spacing: 16,
               children: [
                 Expanded(
-                  child: GlassCard(
-                    callback: () => _openFilesHistory(context),
+                  child: GlassPlate(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -723,7 +710,7 @@ class _HomePageState extends State<HomePage> {
                           child: HomeActionButton(
                             icon: Icons.add_circle_outline,
                             label: 'Добавить',
-                            onPressed: () => _openFileUpload(context),
+                            onPressed: () => _openDocuments(context),
                           ),
                         ),
                       ],
@@ -731,8 +718,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 Expanded(
-                  child: GlassCard(
-                    callback: () {},
+                  child: GlassPlate(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

@@ -227,7 +227,7 @@ class SettingsPage extends StatelessWidget {
             /// ℹ️ Версия
             Center(
               child: Text(
-                'Pet Health App · MVP\nv0.1.0',
+                'Pet Health App · MVP\nv0.3.2',
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,

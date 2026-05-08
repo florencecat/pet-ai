@@ -1,131 +1,180 @@
-## v0.3.1
-
-- Minor UI changes on calendar page
-
-## v0.3
-
-**Complete rework of event system and multi-pet experience**
-
-- Per-occurrence event completion tracking (each repeat handled separately)
-- Ability to link events to **multiple pets**
-- "All pets" mode in calendar
-- Color-coded events based on pet profiles
-- Pet name badges in event cards
-- Overdue events with priority sorting and warning UI
-- Migrated event storage to new structure (`pet_events_v2`)
-- Improved profile switch UX (avatar indicator & affordance)
+# Changelog
 
 ---
 
-## v0.2
+## v0.3.2 — Appearance System & UI Refinement
 
-**Major redesign and expansion of event functionality**
+### Features
+- Introduced appearance controller for centralized theme management
+- Added support for soft badges across UI
+- Added theme controller and dynamic color handling
 
-- Event completion (checkbox + notification actions)
+### Improvements
+- Updated home page layout and color system
+- Improved input transparency and visual hierarchy
+- Moved health card to a higher priority position on home screen
+- Added gradient styling for health components
+
+### Refactoring
+- Removed magic numbers across codebase
+- Optimized event filtering logic
+- General UI consistency improvements
+
+---
+
+## v0.3.1 — Health, Documents & Interaction Improvements
+
+### Features
+
+#### Health & Tracking
+- Food tracking system (meal time, appetite score, weight in grams)
+- Appetite stepper with visual indicators
+- Health scoring system (OK / Warning / Critical states)
+- Smart health analysis:
+  - Weight trend detection
+  - Appetite anomaly detection
+  - Overdue vaccinations and events tracking
+
+#### Notes & Diary
+- Symptom-based notes system with predefined tags
+- Voice input improvements
+- Notes history with delete support
+
+#### Documents
+- File storage system with categories (vaccination, insurance, etc.)
+- File upload (camera or file picker)
+- Document history with preview and system viewer integration
+
+#### Treatments
+- Treatment tracking (vaccinations, parasites, etc.)
+- Automatic event creation for next treatments
+- Reminder system for upcoming treatments
+
+#### UI & Interaction
+- Swipeable event cards (edit/delete actions)
+- Smart date formatting (today, tomorrow, etc.)
+- Vet information card
+- Improved health summary UI with actionable badges
+
+### Improvements
+- Performance optimization (removed heavy blur effects)
+- Repaint isolation for UI components
+- Improved charts (axes, labels, scaling)
+- Better handling of duplicate entries (weight, mood, food)
+
+### Fixes
+- Event completion state update reliability
+- Profile color application issues
+- Layout issues (navbar overflow, event preview offsets)
+- Various UI inconsistencies
+
+---
+
+## v0.3.0 — Event System Overhaul & Multi-Pet UX
+
+### Features
+- Per-occurrence event completion tracking
+- Multi-pet event linking
+- "All pets" calendar mode
+- Overdue event highlighting and prioritization
+- Pet badges in event cards
+
+### Improvements
+- Migration to new event storage model (`pet_events_v2`)
+- Improved profile switching UX
+
+---
+
+## v0.2.0 — Events Redesign & Expanded Functionality
+
+### Features
+- Event completion tracking
 - Custom repeat rules (weekday selection)
-- New event categories:
-    - Walk
-    - Training
-    - Vaccination
-    - Other
-- Proper rendering of repeating events in calendar
-- Full glassmorphism redesign of event bottom sheet
+- New event categories (walk, training, vaccination, other)
+- Correct rendering of recurring events in calendar
+
+### UI
+- Glass-style redesign of event sheets
 
 ---
 
-## v0.1.5
+## v0.1.5 — Multi-Profile Support
 
+### Features
 - Multiple pet profiles
 - Profile switching
-- Profile color customization
+- Profile color support
+
+### UX
 - Redesigned registration flow
-- Improved input forms (species, breed, etc.)
 
 ---
 
-## v0.1.4
+## v0.1.4 — AI & Health Tracking
 
+### Features
 - AI chat integration
-- Gigachat integration
 - Mood tracking
 - Weight tracking
-- Profile page enhancements
+
+### Improvements
 - Health service improvements
+- Profile page updates
 
 ---
 
-## v0.1.3
+## v0.1.3 — Activity & Notifications
 
+### Features
 - Activity indicators
 - Notification system
-- Initial activity & weight history support
 
 ---
 
-## v0.1.2
+## v0.1.2 — Events & Calendar Foundation
 
+### Features
 - Event creation and management
 - Event categories
-- Calendar event listing
-- Navigation to selected dates
+- Calendar integration
 
 ---
 
-## v0.1.1
+## v0.1.1 — Profiles & Core Architecture
 
-- Pet profiles
-- Pet registration flow
-- Profile image upload and crop
-- Profile integration into home screen
-- Introduced `ProfileService`
+### Features
+- Pet profiles and registration
+- Profile images
+
+### Architecture
+- Introduced ProfileService
 - Modular page structure
 
 ---
 
-## v0.1
+## v0.1.0 — Initial Feature Set
 
+### Features
 - Home screen
 - Basic calendar
 - AI chat (early version)
-- Core widgets
 
 ---
 
-## v0.0.9
+## v0.0.x — Early Development
 
-- Draggable bottom sheet
-- Custom card components
+### Features
+- Draggable sheets
+- Custom UI components
 - Settings page
-- Unified app theme
+- Unified theme
+
+### Improvements
+- Infrastructure setup (Android, iOS, CI/CD)
+- Bug fixes and refactoring
 
 ---
 
-## v0.0.8
+## v0.0.1 — Initial Commit
 
-- Multiple bug fixes across events, profiles, chat, and UI
-- Performance improvements
-- Removed dead code
-- Simplified architecture
-- Extracted reusable components
-
----
-
-## v0.0.7
-
-- Fixed Android APK build
-- Added iOS platform support
-- Integrated Codemagic CI/CD
-
----
-
-## 🧪 v0.0.6
-
-- Settings page
-- Data reset functionality
-- Initial UI components
-
----
-
-## 🎬 v0.0.1
-
-- Project bootstrap
+- Project initialization
