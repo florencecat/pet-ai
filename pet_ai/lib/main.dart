@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:pet_ai/pages/main_pages/settings_page.dart';
+import 'package:pet_ai/pages/main_pages/health_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
@@ -69,7 +69,7 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-enum NavigationTab { home, stats, calendar, settings }
+enum NavigationTab { home, health, chat, calendar }
 
 class _MainPageState extends State<MainPage> {
   bool _loading = true;
@@ -128,9 +128,9 @@ class _MainPageState extends State<MainPage> {
           context.read<AppearanceController>().reloadProfile();
         },
       ),
+      const HealthPage(),
       const AIChatPage(),
       EventsPage(initialDate: _calendarInitialDate),
-      const SettingsPage(),
     ];
 
     return Scaffold(

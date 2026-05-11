@@ -13,12 +13,12 @@ class FloatingNavigationBar extends StatelessWidget {
 
   static const _icons = [
     Icons.pets,
+    Icons.health_and_safety_outlined,
     Icons.chat_bubble_outline,
     Icons.calendar_month,
-    Icons.settings,
   ];
 
-  static const _labels = ["Главная", "Чат", "События", "Настройки"];
+  static const _labels = ["Главная", "Здоровье", "Чат", "Календарь"];
 
   @override
   Widget build(BuildContext context) {
