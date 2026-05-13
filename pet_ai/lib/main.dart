@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/adapters.dart';
@@ -21,7 +24,10 @@ import 'package:pet_ai/theme/widgets/floating_navigation_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService().init();
+
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    await NotificationService().init();
+  }
 
   await Hive.initFlutter();
   Hive.registerAdapter(ChatMessageAdapter());
