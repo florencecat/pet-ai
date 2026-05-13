@@ -338,7 +338,7 @@ class EventService {
     all.add(event);
     await _persistAll(all);
 
-    if (!kIsWeb && !Platform.isWindows) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       await NotificationService().scheduleEventNotification(event);
     }
   }
@@ -351,7 +351,7 @@ class EventService {
     all[index] = event;
     await _persistAll(all);
 
-    if (!kIsWeb && !Platform.isWindows) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       await NotificationService().cancelNotification(event.id);
       await NotificationService().scheduleEventNotification(event);
     }
@@ -375,7 +375,7 @@ class EventService {
     all.removeWhere((e) => e.id == event.id);
     await _persistAll(all);
 
-    if (!kIsWeb && !Platform.isWindows) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       await NotificationService().cancelNotification(event.id);
     }
   }
@@ -390,7 +390,7 @@ class EventService {
       if (e.petIds.contains(petId)) {
         e.petIds.remove(petId);
         if (e.petIds.isEmpty) {
-          if (!kIsWeb && !Platform.isWindows) {
+          if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
             await NotificationService().cancelNotification(e.id);
           }
           continue; // удаляем осиротевшее событие
