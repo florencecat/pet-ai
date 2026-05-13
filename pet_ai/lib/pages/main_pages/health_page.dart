@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/models/history.dart';
+import 'package:pet_ai/models/treatment.dart';
+import 'package:pet_ai/models/weight.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/health_service.dart';
@@ -7,11 +10,13 @@ import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/font_awesome_icons.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/mood_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_ai/theme/widgets/weight_chart.dart';
 import 'package:provider/provider.dart';
 
 class HealthPage extends StatefulWidget {
@@ -29,9 +34,11 @@ class _HealthPageState extends State<HealthPage> {
 
   String? _weightStatus;
   double? _weightDynamics;
-
   String? _moodStatus;
   String? _foodStatus;
+
+  // Period for the inline weight chart
+  HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
 
   @override
   void initState() {
@@ -57,12 +64,12 @@ class _HealthPageState extends State<HealthPage> {
       _isLoadingProfile = false;
     });
 
-    final weightStatus = _profile?.weightHistory.lastWeightString();
-    final weightDynamics = _profile?.weightHistory.weightDynamic();
+    final weightStatus = profile.weightHistory.lastWeightString();
+    final weightDynamics = profile.weightHistory.weightDynamic();
     final foodStatus = await ProfileService().lastFoodString();
     final moodStatus = await ProfileService().lastMoodString();
-
     final events = await EventService().loadEvents(profile.id);
+
     if (!mounted) return;
     setState(() {
       _events = events;
@@ -73,6 +80,8 @@ class _HealthPageState extends State<HealthPage> {
       _moodStatus = moodStatus;
     });
   }
+
+  // ── Sheet openers ──────────────────────────────────────────────────────────
 
   void _openWeightHistory(BuildContext context) async {
     if (_profile == null) return;
@@ -126,21 +135,32 @@ class _HealthPageState extends State<HealthPage> {
     if (updated == true) await _initScreen();
   }
 
-  List<PetEvent> _upcomingVaccinations() {
-    final now = DateTime.now();
-    return _events
-        .where(
-          (e) =>
-              e.category.id == 'vaccination' &&
-              (e.dateTime.isAfter(now) ||
-                  DateTime(
-                    e.dateTime.year,
-                    e.dateTime.month,
-                    e.dateTime.day,
-                  ).isAtSameMomentAs(DateTime(now.year, now.month, now.day))),
-        )
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+  void _openRecommendations(BuildContext context, List<HealthBadge> badges) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _RecommendationsSheet(badges: badges),
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  String _periodLabel(HistoryPeriod p) {
+    switch (p) {
+      case HistoryPeriod.month:
+        return '1 мес';
+      case HistoryPeriod.halfYear:
+        return '6 мес';
+      case HistoryPeriod.year:
+        return 'Год';
+      case HistoryPeriod.all:
+        return 'Всё';
+      default:
+        return '';
+    }
   }
 
   @override
@@ -156,9 +176,20 @@ class _HealthPageState extends State<HealthPage> {
       healthScore = HealthAnalyzer.score(healthBadges);
     }
 
-    final vaccinations = _isLoadingEvents
-        ? <PetEvent>[]
-        : _upcomingVaccinations();
+    // Most critical alert (danger > warning)
+    HealthBadge? topAlert;
+    if (healthBadges != null) {
+      topAlert = healthBadges
+          .where((b) => b.severity == HealthBadgeSeverity.danger)
+          .firstOrNull;
+      topAlert ??= healthBadges
+          .where((b) => b.severity == HealthBadgeSeverity.warning)
+          .firstOrNull;
+    }
+
+    // Weight chart entries filtered by period
+    final weightEntries =
+        _profile?.weightHistory.filterByPeriod(_chartPeriod) ?? [];
 
     return Scaffold(
       backgroundColor: ThemeColors.white,
@@ -167,6 +198,7 @@ class _HealthPageState extends State<HealthPage> {
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
           children: [
+            // ── Header ───────────────────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -177,13 +209,10 @@ class _HealthPageState extends State<HealthPage> {
                       if (_profile != null)
                         Text(
                           _profile!.name,
-                          style: Theme.of(context).textTheme.titleLarge!
+                          style: Theme.of(context).textTheme.headlineMedium!
                               .copyWith(
                                 inherit: true,
                                 fontWeight: FontWeight.w900,
-
-                                fontSize: 22,
-
                               ),
                         ),
                     ],
@@ -191,69 +220,26 @@ class _HealthPageState extends State<HealthPage> {
                 ),
 
                 if (healthScore != null)
-                  Expanded(child: _HealthScoreBadge(score: healthScore)),
+                  _HealthScoreBadge(
+                    score: healthScore,
+                    onTap: healthBadges != null
+                        ? () => _openRecommendations(context, healthBadges!)
+                        : null,
+                  ),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // ── Блок здоровья ────────────────────────────────────────────────
-            GlassCard(
-              callback: null,
-              transparent: false,
-              child: InlineLoading(
-                isLoading: _isLoadingProfile || _isLoadingEvents,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 4,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              healthScore?.caption ?? '...',
-                              style: Theme.of(context).textTheme.titleLarge!
-                                  .copyWith(
-                                    color: healthScore?.palette.mainColor,
-                                    inherit: true,
-                                  ),
-                            ),
-                            if (healthBadges != null)
-                              ...healthBadges
-                                  .where(
-                                    (b) =>
-                                        b.severity ==
-                                            HealthBadgeSeverity.danger ||
-                                        b.severity ==
-                                            HealthBadgeSeverity.warning,
-                                  )
-                                  .take(2)
-                                  .map(
-                                    (b) => Padding(
-                                      padding: const EdgeInsets.only(top: 6),
-                                      child: SoftGlassBadge(
-                                        icon: b.icon ?? b.severity.icon,
-                                        label: b.title,
-                                        color: b.severity.palette.mainColor,
-                                        selected: false,
-                                      ),
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            // ── Top alert (only when danger/warning present) ──────────────
+            if (!_isLoadingProfile &&
+                !_isLoadingEvents &&
+                topAlert != null) ...[
+              _AlertBanner(badge: topAlert),
+              const SizedBox(height: 16),
+            ],
 
-            const SizedBox(height: 16),
-
-            // ── Быстрые действия ────────────────────────────────────────────
+            // ── Сегодня ───────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 8),
               child: Text(
@@ -261,6 +247,7 @@ class _HealthPageState extends State<HealthPage> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
+
             Row(
               spacing: 8,
               children: [
@@ -274,6 +261,11 @@ class _HealthPageState extends State<HealthPage> {
                           _weightDynamics!,
                           Theme.of(context).textTheme.bodySmall!,
                         )
+                      : null,
+                  bottomWidget:
+                      _profile != null &&
+                          _profile!.weightHistory.entries.length >= 2
+                      ? _WeightSummaryRow(history: _profile!.weightHistory)
                       : null,
                 ),
                 _HealthActionButton(
@@ -291,66 +283,109 @@ class _HealthPageState extends State<HealthPage> {
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // ── Прививки и обработки ─────────────────────────────────────────
-            GlassCard(
-              color: context.watch<AppearanceController>().primaryColor,
-              callback: () => _openTreatments(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            // ── Вес ──────────────────────────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
                   children: [
-                    const Icon(Icons.vaccines, color: Colors.white),
+                    _PageTitle('Вес'),
+                    /*Text('Вес', style: Theme.of(context).textTheme.titleLarge),*/
                     const SizedBox(width: 8),
-                    Text(
-                      'Прививки и обработки',
-                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                    Text('•', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(width: 4),
+                    PopupMenuButton<HistoryPeriod>(
+                      initialValue: _chartPeriod,
+                      onSelected: (p) => setState(() => _chartPeriod = p),
+                      itemBuilder: (_) =>
+                          [
+                                HistoryPeriod.month,
+                                HistoryPeriod.halfYear,
+                                HistoryPeriod.year,
+                                HistoryPeriod.all,
+                              ]
+                              .map(
+                                (p) => PopupMenuItem(
+                                  value: p,
+                                  child: Text(_periodLabel(p)),
+                                ),
+                              )
+                              .toList(),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(width: 4),
+                          Text(
+                            _periodLabel(_chartPeriod),
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor,
+                                ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.expand_more,
+                            size: 24,
+                            color: context
+                                .watch<AppearanceController>()
+                                .secondaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
+
+                TextButton.icon(
+                  onPressed: () => _openWeightHistory(context),
+                  label: Text(
+                    'Детали',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  icon: Icon(
+                    Icons.chevron_right,
+                    color: context.watch<AppearanceController>().secondaryColor,
+                  ),
+                  iconAlignment: IconAlignment.end,
+                ),
+              ],
             ),
 
-            // ── Ближайшие прививки ───────────────────────────────────────────
-            if (!_isLoadingEvents && vaccinations.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Text(
-                  'Ближайшие прививки',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              ...vaccinations.map(
-                (e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _VaccinationTile(event: e),
-                ),
-              ),
-            ],
+            const SizedBox(height: 8),
 
-            // ── Рекомендации ─────────────────────────────────────────────────
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 8),
-              child: Text(
-                'Рекомендации',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
+            GlassPlate(child: WeightChart(entries: weightEntries, height: 180)),
+
+            const SizedBox(height: 20),
+
+            _PageTitle('Прививки и обработки'),
+
+            const SizedBox(height: 12),
+
             InlineLoading(
-              isLoading: _isLoadingProfile || _isLoadingEvents,
-              child: healthBadges == null
+              isLoading: _isLoadingProfile,
+              child: _profile == null
                   ? const SizedBox.shrink()
                   : Column(
-                      children: healthBadges
-                          .map((b) => HealthBadgeTile(badge: b))
-                          .toList(),
+                      children: TreatmentKind.values.map((kind) {
+                        final last = _profile!.treatmentHistory.lastOfKind(
+                          kind,
+                        );
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _TreatmentStatusTile(
+                            kind: kind,
+                            lastEntry: last,
+                            onTap: () => _openTreatments(context),
+                          ),
+                        );
+                      }).toList(),
                     ),
             ),
           ],
@@ -360,47 +395,130 @@ class _HealthPageState extends State<HealthPage> {
   }
 }
 
+// ─── Оценка здоровья (кнопка в заголовке) ────────────────────────────────────
+
 class _HealthScoreBadge extends StatelessWidget {
   final ({String caption, String label, ColorPalette palette, IconData icon})
   score;
+  final VoidCallback? onTap;
 
-  const _HealthScoreBadge({required this.score});
+  const _HealthScoreBadge({required this.score, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      titleAlignment: ListTileTitleAlignment.center,
-      tileColor: score.palette.mainColor.withAlpha(92),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadiusGeometry.circular(100),
-      ),
-      leading: Icon(score.icon, color: score.palette.darkShade, size: 30),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'оценка',
-            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-              color: score.palette.darkShade.withAlpha(164),
-              fontWeight: FontWeight.w900,
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: score.palette.mainColor.withAlpha(40),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+            color: score.palette.mainColor.withAlpha(80),
+            width: 1.5,
           ),
-          Text(
-            score.caption,
-            style: Theme.of(context).textTheme.titleMedium!.copyWith(
-              color: score.palette.darkShade,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(score.icon, color: score.palette.darkShade, size: 18),
+            const SizedBox(width: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Оценка',
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                    color: score.palette.darkShade.withAlpha(160),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                  ),
+                ),
+                Text(
+                  score.caption,
+                  style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                    color: score.palette.darkShade,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: score.palette.darkShade,
-        size: 20,
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right,
+              color: score.palette.darkShade.withAlpha(160),
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ─── Баннер самого важного алерта ────────────────────────────────────────────
+
+class _AlertBanner extends StatelessWidget {
+  final HealthBadge badge;
+
+  const _AlertBanner({required this.badge});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = badge.severity.palette.mainColor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withAlpha(30),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withAlpha(100), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withAlpha(50),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              badge.icon ?? badge.severity.icon,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  badge.title,
+                  style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                    color: badge.severity.palette.darkShade,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  badge.subtitle,
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                    color: badge.severity.palette.darkShade.withAlpha(180),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Кнопка быстрого действия ─────────────────────────────────────────────────
 
 class _HealthActionButton extends StatelessWidget {
   final VoidCallback callback;
@@ -436,8 +554,7 @@ class _HealthActionButton extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [softIcon, ?topRightWidget],
             ),
-
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             if (caption != null)
               Text(
                 caption!,
@@ -446,6 +563,10 @@ class _HealthActionButton extends StatelessWidget {
                   context,
                 ).textTheme.titleSmall!.copyWith(inherit: true),
               ),
+            if (bottomWidget != null) ...[
+              const SizedBox(height: 6),
+              bottomWidget!,
+            ],
           ],
         ),
       ),
@@ -453,83 +574,212 @@ class _HealthActionButton extends StatelessWidget {
   }
 }
 
-class _VaccinationTile extends StatelessWidget {
-  final PetEvent event;
+// ─── Компактная сводка по весу (bottomWidget для кнопки веса) ────────────────
 
-  const _VaccinationTile({required this.event});
+class _WeightSummaryRow extends StatelessWidget {
+  final WeightHistory history;
+
+  const _WeightSummaryRow({required this.history});
 
   @override
   Widget build(BuildContext context) {
+    if (history.entries.isEmpty) return const SizedBox.shrink();
+
+    final weights = history.entries.map((e) => e.weight).toList();
+    final minW = weights.reduce((a, b) => a < b ? a : b);
+    final maxW = weights.reduce((a, b) => a > b ? a : b);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _StatChip(
+          label: 'мин',
+          value: '${minW.toStringAsFixed(1)} кг',
+          color: ThemeColors.ok.mainColor,
+        ),
+        _StatChip(
+          label: 'макс',
+          value: '${maxW.toStringAsFixed(1)} кг',
+          color: ThemeColors.warning.mainColor,
+        ),
+      ],
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            fontSize: 9,
+            color: color.withAlpha(160),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            fontSize: 10,
+            color: color,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Тайл статуса обработки/прививки ─────────────────────────────────────────
+
+class _TreatmentStatusTile extends StatelessWidget {
+  final TreatmentKind kind;
+  final TreatmentEntry? lastEntry;
+  final VoidCallback onTap;
+
+  const _TreatmentStatusTile({
+    required this.kind,
+    required this.lastEntry,
+    required this.onTap,
+  });
+
+  ({Color color, String label, IconData icon}) _statusInfo() {
+    if (lastEntry == null) {
+      return (
+        color: ThemeColors.secondary,
+        label: 'Нет данных',
+        icon: Icons.add_circle_outline,
+      );
+    }
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final eventDay = DateTime(
-      event.dateTime.year,
-      event.dateTime.month,
-      event.dateTime.day,
+    final next = DateTime(
+      lastEntry!.nextDate.year,
+      lastEntry!.nextDate.month,
+      lastEntry!.nextDate.day,
     );
-    final daysLeft = eventDay.difference(today).inDays;
+    final daysLeft = next.difference(today).inDays;
 
-    String daysLabel;
-    if (daysLeft == 0) {
-      daysLabel = 'Сегодня';
-    } else if (daysLeft == 1) {
-      daysLabel = 'Завтра';
-    } else {
-      daysLabel = 'Через $daysLeft ${_daysWord(daysLeft)}';
+    if (daysLeft < 0) {
+      return (
+        color: ThemeColors.danger.mainColor,
+        label: 'Просрочено',
+        icon: Icons.error_outline,
+      );
     }
+    if (daysLeft <= lastEntry!.remindBeforeDays) {
+      return (
+        color: ThemeColors.warning.mainColor,
+        label: 'Скоро (${daysLeft} дн.)',
+        icon: Icons.warning_amber_rounded,
+      );
+    }
+    return (
+      color: ThemeColors.ok.mainColor,
+      label: 'В норме',
+      icon: Icons.check_circle_outline,
+    );
+  }
 
-    return GlassPlate(
-      child: ListTile(
-        leading: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: event.category.color.withAlpha(40),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.vaccines, color: event.category.color, size: 20),
-        ),
-        title: Text(
-          event.name,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall!.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          '${DateFormat('dd.MM.yyyy', 'ru').format(event.dateTime)} · $daysLabel',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color:
-                (daysLeft <= 7
-                        ? ThemeColors.warning.mainColor
-                        : context.watch<AppearanceController>().primaryColor)
-                    .withAlpha(30),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            daysLabel,
-            style: Theme.of(context).textTheme.bodySmall!.copyWith(
-              color: daysLeft <= 7
-                  ? ThemeColors.warning.mainColor
-                  : context.watch<AppearanceController>().primaryColor,
-              fontWeight: FontWeight.w600,
-            ),
+  @override
+  Widget build(BuildContext context) {
+    final status = _statusInfo();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: GlassPlate(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              SoftRoundedIcon(icon: kind.icon, color: kind.color, size: 22),
+
+              const SizedBox(width: 12),
+              // Label + dates
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kind.label,
+                      style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (lastEntry != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Последний: ${formatSmartDate(lastEntry!.date)} · '
+                        'След.: ${DateFormat('dd.MM.yyyy').format(lastEntry!.nextDate)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 4),
+                      SoftGlassBadge(
+                        color: status.color,
+                        icon: status.icon,
+                        label: status.label,
+                        selected: false,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  static String _daysWord(int n) {
-    final mod10 = n % 10;
-    final mod100 = n % 100;
-    if (mod100 >= 11 && mod100 <= 14) return 'дней';
-    if (mod10 == 1) return 'день';
-    if (mod10 >= 2 && mod10 <= 4) return 'дня';
-    return 'дней';
+// ─── Шит «Все рекомендации» ───────────────────────────────────────────────────
+
+class _RecommendationsSheet extends StatelessWidget {
+  final List<HealthBadge> badges;
+
+  const _RecommendationsSheet({required this.badges});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableSheet(
+      title: 'Рекомендации',
+      centerTitle: true,
+      initialSize: 0.75,
+      minSize: 0.4,
+      maxSize: 1.0,
+      onBack: () => Navigator.of(context).pop(),
+      body: Column(
+        children: badges.map((b) => HealthBadgeTile(badge: b)).toList(),
+      ),
+    );
+  }
+}
+
+class _PageTitle extends StatelessWidget {
+  final String title;
+
+  const _PageTitle(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+    );
   }
 }

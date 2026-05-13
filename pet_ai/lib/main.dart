@@ -7,6 +7,7 @@ import 'package:pet_ai/pages/main_pages/health_page.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
+import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:provider/provider.dart';
@@ -76,6 +77,7 @@ class _MainPageState extends State<MainPage> {
   bool _hasProfile = false;
   NavigationTab _selectedIndex = NavigationTab.home;
   DateTime _calendarInitialDate = DateTime.now();
+  Color? _healthScoreColor;
 
   @override
   void initState() {
@@ -103,10 +105,22 @@ class _MainPageState extends State<MainPage> {
         .migrateFromLegacy(profiles.map((p) => p.id).toList());
 
     final hasProfile = await ProfileService().hasProfiles();
-    setState(() {
-      _hasProfile = hasProfile;
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _hasProfile = hasProfile;
+        _loading = false;
+      });
+    }
+    _refreshHealthScore();
+  }
+
+  Future<void> _refreshHealthScore() async {
+    final profile = await ProfileService().loadActiveProfile();
+    if (profile == null) return;
+    final events = await EventService().loadEvents(profile.id);
+    final badges = HealthAnalyzer.analyze(profile, events);
+    final score = HealthAnalyzer.score(badges);
+    if (mounted) setState(() => _healthScoreColor = score.palette.mainColor);
   }
 
   @override
@@ -125,6 +139,7 @@ class _MainPageState extends State<MainPage> {
         onOpenCalendarByEvent: _onOpenCalendarByEvent,
         onProfileSwitched: () {
           _checkProfile();
+          _refreshHealthScore();
           context.read<AppearanceController>().reloadProfile();
         },
       ),
@@ -148,10 +163,15 @@ class _MainPageState extends State<MainPage> {
               top: false,
               child: FloatingNavigationBar(
                 currentIndex: _selectedIndex.index,
+                healthScoreColor: _healthScoreColor,
                 onTap: (index) {
                   setState(() {
                     _selectedIndex = NavigationTab.values[index];
                   });
+                  // Refresh health score when switching to health tab
+                  if (index == NavigationTab.health.index) {
+                    _refreshHealthScore();
+                  }
                 },
               ),
             ),

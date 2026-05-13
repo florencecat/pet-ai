@@ -32,7 +32,7 @@ class GlassPlate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const borderRadius = BorderRadius.all(Radius.circular(28));
+    const borderRadius = BorderRadius.all(Radius.circular(20));
     final borderColor = transparent ? color.withAlpha(180) : color;
     final fillColor = transparent ? color.withAlpha(220) : color;
 
@@ -416,7 +416,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 120),
+      duration: const Duration(milliseconds: 100),
     );
 
     _scaleAnimation = Tween<double>(
@@ -426,10 +426,9 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
   }
 
   Future<void> _onTap() async {
-    await _controller.forward();
-    await _controller.reverse();
-
     if (widget.onChanged != null) {
+      await _controller.forward();
+      await _controller.reverse();
       widget.onChanged!(!widget.selected);
     }
   }
@@ -471,7 +470,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
               Text(
                 widget.label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: selected ? Colors.white : color,
                 ),

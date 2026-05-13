@@ -1,4 +1,4 @@
-enum HistoryPeriod { day, month, year, all }
+enum HistoryPeriod { day, month, halfYear, year, all }
 
 abstract class BaseEntry {
   DateTime get date;
@@ -39,6 +39,10 @@ class History<T extends BaseEntry> {
 
       case HistoryPeriod.month:
         final start = now.subtract(const Duration(days: 30));
+        return entries.where((e) => e.date.isAfter(start)).toList();
+
+      case HistoryPeriod.halfYear:
+        final start = now.subtract(const Duration(days: 182));
         return entries.where((e) => e.date.isAfter(start)).toList();
 
       case HistoryPeriod.year:

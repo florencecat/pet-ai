@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/profile_service.dart';
-import 'package:pet_ai/theme/widgets/chart_placeholder.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:pet_ai/theme/widgets/pill_stepper.dart';
+import 'package:pet_ai/theme/widgets/weight_chart.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/weight.dart';
@@ -22,27 +20,21 @@ class WeightSheet extends StatefulWidget {
 }
 
 class _WeightSheetState extends State<WeightSheet> {
-  HistoryPeriod period = HistoryPeriod.month;
+  HistoryPeriod _period = HistoryPeriod.halfYear;
 
-  bool change = false;
-  late double weight;
-  late WeightHistory history;
+  bool _changed = false;
+  late double _weight;
+  late WeightHistory _history;
 
   @override
   void initState() {
     super.initState();
-    weight = widget.profile.weightHistory.lastWeight ?? 0.0;
-    history = widget.profile.weightHistory;
+    _weight = widget.profile.weightHistory.lastWeight ?? 0.0;
+    _history = widget.profile.weightHistory;
   }
 
-  List<FlSpot> buildSpots(List<WeightEntry> entries) {
-    return List.generate(entries.length, (i) {
-      return FlSpot(i.toDouble(), entries[i].weight);
-    });
-  }
-
-  void save() async {
-    await ProfileService().updateWeightHistory(widget.profile.id, weight);
+  Future<void> _save() async {
+    await ProfileService().updateWeightHistory(widget.profile.id, _weight);
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop(true);
     }
@@ -59,7 +51,9 @@ class _WeightSheetState extends State<WeightSheet> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -68,26 +62,17 @@ class _WeightSheetState extends State<WeightSheet> {
     );
     if (confirmed != true) return;
     await ProfileService().deleteWeightEntry(widget.profile.id, entry.date);
-    if (mounted) setState(() => history.deleteEntry(entry.date));
+    if (mounted) setState(() => _history.deleteEntry(entry.date));
   }
 
   @override
   Widget build(BuildContext context) {
-    final entries = history.filterByPeriod(period);
-    final spots = buildSpots(entries);
-
-    // Compute a sane Y interval to prevent label overlap
-    double yInterval = 1.0;
-    if (entries.length > 1) {
-      final minW = entries.map((e) => e.weight).reduce((a, b) => a < b ? a : b);
-      final maxW = entries.map((e) => e.weight).reduce((a, b) => a > b ? a : b);
-      final range = maxW - minW;
-      if (range > 0) yInterval = (range / 5).ceilToDouble().clamp(0.5, 100.0);
-    }
+    final entries = _history.filterByPeriod(_period);
+    final color = context.watch<AppearanceController>().secondaryColor;
 
     return DraggableSheet(
       onBack: () => Navigator.of(context).pop(false),
-      title: "История веса",
+      title: 'История веса',
       centerTitle: true,
       initialSize: 0.85,
       minSize: 0.4,
@@ -95,154 +80,51 @@ class _WeightSheetState extends State<WeightSheet> {
       actions: [
         IconButton(
           icon: const Icon(Icons.check),
-          color: context.watch<AppearanceController>().secondaryColor,
-          onPressed: change ? () async => save() : null,
+          color: color,
+          onPressed: _changed ? _save : null,
         ),
       ],
       body: Column(
         children: [
+          // ── Period selector ───────────────────────────────────────────────
           SegmentedButton<HistoryPeriod>(
             style: SegmentedButton.styleFrom(
-              side: BorderSide(
-                color: context.watch<AppearanceController>().secondaryColor,
-                width: 2,
-              ),
-              foregroundColor: context
-                  .watch<AppearanceController>()
-                  .secondaryColor,
-              selectedBackgroundColor: context
-                  .watch<AppearanceController>()
-                  .secondaryColor,
+              side: BorderSide(color: color, width: 2),
+              foregroundColor: color,
+              selectedBackgroundColor: color,
               selectedForegroundColor: Theme.of(context).colorScheme.surface,
             ),
             segments: const [
-              ButtonSegment(value: HistoryPeriod.month, label: Text("Месяц")),
-              ButtonSegment(value: HistoryPeriod.year, label: Text("Год")),
-              ButtonSegment(value: HistoryPeriod.all, label: Text("Все")),
+              ButtonSegment(value: HistoryPeriod.month, label: Text('1 мес')),
+              ButtonSegment(
+                value: HistoryPeriod.halfYear,
+                label: Text('6 мес'),
+              ),
+              ButtonSegment(value: HistoryPeriod.year, label: Text('Год')),
+              ButtonSegment(value: HistoryPeriod.all, label: Text('Всё')),
             ],
-            selected: {period},
-            onSelectionChanged: (value) {
-              setState(() {
-                period = value.first;
-              });
-            },
+            selected: {_period},
+            onSelectionChanged: (v) => setState(() => _period = v.first),
           ),
 
           const SizedBox(height: 16),
 
           // ── Chart ─────────────────────────────────────────────────────────
-          if (entries.isEmpty)
-            const ChartPlaceholder(message: "История веса пока пуста")
-          else if (entries.length <= 3)
-            const ChartPlaceholder(message: "Слишком мало записей для графика")
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(5, 10, 10, 10),
-              child: SizedBox(
-                height: 200,
-                child: LineChart(
-                  LineChartData(
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: yInterval,
-                      getDrawingHorizontalLine: (_) => const FlLine(
-                        color: ThemeColors.primary,
-                        strokeWidth: 0.5,
-                      ),
-                    ),
-                    borderData: FlBorderData(
-                      show: true,
-                      border: Border.all(color: ThemeColors.border),
-                    ),
-                    titlesData: FlTitlesData(
-                      show: true,
-                      rightTitles: const AxisTitles(),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          reservedSize: 30,
-                          showTitles: true,
-                          interval: (entries.length / 5).ceilToDouble().clamp(
-                            1,
-                            9999,
-                          ),
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
-                            if (index >= entries.length) {
-                              return const SizedBox();
-                            }
-                            final date = entries[index].date;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                DateFormat('dd.MM').format(date),
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          reservedSize: 46,
-                          showTitles: true,
-                          interval: yInterval,
-                          getTitlesWidget: (value, meta) {
-                            return Text(
-                              value.toStringAsFixed(1),
-                              style: Theme.of(context).textTheme.titleSmall,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    minY:
-                        entries
-                            .map((e) => e.weight)
-                            .reduce((a, b) => a < b ? a : b) *
-                        0.975,
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: spots,
-                        isCurved: true,
-                        barWidth: 3,
-                        gradient: LinearGradient(
-                          colors: ThemeColors.gradientColors,
-                        ),
-                        dotData: FlDotData(show: true),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          gradient: LinearGradient(
-                            colors: ThemeColors.gradientColors
-                                .map((c) => c.withValues(alpha: 0.3))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          WeightChart(entries: entries),
 
           // ── New-weight stepper ────────────────────────────────────────────
           Center(
             child: PillStepper(
-              value: weight,
-              onChanged: (value) {
-                setState(() {
-                  change = true;
-                  weight = value;
-                });
-              },
+              value: _weight,
+              onChanged: (value) => setState(() {
+                _changed = true;
+                _weight = value;
+              }),
             ),
           ),
 
           // ── History list ──────────────────────────────────────────────────
-          if (history.entries.isNotEmpty) ...[
+          if (_history.entries.isNotEmpty) ...[
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerLeft,
@@ -252,7 +134,7 @@ class _WeightSheetState extends State<WeightSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            ...List.from(history.entries.reversed).map<Widget>(
+            ...List.from(_history.entries.reversed).map<Widget>(
               (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _WeightEntryCard(

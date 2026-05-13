@@ -62,6 +62,10 @@ class AppTheme {
         fontWeight: FontWeight.w400,
         color: ThemeColors.textPrimary,
       ),
+      headlineMedium: GoogleFonts.rubik(
+        fontWeight: FontWeight.w800,
+        color: ThemeColors.textPrimary,
+      ),
     ),
 
     appBarTheme: const AppBarTheme(
