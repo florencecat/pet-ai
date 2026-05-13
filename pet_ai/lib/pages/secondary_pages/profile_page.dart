@@ -143,7 +143,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     return Scaffold(
       appBar: AppBar(),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: context.watch<AppearanceController>().primaryColor,
+        backgroundColor: context.watch<AppearanceController>().secondaryColor,
         onPressed: _saveProfile,
         label: const Text('Сохранить'),
         icon: const Icon(Icons.check),

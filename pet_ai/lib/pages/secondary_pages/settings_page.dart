@@ -141,13 +141,11 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: context.watch<AppearanceController>().gradientDecoration,
+      appBar: AppBar(),
+      body: SizedBox(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 125),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 125),
           children: [
-            const SizedBox(height: 8),
-
             Text('Основные', style: Theme.of(context).textTheme.titleMedium),
 
             const SizedBox(height: 8),
@@ -219,6 +217,12 @@ class SettingsPage extends StatelessWidget {
                 title: 'Очистить историю сообщений в чате',
                 subtitle: 'Удалить все сообщения',
                 callback: () => _clearMessageHistory(context),
+              ),
+
+              GlassSettingsCard.debug(
+                leadingIcon: Icons.delete_forever,
+                title: 'Заполнить историю веса',
+                callback: () async { ProfileService().fillWeightHistory(); },
               ),
 
               const SizedBox(height: 32),

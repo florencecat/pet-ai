@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/models/mood.dart';
-import 'package:pet_ai/pages/main_pages/settings_page.dart';
+import 'package:pet_ai/pages/secondary_pages/settings_page.dart';
 import 'package:pet_ai/services/file_storage_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/font_awesome_icons.dart';

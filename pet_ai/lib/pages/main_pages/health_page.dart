@@ -148,6 +148,123 @@ class _HealthPageState extends State<HealthPage> {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
+  /// Picks the single most relevant upcoming/overdue health event to surface
+  /// in the alert banner. Only considers time-bound, health-related items:
+  /// - [TreatmentEntry] records (all have a [nextDate])
+  /// - [PetEvent] with category 'health'
+  ///
+  /// Sort order: overdue danger first (most overdue = earliest date first),
+  /// then warning (soonest upcoming within remindBeforeDays / 7d),
+  /// then info (any future event, nearest first).
+  HealthBadge? _nextHealthAlert() {
+    if (_profile == null) return null;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Unified candidate record
+    final candidates =
+        <
+          ({
+            String title,
+            String subtitle,
+            DateTime date,
+            HealthBadgeSeverity severity,
+            IconData icon,
+          })
+        >[];
+
+    // ── TreatmentEntry ─────────────────────────────────────────────────────
+    for (final t in _profile!.treatmentHistory.entries) {
+      final next = DateTime(t.nextDate.year, t.nextDate.month, t.nextDate.day);
+      final daysLeft = next.difference(today).inDays;
+      final HealthBadgeSeverity severity;
+      final String subtitle;
+
+      if (daysLeft < 0) {
+        severity = HealthBadgeSeverity.danger;
+        subtitle = 'Должно было быть ${formatSmartDate(t.nextDate)}';
+      } else if (daysLeft <= t.remindBeforeDays) {
+        severity = HealthBadgeSeverity.warning;
+        subtitle = daysLeft == 0
+            ? 'Сегодня'
+            : 'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')}';
+      } else {
+        severity = HealthBadgeSeverity.info;
+        subtitle =
+            'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')} · '
+            '${DateFormat('dd.MM.yyyy').format(t.nextDate)}';
+      }
+
+      candidates.add((
+        title: t.displayName,
+        subtitle: subtitle,
+        date: next,
+        severity: severity,
+        icon: t.kind.icon,
+      ));
+    }
+
+    // ── PetEvent (category: health) ────────────────────────────────────────
+    for (final e in _events) {
+      if (e.category.id != 'health') continue;
+      final eventDay = DateTime(
+        e.dateTime.year,
+        e.dateTime.month,
+        e.dateTime.day,
+      );
+      final daysLeft = eventDay.difference(today).inDays;
+      final HealthBadgeSeverity severity;
+      final String subtitle;
+
+      if (daysLeft < 0) {
+        severity = HealthBadgeSeverity.danger;
+        subtitle = 'Должно было быть ${formatSmartDate(e.dateTime)}';
+      } else if (daysLeft <= 7) {
+        severity = HealthBadgeSeverity.warning;
+        subtitle = daysLeft == 0
+            ? 'Сегодня'
+            : 'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')}';
+      } else {
+        severity = HealthBadgeSeverity.info;
+        subtitle =
+            'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')} · '
+            '${DateFormat('dd.MM.yyyy').format(e.dateTime)}';
+      }
+
+      candidates.add((
+        title: e.name,
+        subtitle: subtitle,
+        date: eventDay,
+        severity: severity,
+        icon: e.category.icon,
+      ));
+    }
+
+    if (candidates.isEmpty) return null;
+
+    // Sort: danger → warning → info; within same severity by date ascending
+    // (overdue: most overdue = smallest date; upcoming: nearest = smallest date)
+    const order = [
+      HealthBadgeSeverity.danger,
+      HealthBadgeSeverity.warning,
+      HealthBadgeSeverity.info,
+      HealthBadgeSeverity.ok,
+    ];
+    candidates.sort((a, b) {
+      final si = order.indexOf(a.severity).compareTo(order.indexOf(b.severity));
+      return si != 0 ? si : a.date.compareTo(b.date);
+    });
+
+    final top = candidates.first;
+    return HealthBadge(
+      title: top.title,
+      subtitle: top.subtitle,
+      severity: top.severity,
+      icon: top.icon,
+    );
+  }
+
   String _periodLabel(HistoryPeriod p) {
     switch (p) {
       case HistoryPeriod.month:
@@ -176,16 +293,10 @@ class _HealthPageState extends State<HealthPage> {
       healthScore = HealthAnalyzer.score(healthBadges);
     }
 
-    // Most critical alert (danger > warning)
-    HealthBadge? topAlert;
-    if (healthBadges != null) {
-      topAlert = healthBadges
-          .where((b) => b.severity == HealthBadgeSeverity.danger)
-          .firstOrNull;
-      topAlert ??= healthBadges
-          .where((b) => b.severity == HealthBadgeSeverity.warning)
-          .firstOrNull;
-    }
+    // Nearest time-bound health event (treatment nextDate or health category event)
+    final topAlert = (!_isLoadingProfile && !_isLoadingEvents)
+        ? _nextHealthAlert()
+        : null;
 
     // Weight chart entries filtered by period
     final weightEntries =
@@ -231,10 +342,8 @@ class _HealthPageState extends State<HealthPage> {
 
             const SizedBox(height: 16),
 
-            // ── Top alert (only when danger/warning present) ──────────────
-            if (!_isLoadingProfile &&
-                !_isLoadingEvents &&
-                topAlert != null) ...[
+            // ── Nearest upcoming health event ─────────────────────────────
+            if (topAlert != null) ...[
               _AlertBanner(badge: topAlert),
               const SizedBox(height: 16),
             ],
@@ -248,39 +357,42 @@ class _HealthPageState extends State<HealthPage> {
               ),
             ),
 
-            Row(
-              spacing: 8,
-              children: [
-                _HealthActionButton(
-                  callback: () => _openWeightHistory(context),
-                  icon: FontAwesome.weight,
-                  iconColor: ThemeColors.weightIconColor,
-                  caption: _weightStatus,
-                  topRightWidget: _weightDynamics != null
-                      ? dynamicsTextWidget(
-                          _weightDynamics!,
-                          Theme.of(context).textTheme.bodySmall!,
-                        )
-                      : null,
-                  bottomWidget:
-                      _profile != null &&
-                          _profile!.weightHistory.entries.length >= 2
-                      ? _WeightSummaryRow(history: _profile!.weightHistory)
-                      : null,
-                ),
-                _HealthActionButton(
-                  callback: () => _openMoodHistory(context),
-                  icon: Icons.sentiment_very_satisfied_outlined,
-                  iconColor: ThemeColors.moodIconColor,
-                  caption: _moodStatus,
-                ),
-                _HealthActionButton(
-                  callback: () => _openFoodHistory(context),
-                  icon: Icons.fastfood,
-                  iconColor: ThemeColors.foodIconColor,
-                  caption: _foodStatus,
-                ),
-              ],
+            IntrinsicHeight(
+              child: Row(
+                spacing: 8,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _HealthActionButton(
+                    callback: () => _openWeightHistory(context),
+                    icon: FontAwesome.weight,
+                    iconColor: ThemeColors.weightIconColor,
+                    caption: _weightStatus,
+                    topRightWidget: _weightDynamics != null
+                        ? dynamicsTextWidget(
+                            _weightDynamics!,
+                            Theme.of(context).textTheme.bodySmall!,
+                          )
+                        : null,
+                    bottomWidget:
+                        _profile != null &&
+                            _profile!.weightHistory.entries.length >= 2
+                        ? _WeightSummaryRow(history: _profile!.weightHistory)
+                        : null,
+                  ),
+                  _HealthActionButton(
+                    callback: () => _openMoodHistory(context),
+                    icon: Icons.sentiment_very_satisfied_outlined,
+                    iconColor: ThemeColors.moodIconColor,
+                    caption: _moodStatus,
+                  ),
+                  _HealthActionButton(
+                    callback: () => _openFoodHistory(context),
+                    icon: Icons.fastfood,
+                    iconColor: ThemeColors.foodIconColor,
+                    caption: _foodStatus,
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 20),
@@ -561,7 +673,7 @@ class _HealthActionButton extends StatelessWidget {
                 textAlign: TextAlign.left,
                 style: Theme.of(
                   context,
-                ).textTheme.titleSmall!.copyWith(inherit: true),
+                ).textTheme.titleMedium!.copyWith(inherit: true, fontSize: 16),
               ),
             if (bottomWidget != null) ...[
               const SizedBox(height: 6),

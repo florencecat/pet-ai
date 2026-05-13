@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:math' hide log;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/history.dart';
@@ -113,12 +114,12 @@ class PetProfile {
     this.notes = '',
     this.profileImage,
   }) : id = UniqueKey().toString(),
-        weightHistory = WeightHistory.empty(),
-        moodHistory = MoodHistory.empty(),
-        noteHistory = NoteHistory.empty(),
-        treatmentHistory = TreatmentHistory.empty(),
-        foodHistory = FoodHistory.empty(),
-        palette = ThemeColors.defaultProfilePalette;
+       weightHistory = WeightHistory.empty(),
+       moodHistory = MoodHistory.empty(),
+       noteHistory = NoteHistory.empty(),
+       treatmentHistory = TreatmentHistory.empty(),
+       foodHistory = FoodHistory.empty(),
+       palette = ThemeColors.defaultProfilePalette;
 
   PetProfile.deserialize({
     required this.id,
@@ -149,8 +150,9 @@ class PetProfile {
     'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
     'moodHistory': MoodHistory.moodSerializer.toJsonList(moodHistory),
     'noteHistory': NoteHistory.noteSerializer.toJsonList(noteHistory),
-    'treatmentHistory':
-        TreatmentHistory.treatmentSerializer.toJsonList(treatmentHistory),
+    'treatmentHistory': TreatmentHistory.treatmentSerializer.toJsonList(
+      treatmentHistory,
+    ),
     'foodHistory': FoodHistory.foodSerializer.toJsonList(foodHistory),
     'palette': palette.toJson(),
   };
@@ -167,9 +169,7 @@ class PetProfile {
           ? DateTime.parse(json['birthDate'])
           : null,
       gender: json['gender'] != null
-          ? Gender.values.firstWhere(
-            (g) => g.caption == json['gender'],
-      )
+          ? Gender.values.firstWhere((g) => g.caption == json['gender'])
           : Gender.none,
       notes: json['notes'] ?? '',
       profileImage: json['profileImage'] != null
@@ -177,24 +177,24 @@ class PetProfile {
           : null,
       weightHistory: json['weightHistory'] != null
           ? WeightHistory(
-        entries: WeightHistory.weightSerializer
-            .fromJsonList(json['weightHistory'])
-            .entries,
-      )
+              entries: WeightHistory.weightSerializer
+                  .fromJsonList(json['weightHistory'])
+                  .entries,
+            )
           : WeightHistory.empty(),
       moodHistory: json['moodHistory'] != null
           ? MoodHistory(
-        entries: MoodHistory.moodSerializer
-            .fromJsonList(json['moodHistory'])
-            .entries,
-      )
+              entries: MoodHistory.moodSerializer
+                  .fromJsonList(json['moodHistory'])
+                  .entries,
+            )
           : MoodHistory.empty(),
       noteHistory: json['noteHistory'] != null
           ? NoteHistory(
-        entries: NoteHistory.noteSerializer
-            .fromJsonList(json['noteHistory'])
-            .entries,
-      )
+              entries: NoteHistory.noteSerializer
+                  .fromJsonList(json['noteHistory'])
+                  .entries,
+            )
           : NoteHistory.empty(),
       treatmentHistory: json['treatmentHistory'] != null
           ? TreatmentHistory(
@@ -267,7 +267,7 @@ class ProfileService {
 
     final activeId = await getActiveProfileId();
     final found = profiles.firstWhere(
-          (p) => p.id == activeId,
+      (p) => p.id == activeId,
       orElse: () => profiles.first,
     );
 
@@ -399,8 +399,7 @@ class ProfileService {
     }
   }
 
-  Future<void> addNote(String petId, String note,
-      {String? symptomId}) async {
+  Future<void> addNote(String petId, String note, {String? symptomId}) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
       profile.noteHistory.addNote(note, symptomId: symptomId);
@@ -490,7 +489,10 @@ class ProfileService {
 
   Future<String> lastFoodString() async {
     final profile = await loadActiveProfile();
-    final result = profile?.foodHistory.filterByPeriod(HistoryPeriod.day).length.toString();
+    final result = profile?.foodHistory
+        .filterByPeriod(HistoryPeriod.day)
+        .length
+        .toString();
     if (result != null) {
       return "$result x сегодня";
     } else {
@@ -498,6 +500,27 @@ class ProfileService {
     }
   }
 
+  void fillWeightHistory() async {
+    if (!kDebugMode) return;
+
+    final profile = await loadActiveProfile();
+    if (profile != null) {
+      final initialWeight = 12;
+      final entries = <WeightEntry>[];
+      for (int i = 0; i < 12; ++i) {
+        final fault = Random().nextInt(10) / 10.0;
+        final sign = Random().nextBool() ? -1 : 1;
+        entries.add(
+          WeightEntry(
+            date: DateTime.now().subtract(Duration(days: 30 * i)),
+            weight: initialWeight + i * fault * sign,
+          ),
+        );
+      }
+      profile.weightHistory = WeightHistory(entries: entries);
+      await saveProfile(profile);
+    }
+  }
 }
 
 enum _DurationUnit { year, month }
@@ -517,14 +540,16 @@ String formatPetAge(Duration duration) {
   final inDays = duration.inDays.abs();
   final fullYears = inDays ~/ 365;
   if (fullYears > 0) {
-    description += '$fullYears ${_localizeDuration(fullYears, _DurationUnit.year)}';
+    description +=
+        '$fullYears ${_localizeDuration(fullYears, _DurationUnit.year)}';
   }
   final fullMonths = (inDays % 365) ~/ 30;
   if (fullYears > 0 && fullMonths > 0) {
     description += ' и ';
   }
   if (fullMonths > 0) {
-    description += '$fullMonths ${_localizeDuration(fullMonths, _DurationUnit.month)}';
+    description +=
+        '$fullMonths ${_localizeDuration(fullMonths, _DurationUnit.month)}';
   }
   if (description.isEmpty) {
     description += 'совсем маленький';
