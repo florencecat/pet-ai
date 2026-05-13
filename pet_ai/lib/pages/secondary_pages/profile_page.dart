@@ -31,7 +31,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   final _notesController = TextEditingController();
 
   PetSpecies _selectedSpecies = BuiltInSpecies.other;
-  ProfileColorPalette _profilePalette = ThemeColors.defaultProfilePalette;
+  ColorPalette _profilePalette = ThemeColors.defaultProfilePalette;
   Gender _gender = Gender.none;
   File? _profileImage;
 

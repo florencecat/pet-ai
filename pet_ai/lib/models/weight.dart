@@ -5,10 +5,7 @@ class WeightEntry implements BaseEntry {
   final DateTime date;
   final double weight;
 
-  WeightEntry({
-    required this.date,
-    required this.weight,
-  });
+  WeightEntry({required this.date, required this.weight});
 
   factory WeightEntry.fromJson(Map<String, dynamic> json) {
     return WeightEntry(
@@ -19,10 +16,7 @@ class WeightEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'date': date.toIso8601String(),
-      'weight': weight,
-    };
+    return {'date': date.toIso8601String(), 'weight': weight};
   }
 }
 
@@ -33,10 +27,12 @@ class WeightHistory extends History<WeightEntry> {
   /// Добавляет или заменяет запись веса за сегодня (макс. одна в день).
   void addWeight(double weight) {
     final now = DateTime.now();
-    final todayIdx = entries.indexWhere((e) =>
-        e.date.year == now.year &&
-        e.date.month == now.month &&
-        e.date.day == now.day);
+    final todayIdx = entries.indexWhere(
+      (e) =>
+          e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.date.day == now.day,
+    );
 
     final entry = WeightEntry(
       date: now,
@@ -53,10 +49,29 @@ class WeightHistory extends History<WeightEntry> {
   /// Есть ли запись за сегодня.
   bool hasTodayEntry() {
     final now = DateTime.now();
-    return entries.any((e) =>
-        e.date.year == now.year &&
-        e.date.month == now.month &&
-        e.date.day == now.day);
+    return entries.any(
+      (e) =>
+          e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.date.day == now.day,
+    );
+  }
+
+  String lastWeightString() {
+    if (lastWeight != null) {
+      return "${lastWeight!.toStringAsFixed(1)} кг";
+    } else {
+      return "Нет данных";
+    }
+  }
+
+  double? weightDynamic() {
+    if (entries.length < 2) {
+      return null;
+    } else {
+      return entries[entries.length - 1].weight -
+          entries[entries.length - 2].weight;
+    }
   }
 
   double? get lastWeight => lastEntry?.weight;

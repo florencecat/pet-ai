@@ -75,6 +75,17 @@ extension GenderX on Gender {
         return Icons.female;
     }
   }
+
+  Color get color {
+    switch (this) {
+      case Gender.none:
+        return Colors.transparent;
+      case Gender.male:
+        return ThemeColors.maleGender;
+      case Gender.female:
+        return ThemeColors.femaleGender;
+    }
+  }
 }
 
 class PetProfile {
@@ -91,7 +102,7 @@ class PetProfile {
   NoteHistory noteHistory;
   TreatmentHistory treatmentHistory;
   FoodHistory foodHistory;
-  ProfileColorPalette palette;
+  ColorPalette palette;
 
   PetProfile({
     this.name = '',
@@ -200,7 +211,7 @@ class PetProfile {
             )
           : FoodHistory.empty(),
       palette: json['palette'] != null
-          ? ProfileColorPalette.fromJson(json['palette'])
+          ? ColorPalette.fromJson(json['palette'])
           : ThemeColors.defaultProfilePalette,
     );
   }
@@ -466,15 +477,6 @@ class ProfileService {
     if (cropped == null) return null;
 
     return await _saveAvatarToAppDir(petId, cropped.path);
-  }
-
-  Future<String> lastWeightString() async {
-    final profile = await loadActiveProfile();
-    if (profile != null && profile.weightHistory.lastWeight != null) {
-      return "${profile.weightHistory.lastWeight!.toStringAsFixed(1)} кг";
-    } else {
-      return "Нет данных";
-    }
   }
 
   Future<String> lastMoodString() async {

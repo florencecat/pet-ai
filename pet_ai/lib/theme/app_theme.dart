@@ -4,7 +4,7 @@ import 'app_colors.dart';
 
 class AppTheme {
   /// Builds a theme from a pet palette: mainColor as primary, darkShade as text color.
-  static ThemeData withPalette(ProfileColorPalette palette) {
+  static ThemeData withPalette(ColorPalette palette) {
     final base = lightTheme;
     final textColor = palette.darkShade;
     return base.copyWith(
@@ -37,29 +37,29 @@ class AppTheme {
     splashColor: ThemeColors.splash,
 
     textTheme: TextTheme(
-      bodyMedium: GoogleFonts.rubikTextTheme().bodyMedium!.copyWith(
+      bodyMedium: GoogleFonts.rubik(
         color: ThemeColors.textPrimary,
       ),
-      bodySmall: GoogleFonts.rubikTextTheme().bodySmall!.copyWith(
+      bodySmall: GoogleFonts.rubik(
         fontSize: 12,
         color: ThemeColors.textPrimary,
       ),
-      bodyLarge: GoogleFonts.rubikTextTheme().bodyLarge!.copyWith(
+      bodyLarge: GoogleFonts.rubik(
         color: ThemeColors.textPrimary,
       ),
-      titleLarge: GoogleFonts.rubikTextTheme().titleLarge!.copyWith(
+      titleLarge: GoogleFonts.rubik(
         fontSize: 20,
         fontWeight: FontWeight.w800,
         color: ThemeColors.textPrimary,
       ),
-      titleMedium: GoogleFonts.rubikTextTheme().titleMedium!.copyWith(
+      titleMedium: GoogleFonts.rubik(
         fontSize: 18,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w600,
         color: ThemeColors.textPrimary,
       ),
-      titleSmall: GoogleFonts.rubikTextTheme().titleSmall!.copyWith(
+      titleSmall: GoogleFonts.rubik(
         fontSize: 14,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         color: ThemeColors.textPrimary,
       ),
     ),

@@ -5,6 +5,7 @@ import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_ai/theme/font_awesome_icons.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/mood_sheet.dart';
@@ -27,6 +28,8 @@ class _HealthPageState extends State<HealthPage> {
   bool _isLoadingEvents = true;
 
   String? _weightStatus;
+  double? _weightDynamics;
+
   String? _moodStatus;
   String? _foodStatus;
 
@@ -48,24 +51,26 @@ class _HealthPageState extends State<HealthPage> {
       return;
     }
 
-    final weightStatus = await ProfileService().lastWeightString();
-    final foodStatus = await ProfileService().lastFoodString();
-    final moodStatus = await ProfileService().lastMoodString();
-
     if (!mounted) return;
     setState(() {
       _profile = profile;
-      _weightStatus = weightStatus;
-      _foodStatus = foodStatus;
-      _moodStatus = moodStatus;
       _isLoadingProfile = false;
     });
+
+    final weightStatus = _profile?.weightHistory.lastWeightString();
+    final weightDynamics = _profile?.weightHistory.weightDynamic();
+    final foodStatus = await ProfileService().lastFoodString();
+    final moodStatus = await ProfileService().lastMoodString();
 
     final events = await EventService().loadEvents(profile.id);
     if (!mounted) return;
     setState(() {
       _events = events;
       _isLoadingEvents = false;
+      _weightStatus = weightStatus;
+      _weightDynamics = weightDynamics;
+      _foodStatus = foodStatus;
+      _moodStatus = moodStatus;
     });
   }
 
@@ -129,10 +134,10 @@ class _HealthPageState extends State<HealthPage> {
               e.category.id == 'vaccination' &&
               (e.dateTime.isAfter(now) ||
                   DateTime(
-                        e.dateTime.year,
-                        e.dateTime.month,
-                        e.dateTime.day,
-                      ).isAtSameMomentAs(DateTime(now.year, now.month, now.day))),
+                    e.dateTime.year,
+                    e.dateTime.month,
+                    e.dateTime.day,
+                  ).isAtSameMomentAs(DateTime(now.year, now.month, now.day))),
         )
         .toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
@@ -143,16 +148,17 @@ class _HealthPageState extends State<HealthPage> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     List<HealthBadge>? healthBadges;
-    ({String caption, String label, Color color, IconData icon})? healthScore;
-    List<Color>? healthGradient;
+    ({String caption, String label, ColorPalette palette, IconData icon})?
+    healthScore;
 
     if (_profile != null && !_isLoadingEvents) {
       healthBadges = HealthAnalyzer.analyze(_profile!, _events);
       healthScore = HealthAnalyzer.score(healthBadges);
-      healthGradient = [Colors.transparent, healthScore.color.withAlpha(72)];
     }
 
-    final vaccinations = _isLoadingEvents ? <PetEvent>[] : _upcomingVaccinations();
+    final vaccinations = _isLoadingEvents
+        ? <PetEvent>[]
+        : _upcomingVaccinations();
 
     return Scaffold(
       backgroundColor: ThemeColors.white,
@@ -161,20 +167,40 @@ class _HealthPageState extends State<HealthPage> {
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
           children: [
-            // ── Заголовок страницы ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 12),
-              child: Text(
-                'Здоровье',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Здоровье'),
+                      if (_profile != null)
+                        Text(
+                          _profile!.name,
+                          style: Theme.of(context).textTheme.titleLarge!
+                              .copyWith(
+                                inherit: true,
+                                fontWeight: FontWeight.w900,
+
+                                fontSize: 22,
+
+                              ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                if (healthScore != null)
+                  Expanded(child: _HealthScoreBadge(score: healthScore)),
+              ],
             ),
+
+            const SizedBox(height: 16),
 
             // ── Блок здоровья ────────────────────────────────────────────────
             GlassCard(
               callback: null,
               transparent: false,
-              gradientColors: healthGradient,
               child: InlineLoading(
                 isLoading: _isLoadingProfile || _isLoadingEvents,
                 child: Padding(
@@ -189,19 +215,21 @@ class _HealthPageState extends State<HealthPage> {
                           children: [
                             Text(
                               healthScore?.caption ?? '...',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge!
+                              style: Theme.of(context).textTheme.titleLarge!
                                   .copyWith(
-                                    color: healthScore?.color,
+                                    color: healthScore?.palette.mainColor,
                                     inherit: true,
                                   ),
                             ),
                             if (healthBadges != null)
                               ...healthBadges
-                                  .where((b) =>
-                                      b.severity == HealthBadgeSeverity.danger ||
-                                      b.severity == HealthBadgeSeverity.warning)
+                                  .where(
+                                    (b) =>
+                                        b.severity ==
+                                            HealthBadgeSeverity.danger ||
+                                        b.severity ==
+                                            HealthBadgeSeverity.warning,
+                                  )
                                   .take(2)
                                   .map(
                                     (b) => Padding(
@@ -209,7 +237,7 @@ class _HealthPageState extends State<HealthPage> {
                                       child: SoftGlassBadge(
                                         icon: b.icon ?? b.severity.icon,
                                         label: b.title,
-                                        color: b.severity.color,
+                                        color: b.severity.palette.mainColor,
                                         selected: false,
                                       ),
                                     ),
@@ -217,8 +245,6 @@ class _HealthPageState extends State<HealthPage> {
                           ],
                         ),
                       ),
-                      if (healthScore != null)
-                        _HealthScoreCircle(score: healthScore),
                     ],
                   ),
                 ),
@@ -228,25 +254,38 @@ class _HealthPageState extends State<HealthPage> {
             const SizedBox(height: 16),
 
             // ── Быстрые действия ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'Сегодня',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
             Row(
               spacing: 8,
               children: [
                 _HealthActionButton(
                   callback: () => _openWeightHistory(context),
-                  emoji: '⚖️',
-                  category: 'Вес',
+                  icon: FontAwesome.weight,
+                  iconColor: ThemeColors.weightIconColor,
                   caption: _weightStatus,
+                  topRightWidget: _weightDynamics != null
+                      ? dynamicsTextWidget(
+                          _weightDynamics!,
+                          Theme.of(context).textTheme.bodySmall!,
+                        )
+                      : null,
                 ),
                 _HealthActionButton(
                   callback: () => _openMoodHistory(context),
-                  emoji: '😊',
-                  category: 'Настроение',
+                  icon: Icons.sentiment_very_satisfied_outlined,
+                  iconColor: ThemeColors.moodIconColor,
                   caption: _moodStatus,
                 ),
                 _HealthActionButton(
                   callback: () => _openFoodHistory(context),
-                  emoji: '🥣',
-                  category: 'Питание',
+                  icon: Icons.fastfood,
+                  iconColor: ThemeColors.foodIconColor,
                   caption: _foodStatus,
                 ),
               ],
@@ -268,9 +307,9 @@ class _HealthPageState extends State<HealthPage> {
                     Text(
                       'Прививки и обработки',
                       style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -278,7 +317,7 @@ class _HealthPageState extends State<HealthPage> {
             ),
 
             // ── Ближайшие прививки ───────────────────────────────────────────
-            if (!_isLoadingEvents) ...[
+            if (!_isLoadingEvents && vaccinations.isNotEmpty) ...[
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 8),
@@ -287,28 +326,12 @@ class _HealthPageState extends State<HealthPage> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              if (vaccinations.isEmpty)
-                GlassPlate(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Нет запланированных прививок',
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                            color: context
-                                .watch<AppearanceController>()
-                                .secondaryColor
-                                .withAlpha(153),
-                          ),
-                    ),
-                  ),
-                )
-              else
-                ...vaccinations.map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _VaccinationTile(event: e),
-                  ),
+              ...vaccinations.map(
+                (e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _VaccinationTile(event: e),
                 ),
+              ),
             ],
 
             // ── Рекомендации ─────────────────────────────────────────────────
@@ -337,34 +360,43 @@ class _HealthPageState extends State<HealthPage> {
   }
 }
 
-class _HealthScoreCircle extends StatelessWidget {
-  final ({String caption, String label, Color color, IconData icon}) score;
+class _HealthScoreBadge extends StatelessWidget {
+  final ({String caption, String label, ColorPalette palette, IconData icon})
+  score;
 
-  const _HealthScoreCircle({required this.score});
+  const _HealthScoreBadge({required this.score});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: score.color.withAlpha(40),
-        border: Border.all(color: score.color.withAlpha(120), width: 2),
+    return ListTile(
+      titleAlignment: ListTileTitleAlignment.center,
+      tileColor: score.palette.mainColor.withAlpha(92),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusGeometry.circular(100),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      leading: Icon(score.icon, color: score.palette.darkShade, size: 30),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(score.icon, size: 20, color: score.color),
           Text(
-            score.label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: score.color,
+            'оценка',
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              color: score.palette.darkShade.withAlpha(164),
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            score.caption,
+            style: Theme.of(context).textTheme.titleMedium!.copyWith(
+              color: score.palette.darkShade,
             ),
           ),
         ],
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: score.palette.darkShade,
+        size: 20,
       ),
     );
   }
@@ -372,53 +404,49 @@ class _HealthScoreCircle extends StatelessWidget {
 
 class _HealthActionButton extends StatelessWidget {
   final VoidCallback callback;
-  final String emoji;
-  final String category;
+  final IconData icon;
+  final Color iconColor;
   final String? caption;
+  final Widget? topRightWidget;
+  final Widget? bottomWidget;
 
   const _HealthActionButton({
     required this.callback,
-    required this.emoji,
-    required this.category,
+    required this.icon,
+    required this.iconColor,
     required this.caption,
+    this.topRightWidget,
+    this.bottomWidget,
   });
 
   @override
   Widget build(BuildContext context) {
+    final softIcon = SoftRoundedIcon(icon: icon, color: iconColor, size: 18);
+
     return Expanded(
       child: GlassCard(
+        padding: 16,
         callback: callback,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [softIcon, ?topRightWidget],
+            ),
+
+            const SizedBox(height: 12),
+            if (caption != null)
               Text(
-                emoji,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall!
-                    .copyWith(inherit: true, fontSize: 26),
+                caption!,
+                textAlign: TextAlign.left,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall!.copyWith(inherit: true),
               ),
-              const SizedBox(height: 4),
-              Text(
-                category,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall!
-                    .copyWith(inherit: true, fontSize: 10),
-              ),
-              if (caption != null)
-                Text(
-                  caption!,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall!
-                      .copyWith(inherit: true, fontSize: 11),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -464,9 +492,9 @@ class _VaccinationTile extends StatelessWidget {
         ),
         title: Text(
           event.name,
-          style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall!.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           '${DateFormat('dd.MM.yyyy', 'ru').format(event.dateTime)} · $daysLabel',
@@ -475,20 +503,21 @@ class _VaccinationTile extends StatelessWidget {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: (daysLeft <= 7
-                    ? ThemeColors.warning
-                    : context.watch<AppearanceController>().primaryColor)
-                .withAlpha(30),
+            color:
+                (daysLeft <= 7
+                        ? ThemeColors.warning.mainColor
+                        : context.watch<AppearanceController>().primaryColor)
+                    .withAlpha(30),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             daysLabel,
             style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  color: daysLeft <= 7
-                      ? ThemeColors.warning
-                      : context.watch<AppearanceController>().primaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: daysLeft <= 7
+                  ? ThemeColors.warning.mainColor
+                  : context.watch<AppearanceController>().primaryColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),

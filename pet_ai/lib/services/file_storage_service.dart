@@ -151,6 +151,11 @@ class PetDocument {
 class FileStorageService {
   static String _key(String petId) => 'pet_documents:$petId';
 
+  Future<int> documentsCount(String petId) async {
+    final docs = await loadDocuments(petId);
+    return docs.length;
+  }
+
   // ─── Чтение ────────────────────────────────────────────────────────────────
 
   Future<List<PetDocument>> loadDocuments(String petId) async {

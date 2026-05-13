@@ -40,6 +40,8 @@ class _AIChatPageState extends State<AIChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return FutureBuilder<AIChatController>(
       future: _future,
       builder: (context, snapshot) {
@@ -62,7 +64,7 @@ class _AIChatPageState extends State<AIChatPage> {
             builder: (context) {
               return Scaffold(
                 body: Container(
-                  padding: EdgeInsets.only(bottom: 0),
+                  padding: EdgeInsets.fromLTRB(0, topPadding + 16, 0, 0),
                   decoration: context
                       .watch<AppearanceController>()
                       .gradientDecoration,
@@ -104,7 +106,7 @@ class _ChatView extends StatelessWidget {
               child: ListView.builder(
                 reverse: true,
                 clipBehavior: Clip.none,
-                padding: const EdgeInsets.only(top: 12, bottom: 185),
+                padding: const EdgeInsets.only(left: 12, right: 12, bottom: 185),
                 itemCount: controller.messages.length,
                 physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
@@ -119,21 +121,62 @@ class _ChatView extends StatelessWidget {
 
         const _GlobalEdgeBlur(),
 
-        Align(
-          alignment: AlignmentGeometry.topRight,
-          child: Padding(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 8,
-              right: 16,
-            ),
+        Padding(
+          padding: EdgeInsetsGeometry.only(left: 16, right: 16),
+          child: Align(
+            alignment: AlignmentGeometry.topCenter,
             child: GlassCard(
               callback: () {
                 final controller = context.read<AIChatController>();
                 _openHistorySheet(context, controller);
               },
-              child: Icon(
-                Icons.history,
-                color: context.watch<AppearanceController>().primaryColor,
+              transparent: false,
+              child: ListTile(
+                leading: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadiusGeometry.circular(12),
+                    gradient: LinearGradient(
+                      colors: ThemeColors.aiChatIconGradient,
+                      begin: AlignmentGeometry.topLeft,
+                      end: AlignmentGeometry.bottomRight,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsetsGeometry.all(12),
+                    child: Icon(Icons.chat, color: Colors.white),
+                  ),
+                ),
+                title: Text(
+                  'Помощник по уходу',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                subtitle: Row(
+                  spacing: 6,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        border: BoxBorder.all(
+                          color: ThemeColors.aiChatOnlineColor.withAlpha(128),
+                          width: 4,
+                        ),
+                        shape: BoxShape.circle,
+                        color: ThemeColors.aiChatOnlineColor,
+                      ),
+                      width: 8,
+                      height: 8,
+                    ),
+                    Text(
+                      'на связи • знает всё про Барни',
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: ThemeColors.aiChatOnlineColor,
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: Icon(
+                  Icons.history,
+                  color: context.watch<AppearanceController>().primaryColor,
+                ),
               ),
             ),
           ),

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/pages/main_pages/settings_page.dart';
+import 'package:pet_ai/services/file_storage_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/font_awesome_icons.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
@@ -41,6 +42,8 @@ class _HomePageState extends State<HomePage> {
   bool _isLoadingProfile = true;
   bool _isLoadingEvents = true;
   List<PetEvent> _allEvents = [];
+  int _filesCount = 0;
+  int _notesCount = 0;
 
   @override
   void initState() {
@@ -77,9 +80,14 @@ class _HomePageState extends State<HomePage> {
 
     if (!mounted) return;
 
+    final filesCount = await FileStorageService().documentsCount(profile.id);
+    final notesCount = _profile?.noteHistory.entries.length;
+
     setState(() {
       _allEvents = events;
       _isLoadingEvents = false;
+      _filesCount = filesCount;
+      _notesCount = notesCount ?? 0;
     });
   }
 
@@ -87,7 +95,7 @@ class _HomePageState extends State<HomePage> {
     String description = _profile?.breed ?? '';
     if (_profile != null && _profile!.birthDate != null) {
       final duration = _profile!.birthDate!.difference(DateTime.now());
-      return '$description - ${formatPetAge(duration)}';
+      return '$description · ${formatPetAge(duration)}';
     }
     return description;
   }
@@ -194,32 +202,46 @@ class _HomePageState extends State<HomePage> {
     for (final e in _allEvents) {
       if (e.repeat == RepeatInterval.none) {
         if (e.dateTime.isAfter(now) && e.dateTime.isBefore(in30Days)) {
-          items.add(_TimelineItem(
-            date: e.dateTime,
-            title: e.name,
-            subtitle: e.category.name,
-            icon: e.category.icon,
-            color: e.category.color,
-            event: e,
-          ));
+          items.add(
+            _TimelineItem(
+              date: e.dateTime,
+              title: e.name,
+              subtitle: e.category.name,
+              icon: e.category.icon,
+              color: e.category.color,
+              event: e,
+            ),
+          );
         }
       } else {
         // Для повторяющихся показываем как "ближайшее"
-        final base = DateTime(e.dateTime.year, e.dateTime.month, e.dateTime.day);
+        final base = DateTime(
+          e.dateTime.year,
+          e.dateTime.month,
+          e.dateTime.day,
+        );
         final today = DateTime(now.year, now.month, now.day);
         if (!base.isAfter(in30Days)) {
           // Найдём первое вхождение от сегодня в ближайшие 30 дней
           for (int d = 0; d < 30; d++) {
             final day = today.add(Duration(days: d));
             if (e.occursOn(day) && !e.isCompletedOn(day)) {
-              items.add(_TimelineItem(
-                date: DateTime(day.year, day.month, day.day, e.dateTime.hour, e.dateTime.minute),
-                title: e.name,
-                subtitle: '${e.category.name} · повторяется',
-                icon: e.category.icon,
-                color: e.category.color,
-                event: e,
-              ));
+              items.add(
+                _TimelineItem(
+                  date: DateTime(
+                    day.year,
+                    day.month,
+                    day.day,
+                    e.dateTime.hour,
+                    e.dateTime.minute,
+                  ),
+                  title: e.name,
+                  subtitle: '${e.category.name} · повторяется',
+                  icon: e.category.icon,
+                  color: e.category.color,
+                  event: e,
+                ),
+              );
               break;
             }
           }
@@ -245,15 +267,17 @@ class _HomePageState extends State<HomePage> {
             int.tryParse(parts[2]) ?? 0,
           );
           if (date.isBefore(DateTime.now())) {
-            items.add(_TimelineItem(
-              date: date,
-              title: event.name,
-              subtitle: 'Выполнено · ${event.category.name}',
-              icon: Icons.check_circle_outline,
-              color: event.category.color,
-              isCompleted: true,
-              event: event,
-            ));
+            items.add(
+              _TimelineItem(
+                date: date,
+                title: event.name,
+                subtitle: 'Выполнено · ${event.category.name}',
+                icon: Icons.check_circle_outline,
+                color: event.category.color,
+                isCompleted: true,
+                event: event,
+              ),
+            );
           }
         }
       }
@@ -268,14 +292,16 @@ class _HomePageState extends State<HomePage> {
         thisBirthday = DateTime(now.year - 1, birthday.month, birthday.day);
       }
       final age = thisBirthday.year - birthday.year;
-      items.add(_TimelineItem(
-        date: thisBirthday,
-        title: 'День рождения ${_profile!.name}',
-        subtitle: '$age ${_yearsWord(age)}',
-        icon: Icons.cake_outlined,
-        color: Colors.pink.shade300,
-        isBirthday: true,
-      ));
+      items.add(
+        _TimelineItem(
+          date: thisBirthday,
+          title: 'День рождения ${_profile!.name}',
+          subtitle: '$age ${_yearsWord(age)}',
+          icon: Icons.cake_outlined,
+          color: Colors.pink.shade300,
+          isBirthday: true,
+        ),
+      );
     }
 
     items.sort((a, b) => b.date.compareTo(a.date));
@@ -303,7 +329,42 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
           children: [
-            // ── Профиль питомца ────────────────────────────────────────────
+            if (_profile != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Доброе утро,'),
+                        Text(
+                          'как там ${_profile!.name}?🐾',
+                          style: Theme.of(context).textTheme.titleLarge!
+                              .copyWith(
+                                inherit: true,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 22,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Кнопка настроек
+                  GlassCard(
+                    callback: () => _openSettings(context),
+                    child: Icon(
+                      Icons.settings_outlined,
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor
+                          .withAlpha(180),
+                    ),
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 16),
+
             GlassCard(
               padding: 0,
               callback: () => _openProfile(context),
@@ -345,8 +406,9 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     child: CircleAvatar(
                                       radius: 30,
-                                      backgroundColor:
-                                          Colors.white.withValues(alpha: 0.3),
+                                      backgroundColor: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       child: _profile?.profileImage == null
                                           ? const Icon(
                                               Icons.pets,
@@ -393,33 +455,41 @@ class _HomePageState extends State<HomePage> {
                         ),
 
                         Expanded(
-                          flex: 3,
+                          flex: 4,
                           child: InlineLoading(
                             isLoading: _isLoadingProfile,
                             child: ListTile(
                               title: Row(
-                                spacing: 4,
+                                spacing: 6,
                                 children: [
-                                  if (_profile != null &&
-                                      _profile!.gender.icon != null)
-                                    Icon(
-                                      _profile!.gender.icon,
-                                      color: context
-                                          .watch<AppearanceController>()
-                                          .secondaryColor,
-                                    ),
-                                  Expanded(
-                                    child: Text(
-                                      _profile == null ||
-                                              _profile!.name.isEmpty
+
+                                   Text(
+                                      _profile == null || _profile!.name.isEmpty
                                           ? 'Загружаем...'
                                           : _profile!.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleLarge,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
+                                  if (_profile != null &&
+                                      _profile!.gender.icon != null)
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _profile!.gender.color,
+                                      ),
+                                      child: Padding(
+                                        padding: EdgeInsetsGeometry.all(2),
+                                        child: Icon(
+                                          _profile!.gender.icon,
+                                          size: 18,
+                                          color: context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                               subtitle: Text(
@@ -431,50 +501,37 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-
-                        // Кнопка настроек
-                        IconButton(
-                          icon: Icon(
-                            Icons.settings_outlined,
-                            color: context
-                                .watch<AppearanceController>()
-                                .secondaryColor
-                                .withAlpha(180),
-                          ),
-                          onPressed: () => _openSettings(context),
-                        ),
                       ],
                     ),
-                  ),
-
-                  const Divider(height: 2, color: Colors.black12),
-
-                  ListTile(
-                    minTileHeight: 50,
-                    title: Row(
-                      spacing: 8,
-                      children: [
-                        Icon(
-                          FontAwesome.medkit,
-                          size: 20,
-                          color: context
-                              .watch<AppearanceController>()
-                              .secondaryColor,
-                        ),
-                        const Text('Карточка для ветеринара'),
-                      ],
-                    ),
-                    titleTextStyle: Theme.of(context).textTheme.bodySmall,
-                    trailing: Icon(
-                      Icons.chevron_right,
-                      size: 20,
-                      color: context
-                          .watch<AppearanceController>()
-                          .secondaryColor,
-                    ),
-                    onTap: () => _openVetCard(context),
                   ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            GlassCard(
+              callback: () => _openVetCard(context),
+              child: ListTile(
+                minTileHeight: 50,
+                leading: SoftRoundedIcon(
+                  icon: FontAwesome.medkit,
+                  color: ThemeColors.vetCardIconColor,
+                ),
+                title: Text(
+                  'Карточка для ветеринара',
+                  style: Theme.of(context).textTheme.titleMedium
+                ),
+                subtitle: Text(
+                  'Прививки, вес, аллергии и другие важные сведения',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                titleTextStyle: Theme.of(context).textTheme.bodySmall,
+                trailing: Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: context.watch<AppearanceController>().secondaryColor,
+                ),
               ),
             ),
 
@@ -495,15 +552,26 @@ class _HomePageState extends State<HomePage> {
                             spacing: 6,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Файлы',
-                                style:
-                                    Theme.of(context).textTheme.titleLarge,
+                              SoftRoundedIcon(
+                                icon: FontAwesome.file_alt,
+                                color: ThemeColors.filesIconColor,
                               ),
                               Text(
-                                'Документы, справки и другое',
-                                style:
-                                    Theme.of(context).textTheme.bodySmall,
+                                'Файлы',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Text(
+                                _filesCount > 0
+                                    ? '$_filesCount ${declension(_filesCount, 'файл', 'файла', 'файлов')}'
+                                    : 'Пока нет файлов',
+                                style: Theme.of(context).textTheme.bodySmall!
+                                    .copyWith(
+                                      inherit: true,
+                                      color: context
+                                          .watch<AppearanceController>()
+                                          .secondaryColor
+                                          .withAlpha(128),
+                                    ),
                               ),
                             ],
                           ),
@@ -531,15 +599,26 @@ class _HomePageState extends State<HomePage> {
                             spacing: 6,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Заметка',
-                                style:
-                                    Theme.of(context).textTheme.titleLarge,
+                              SoftRoundedIcon(
+                                icon: FontAwesome.notes_medical,
+                                color: ThemeColors.notesIconColor,
                               ),
                               Text(
-                                'Зафиксируйте важное событие',
-                                style:
-                                    Theme.of(context).textTheme.bodySmall,
+                                'Заметка',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Text(
+                                _notesCount > 0
+                                    ? '$_notesCount ${declension(_notesCount, 'заметка', 'заметки', 'заметок')}'
+                                    : 'Пока нет заметок',
+                                style: Theme.of(context).textTheme.bodySmall!
+                                    .copyWith(
+                                      inherit: true,
+                                      color: context
+                                          .watch<AppearanceController>()
+                                          .secondaryColor
+                                          .withAlpha(128),
+                                    ),
                               ),
                             ],
                           ),
@@ -569,13 +648,21 @@ class _HomePageState extends State<HomePage> {
                   'История питомца',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                GlassCard(
-                  callback: widget.onOpenCalendar,
-                  child: Icon(
-                    Icons.add_circle_outline,
-                    color: context
-                        .watch<AppearanceController>()
-                        .primaryColor,
+                TextButton(
+                  onPressed: widget.onOpenCalendar,
+                  child: Row(
+                    children: [
+                      Text(
+                        'Все события',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -631,6 +718,8 @@ class _PetTimeline extends StatelessWidget {
   final List<_TimelineItem> historyItems;
   final ValueChanged<_TimelineItem> onEventTap;
 
+  final double _timelineColWidth = 56;
+
   const _PetTimeline({
     required this.upcomingItems,
     required this.historyItems,
@@ -646,11 +735,11 @@ class _PetTimeline extends StatelessWidget {
           child: Text(
             'Нет событий. Добавьте первое событие через календарь.',
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                  color: context
-                      .watch<AppearanceController>()
-                      .secondaryColor
-                      .withAlpha(153),
-                ),
+              color: context
+                  .watch<AppearanceController>()
+                  .secondaryColor
+                  .withAlpha(153),
+            ),
           ),
         ),
       );
@@ -676,6 +765,7 @@ class _PetTimeline extends StatelessWidget {
       for (int i = 0; i < historyItems.length; i++) {
         final item = historyItems[i];
         final isLast = i == historyItems.length - 1;
+        widgets.add(const SizedBox(height: 4));
         widgets.add(_buildItem(context, item, isLast: isLast));
       }
     }
@@ -684,8 +774,7 @@ class _PetTimeline extends StatelessWidget {
   }
 
   Widget _buildEmptySection(BuildContext context, String message) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return IntrinsicHeight(
       child: Row(
         children: [
           _LineColumn(showLine: true, dot: false),
@@ -694,12 +783,12 @@ class _PetTimeline extends StatelessWidget {
             child: Text(
               message,
               style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    color: context
-                        .watch<AppearanceController>()
-                        .secondaryColor
-                        .withAlpha(120),
-                    fontStyle: FontStyle.italic,
-                  ),
+                color: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(192),
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
         ],
@@ -708,38 +797,42 @@ class _PetTimeline extends StatelessWidget {
   }
 
   Widget _buildSeparator(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 48,
-            child: Column(
-              children: [
-                Container(width: 2, height: 12, color: Colors.grey.shade300),
-                Text(
-                  '···',
-                  style: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontSize: 18,
-                    height: 1,
-                  ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: _timelineColWidth,
+          child: Column(
+            children: [
+              Container(
+                width: 2,
+                height: 12,
+                color: context.watch<AppearanceController>().secondaryColor,
+              ),
+              Text(
+                '···',
+                style: TextStyle(
+                  color: context.watch<AppearanceController>().secondaryColor,
+                  fontSize: 18,
+                  height: 1,
                 ),
-                Container(width: 2, height: 12, color: Colors.grey.shade300),
-              ],
-            ),
+              ),
+              Container(
+                width: 2,
+                height: 12,
+                color: context.watch<AppearanceController>().secondaryColor,
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Text(
-            'История',
-            style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  color: Colors.grey.shade500,
-                  fontStyle: FontStyle.italic,
-                ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'События за последний год',
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            color: context.watch<AppearanceController>().secondaryColor,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -748,7 +841,7 @@ class _PetTimeline extends StatelessWidget {
     _TimelineItem item, {
     bool isLast = false,
   }) {
-    final dateLabel = _formatDate(item.date);
+    final dateLabel = formatSmartDate(item.date, pattern: 'd MMMM');
 
     return IntrinsicHeight(
       child: Row(
@@ -756,7 +849,7 @@ class _PetTimeline extends StatelessWidget {
         children: [
           // Левая колонка: дата + линия
           SizedBox(
-            width: 48,
+            width: _timelineColWidth,
             child: Column(
               children: [
                 // Дата
@@ -764,15 +857,15 @@ class _PetTimeline extends StatelessWidget {
                   dateLabel,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                        fontSize: 10,
-                        height: 1.2,
-                        color: item.isCompleted
-                            ? Colors.grey.shade500
-                            : item.color.withAlpha(200),
-                        fontWeight: item.isCompleted
-                            ? FontWeight.w400
-                            : FontWeight.w600,
-                      ),
+                    fontSize: 11,
+                    height: 1.2,
+                    color: item.isCompleted
+                        ? context.watch<AppearanceController>().secondaryColor
+                        : item.color.withAlpha(200),
+                    fontWeight: item.isCompleted
+                        ? FontWeight.w400
+                        : FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 // Точка
@@ -782,11 +875,11 @@ class _PetTimeline extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.isCompleted
-                        ? Colors.grey.shade400
+                        ? context.watch<AppearanceController>().secondaryColor
                         : item.color,
                     border: Border.all(
                       color: item.isCompleted
-                          ? Colors.grey.shade300
+                          ? context.watch<AppearanceController>().secondaryColor
                           : item.color.withAlpha(80),
                       width: 2,
                     ),
@@ -797,8 +890,26 @@ class _PetTimeline extends StatelessWidget {
                   Expanded(
                     child: Center(
                       child: Container(
+                        decoration: item.isCompleted
+                            ? null
+                            : BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: AlignmentGeometry.topCenter,
+                                  end: AlignmentGeometry.bottomCenter,
+                                  colors: [
+                                    item.color,
+                                    context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor,
+                                  ],
+                                ),
+                              ),
                         width: 2,
-                        color: Colors.grey.shade200,
+                        color: item.isCompleted
+                            ? context
+                                  .watch<AppearanceController>()
+                                  .secondaryColor
+                            : null,
                       ),
                     ),
                   ),
@@ -824,22 +935,12 @@ class _PetTimeline extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: item.color.withAlpha(
-                              item.isCompleted ? 25 : 40,
-                            ),
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: 16,
-                            color: item.isCompleted
-                                ? item.color.withAlpha(160)
-                                : item.color,
-                          ),
+                        SoftRoundedIcon(
+                          icon: item.icon,
+                          color: item.isCompleted
+                              ? item.color.withAlpha(160)
+                              : item.color,
+                          size: 16,
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -848,9 +949,7 @@ class _PetTimeline extends StatelessWidget {
                             children: [
                               Text(
                                 item.title,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall!
+                                style: Theme.of(context).textTheme.titleSmall!
                                     .copyWith(
                                       fontWeight: FontWeight.w600,
                                       color: item.isCompleted
@@ -865,12 +964,8 @@ class _PetTimeline extends StatelessWidget {
                               if (item.subtitle != null)
                                 Text(
                                   item.subtitle!,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall!
-                                      .copyWith(
-                                        color: Colors.grey.shade500,
-                                      ),
+                                  style: Theme.of(context).textTheme.bodySmall!
+                                      .copyWith(color: Colors.grey.shade500),
                                 ),
                             ],
                           ),
@@ -886,19 +981,6 @@ class _PetTimeline extends StatelessWidget {
       ),
     );
   }
-
-  static String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(date.year, date.month, date.day);
-    final diff = target.difference(today).inDays;
-
-    if (diff == 0) return 'Сегодня';
-    if (diff == 1) return 'Завтра';
-    if (diff == -1) return 'Вчера';
-
-    return DateFormat('dd\nMMM', 'ru').format(date);
-  }
 }
 
 class _LineColumn extends StatelessWidget {
@@ -910,7 +992,7 @@ class _LineColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 48,
+      width: 56,
       child: Column(
         children: [
           if (dot)
@@ -919,13 +1001,16 @@ class _LineColumn extends StatelessWidget {
               height: 10,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.grey.shade300,
+                color: context.watch<AppearanceController>().secondaryColor,
               ),
             ),
           if (showLine)
             Expanded(
               child: Center(
-                child: Container(width: 2, color: Colors.grey.shade200),
+                child: Container(
+                  width: 2,
+                  color: context.watch<AppearanceController>().secondaryColor,
+                ),
               ),
             ),
         ],
@@ -960,14 +1045,14 @@ class _SmallActionButton extends StatelessWidget {
             Icon(
               icon,
               size: 16,
-              color: context.watch<AppearanceController>().primaryColor,
+              color: context.watch<AppearanceController>().secondaryColor,
             ),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    color: context.watch<AppearanceController>().primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: context.watch<AppearanceController>().secondaryColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -1046,28 +1131,26 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                   title: Text(
                     profile.name.isEmpty ? 'Без имени' : profile.name,
                     style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                          color: isActive
-                              ? Colors.white
-                              : context
-                                    .watch<AppearanceController>()
-                                    .secondaryColor,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                        ),
+                      color: isActive
+                          ? Colors.white
+                          : context
+                                .watch<AppearanceController>()
+                                .secondaryColor,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                    ),
                   ),
                   subtitle: Text(
                     profile.breed.isEmpty
                         ? profile.species.name
                         : profile.breed,
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: isActive
-                              ? Colors.white.withAlpha(204)
-                              : context
-                                    .watch<AppearanceController>()
-                                    .secondaryColor
-                                    .withAlpha(153),
-                        ),
+                      color: isActive
+                          ? Colors.white.withAlpha(204)
+                          : context
+                                .watch<AppearanceController>()
+                                .secondaryColor
+                                .withAlpha(153),
+                    ),
                   ),
                   trailing: isActive
                       ? const Icon(Icons.check_circle, color: Colors.white)
@@ -1093,18 +1176,17 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.add_circle_outline,
-                      color:
-                          context.watch<AppearanceController>().primaryColor,
+                      color: context.watch<AppearanceController>().primaryColor,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Добавить питомца',
                       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                            color: context
-                                .watch<AppearanceController>()
-                                .primaryColor,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -1143,11 +1225,17 @@ class _VetCardSheet extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _infoRow(context, 'Имя',
-                      profile.name.isEmpty ? '—' : profile.name),
+                  _infoRow(
+                    context,
+                    'Имя',
+                    profile.name.isEmpty ? '—' : profile.name,
+                  ),
                   _infoRow(context, 'Вид', profile.species.name),
-                  _infoRow(context, 'Порода',
-                      profile.breed.isEmpty ? '—' : profile.breed),
+                  _infoRow(
+                    context,
+                    'Порода',
+                    profile.breed.isEmpty ? '—' : profile.breed,
+                  ),
                   _infoRow(context, 'Пол', profile.gender.caption),
                   _infoRow(context, 'Возраст', _formatAge()),
                   _infoRow(context, 'Дата рождения', _formatBirthDate()),
@@ -1174,8 +1262,7 @@ class _VetCardSheet extends StatelessWidget {
                     _infoRow(
                       context,
                       'Дата взвешивания',
-                      formatSmartDate(
-                          profile.weightHistory.lastEntry!.date),
+                      formatSmartDate(profile.weightHistory.lastEntry!.date),
                     ),
                   _buildWeightDynamics(context),
                 ],
@@ -1208,21 +1295,19 @@ class _VetCardSheet extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: Theme.of(context)
-            .textTheme
-            .titleMedium!
-            .copyWith(fontWeight: FontWeight.w700),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }
 
   Widget _infoRow(BuildContext context, String label, String value) {
-    Color textColor =
-        context.watch<AppearanceController>().secondaryColor;
+    Color textColor = context.watch<AppearanceController>().secondaryColor;
     if (value.startsWith('+')) {
-      textColor = ThemeColors.ok;
+      textColor = ThemeColors.ok.mainColor;
     } else if (value.startsWith('-')) {
-      textColor = ThemeColors.warning;
+      textColor = ThemeColors.warning.mainColor;
     }
 
     return Padding(
@@ -1235,20 +1320,20 @@ class _VetCardSheet extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: context
-                        .watch<AppearanceController>()
-                        .secondaryColor
-                        .withAlpha(153),
-                  ),
+                color: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(153),
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
             ),
           ),
         ],
@@ -1272,8 +1357,9 @@ class _VetCardSheet extends StatelessWidget {
     if (entries.length < 2) {
       return _infoRow(context, 'Динамика', 'Недостаточно данных');
     }
-    final recent =
-        entries.length > 5 ? entries.sublist(entries.length - 5) : entries;
+    final recent = entries.length > 5
+        ? entries.sublist(entries.length - 5)
+        : entries;
     final diff = recent.last.weight - recent.first.weight;
     final sign = diff > 0 ? '+' : '';
     final trend = diff.abs() < 0.05
@@ -1285,10 +1371,11 @@ class _VetCardSheet extends StatelessWidget {
   Widget _buildMoodWeek(BuildContext context) {
     final now = DateTime.now();
     final weekAgo = now.subtract(const Duration(days: 7));
-    final recentMoods = profile.moodHistory.entries
-        .where((e) => e.date.isAfter(weekAgo))
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final recentMoods =
+        profile.moodHistory.entries
+            .where((e) => e.date.isAfter(weekAgo))
+            .toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
 
     if (recentMoods.isEmpty) {
       return GlassPlate(
@@ -1297,11 +1384,11 @@ class _VetCardSheet extends StatelessWidget {
           child: Text(
             'Нет записей за последнюю неделю',
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                  color: context
-                      .watch<AppearanceController>()
-                      .secondaryColor
-                      .withAlpha(153),
-                ),
+              color: context
+                  .watch<AppearanceController>()
+                  .secondaryColor
+                  .withAlpha(153),
+            ),
           ),
         ),
       );
@@ -1339,11 +1426,11 @@ class _VetCardSheet extends StatelessWidget {
           child: Text(
             'Нет записей о прививках и обработках',
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                  color: context
-                      .watch<AppearanceController>()
-                      .secondaryColor
-                      .withAlpha(153),
-                ),
+              color: context
+                  .watch<AppearanceController>()
+                  .secondaryColor
+                  .withAlpha(153),
+            ),
           ),
         ),
       );
@@ -1360,8 +1447,7 @@ class _VetCardSheet extends StatelessWidget {
         child: Column(
           children: grouped.entries.map((group) {
             final kind = group.key;
-            final items = group.value
-              ..sort((a, b) => b.date.compareTo(a.date));
+            final items = group.value..sort((a, b) => b.date.compareTo(a.date));
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1372,10 +1458,9 @@ class _VetCardSheet extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       kind.label,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall!
-                          .copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -1388,9 +1473,7 @@ class _VetCardSheet extends StatelessWidget {
                         Expanded(
                           child: Text(
                             t.displayName,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall!
+                            style: Theme.of(context).textTheme.bodySmall!
                                 .copyWith(
                                   color: context
                                       .watch<AppearanceController>()
@@ -1400,9 +1483,7 @@ class _VetCardSheet extends StatelessWidget {
                         ),
                         Text(
                           formatSmartDate(t.date),
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall!
+                          style: Theme.of(context).textTheme.bodySmall!
                               .copyWith(
                                 color: context
                                     .watch<AppearanceController>()
@@ -1413,21 +1494,17 @@ class _VetCardSheet extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           '→ ${formatSmartDate(t.nextDate)}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall!
+                          style: Theme.of(context).textTheme.bodySmall!
                               .copyWith(
-                                color:
-                                    t.nextDate.isBefore(DateTime.now())
-                                        ? HealthBadgeSeverity.danger.color
-                                        : context
-                                              .watch<AppearanceController>()
-                                              .secondaryColor
-                                              .withAlpha(153),
-                                fontWeight:
-                                    t.nextDate.isBefore(DateTime.now())
-                                        ? FontWeight.w700
-                                        : FontWeight.w400,
+                                color: t.nextDate.isBefore(DateTime.now())
+                                    ? HealthBadgeSeverity.danger.palette.mainColor
+                                    : context
+                                          .watch<AppearanceController>()
+                                          .secondaryColor
+                                          .withAlpha(153),
+                                fontWeight: t.nextDate.isBefore(DateTime.now())
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
                               ),
                         ),
                       ],
@@ -1462,15 +1539,12 @@ class _VetCardSheet extends StatelessWidget {
                     children: [
                       Text(
                         formatSmartDate(n.date),
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall!
-                            .copyWith(
-                              color: context
-                                  .watch<AppearanceController>()
-                                  .secondaryColor
-                                  .withAlpha(153),
-                            ),
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor
+                              .withAlpha(153),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -1478,9 +1552,7 @@ class _VetCardSheet extends StatelessWidget {
                           n.note,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall!
+                          style: Theme.of(context).textTheme.bodySmall!
                               .copyWith(
                                 color: context
                                     .watch<AppearanceController>()

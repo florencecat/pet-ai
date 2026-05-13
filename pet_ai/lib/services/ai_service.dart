@@ -117,30 +117,26 @@ class GigaChatService {
       ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
     ];
 
-    if (kDebugMode) {
-      return "Для вельш-корги кардигана вес 14 кг может быть немного выше среднего для взрослого кобеля его возраста. Обычно взрослые корги весят около 12-14 кг. Рекомендуется проконсультироваться с ветеринаром для точного определения индекса массы тела и получения рекомендаций по питанию и физической активности.";
-    } else {
-      final response = await httpClient.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          "model": "GigaChat-2",
-          "messages": messages,
-          "n": 1,
-          "stream": false,
-          "max_tokens": 350,
-          "repetition_penalty": 1.05,
-        }),
-      );
+    final response = await httpClient.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        "model": "GigaChat-2",
+        "messages": messages,
+        "n": 1,
+        "stream": false,
+        "max_tokens": 350,
+        "repetition_penalty": 1.05,
+      }),
+    );
 
-      final data = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-      return data['choices'][0]['message']['content'];
-    }
+    return data['choices'][0]['message']['content'];
   }
 }
 
@@ -208,6 +204,25 @@ class AIChatController extends ChangeNotifier {
 
     await _repo!.add(userMsg);
 
+    if (kDebugMode) {
+      final fakeResponse =
+          'Для вельш-корги кардигана вес 14 кг может быть немного выше среднего для взрослого кобеля его возраста. Обычно взрослые корги весят около 12-14 кг. Рекомендуется проконсультироваться с ветеринаром для точного определения индекса массы тела и получения рекомендаций по питанию и физической активности.';
+      final fakeBotMsg = ChatMessage(
+        role: 'assistant',
+        content: fakeResponse,
+        timestamp: DateTime.now(),
+      );
+
+      await _repo!.add(fakeBotMsg);
+      await for (final chunk in fakeStream(fakeResponse)) {
+        fakeBotMsg.content = chunk;
+        await fakeBotMsg.save();
+        notifyListeners();
+      }
+
+      return;
+    }
+
     isLoading = true;
     notifyListeners();
 
@@ -228,14 +243,8 @@ class AIChatController extends ChangeNotifier {
 
     isLoading = false;
 
-    if (kDebugMode) {
-      await for (final chunk in fakeStream(fullResponse)) {
-        botMsg.content = chunk;
-        await botMsg.save();
-        notifyListeners();
-      }
-    } else {
-      botMsg.content = fullResponse;
+    await for (final chunk in fakeStream(fullResponse)) {
+      botMsg.content = chunk;
       await botMsg.save();
       notifyListeners();
     }

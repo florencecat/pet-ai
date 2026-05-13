@@ -36,7 +36,7 @@ class WeightInputFormatter extends TextInputFormatter {
 enum HealthBadgeSeverity { ok, info, warning, danger }
 
 extension HealthBadgeSeverityX on HealthBadgeSeverity {
-  Color get color {
+  ColorPalette get palette {
     switch (this) {
       case HealthBadgeSeverity.ok:
         return ThemeColors.ok;
@@ -292,7 +292,7 @@ class HealthAnalyzer {
     return badges;
   }
 
-  static ({String caption, String label, Color color, IconData icon}) score(
+  static ({String caption, String label, ColorPalette palette, IconData icon}) score(
     List<HealthBadge> badges,
   ) {
     final dangerCount = badges
@@ -306,22 +306,22 @@ class HealthAnalyzer {
       return (
         caption: 'Критично',
         label: 'Критично',
-        color: HealthBadgeSeverity.danger.color,
+      palette: HealthBadgeSeverity.danger.palette,
         icon: Icons.error_outline,
       );
     }
     if (warningCount >= 3) {
       return (
-        caption: 'Обратите внимание',
+        caption: 'Внимание',
         label: 'Внимание',
-        color: HealthBadgeSeverity.warning.color,
+      palette: HealthBadgeSeverity.warning.palette,
         icon: Icons.warning_amber_rounded,
       );
     }
     return (
-      caption: 'Всё хорошо',
+      caption: 'В норме',
       label: 'OK',
-      color: HealthBadgeSeverity.ok.color,
+    palette: HealthBadgeSeverity.ok.palette,
       icon: Icons.check_circle_outline,
     );
   }
@@ -345,7 +345,7 @@ class HealthBadgeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = badge.severity.color;
+    final color = badge.severity.palette.mainColor;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: SoftGlassPlate(

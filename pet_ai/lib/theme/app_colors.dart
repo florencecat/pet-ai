@@ -1,19 +1,23 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class ProfileColorPalette {
+class ColorPalette {
   final Color mainColor;
   final Color darkShade;
 
-  const ProfileColorPalette(this.mainColor, this.darkShade);
+  const ColorPalette(this.mainColor, this.darkShade);
 
   Map<String, dynamic> toJson() => {
     'mainColor': mainColor.toARGB32(),
     'darkShade': darkShade.toARGB32(),
   };
 
-  factory ProfileColorPalette.fromJson(Map<String, dynamic> json) =>
-      ProfileColorPalette(Color(json['mainColor'] as int), Color(json['darkShade'] as int));
+  factory ColorPalette.fromJson(Map<String, dynamic> json) =>
+      ColorPalette(
+        Color(json['mainColor'] as int),
+        Color(json['darkShade'] as int),
+      );
 }
 
 class ThemeColors {
@@ -34,7 +38,7 @@ class ThemeColors {
 
   static const defaultProfileColor = primary;
 
-  static const defaultProfilePalette = ProfileColorPalette(
+  static const defaultProfilePalette = ColorPalette(
     Color(0xFFB896FF),
     Color(0xFF50416F),
   );
@@ -57,25 +61,49 @@ class ThemeColors {
     Color(0xFF3C554E),
   ];
 
-  static const List<ProfileColorPalette> profilePalettes = [
-    ProfileColorPalette(Color(0xFFB896FF), Color(0xFF50416F)),
-    ProfileColorPalette(Color(0xFF96FFE0), Color(0xFF416F61)),
-    ProfileColorPalette(Color(0xFFF6F091), Color(0xFF6F6B41)),
-    ProfileColorPalette(Color(0xFFFFAD96), Color(0xFF6F4B41)),
-    ProfileColorPalette(Color(0xFF9C95AA), Color(0xFF38353C)),
-    ProfileColorPalette(Color(0xFF5B8075), Color(0xFF3C554E)),
+  static const List<ColorPalette> profilePalettes = [
+    ColorPalette(Color(0xFFB896FF), Color(0xFF50416F)),
+    ColorPalette(Color(0xFF96FFE0), Color(0xFF416F61)),
+    ColorPalette(Color(0xFFF6F091), Color(0xFF6F6B41)),
+    ColorPalette(Color(0xFFFFAD96), Color(0xFF6F4B41)),
+    ColorPalette(Color(0xFF9C95AA), Color(0xFF38353C)),
+    ColorPalette(Color(0xFF5B8075), Color(0xFF3C554E)),
   ];
 
   static const textPrimary = Color(0xFF41355b);
   static const border = secondary;
   static const splash = Color(0x40698583);
 
+  static const maleGender = Color(0xFFdcebf5);
+  static const femaleGender = Color(0xFFf4d9e9);
+
+  // home page
+  static const vetCardIconColor = Color(0xFFe07b5c);
+  static const filesIconColor = Color(0xFF9a6a1f);
+  static const notesIconColor = Color(0xFF3d6e91);
+
+  // health page
+  static const weightIconColor = Color(0xFF8a4a77);
+  static const moodIconColor = Color(0xFF9a6a1f);
+  static const foodIconColor = Color(0xFF3d6e91);
+
+  // ai page
+  static const List<Color> aiChatIconGradient = [
+    Color(0xFFf1a191),
+    Color(0xFFd89abb),
+  ];
+  static const aiChatOnlineColor = Color(0xFF6fb888);
+
   static const white = Colors.white;
 
-  static const ok = Color(0xFF43A047);
-  static const info = Color(0xFF1976D2);
-  static const warning = Color(0xFFFB8C00);
-  static const danger = Color(0xFFE53935);
+  static const positiveDynamics = Color(0xFF6fb888);
+  static const negativeDynamics = Color(0xFFe07b5c);
+  static const neutralDynamics = Color(0xFF9a8e84);
+
+  static const ok = ColorPalette(Color(0xFF43A047), Color(0xff235426));
+  static const info = ColorPalette(Color(0xFF1976D2), Color(0xff0B335C));
+  static const warning = ColorPalette(Color(0xFFFB8C00), Color(0xffD67600));
+  static const danger = ColorPalette(Color(0xFFE53935), Color(0xff471110));
 }
 
 const double cardBorderRadius = 20;
@@ -116,6 +144,43 @@ String formatSmartDateTime(DateTime d) {
   return isRelative
       ? '$datePart в $timePart'
       : '${DateFormat('dd.MM.yyyy').format(d)} – $timePart';
+}
+
+String declension(
+  int number,
+  String nominative,
+  String genitiveSingular,
+  String genitivePlural,
+) {
+  final n = number.abs() % 100;
+  final n1 = n % 10;
+
+  if (n >= 11 && n <= 19) return genitivePlural;
+  if (n1 == 1) return nominative;
+  if (n1 >= 2 && n1 <= 4) return genitiveSingular;
+  return genitivePlural;
+}
+
+Text dynamicsTextWidget(double value, TextStyle style) {
+  Color color;
+  if (value.abs() < precisionErrorTolerance) {
+    color = ThemeColors.neutralDynamics;
+  } else if (value > 0) {
+    color = ThemeColors.positiveDynamics;
+  } else {
+    color = ThemeColors.negativeDynamics;
+  }
+
+  return Text(
+    value > 0
+        ? '+${value.toStringAsFixed(1)} кг'
+        : '${value.toStringAsFixed(1)} кг',
+    style: style.copyWith(
+      inherit: true,
+      color: color,
+      fontWeight: FontWeight.w700,
+    ),
+  );
 }
 
 const BoxDecoration pageGradientDecoration = BoxDecoration(

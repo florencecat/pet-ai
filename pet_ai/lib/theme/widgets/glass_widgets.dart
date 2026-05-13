@@ -483,3 +483,25 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
     );
   }
 }
+
+class SoftRoundedIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  const SoftRoundedIcon({super.key, required this.icon, required this.color, this.size = 20});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.8),
+        color: color.withAlpha(64),
+      ),
+      child: Padding(
+        padding: EdgeInsetsGeometry.all(size * 0.6),
+        child: Icon(icon, size: size, color: color),
+      ),
+    );
+  }
+}

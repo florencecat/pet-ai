@@ -8,17 +8,17 @@ import 'package:pet_ai/theme/app_colors.dart';
 class AppearanceController extends ChangeNotifier {
   bool _loaded = false;
   bool _usePetColor = false;
-  ProfileColorPalette _profilePalette = ThemeColors.defaultProfilePalette;
+  ColorPalette _profilePalette = ThemeColors.defaultProfilePalette;
 
   bool get loaded => _loaded;
   bool get usePetColor => _usePetColor;
 
   /// Цвет активного питомца (всегда загружен, независимо от usePetColor).
-  ProfileColorPalette get petPalette => _profilePalette;
+  ColorPalette get petPalette => _profilePalette;
   Color get petColor => _profilePalette.mainColor;
 
   /// Основной цвет темы: цвет питомца или дефолтный.
-  ProfileColorPalette get primaryPalette =>
+  ColorPalette get primaryPalette =>
       _usePetColor ? _profilePalette : ThemeColors.defaultProfilePalette;
   Color get primaryColor => _usePetColor
       ? _profilePalette.mainColor
@@ -55,7 +55,7 @@ class AppearanceController extends ChangeNotifier {
   }
 
   /// Немедленно применяет новую палитру (вызывать после сохранения профиля).
-  void updatePetPalette(ProfileColorPalette palette) {
+  void updatePetPalette(ColorPalette palette) {
     _profilePalette = palette;
     notifyListeners();
   }
