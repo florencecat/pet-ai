@@ -82,6 +82,7 @@ class _MainPageState extends State<MainPage> {
   bool _loading = true;
   bool _hasProfile = false;
   NavigationTab _selectedIndex = NavigationTab.home;
+  final _homeKey = GlobalKey<HomePageState>();
   DateTime _calendarInitialDate = DateTime.now();
   Color? _healthScoreColor;
 
@@ -141,6 +142,7 @@ class _MainPageState extends State<MainPage> {
 
     final pages = [
       HomePage(
+        key: _homeKey,
         onOpenCalendar: _onOpenCalendar,
         onOpenCalendarByEvent: _onOpenCalendarByEvent,
         onProfileSwitched: () {
@@ -171,7 +173,10 @@ class _MainPageState extends State<MainPage> {
                 FloatingNavigationBar.bottomInset,
           ),
         ),
-        child: pages[_selectedIndex.index],
+        child: IndexedStack(
+          index: _selectedIndex.index,
+          children: pages,
+        ),
       ),
 
       // Using bottomNavigationBar (instead of Positioned) means Flutter
@@ -189,6 +194,9 @@ class _MainPageState extends State<MainPage> {
               setState(() {
                 _selectedIndex = NavigationTab.values[index];
               });
+              if (index == NavigationTab.home.index) {
+                _homeKey.currentState?.refresh();
+              }
               if (index == NavigationTab.health.index) {
                 _refreshHealthScore();
               }
