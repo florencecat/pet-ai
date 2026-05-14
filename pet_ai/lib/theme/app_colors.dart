@@ -20,7 +20,7 @@ class ColorPalette {
       );
 }
 
-class ThemeColors {
+class  ThemeColors {
   static const background = Color(0xFFf4f3ee);
   static const primary = Color(0xFFB896FF);
   static const secondary = Color(0xFF786B96);

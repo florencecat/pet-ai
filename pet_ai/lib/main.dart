@@ -149,34 +149,46 @@ class _MainPageState extends State<MainPage> {
     ];
 
     return Scaffold(
+      // extendBody lets the page gradient bleed behind the glass navbar.
       extendBody: true,
-      body: Stack(
-        children: [
-          pages[_selectedIndex.index],
-
-          // Floating Navbar
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 24,
-            child: SafeArea(
-              top: false,
-              child: FloatingNavigationBar(
-                currentIndex: _selectedIndex.index,
-                healthScoreColor: _healthScoreColor,
-                onTap: (index) {
-                  setState(() {
-                    _selectedIndex = NavigationTab.values[index];
-                  });
-                  // Refresh health score when switching to health tab
-                  if (index == NavigationTab.health.index) {
-                    _refreshHealthScore();
-                  }
-                },
-              ),
-            ),
+      // Transparent so the inner-page gradient shows through the navbar region
+      // instead of the Scaffold's own surface painting full-width there.
+      backgroundColor: Colors.transparent,
+      // Flutter does NOT propagate bottomNavigationBar height into
+      // MediaQuery.padding.bottom for nested Scaffolds when extendBody: true.
+      // We override it here so every inner Scaffold (e.g. EventsPage) positions
+      // its FAB and bottom content above the glass navbar automatically.
+      body: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          padding: MediaQuery.of(context).padding.copyWith(
+            bottom: MediaQuery.of(context).padding.bottom +
+                FloatingNavigationBar.bottomInset,
           ),
-        ],
+        ),
+        child: pages[_selectedIndex.index],
+      ),
+
+      // Using bottomNavigationBar (instead of Positioned) means Flutter
+      // automatically adjusts MediaQuery.padding.bottom for all descendants,
+      // so inner-Scaffold FABs and ListViews position themselves correctly
+      // without needing to know the navbar height.
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: FloatingNavigationBar(
+            currentIndex: _selectedIndex.index,
+            healthScoreColor: _healthScoreColor,
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = NavigationTab.values[index];
+              });
+              if (index == NavigationTab.health.index) {
+                _refreshHealthScore();
+              }
+            },
+          ),
+        ),
       ),
     );
   }

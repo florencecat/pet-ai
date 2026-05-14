@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
-import 'package:pet_ai/theme/widgets/swipeable_event_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pet_ai/services/event_service.dart';
@@ -13,9 +14,8 @@ import 'package:provider/provider.dart';
 
 class EventsPage extends StatefulWidget {
   final DateTime? initialDate;
-  final DateTime selectedDate;
 
-  EventsPage({super.key, this.initialDate}) : selectedDate = DateTime.now();
+  const EventsPage({super.key, this.initialDate});
 
   @override
   State<EventsPage> createState() => _EventsPageState();
@@ -23,83 +23,39 @@ class EventsPage extends StatefulWidget {
 
 class _EventsPageState extends State<EventsPage> {
   CalendarFormat _format = CalendarFormat.month;
-  late DateTime _focusedDay = DateTime.now();
-  late DateTime? _selectedDay;
+  late DateTime _focusedDay;
+  DateTime? _selectedDay;
 
   bool _isLoadingEvents = true;
   bool _showAllPets = false;
+  bool _showSearch = false;
+  String _searchQuery = '';
+  final TextEditingController _searchCtrl = TextEditingController();
 
   List<PetEvent> _events = [];
-
-  /// Все профили (для режима «все питомцы»)
   List<PetProfile> _allProfiles = [];
-
-  /// Активный профиль
   PetProfile? _activeProfile;
-
-  /// Map petId → цвет и имя (для меток на календаре и бейджей на карточках)
   Map<String, Color> _petColors = {};
   Map<String, String> _petNames = {};
 
-  void _refresh() async {
-    await _loadEvents();
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialDate ?? DateTime.now();
+    _focusedDay = initial;
+    _selectedDay = initial;
+    _loadEvents();
   }
 
-  void openCreateEventSheet(BuildContext context, DateTime dateTime) async {
-    final updated = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => EventSheet.create(dateTime: dateTime),
-    );
-
-    if (updated == true) _refresh();
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
-  Future<void> _deleteEvent(BuildContext context, PetEvent event) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Удалить событие?'),
-        content: Text(
-            '«${event.name}» будет удалено без возможности восстановления.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await EventService().deleteEvent(event);
-    _refresh();
-  }
+  // ── Data helpers ────────────────────────────────────────────────────────────
 
-  void openViewEventSheet(
-    BuildContext context,
-    PetEvent event, {
-    DateTime? completionDate,
-  }) async {
-    final updated = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) =>
-          EventSheet(event: event, completionDate: completionDate),
-    );
-
-    if (updated == true) _refresh();
-  }
+  void _refresh() async => await _loadEvents();
 
   Future<void> _loadEvents() async {
     setState(() => _isLoadingEvents = true);
@@ -142,17 +98,32 @@ class _EventsPageState extends State<EventsPage> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadEvents();
-
-    final initial = widget.initialDate ?? DateTime.now();
-    _focusedDay = initial;
-    _selectedDay = initial;
+  /// Events for the selected day, filtered by search query.
+  List<PetEvent> get _filteredDayEvents {
+    if (_selectedDay == null) return [];
+    final dayEvents = _events.where((e) => e.occursOn(_selectedDay!)).toList();
+    if (_searchQuery.isEmpty) return dayEvents;
+    final q = _searchQuery.toLowerCase();
+    return dayEvents.where((e) => e.name.toLowerCase().contains(q)).toList();
   }
 
-  /// Возвращает цвет точки для события в зависимости от режима отображения
+  /// Whether any event occurs in [_focusedDay]'s month for the given [petId].
+  /// Pass null to check across all loaded pets.
+  bool _hasEventsInFocusedMonth(String? petId) {
+    final year = _focusedDay.year;
+    final month = _focusedDay.month;
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    for (var d = 1; d <= daysInMonth; d++) {
+      final date = DateTime(year, month, d);
+      for (final e in _events) {
+        if (petId != null && !e.petIds.contains(petId)) continue;
+        if (e.occursOn(date)) return true;
+      }
+    }
+    return false;
+  }
+
+  /// Marker dot color for a calendar event.
   Color _markerColor(PetEvent event) {
     if (_showAllPets && event.petIds.isNotEmpty) {
       return _petColors[event.petIds.first] ?? event.category.color;
@@ -160,80 +131,203 @@ class _EventsPageState extends State<EventsPage> {
     return event.category.color;
   }
 
-  /// Возвращает имя питомца для карточки (только в режиме «все питомцы»)
-  String? _petNameFor(PetEvent event) {
-    if (!_showAllPets) return null;
-    if (event.petIds.isEmpty) return null;
-    // Если у события несколько питомцев — перечисляем через запятую
+  /// Pet name + color pairs for an event's badge row.
+  /// Returns [("Все", grey)] when the event covers all known pets.
+  List<(String, Color)> _petBadgesFor(PetEvent event) {
+    if (event.petIds.isEmpty) return [];
+    final allIds = _allProfiles.map((p) => p.id).toSet();
+    final eventIds = event.petIds.toSet();
+    if (allIds.length > 1 && eventIds.containsAll(allIds)) {
+      return [('Все', ThemeColors.border)];
+    }
     return event.petIds
-        .map((id) => _petNames[id] ?? '')
-        .where((n) => n.isNotEmpty)
-        .join(', ');
+        .map(
+          (id) => (
+            _petNames[id] ?? 'Питомец',
+            _petColors[id] ?? ThemeColors.border,
+          ),
+        )
+        .toList();
   }
 
-  /// Возвращает цвет первого питомца события (для бейджа)
-  Color? _petColorFor(PetEvent event) {
-    if (!_showAllPets || event.petIds.isEmpty) return null;
-    return _petColors[event.petIds.first];
+  // ── Sheet helpers ───────────────────────────────────────────────────────────
+
+  void _openCreateSheet() async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          EventSheet.create(dateTime: _selectedDay ?? DateTime.now()),
+    );
+    if (updated == true) _refresh();
   }
+
+  void _openViewSheet(PetEvent event) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventSheet(event: event, completionDate: _selectedDay),
+    );
+    if (updated == true) _refresh();
+  }
+
+  Future<void> _deleteEvent(PetEvent event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить событие?'),
+        content: Text(
+          '«${event.name}» будет удалено без возможности восстановления.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await EventService().deleteEvent(event);
+    _refresh();
+  }
+
+  // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final primaryColor = context.watch<AppearanceController>().primaryColor;
+    final monthLabel = DateFormat('MMMM yyyy', 'ru_RU').format(_focusedDay);
+    final filtered = _filteredDayEvents;
+
     return Scaffold(
+      floatingActionButton: Padding(
+        padding: EdgeInsetsGeometry.only(bottom: bottomPadding),
+        child: FloatingActionButton(
+          onPressed: _openCreateSheet,
+          backgroundColor: primaryColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      ),
       body: Container(
         decoration: context.watch<AppearanceController>().gradientDecoration,
         child: InlineLoading(
           isLoading: _isLoadingEvents,
           child: ListView(
             clipBehavior: Clip.none,
-            padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
+            padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 120),
             children: [
-              // ── Переключатель «текущий питомец / все питомцы» ───────────
+              // ── Header ───────────────────────────────────────────────────
+              _showSearch
+                  ? _SearchBar(
+                      controller: _searchCtrl,
+                      onChanged: (q) => setState(() => _searchQuery = q),
+                      onClose: () => setState(() {
+                        _showSearch = false;
+                        _searchQuery = '';
+                        _searchCtrl.clear();
+                      }),
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'События',
+                                style: Theme.of(context).textTheme.headlineMedium,
+                              ),
+                              Text(
+                                monthLabel,
+                                style: Theme.of(context).textTheme.bodyMedium!
+                                    .copyWith(color: ThemeColors.border),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GlassPlate(
+                          padding: 4,
+                          child: IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: () => setState(() => _showSearch = true),
+                          ),
+                        ),
+                      ],
+                    ),
+              const SizedBox(height: 12),
+
+              // ── Pet selector ─────────────────────────────────────────────
               if (_allProfiles.length > 1) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                GlassPlate(
+                  padding: 8,
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _PetToggleChip(
-                        label: _activeProfile?.name.isNotEmpty == true
-                            ? _activeProfile!.name
-                            : 'Текущий',
-                        selected: !_showAllPets,
-                        color: _activeProfile?.palette.mainColor ?? context.watch<AppearanceController>().primaryColor,
-                        onTap: () {
-                          if (_showAllPets) {
-                            setState(() => _showAllPets = false);
-                            _loadEvents();
-                          }
-                        },
+                      Expanded(
+                        child: _PetSelectorChip(
+                          label: _activeProfile?.name.isNotEmpty == true
+                              ? _activeProfile!.name
+                              : 'Текущий',
+                          selected: !_showAllPets,
+                          color:
+                              _activeProfile?.palette.mainColor ?? primaryColor,
+                          hasEvents: _hasEventsInFocusedMonth(
+                            _activeProfile?.id,
+                          ),
+                          onTap: () {
+                            if (_showAllPets) {
+                              setState(() => _showAllPets = false);
+                              _loadEvents();
+                            }
+                          },
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      _PetToggleChip(
-                        label: 'Все питомцы',
-                        selected: _showAllPets,
-                        color: context.watch<AppearanceController>().secondaryColor,
-                        onTap: () {
-                          if (!_showAllPets) {
-                            setState(() => _showAllPets = true);
-                            _loadEvents();
-                          }
-                        },
+                      Expanded(
+                        child: _PetSelectorChip(
+                          label: 'Все питомцы',
+                          selected: _showAllPets,
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor,
+                          hasEvents: _hasEventsInFocusedMonth(null),
+                          onTap: () {
+                            if (!_showAllPets) {
+                              setState(() => _showAllPets = true);
+                              _loadEvents();
+                            }
+                          },
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
               ],
 
-              // ── Календарь ────────────────────────────────────────────────
+              // ── Calendar ─────────────────────────────────────────────────
               GlassPlate(
                 child: Padding(
-                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TableCalendar(
                     locale: 'ru_RU',
                     startingDayOfWeek: StartingDayOfWeek.monday,
@@ -244,7 +338,6 @@ class _EventsPageState extends State<EventsPage> {
                     calendarBuilders: CalendarBuilders(
                       markerBuilder: (context, day, events) {
                         if (events.isEmpty) return const SizedBox();
-
                         return Positioned(
                           bottom: 4,
                           child: Row(
@@ -279,11 +372,10 @@ class _EventsPageState extends State<EventsPage> {
                       weekendStyle: Theme.of(context).textTheme.bodySmall!
                           .copyWith(inherit: true, fontSize: 13),
                     ),
-                    eventLoader: (day) {
-                      return _events.where((e) => e.occursOn(day)).toList();
-                    },
+                    eventLoader: (day) =>
+                        _events.where((e) => e.occursOn(day)).toList(),
                     calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(
+                      todayDecoration: const BoxDecoration(
                         color: Colors.transparent,
                         shape: BoxShape.circle,
                       ),
@@ -291,11 +383,11 @@ class _EventsPageState extends State<EventsPage> {
                         color: Theme.of(context).colorScheme.primary,
                         shape: BoxShape.circle,
                       ),
-                      todayTextStyle: TextStyle(
+                      todayTextStyle: const TextStyle(
                         color: Colors.black,
                         fontWeight: FontWeight.bold,
                       ),
-                      selectedTextStyle: TextStyle(
+                      selectedTextStyle: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -308,94 +400,130 @@ class _EventsPageState extends State<EventsPage> {
                       });
                       await _loadEvents();
                     },
+                    onPageChanged: (focusedDay) {
+                      setState(() => _focusedDay = focusedDay);
+                    },
                     onFormatChanged: (format) {
                       setState(() => _format = format);
                     },
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // ── Кнопка «Добавить событие» ───────────────────────────────
-              GlassCard(
-                color: context.watch<AppearanceController>().primaryColor,
-                callback: _selectedDay == null
-                    ? null
-                    : () => openCreateEventSheet(context, _selectedDay!),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, color: ThemeColors.white),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Добавить событие',
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        inherit: true,
-                        color: ThemeColors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ── Список событий выбранного дня ───────────────────────────
-              if (_selectedDay != null && _events.isNotEmpty)
-                ...(_events.where((e) => e.occursOn(_selectedDay!))).map(
-                  (e) => SwipeableEventCard(
-                    event: e,
-                    selectedDate: _selectedDay,
-                    petColor: _petColorFor(e),
-                    petName: _petNameFor(e),
-                    onTap: () => openViewEventSheet(
-                      context,
-                      e,
-                      completionDate: _selectedDay,
-                    ),
-                    onEdit: () => openViewEventSheet(
-                      context,
-                      e,
-                      completionDate: _selectedDay,
-                    ),
-                    onDelete: () => _deleteEvent(context, e),
-                    trailingCallback: () => openViewEventSheet(
-                      context,
-                      e,
-                      completionDate: _selectedDay,
-                    ),
-                    onCompletedChanged: (val) async {
-                      final profileId =
-                          await ProfileService().getActiveProfileId();
-                      if (profileId != null) {
-                        await EventService().toggleCompleted(
-                          profileId,
-                          e,
-                          _selectedDay!,
-                        );
-                        _refresh();
-                      }
-                    },
+              // ── Day events ───────────────────────────────────────────────
+              if (_selectedDay != null) ...[
+                Text(
+                  _dayLabel(_selectedDay!),
+                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                    color: ThemeColors.textPrimary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 8),
+                if (filtered.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Нет событий',
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: ThemeColors.border,
+                      ),
+                    ),
+                  )
+                else
+                  ...filtered.map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _SwipeableEventTile(
+                        event: e,
+                        petBadges: _petBadgesFor(e),
+                        selectedDate: _selectedDay,
+                        onTap: () => _openViewSheet(e),
+                        onEdit: () => _openViewSheet(e),
+                        onDelete: () => _deleteEvent(e),
+                        onCompletedChanged: (val) async {
+                          final profileId = await ProfileService()
+                              .getActiveProfileId();
+                          if (profileId != null) {
+                            await EventService().toggleCompleted(
+                              profileId,
+                              e,
+                              _selectedDay!,
+                            );
+                            _refresh();
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
       ),
     );
   }
+
+  String _dayLabel(DateTime day) {
+    final now = DateTime.now();
+    if (isSameDay(day, now)) return 'Сегодня';
+    if (isSameDay(day, now.add(const Duration(days: 1)))) return 'Завтра';
+    if (isSameDay(day, now.subtract(const Duration(days: 1)))) return 'Вчера';
+    return DateFormat('d MMMM', 'ru_RU').format(day);
+  }
 }
 
-class _PetToggleChip extends StatelessWidget {
+// ── Search bar ───────────────────────────────────────────────────────────────
+
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClose;
+
+  const _SearchBar({
+    required this.controller,
+    required this.onChanged,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPlate(
+      padding: 0,
+      child: TextField(
+        controller: controller,
+        autofocus: true,
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          hintText: 'Поиск по событиям...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: onClose,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pet selector chip (full-width) ───────────────────────────────────────────
+
+class _PetSelectorChip extends StatelessWidget {
   final String label;
   final bool selected;
   final Color color;
+  final bool hasEvents;
   final VoidCallback onTap;
 
-  const _PetToggleChip({
+  const _PetSelectorChip({
     required this.label,
     required this.selected,
     required this.color,
+    required this.hasEvents,
     required this.onTap,
   });
 
@@ -405,21 +533,364 @@ class _PetToggleChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? color.withAlpha(200) : color.withAlpha(40),
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? color.withAlpha(200) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? color : color.withAlpha(80),
+            color: selected ? color : Colors.transparent,
             width: 1.5,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : color.withAlpha(200),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : color.withAlpha(200),
+              ),
+            ),
+            if (hasEvents) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected
+                      ? Colors.white.withAlpha(200)
+                      : color.withAlpha(220),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Swipeable wrapper ────────────────────────────────────────────────────────
+
+class _SwipeableEventTile extends StatefulWidget {
+  final PetEvent event;
+  final List<(String, Color)> petBadges;
+  final DateTime? selectedDate;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final ValueChanged<bool>? onCompletedChanged;
+
+  const _SwipeableEventTile({
+    required this.event,
+    required this.petBadges,
+    this.selectedDate,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
+    this.onCompletedChanged,
+  });
+
+  @override
+  State<_SwipeableEventTile> createState() => _SwipeableEventTileState();
+}
+
+class _SwipeableEventTileState extends State<_SwipeableEventTile>
+    with SingleTickerProviderStateMixin {
+  static const double _btnSize = 52.0;
+  static const double _btnGap = 10.0;
+  static const double _sidePad = 12.0;
+  static const double _actionsCount = 3;
+  static const double _actionWidth =
+      _btnSize * _actionsCount + _sidePad * 2 + _btnGap * (_actionsCount - 1);
+
+  late final AnimationController _ctrl;
+  late final Animation<double> _slide;
+  bool _revealed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _slide = Tween<double>(
+      begin: 0,
+      end: -_actionWidth,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _open() {
+    HapticFeedback.selectionClick();
+    _ctrl.forward();
+    _revealed = true;
+  }
+
+  void _close() {
+    _ctrl.reverse();
+    _revealed = false;
+  }
+
+  void _onHorizontalDrag(DragUpdateDetails d) {
+    final dx = d.primaryDelta ?? 0;
+    if (dx < -6 && !_revealed) _open();
+    if (dx > 6 && _revealed) _close();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragUpdate: _onHorizontalDrag,
+      onTap: _revealed ? _close : null,
+      behavior: HitTestBehavior.translucent,
+      child: Stack(
+        children: [
+          // Action buttons (behind card)
+          Positioned(
+            right: _sidePad,
+            top: 0,
+            bottom: 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ActionBtn(
+                  icon: Icons.check,
+                  color: ThemeColors.positiveDynamics,
+                  label: 'Выполнено',
+                  onTap: () {
+                    _close();
+                    widget.onEdit?.call();
+                  },
+                ),
+                const SizedBox(width: _btnGap),
+
+                _ActionBtn(
+                  icon: Icons.edit_outlined,
+                  color: context.watch<AppearanceController>().secondaryColor,
+                  label: 'Изменить',
+                  onTap: () {
+                    _close();
+                    widget.onEdit?.call();
+                  },
+                ),
+                const SizedBox(width: _btnGap),
+                _ActionBtn(
+                  icon: Icons.delete_outline,
+                  color: ThemeColors.dangerZone,
+                  label: 'Удалить',
+                  onTap: () {
+                    _close();
+                    widget.onDelete?.call();
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Card (slides left)
+          AnimatedBuilder(
+            animation: _slide,
+            builder: (_, child) => Transform.translate(
+              offset: Offset(_slide.value, 0),
+              child: child,
+            ),
+            child: _EventTileCard(
+              event: widget.event,
+              petBadges: widget.petBadges,
+              selectedDate: widget.selectedDate,
+              onTap: _revealed ? _close : widget.onTap,
+              onCompletedChanged: widget.onCompletedChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Round action button ──────────────────────────────────────────────────────
+
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: _SwipeableEventTileState._btnSize,
+            height: _SwipeableEventTileState._btnSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withAlpha(80),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Event tile card ──────────────────────────────────────────────────────────
+
+class _EventTileCard extends StatelessWidget {
+  final PetEvent event;
+  final List<(String, Color)> petBadges;
+  final DateTime? selectedDate;
+  final VoidCallback? onTap;
+  final ValueChanged<bool>? onCompletedChanged;
+
+  const _EventTileCard({
+    required this.event,
+    required this.petBadges,
+    this.selectedDate,
+    this.onTap,
+    this.onCompletedChanged,
+  });
+
+  DateTime get _effectiveDate => selectedDate ?? event.dateTime;
+
+  bool get _isCompleted => event.isCompletedOn(_effectiveDate);
+
+  @override
+  Widget build(BuildContext context) {
+    final overdue = event.isOverdue;
+    final cardColor = overdue ? const Color(0xFFFFAD96) : Colors.white;
+    final time = DateFormat('HH:mm').format(event.dateTime);
+
+    return GlassPlate(
+      color: cardColor,
+      transparent: false,
+      padding: 0,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap?.call();
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // ── Time ─────────────────────────────────────────────────
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    time,
+                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                      color: overdue
+                          ? ThemeColors.dangerZone
+                          : event.category.color,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                // ── Vertical splitter ─────────────────────────────────────
+                Container(
+                  width: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  color: ThemeColors.border.withAlpha(60),
+                ),
+
+                // ── Icon + name + category + pet badges ───────────────────
+                Expanded(
+                  flex: 4,
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      SoftRoundedIcon(
+                        icon: event.category.icon,
+                        color: event.category.color,
+                        size: 22,
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            event.name,
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  inherit: true,
+                                  color: ThemeColors.textPrimary,
+                                  decoration: _isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                          ),
+
+                          Text(
+                            event.category.name,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  inherit: true,
+                                  color: ThemeColors.border,
+                                ),
+                          ),
+                        ],
+                      ),
+                      Spacer(),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: petBadges.map((badge) {
+                          return SoftGlassBadge(
+                            color: badge.$2,
+                            icon: Icons.pets,
+                            label: badge.$1,
+                            selected: false,
+                            onChanged: null,
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
