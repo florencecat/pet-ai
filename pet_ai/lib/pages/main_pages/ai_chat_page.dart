@@ -3,13 +3,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
-import '../../theme/widgets/draggable_bottom_sheet.dart';
 
 class AIChatPage extends StatefulWidget {
   const AIChatPage({super.key});
@@ -79,6 +79,77 @@ class _AIChatPageState extends State<AIChatPage> {
   }
 }
 
+// ──────────────────────────────────────────────────────────
+// Animated online dot
+// ──────────────────────────────────────────────────────────
+
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+
+    _opacity = Tween<double>(
+      begin: 0.45,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Fixed-size SizedBox so the Row layout never shifts during animation.
+    return SizedBox(
+      width: 8,
+      height: 8,
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          final alpha = (_opacity.value * 255).round();
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.color.withAlpha(alpha),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withAlpha((alpha * 0.55).round()),
+                  blurRadius: 4 + _opacity.value * 5,
+                  spreadRadius: _opacity.value,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Main chat view
+// ──────────────────────────────────────────────────────────
+
 class _ChatView extends StatelessWidget {
   const _ChatView();
 
@@ -96,6 +167,7 @@ class _ChatView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AIChatController>();
+    final isEmpty = controller.messages.isEmpty;
 
     return Stack(
       children: [
@@ -103,48 +175,58 @@ class _ChatView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: ListView.builder(
-                reverse: true,
-                clipBehavior: Clip.none,
-                padding: const EdgeInsets.only(left: 12, right: 12, bottom: 185),
-                itemCount: controller.messages.length,
-                physics: const BouncingScrollPhysics(),
-                itemBuilder: (context, index) {
-                  final msg = controller
-                      .messages[controller.messages.length - 1 - index];
-                  return _MessageBubble(msg: msg);
-                },
-              ),
+              child: isEmpty
+                  ? Column(
+                      children: [
+                        const Spacer(),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 4,
+                            right: 4,
+                            bottom: 185,
+                          ),
+                          child: _WelcomeState(petName: controller.petName),
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      reverse: true,
+                      clipBehavior: Clip.none,
+                      padding: const EdgeInsets.only(
+                        left: 4,
+                        right: 4,
+                        bottom: 185,
+                        top: 108,
+                      ),
+                      itemCount: controller.messages.length,
+                      physics: const BouncingScrollPhysics(),
+                      itemBuilder: (context, index) {
+                        final msg = controller
+                            .messages[controller.messages.length - 1 - index];
+                        return _MessageBubble(msg: msg);
+                      },
+                    ),
             ),
           ],
         ),
 
         const _GlobalEdgeBlur(),
 
+        // Header card
         Padding(
-          padding: EdgeInsetsGeometry.only(left: 16, right: 16),
+          padding: const EdgeInsets.only(left: 16, right: 16),
           child: Align(
-            alignment: AlignmentGeometry.topCenter,
+            alignment: Alignment.topCenter,
             child: GlassCard(
               callback: () {
-                final controller = context.read<AIChatController>();
-                _openHistorySheet(context, controller);
+                final ctrl = context.read<AIChatController>();
+                _openHistorySheet(context, ctrl);
               },
               transparent: false,
               child: ListTile(
-                leading: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadiusGeometry.circular(12),
-                    gradient: LinearGradient(
-                      colors: ThemeColors.aiChatIconGradient,
-                      begin: AlignmentGeometry.topLeft,
-                      end: AlignmentGeometry.bottomRight,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsetsGeometry.all(12),
-                    child: Icon(Icons.chat, color: Colors.white),
-                  ),
+                leading: SoftRoundedIcon(
+                  icon: Icons.auto_awesome,
+                  gradient: ThemeColors.aiChatIconGradient,
                 ),
                 title: Text(
                   'Помощник по уходу',
@@ -153,20 +235,9 @@ class _ChatView extends StatelessWidget {
                 subtitle: Row(
                   spacing: 6,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        border: BoxBorder.all(
-                          color: ThemeColors.aiChatOnlineColor.withAlpha(128),
-                          width: 4,
-                        ),
-                        shape: BoxShape.circle,
-                        color: ThemeColors.aiChatOnlineColor,
-                      ),
-                      width: 8,
-                      height: 8,
-                    ),
+                    _PulsingDot(color: ThemeColors.aiChatOnlineColor),
                     Text(
-                      'на связи • знает всё про Барни',
+                      'на связи • знает всё про ${controller.petName}',
                       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         color: ThemeColors.aiChatOnlineColor,
                       ),
@@ -182,25 +253,27 @@ class _ChatView extends StatelessWidget {
           ),
         ),
 
+        // Input bar
         const Align(
-          alignment: AlignmentGeometry.bottomCenter,
+          alignment: Alignment.bottomCenter,
           child: Padding(
-            padding: EdgeInsetsGeometry.only(bottom: 90),
+            padding: EdgeInsets.only(bottom: 90),
             child: _InputBar(),
           ),
         ),
 
+        // "Typing..." indicator
         if (controller.isLoading)
           Positioned(
             bottom: 191,
             left: 16,
             child: GlassPlate(
               child: Padding(
-                padding: EdgeInsetsGeometry.symmetric(
+                padding: const EdgeInsets.symmetric(
                   vertical: 8,
                   horizontal: 14,
                 ),
-                child: Text('Печатает...'),
+                child: const Text('Печатает...'),
               ),
             ),
           ),
@@ -208,6 +281,168 @@ class _ChatView extends StatelessWidget {
     );
   }
 }
+
+// ──────────────────────────────────────────────────────────
+// Empty / welcome state
+// ──────────────────────────────────────────────────────────
+
+class _WelcomeState extends StatelessWidget {
+  final String petName;
+
+  const _WelcomeState({required this.petName});
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = context.read<AIChatController>();
+    final primaryColor = context.watch<AppearanceController>().primaryColor;
+
+    const quickReplies = [
+      'Сколько корма в день?',
+      'Когда прививка?',
+      'Норма прогулок',
+      'Почему мой питомец вялый?',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Bot welcome bubble
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              SoftRoundedIcon(
+                icon: Icons.auto_awesome,
+                gradient: ThemeColors.aiChatIconGradient,
+                size: 14,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: _BubbleContainer(
+                  isUser: false,
+                  child: Text(
+                    'Привет! Я знаю историю $petName и могу подсказать про корм, прививки или поведение. О чём хочешь узнать?',
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: ThemeColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Quick-reply chips
+          Padding(
+            padding: const EdgeInsets.only(left: 44),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: quickReplies.map((reply) {
+                return GlassCard(callback: () {
+                  HapticFeedback.lightImpact();
+                  chat.sendMessage(reply);
+                },padding: 10, transparent: true, color: primaryColor, child: Text(
+                  reply,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ));
+
+                //
+                //   GestureDetector(
+                //   onTap: () {
+                //     HapticFeedback.lightImpact();
+                //     chat.sendMessage(reply);
+                //   },
+                //   child: Container(
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 12,
+                //       vertical: 8,
+                //     ),
+                //     decoration: BoxDecoration(
+                //       borderRadius: BorderRadius.circular(14),
+                //       color: primaryColor.withAlpha(20),
+                //       border: Border.all(
+                //         color: primaryColor.withAlpha(80),
+                //         width: 1,
+                //       ),
+                //     ),
+                //     child: Text(
+                //       reply,
+                //       style: TextStyle(
+                //         fontSize: 13,
+                //         color: primaryColor,
+                //         fontWeight: FontWeight.w500,
+                //       ),
+                //     ),
+                //   ),
+                // );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Shared bubble container with asymmetric border radius
+// ──────────────────────────────────────────────────────────
+
+class _BubbleContainer extends StatelessWidget {
+  final bool isUser;
+  final Widget child;
+
+  const _BubbleContainer({required this.isUser, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isUser
+        ? context.watch<AppearanceController>().primaryColor
+        : Colors.white;
+
+    final borderRadius = isUser
+        ? const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomLeft: Radius.circular(18),
+            bottomRight: Radius.circular(4),
+          )
+        : const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
+            bottomRight: Radius.circular(18),
+          );
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 280),
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        color: color,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(18),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      child: child,
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Message bubble
+// ──────────────────────────────────────────────────────────
 
 class _MessageBubble extends StatelessWidget {
   final ChatMessage msg;
@@ -218,30 +453,39 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = msg.role == 'user';
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-        constraints: const BoxConstraints(maxWidth: 300),
-        child: GlassPlate(
-          color: isUser
-              ? context.watch<AppearanceController>().primaryColor
-              : Colors.white,
-          child: Padding(
-            padding: EdgeInsetsGeometry.symmetric(vertical: 8, horizontal: 14),
-            child: Text(
-              msg.content,
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                inherit: true,
-                color: isUser ? ThemeColors.white : ThemeColors.textPrimary,
-              ),
+    final textWidget = Text(
+      msg.content,
+      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+        inherit: true,
+        color: isUser ? ThemeColors.white : ThemeColors.textPrimary,
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[
+            SoftRoundedIcon(
+              icon: Icons.auto_awesome,
+              gradient: ThemeColors.aiChatIconGradient,
+              size: 14,
             ),
-          ),
-        ),
+            const SizedBox(width: 6),
+          ],
+          _BubbleContainer(isUser: isUser, child: textWidget),
+        ],
       ),
     );
   }
 }
+
+// ──────────────────────────────────────────────────────────
+// Input bar
+// ──────────────────────────────────────────────────────────
 
 class _InputBar extends StatefulWidget {
   const _InputBar();
@@ -267,7 +511,6 @@ class _InputBarState extends State<_InputBar> {
                 controller: controller,
                 maxLines: 3,
                 minLines: 1,
-
                 decoration: InputDecoration(
                   hintText: 'Спросите о питомце...',
                   border: OutlineInputBorder(
@@ -288,9 +531,10 @@ class _InputBarState extends State<_InputBar> {
                     HapticFeedback.mediumImpact();
                     chat.sendMessage(controller.text);
                     controller.clear();
+                    setState(() {});
                   },
             child: Padding(
-              padding: EdgeInsetsGeometry.all(10),
+              padding: const EdgeInsets.all(10),
               child: Icon(
                 Icons.send,
                 color: controller.text.isEmpty
@@ -305,26 +549,125 @@ class _InputBarState extends State<_InputBar> {
   }
 }
 
+// ──────────────────────────────────────────────────────────
+// History sheet — shows archived threads
+// ──────────────────────────────────────────────────────────
+
 class _HistorySheet extends StatelessWidget {
   final AIChatController controller;
 
   const _HistorySheet({required this.controller});
 
+  String _formatDate(DateTime date) {
+    return DateFormat('d MMMM yyyy', 'ru_RU').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 500,
-      child: DraggableBottomSheet(
-        hintText: 'Поиск...',
-        leadingIcon: Icons.history,
-        allItems: controller.messages.map((msg) {
-          final prefix = msg.role == "user" ? "Вы: " : "Чат-бот: ";
-          return prefix + msg.content;
-        }).toList(),
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: 12,
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 50,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            Text(
+              'История переписок',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: FutureBuilder<List<ArchivedThread>>(
+                future: controller.loadArchivedThreads(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final threads = snapshot.data!;
+
+                  if (threads.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Нет архивных переписок.\nКаждый новый день начинается новый тред.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    itemCount: threads.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final thread = threads[index];
+                      final firstUserMsg = thread.messages
+                          .where((m) => m.role == 'user')
+                          .map((m) => m.content)
+                          .firstOrNull;
+                      final preview = firstUserMsg ?? thread.messages.first.content;
+
+                      return ListTile(
+                        leading: Icon(
+                          Icons.chat_bubble_outline,
+                          color: context
+                              .watch<AppearanceController>()
+                              .primaryColor,
+                        ),
+                        title: Text(
+                          _formatDate(thread.date),
+                          style: Theme.of(context).textTheme.bodyMedium!
+                              .copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          preview,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        trailing: Text(
+                          '${thread.messages.length} сообщ.',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ──────────────────────────────────────────────────────────
+// Edge blur overlay
+// ──────────────────────────────────────────────────────────
 
 class _GlobalEdgeBlur extends StatelessWidget {
   const _GlobalEdgeBlur();
@@ -337,7 +680,7 @@ class _GlobalEdgeBlur extends StatelessWidget {
           ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaY: 0.5, sigmaX: 0.5),
-              child: Container(height: 120, decoration: BoxDecoration()),
+              child: Container(height: 120, decoration: const BoxDecoration()),
             ),
           ),
 
@@ -346,7 +689,7 @@ class _GlobalEdgeBlur extends StatelessWidget {
           ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaY: 1, sigmaX: 1),
-              child: Container(height: 140, decoration: BoxDecoration()),
+              child: Container(height: 140, decoration: const BoxDecoration()),
             ),
           ),
         ],
