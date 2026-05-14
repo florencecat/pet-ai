@@ -21,6 +21,9 @@ class AppTheme {
         titleLarge: base.textTheme.titleLarge!.copyWith(color: textColor),
         titleMedium: base.textTheme.titleMedium!.copyWith(color: textColor),
         titleSmall: base.textTheme.titleSmall!.copyWith(color: textColor),
+        headlineSmall: base.textTheme.headlineSmall!.copyWith(color: textColor),
+        headlineMedium: base.textTheme.headlineMedium!.copyWith(color: textColor),
+        headlineLarge: base.textTheme.headlineLarge!.copyWith(color: textColor),
       ),
     );
   }

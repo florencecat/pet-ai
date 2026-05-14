@@ -269,12 +269,13 @@ class _EventsPageState extends State<EventsPage> {
                             children: [
                               Text(
                                 'События',
-                                style: Theme.of(context).textTheme.headlineMedium,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
                               ),
                               Text(
                                 monthLabel,
-                                style: Theme.of(context).textTheme.bodyMedium!
-                                    .copyWith(color: ThemeColors.border),
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
                           ),
@@ -683,7 +684,7 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
                   label: 'Выполнено',
                   onTap: () {
                     _close();
-                    widget.onEdit?.call();
+                    widget.onCompletedChanged?.call(widget.event.isCompletedOn(widget.selectedDate!));
                   },
                 ),
                 const SizedBox(width: _btnGap),
@@ -723,7 +724,6 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
               petBadges: widget.petBadges,
               selectedDate: widget.selectedDate,
               onTap: _revealed ? _close : widget.onTap,
-              onCompletedChanged: widget.onCompletedChanged,
             ),
           ),
         ],
@@ -793,14 +793,12 @@ class _EventTileCard extends StatelessWidget {
   final List<(String, Color)> petBadges;
   final DateTime? selectedDate;
   final VoidCallback? onTap;
-  final ValueChanged<bool>? onCompletedChanged;
 
   const _EventTileCard({
     required this.event,
     required this.petBadges,
     this.selectedDate,
     this.onTap,
-    this.onCompletedChanged,
   });
 
   DateTime get _effectiveDate => selectedDate ?? event.dateTime;
@@ -869,7 +867,6 @@ class _EventTileCard extends StatelessWidget {
                             style: Theme.of(context).textTheme.titleLarge!
                                 .copyWith(
                                   inherit: true,
-                                  color: ThemeColors.textPrimary,
                                   decoration: _isCompleted
                                       ? TextDecoration.lineThrough
                                       : null,
@@ -878,11 +875,7 @@ class _EventTileCard extends StatelessWidget {
 
                           Text(
                             event.category.name,
-                            style: Theme.of(context).textTheme.bodySmall!
-                                .copyWith(
-                                  inherit: true,
-                                  color: ThemeColors.border,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
                       ),

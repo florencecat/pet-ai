@@ -6,20 +6,9 @@ import 'package:provider/provider.dart';
 class FloatingNavigationBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
-
-  /// Color of the health-score status dot on the health tab.
-  /// Pass null to hide the dot.
   final Color? healthScoreColor;
 
-  /// The visual height of the navbar widget itself (GlassPlate content +
-  /// the external bottom padding added in main.dart).
-  /// Used by [MainPage] to push inner-Scaffold FABs above the bar.
-  ///
-  /// Breakdown: icon(22) + gap(3) + label(≈13) = 38
-  ///   + AnimatedContainer vertical padding(16) = 54
-  ///   + GlassPlate padding(12) = 66 (GlassPlate height)
-  ///   + external Padding bottom(16) = 82
-  static const double bottomInset = 82.0;
+  static const double bottomInset = 90.0;
 
   const FloatingNavigationBar({
     super.key,
@@ -31,7 +20,7 @@ class FloatingNavigationBar extends StatelessWidget {
   static const _icons = [
     Icons.pets,
     Icons.health_and_safety_outlined,
-    Icons.chat_bubble_outline,
+    Icons.chat_bubble_outline_rounded,
     Icons.calendar_month,
   ];
 
@@ -40,7 +29,7 @@ class FloatingNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
-      padding: 6,
+      padding: 8,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: List.generate(4, (index) {
@@ -89,14 +78,18 @@ class _NavItem extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           AnimatedContainer(
+            constraints: BoxConstraints(minWidth: 90, minHeight: 50),
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOut,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: isActive ? context.watch<AppearanceController>().secondaryColor : Colors.transparent,
+              color: isActive
+                  ? context.watch<AppearanceController>().secondaryColor
+                  : Colors.transparent,
             ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Stack(
@@ -108,7 +101,7 @@ class _NavItem extends StatelessWidget {
                       child: Icon(
                         icon,
                         key: ValueKey(isActive),
-                        size: 22,
+                        size: 26,
                         color: isActive ? _activeContent : _inactiveContent,
                       ),
                     ),
@@ -124,7 +117,11 @@ class _NavItem extends StatelessWidget {
                             shape: BoxShape.circle,
                             color: badgeColor,
                             border: Border.all(
-                              color: isActive ? context.watch<AppearanceController>().secondaryColor : Colors.white,
+                              color: isActive
+                                  ? context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor
+                                  : Colors.white,
                               width: 1.5,
                             ),
                           ),
@@ -137,8 +134,7 @@ class _NavItem extends StatelessWidget {
                   duration: const Duration(milliseconds: 220),
                   style: TextStyle(
                     fontSize: 10,
-                    fontWeight:
-                        isActive ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                     color: isActive ? _activeContent : _inactiveContent,
                   ),
                   child: Text(label),
