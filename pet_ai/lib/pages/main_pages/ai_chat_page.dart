@@ -166,6 +166,7 @@ class _ChatView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final controller = context.watch<AIChatController>();
     final isEmpty = controller.messages.isEmpty;
 
@@ -254,10 +255,10 @@ class _ChatView extends StatelessWidget {
         ),
 
         // Input bar
-        const Align(
+        Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
-            padding: EdgeInsets.only(bottom: 90),
+            padding: EdgeInsets.only(bottom: bottomPadding),
             child: _InputBar(),
           ),
         ),
@@ -352,36 +353,6 @@ class _WelcomeState extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ));
-
-                //
-                //   GestureDetector(
-                //   onTap: () {
-                //     HapticFeedback.lightImpact();
-                //     chat.sendMessage(reply);
-                //   },
-                //   child: Container(
-                //     padding: const EdgeInsets.symmetric(
-                //       horizontal: 12,
-                //       vertical: 8,
-                //     ),
-                //     decoration: BoxDecoration(
-                //       borderRadius: BorderRadius.circular(14),
-                //       color: primaryColor.withAlpha(20),
-                //       border: Border.all(
-                //         color: primaryColor.withAlpha(80),
-                //         width: 1,
-                //       ),
-                //     ),
-                //     child: Text(
-                //       reply,
-                //       style: TextStyle(
-                //         fontSize: 13,
-                //         color: primaryColor,
-                //         fontWeight: FontWeight.w500,
-                //       ),
-                //     ),
-                //   ),
-                // );
               }).toList(),
             ),
           ),
