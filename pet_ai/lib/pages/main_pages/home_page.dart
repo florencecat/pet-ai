@@ -7,6 +7,7 @@ import 'package:pet_ai/services/file_storage_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/font_awesome_icons.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
+import 'package:pet_ai/theme/widgets/skeleton.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
@@ -32,10 +33,10 @@ class HomePage extends StatefulWidget {
   });
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   PetProfile? _profile;
   bool? _multipleProfiles;
 
@@ -50,6 +51,10 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _initScreen();
   }
+
+  /// Called by [MainPage] via GlobalKey whenever the home tab becomes active,
+  /// so that data added on other tabs (events, notes, etc.) is reflected here.
+  void refresh() => _initScreen();
 
   Future<void> _initScreen() async {
     setState(() {
@@ -329,39 +334,47 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
           children: [
-            if (_profile != null)
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Доброе утро,'),
-                        Text(
-                          'как там ${_profile!.name}?🐾',
-                          style: Theme.of(context).textTheme.titleLarge!
-                              .copyWith(
-                                inherit: true,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 22,
-                              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _isLoadingProfile
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            SkeletonText(width: 90, height: 13),
+                            SizedBox(height: 7),
+                            SkeletonText(width: 200, height: 22),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Доброе утро,'),
+                            Text(
+                              'как там ${_profile!.name}?🐾',
+                              style: Theme.of(context).textTheme.titleLarge!
+                                  .copyWith(
+                                    inherit: true,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 22,
+                                  ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                ),
+                // Кнопка настроек
+                GlassCard(
+                  callback: () => _openSettings(context),
+                  child: Icon(
+                    Icons.settings_outlined,
+                    color: context
+                        .watch<AppearanceController>()
+                        .secondaryColor
+                        .withAlpha(180),
                   ),
-                  // Кнопка настроек
-                  GlassCard(
-                    callback: () => _openSettings(context),
-                    child: Icon(
-                      Icons.settings_outlined,
-                      color: context
-                          .watch<AppearanceController>()
-                          .secondaryColor
-                          .withAlpha(180),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
+            ),
 
             const SizedBox(height: 16),
 
@@ -377,129 +390,147 @@ class _HomePageState extends State<HomePage> {
                         Expanded(
                           flex: 1,
                           child: GestureDetector(
-                            onTap: () => _showProfileSwitcher(context),
-                            child: InlineLoading(
-                              isLoading: _isLoadingProfile,
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(3),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: context
-                                            .watch<AppearanceController>()
-                                            .primaryColor,
-                                        width: 2.5,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: context
-                                              .watch<AppearanceController>()
-                                              .primaryColor
-                                              .withAlpha(80),
-                                          blurRadius: 10,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
+                            onTap: _isLoadingProfile
+                                ? null
+                                : () => _showProfileSwitcher(context),
+                            child: _isLoadingProfile
+                                ? Center(
+                                    child: SkeletonBox(
+                                      width: 66,
+                                      height: 66,
+                                      borderRadius: 33,
                                     ),
-                                    child: CircleAvatar(
-                                      radius: 30,
-                                      backgroundColor: Colors.white.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      child: _profile?.profileImage == null
-                                          ? const Icon(
-                                              Icons.pets,
-                                              size: 38,
-                                              color: Colors.white,
-                                            )
-                                          : CircleAvatar(
-                                              radius: 38,
-                                              backgroundImage: FileImage(
-                                                _profile!.profileImage!,
-                                              ),
+                                  )
+                                : Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: context
+                                                .watch<AppearanceController>()
+                                                .primaryColor,
+                                            width: 2.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: context
+                                                  .watch<AppearanceController>()
+                                                  .primaryColor
+                                                  .withAlpha(80),
+                                              blurRadius: 10,
+                                              spreadRadius: 1,
                                             ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      width: 22,
-                                      height: 22,
-                                      decoration: BoxDecoration(
-                                        color: context
-                                            .watch<AppearanceController>()
-                                            .primaryColor,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
+                                          ],
+                                        ),
+                                        child: CircleAvatar(
+                                          radius: 30,
+                                          backgroundColor: Colors.white.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                          child: _profile?.profileImage == null
+                                              ? const Icon(
+                                                  Icons.pets,
+                                                  size: 38,
+                                                  color: Colors.white,
+                                                )
+                                              : CircleAvatar(
+                                                  radius: 38,
+                                                  backgroundImage: FileImage(
+                                                    _profile!.profileImage!,
+                                                  ),
+                                                ),
                                         ),
                                       ),
-                                      child: Icon(
-                                        _multipleProfiles == true
-                                            ? Icons.expand_more_rounded
-                                            : Icons.add,
-                                        size: 14,
-                                        color: Colors.white,
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          width: 22,
+                                          height: 22,
+                                          decoration: BoxDecoration(
+                                            color: context
+                                                .watch<AppearanceController>()
+                                                .primaryColor,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            _multipleProfiles == true
+                                                ? Icons.expand_more_rounded
+                                                : Icons.add,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
                           ),
                         ),
 
                         Expanded(
                           flex: 4,
-                          child: InlineLoading(
-                            isLoading: _isLoadingProfile,
-                            child: ListTile(
-                              title: Row(
-                                spacing: 6,
-                                children: [
-
-                                   Text(
-                                      _profile == null || _profile!.name.isEmpty
-                                          ? 'Загружаем...'
-                                          : _profile!.name,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleLarge,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  if (_profile != null &&
-                                      _profile!.gender.icon != null)
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: _profile!.gender.color,
+                          child: _isLoadingProfile
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: const [
+                                      SkeletonText(width: 130, height: 18),
+                                      SizedBox(height: 8),
+                                      SkeletonText(width: 170, height: 13),
+                                    ],
+                                  ),
+                                )
+                              : ListTile(
+                                  title: Row(
+                                    spacing: 6,
+                                    children: [
+                                      Text(
+                                        _profile == null || _profile!.name.isEmpty
+                                            ? 'Без имени'
+                                            : _profile!.name,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      child: Padding(
-                                        padding: EdgeInsetsGeometry.all(2),
-                                        child: Icon(
-                                          _profile!.gender.icon,
-                                          size: 18,
-                                          color: context
-                                              .watch<AppearanceController>()
-                                              .secondaryColor,
+                                      if (_profile != null &&
+                                          _profile!.gender.icon != null)
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: _profile!.gender.color,
+                                          ),
+                                          child: Padding(
+                                            padding: EdgeInsetsGeometry.all(2),
+                                            child: Icon(
+                                              _profile!.gender.icon,
+                                              size: 18,
+                                              color: context
+                                                  .watch<AppearanceController>()
+                                                  .secondaryColor,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              subtitle: Text(
-                                description.isEmpty
-                                    ? 'Здесь будет имя и порода...'
-                                    : description,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                          ),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    description.isEmpty
+                                        ? 'Порода и возраст'
+                                        : description,
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ),
                         ),
                       ],
                     ),

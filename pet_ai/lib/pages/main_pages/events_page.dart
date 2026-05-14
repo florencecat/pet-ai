@@ -48,6 +48,20 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   @override
+  void didUpdateWidget(EventsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // When the parent navigates to a specific date (e.g. from HomePage),
+    // jump the calendar to that date without triggering a full data reload.
+    if (widget.initialDate != null &&
+        widget.initialDate != oldWidget.initialDate) {
+      setState(() {
+        _focusedDay = widget.initialDate!;
+        _selectedDay = widget.initialDate!;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
