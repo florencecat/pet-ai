@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'dart:convert';
 import 'package:pet_ai/services/http_client.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:hive/hive.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 part 'ai_service.g.dart';
 
 @HiveType(typeId: 0)
@@ -22,6 +24,18 @@ class ChatMessage extends HiveObject {
     required this.role,
     required this.content,
     required this.timestamp,
+  });
+}
+
+class ArchivedThread {
+  final String boxName;
+  final DateTime date;
+  final List<ChatMessage> messages;
+
+  const ArchivedThread({
+    required this.boxName,
+    required this.date,
+    required this.messages,
   });
 }
 
@@ -141,10 +155,15 @@ class GigaChatService {
 }
 
 class AIChatController extends ChangeNotifier {
+  static const _currentBoxKey = 'current_thread_box';
+  static const _archivedBoxesKey = 'archived_threads';
+  static const _defaultBoxName = 'chat_box';
+
   final GigaChatService service;
 
   ChatRepository? _repo;
   PetProfile? _pet;
+  String _currentBoxName = _defaultBoxName;
 
   bool isLoading = false;
   bool isInitialized = false;
@@ -156,21 +175,46 @@ class AIChatController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      _currentBoxName = prefs.getString(_currentBoxKey) ?? _defaultBoxName;
+
       final results = await Future.wait([
         ProfileService().loadActiveProfile(),
-        Hive.openBox<ChatMessage>('chat_box'),
+        Hive.openBox<ChatMessage>(_currentBoxName),
       ]);
 
       final pet = results[0] as PetProfile?;
-      final box = results[1] as Box<ChatMessage>;
+      var box = results[1] as Box<ChatMessage>;
 
       if (pet == null) {
         throw Exception('Профиль питомца не найден');
       }
 
       _pet = pet;
-      _repo = ChatRepository(box);
 
+      // Check if we should archive and start a new thread (new day trigger)
+      if (box.isNotEmpty) {
+        final lastMsg = box.values.last;
+        final lastDay = DateUtils.dateOnly(lastMsg.timestamp);
+        final today = DateUtils.dateOnly(DateTime.now());
+
+        if (lastDay.isBefore(today)) {
+          // Archive the current box name
+          final archived = prefs.getStringList(_archivedBoxesKey) ?? [];
+          if (!archived.contains(_currentBoxName)) {
+            archived.add(_currentBoxName);
+            await prefs.setStringList(_archivedBoxesKey, archived);
+          }
+
+          // Create a new box for the current session
+          _currentBoxName =
+              'chat_thread_${DateTime.now().millisecondsSinceEpoch}';
+          await prefs.setString(_currentBoxKey, _currentBoxName);
+          box = await Hive.openBox<ChatMessage>(_currentBoxName);
+        }
+      }
+
+      _repo = ChatRepository(box);
       isInitialized = true;
     } catch (e) {
       if (kDebugMode) {
@@ -185,6 +229,27 @@ class AIChatController extends ChangeNotifier {
   List<ChatMessage> get messages => _repo?.messages ?? [];
 
   bool get isReady => _repo != null && _pet != null;
+
+  String get petName => _pet?.name ?? 'питомец';
+
+  /// Loads all archived threads, newest first.
+  Future<List<ArchivedThread>> loadArchivedThreads() async {
+    final prefs = await SharedPreferences.getInstance();
+    final names = prefs.getStringList(_archivedBoxesKey) ?? [];
+
+    final threads = <ArchivedThread>[];
+    for (final name in names.reversed) {
+      final box = await Hive.openBox<ChatMessage>(name);
+      if (box.isNotEmpty) {
+        threads.add(ArchivedThread(
+          boxName: name,
+          date: box.values.first.timestamp,
+          messages: box.values.toList(),
+        ));
+      }
+    }
+    return threads;
+  }
 
   Stream<String> fakeStream(String fullText) async* {
     for (int i = 0; i < fullText.length; i++) {
@@ -252,7 +317,7 @@ class AIChatController extends ChangeNotifier {
 
   static Future<void> clearMessageHistory() async {
     final repository = ChatRepository(
-      await Hive.openBox<ChatMessage>('chat_box'),
+      await Hive.openBox<ChatMessage>(_defaultBoxName),
     );
     repository.clear();
   }

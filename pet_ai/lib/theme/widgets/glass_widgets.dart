@@ -32,7 +32,7 @@ class GlassPlate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const borderRadius = BorderRadius.all(Radius.circular(20));
+    const borderRadius = BorderRadius.all(Radius.circular(24));
     final borderColor = transparent ? color.withAlpha(180) : color;
     final fillColor = transparent ? color.withAlpha(220) : color;
 
@@ -485,21 +485,37 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
 
 class SoftRoundedIcon extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final Color? color;
+  final List<Color>? gradient;
   final double size;
 
-  const SoftRoundedIcon({super.key, required this.icon, required this.color, this.size = 20});
+  const SoftRoundedIcon({
+    super.key,
+    required this.icon,
+    this.color,
+    this.gradient,
+    this.size = 20,
+  });
 
   @override
   Widget build(BuildContext context) {
+    assert(color != null || gradient != null);
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * 0.8),
-        color: color.withAlpha(64),
+        gradient: gradient == null
+            ? null
+            : LinearGradient(
+                colors: gradient!,
+                begin: AlignmentGeometry.topLeft,
+                end: AlignmentGeometry.bottomRight,
+              ),
+        color: color?.withAlpha(64),
       ),
       child: Padding(
         padding: EdgeInsetsGeometry.all(size * 0.6),
-        child: Icon(icon, size: size, color: color),
+        child: Icon(icon, size: size, color: color ?? Colors.white),
       ),
     );
   }
