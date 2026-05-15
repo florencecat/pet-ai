@@ -808,11 +808,10 @@ class _EventTileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final overdue = event.isOverdue;
-    final cardColor = overdue ? const Color(0xFFFFAD96) : Colors.white;
     final time = DateFormat('HH:mm').format(event.dateTime);
 
     return GlassPlate(
-      color: cardColor,
+      color: Colors.white,
       transparent: false,
       padding: 0,
       child: InkWell(
@@ -870,6 +869,11 @@ class _EventTileCard extends StatelessWidget {
                                   decoration: _isCompleted
                                       ? TextDecoration.lineThrough
                                       : null,
+                                decorationColor: overdue ? ThemeColors.dangerZone
+                                    : context.watch<AppearanceController>().secondaryColor,
+                                decorationThickness: 3,
+                                color: overdue ? ThemeColors.dangerZone
+                                    : context.watch<AppearanceController>().secondaryColor
                                 ),
                           ),
 
