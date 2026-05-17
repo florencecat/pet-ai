@@ -238,7 +238,7 @@ class _ChatView extends StatelessWidget {
                   children: [
                     _PulsingDot(color: ThemeColors.aiChatOnlineColor),
                     Text(
-                      'на связи • знает всё про ${controller.petName}',
+                      'на связи',
                       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         color: ThemeColors.aiChatOnlineColor,
                       ),

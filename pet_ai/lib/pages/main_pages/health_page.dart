@@ -122,7 +122,7 @@ class _HealthPageState extends State<HealthPage> {
     if (updated == true) await _initScreen();
   }
 
-  void _openTreatments(BuildContext context) async {
+  void _openTreatments(BuildContext context, TreatmentKind kind) async {
     if (_profile == null) return;
     final updated = await showModalBottomSheet<bool>(
       context: context,
@@ -130,7 +130,7 @@ class _HealthPageState extends State<HealthPage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => TreatmentSheet(profile: _profile!),
+      builder: (_) => TreatmentSheet(profile: _profile!, presetKind: kind),
     );
     if (updated == true) await _initScreen();
   }
@@ -367,16 +367,11 @@ class _HealthPageState extends State<HealthPage> {
                     icon: FontAwesome.weight,
                     iconColor: ThemeColors.weightIconColor,
                     caption: _weightStatus,
-                    topRightWidget: _weightDynamics != null
-                        ? dynamicsTextWidget(
+                    bottomWidget: _weightDynamics != null
+                        ? dynamicsBadge(
                             _weightDynamics!,
                             Theme.of(context).textTheme.bodySmall!,
                           )
-                        : null,
-                    bottomWidget:
-                        _profile != null &&
-                            _profile!.weightHistory.entries.length >= 2
-                        ? _WeightSummaryRow(history: _profile!.weightHistory)
                         : null,
                   ),
                   _HealthActionButton(
@@ -384,6 +379,17 @@ class _HealthPageState extends State<HealthPage> {
                     icon: Icons.sentiment_very_satisfied_outlined,
                     iconColor: ThemeColors.moodIconColor,
                     caption: _moodStatus,
+                    bottomWidget:
+                        _profile != null &&
+                            _profile!.moodHistory.lastEntry != null
+                        ? Text(
+                            formatSmartDate(
+                              _profile!.moodHistory.lastEntry!.date,
+                              pattern: 'd MMMM',
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall!,
+                          )
+                        : null,
                   ),
                   _HealthActionButton(
                     callback: () => _openFoodHistory(context),
@@ -405,7 +411,6 @@ class _HealthPageState extends State<HealthPage> {
                 Row(
                   children: [
                     _PageTitle('Вес'),
-                    /*Text('Вес', style: Theme.of(context).textTheme.titleLarge),*/
                     const SizedBox(width: 8),
                     Text('•', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(width: 4),
@@ -472,7 +477,24 @@ class _HealthPageState extends State<HealthPage> {
 
             const SizedBox(height: 8),
 
-            GlassPlate(child: WeightChart(entries: weightEntries, height: 180)),
+            GlassPlate(
+              child: Column(
+                children: [
+                  WeightChart(entries: weightEntries, height: 180),
+                  if (_profile != null &&
+                      _profile!.weightHistory.entries.length >= 3)
+                    Padding(
+                      padding: EdgeInsetsGeometry.symmetric(
+                        vertical: 4,
+                        horizontal: 8,
+                      ),
+                      child: _WeightSummaryRow(
+                        history: _profile!.weightHistory,
+                      ),
+                    ),
+                ],
+              ),
+            ),
 
             const SizedBox(height: 20),
 
@@ -494,7 +516,7 @@ class _HealthPageState extends State<HealthPage> {
                           child: _TreatmentStatusTile(
                             kind: kind,
                             lastEntry: last,
-                            onTap: () => _openTreatments(context),
+                            onTap: () => _openTreatments(context, kind),
                           ),
                         );
                       }).toList(),
@@ -578,53 +600,43 @@ class _AlertBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = badge.severity.palette.mainColor;
+    return GestureDetector(
+      onTap: () {},
+      child: GlassPlate(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              SoftRoundedIcon(
+                icon: badge.icon ?? badge.severity.icon,
+                color: badge.severity.palette.mainColor,
+                size: 22,
+              ),
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withAlpha(100), width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withAlpha(50),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              badge.icon ?? badge.severity.icon,
-              color: color,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  badge.title,
-                  style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                    color: badge.severity.palette.darkShade,
-                    fontWeight: FontWeight.w700,
-                  ),
+              const SizedBox(width: 12),
+              // Label + dates
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      badge.title,
+                      style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    SoftGlassBadge(
+                      color: badge.severity.palette.mainColor,
+                      label: badge.subtitle,
+                      selected: false,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  badge.subtitle,
-                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    color: badge.severity.palette.darkShade.withAlpha(180),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -637,7 +649,6 @@ class _HealthActionButton extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String? caption;
-  final Widget? topRightWidget;
   final Widget? bottomWidget;
 
   const _HealthActionButton({
@@ -645,7 +656,6 @@ class _HealthActionButton extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.caption,
-    this.topRightWidget,
     this.bottomWidget,
   });
 
@@ -661,11 +671,7 @@ class _HealthActionButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [softIcon, ?topRightWidget],
-            ),
+            Row(children: [softIcon]),
             const SizedBox(height: 8),
             if (caption != null)
               Text(
@@ -675,10 +681,8 @@ class _HealthActionButton extends StatelessWidget {
                   context,
                 ).textTheme.titleMedium!.copyWith(inherit: true, fontSize: 16),
               ),
-            if (bottomWidget != null) ...[
-              const SizedBox(height: 6),
-              bottomWidget!,
-            ],
+
+            if (bottomWidget != null) ...[const SizedBox(height: 6), bottomWidget!]
           ],
         ),
       ),
@@ -773,7 +777,7 @@ class _TreatmentStatusTile extends StatelessWidget {
     if (lastEntry == null) {
       return (
         color: ThemeColors.secondary,
-        label: 'Нет данных',
+        label: 'Не заполнено',
         icon: Icons.add_circle_outline,
       );
     }
@@ -796,7 +800,7 @@ class _TreatmentStatusTile extends StatelessWidget {
     if (daysLeft <= lastEntry!.remindBeforeDays) {
       return (
         color: ThemeColors.warning.mainColor,
-        label: 'Скоро (${daysLeft} дн.)',
+        label: 'Скоро ($daysLeft дн.)',
         icon: Icons.warning_amber_rounded,
       );
     }
@@ -834,10 +838,12 @@ class _TreatmentStatusTile extends StatelessWidget {
                     ),
                     if (lastEntry != null) ...[
                       const SizedBox(height: 2),
-                      Text(
-                        'Последний: ${formatSmartDate(lastEntry!.date)} · '
-                        'След.: ${DateFormat('dd.MM.yyyy').format(lastEntry!.nextDate)}',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      SoftGlassBadge(
+                        color: status.color,
+                        icon: status.icon,
+                        label:
+                            'Следующая ${DateFormat('d MMMM yyyy', 'ru-RU').format(lastEntry!.nextDate)}',
+                        selected: false,
                       ),
                     ] else ...[
                       const SizedBox(height: 4),

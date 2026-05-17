@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/history.dart';
+import 'package:pet_ai/services/event_service.dart';
 
 // ─── Предустановленные симптомы ──────────────────────────────────────────────
 
