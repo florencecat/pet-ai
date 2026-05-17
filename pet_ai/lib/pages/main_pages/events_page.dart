@@ -431,20 +431,57 @@ class _EventsPageState extends State<EventsPage> {
                 Text(
                   _dayLabel(_selectedDay!),
                   style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                    color: ThemeColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 if (filtered.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Нет событий',
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: ThemeColors.border,
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(height: 32),
+                      Icon(
+                        Icons.event_busy_outlined,
+                        size: 72,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor
+                            .withAlpha(60),
                       ),
-                    ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Нет событий.',
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  inherit: true,
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor
+                                      .withAlpha(60),
+                                ),
+                          ),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsetsGeometry.all(5),
+                            ),
+                            onPressed: _openCreateSheet,
+                            child: Text(
+                              'Создать',
+                              style: Theme.of(context).textTheme.titleLarge!
+                                  .copyWith(
+                                    inherit: true,
+                                    color: context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                        .withAlpha(192),
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   )
                 else
                   ...filtered.map(
@@ -684,7 +721,9 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
                   label: 'Выполнено',
                   onTap: () {
                     _close();
-                    widget.onCompletedChanged?.call(widget.event.isCompletedOn(widget.selectedDate!));
+                    widget.onCompletedChanged?.call(
+                      widget.event.isCompletedOn(widget.selectedDate!),
+                    );
                   },
                 ),
                 const SizedBox(width: _btnGap),
@@ -860,6 +899,7 @@ class _EventTileCard extends StatelessWidget {
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             event.name,
@@ -869,11 +909,17 @@ class _EventTileCard extends StatelessWidget {
                                   decoration: _isCompleted
                                       ? TextDecoration.lineThrough
                                       : null,
-                                decorationColor: overdue ? ThemeColors.dangerZone
-                                    : context.watch<AppearanceController>().secondaryColor,
-                                decorationThickness: 3,
-                                color: overdue ? ThemeColors.dangerZone
-                                    : context.watch<AppearanceController>().secondaryColor
+                                  decorationColor: overdue
+                                      ? ThemeColors.dangerZone
+                                      : context
+                                            .watch<AppearanceController>()
+                                            .secondaryColor,
+                                  decorationThickness: 3,
+                                  color: overdue
+                                      ? ThemeColors.dangerZone
+                                      : context
+                                            .watch<AppearanceController>()
+                                            .secondaryColor,
                                 ),
                           ),
 

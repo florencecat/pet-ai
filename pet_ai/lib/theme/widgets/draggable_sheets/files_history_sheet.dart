@@ -265,7 +265,7 @@ class _EmptyState extends StatelessWidget {
               size: 72,
               color: context
                   .watch<AppearanceController>()
-                  .primaryColor
+                  .secondaryColor
                   .withAlpha(60),
             ),
             const SizedBox(height: 12),
@@ -274,7 +274,7 @@ class _EmptyState extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                 color: context
                     .watch<AppearanceController>()
-                    .primaryColor
+                    .secondaryColor
                     .withAlpha(120),
               ),
             ),

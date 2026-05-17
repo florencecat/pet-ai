@@ -387,17 +387,19 @@ class GlassBadge extends StatelessWidget {
 
 class SoftGlassBadge extends StatefulWidget {
   final Color color;
-  final IconData icon;
+  final IconData? icon;
   final String label;
+  final TextStyle? labelStyle;
   final bool selected;
   final ValueChanged<bool>? onChanged;
 
   const SoftGlassBadge({
     super.key,
     required this.color,
-    required this.icon,
     required this.label,
-    required this.selected,
+    this.icon,
+    this.labelStyle,
+    this.selected = false,
     this.onChanged,
   });
 
@@ -461,15 +463,16 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                widget.icon,
-                size: 14,
-                color: selected ? Colors.white : color,
-              ),
+              if (widget.icon != null)
+                Icon(
+                  widget.icon,
+                  size: 14,
+                  color: selected ? Colors.white : color,
+                ),
               const SizedBox(width: 5),
               Text(
                 widget.label,
-                style: TextStyle(
+                style: widget.labelStyle ?? TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: selected ? Colors.white : color,

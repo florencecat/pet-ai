@@ -12,8 +12,13 @@ import 'package:provider/provider.dart';
 /// Шит для добавления и просмотра мед. мероприятий.
 class TreatmentSheet extends StatefulWidget {
   final PetProfile profile;
+  final TreatmentKind presetKind;
 
-  const TreatmentSheet({super.key, required this.profile});
+  const TreatmentSheet({
+    super.key,
+    required this.profile,
+    this.presetKind = TreatmentKind.rabies,
+  });
 
   @override
   State<TreatmentSheet> createState() => _TreatmentSheetState();
@@ -31,6 +36,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
   void initState() {
     super.initState();
     _nextDate = _date.add(_kind.defaultInterval);
+    _kind = widget.presetKind;
   }
 
   @override
@@ -68,6 +74,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
         _nextDate = picked;
       } else {
         _date = picked;
+        _nextDate = picked.add(_kind.defaultInterval);
         // Обновляем nextDate, если он меньше date
         if (_nextDate.isBefore(_date)) {
           _nextDate = _date.add(_kind.defaultInterval);
@@ -185,7 +192,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _nameCtrl,
-                    decoration: baseInputDecoration('Название прививки')
+                    decoration: baseInputDecoration('Название прививки'),
                   ),
 
                   const SizedBox(height: 12),
