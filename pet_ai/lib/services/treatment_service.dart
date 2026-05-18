@@ -37,6 +37,7 @@ class TreatmentService {
       dateTime: eventDateTime,
       remindBeforeMinutes: remindBeforeDays * 24 * 60,
       petIds: [petId],
+      source: EventSource.treatment,
     );
 
     await EventService().createEvent(event);

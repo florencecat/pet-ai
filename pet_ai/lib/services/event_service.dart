@@ -2,11 +2,22 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pet_ai/models/note.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
+import 'profile_service.dart';
+import '../models/pill_reminder.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }
+
+/// Источник создания события.
+/// Позволяет связать событие с породившим его объектом (препарат, вакцина, заметка)
+/// и применить контекстно-корректное поведение (синхронизация статуса, UI).
+enum EventSource {
+  manual,    // создано вручную через EventSheet
+  pill,      // создано из напоминания о препарате (PillReminder)
+  treatment, // создано из прививки / обработки (TreatmentEntry)
+  note,      // создано из заметки
+}
 
 /// Дни недели для custom-повторений (1=Пн, 7=Вс)
 class WeekDays {
@@ -136,6 +147,13 @@ class PetEvent {
   List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
   int remindBeforeMinutes;
 
+  /// Откуда создано событие (вручную, препарат, вакцина, заметка).
+  final EventSource source;
+
+  /// ID связанного объекта: для [EventSource.pill] — PillReminder.id,
+  /// для [EventSource.treatment] — не используется (link хранится в TreatmentEntry.eventId).
+  final String? sourceId;
+
   PetEvent({
     required this.name,
     required this.category,
@@ -144,6 +162,8 @@ class PetEvent {
     this.customDays = const [],
     this.remindBeforeMinutes = 0,
     List<String>? petIds,
+    this.source = EventSource.manual,
+    this.sourceId,
   }) : id = UniqueKey().toString(),
         starred = false,
         completedDates = {},
@@ -160,6 +180,8 @@ class PetEvent {
     required this.repeat,
     required this.customDays,
     required this.remindBeforeMinutes,
+    this.source = EventSource.manual,
+    this.sourceId,
   });
 
   PetEvent.fromNote({required this.name, required this.dateTime, this.symptomTag})
@@ -170,7 +192,9 @@ class PetEvent {
         petIds = [],
         repeat = RepeatInterval.none,
         customDays = const [],
-        remindBeforeMinutes = 0;
+        remindBeforeMinutes = 0,
+        source = EventSource.note,
+        sourceId = null;
 
   PetEvent.empty()
       : id = UniqueKey().toString(),
@@ -182,7 +206,9 @@ class PetEvent {
         petIds = [],
         repeat = RepeatInterval.none,
         customDays = const [],
-        remindBeforeMinutes = 0;
+        remindBeforeMinutes = 0,
+        source = EventSource.manual,
+        sourceId = null;
 
   /// Форматирует дату как ключ "yyyy-MM-dd"
   static String _dateKey(DateTime date) =>
@@ -261,6 +287,8 @@ class PetEvent {
     'repeat': repeat.index,
     'customDays': customDays,
     'remindBeforeMinutes': remindBeforeMinutes,
+    'source': source.name,
+    if (sourceId != null) 'sourceId': sourceId,
   };
 
   factory PetEvent.fromJson(Map<String, dynamic> json) {
@@ -279,6 +307,11 @@ class PetEvent {
         ?.map((e) => e as String)
         .toList() ?? [];
 
+    final source = EventSource.values.firstWhere(
+      (s) => s.name == (json['source'] as String?),
+      orElse: () => EventSource.manual,
+    );
+
     return PetEvent.deserialize(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -291,6 +324,8 @@ class PetEvent {
       customDays: (json['customDays'] as List<dynamic>?)
           ?.map((e) => e as int).toList() ?? const [],
       remindBeforeMinutes: json['remindBeforeMinutes'] as int? ?? 0,
+      source: source,
+      sourceId: json['sourceId'] as String?,
     );
   }
 }
@@ -371,11 +406,66 @@ class EventService {
     }
   }
 
-  /// Переключает выполнение события для конкретного дня
+  /// Переключает выполнение события для конкретного дня.
+  /// Если событие связано с препаратом ([EventSource.pill]), синхронизирует
+  /// статус с [PillReminder.takenDates] — чтобы отметка в календаре
+  /// отражалась и на странице Здоровья, и наоборот.
   Future<void> toggleCompleted(
       String petId, PetEvent event, DateTime day) async {
     event.toggleCompletedOn(day);
     await saveEvent(event);
+
+    if (event.source == EventSource.pill && event.sourceId != null) {
+      await _syncToPillReminder(
+        petId: petId,
+        reminderId: event.sourceId!,
+        day: day,
+        completed: event.isCompletedOn(day),
+      );
+    }
+  }
+
+  /// Устанавливает статус выполнения события напрямую по ID (без переключения).
+  /// Вызывается из [PillReminderService] при отметке препарата принятым,
+  /// чтобы синхронизировать событие в календаре.
+  Future<void> setCompletedOn(
+      String eventId, DateTime day, bool completed) async {
+    final all = await _loadAll();
+    final idx = all.indexWhere((e) => e.id == eventId);
+    if (idx < 0) return;
+    final key = PetEvent._dateKey(day);
+    if (completed) {
+      all[idx].completedDates.add(key);
+    } else {
+      all[idx].completedDates.remove(key);
+    }
+    await _persistAll(all);
+  }
+
+  /// Синхронизирует статус выполнения в [PillReminder.takenDates]
+  /// при переключении события из календаря / листа событий.
+  Future<void> _syncToPillReminder({
+    required String petId,
+    required String reminderId,
+    required DateTime day,
+    required bool completed,
+  }) async {
+    final profile = await ProfileService().loadProfile(petId);
+    if (profile == null) return;
+    final idx = profile.pillReminders.indexWhere((r) => r.id == reminderId);
+    if (idx < 0) return;
+    final old = profile.pillReminders[idx];
+    final key = PillReminder.dateKey(day);
+    final dates = List<String>.from(old.takenDates);
+    if (completed && !dates.contains(key)) {
+      dates.add(key);
+    } else if (!completed) {
+      dates.remove(key);
+    } else {
+      return; // already in sync
+    }
+    profile.pillReminders[idx] = old.copyWith(takenDates: dates);
+    await ProfileService().saveProfile(profile);
   }
 
   /// Все события, которые приходятся на конкретный день (включая повторяющиеся)

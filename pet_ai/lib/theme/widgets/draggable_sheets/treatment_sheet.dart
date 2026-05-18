@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/profile_service.dart';
@@ -9,7 +10,8 @@ import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
-/// Шит для добавления и просмотра мед. мероприятий.
+// ─── Sheet: добавление + история всех обработок ──────────────────────────────
+
 class TreatmentSheet extends StatefulWidget {
   final PetProfile profile;
   final TreatmentKind presetKind;
@@ -35,8 +37,8 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
   @override
   void initState() {
     super.initState();
-    _nextDate = _date.add(_kind.defaultInterval);
     _kind = widget.presetKind;
+    _nextDate = _date.add(_kind.defaultInterval);
   }
 
   @override
@@ -48,7 +50,6 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
   void _setKind(TreatmentKind k) {
     setState(() {
       _kind = k;
-      // Пересчитываем nextDate относительно текущей date
       _nextDate = _date.add(k.defaultInterval);
     });
   }
@@ -75,7 +76,6 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
       } else {
         _date = picked;
         _nextDate = picked.add(_kind.defaultInterval);
-        // Обновляем nextDate, если он меньше date
         if (_nextDate.isBefore(_date)) {
           _nextDate = _date.add(_kind.defaultInterval);
         }
@@ -104,46 +104,43 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _delete(TreatmentEntry entry) async {
-    final confirmed = await showDialog<bool>(
+  void _openDetail(TreatmentEntry entry) async {
+    // Collect all entries of the same kind (+name for vaccines)
+    final related = widget.profile.treatmentHistory.entries
+        .where((e) =>
+            e.kind == entry.kind &&
+            (entry.kind != TreatmentKind.vaccine || e.name == entry.name))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить запись?'),
-        content: const Text(
-          'Запись будет удалена. Связанное напоминание тоже будет отменено.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TreatmentDetailSheet(
+        profile: widget.profile,
+        kind: entry.kind,
+        vaccineName: entry.kind == TreatmentKind.vaccine ? entry.name : null,
+        entries: related,
+        onDeleted: (deleted) {
+          setState(() {
+            widget.profile.treatmentHistory.entries.removeWhere(
+              (e) =>
+                  e.date == deleted.date &&
+                  e.kind == deleted.kind &&
+                  e.name == deleted.name,
+            );
+          });
+        },
       ),
     );
-    if (confirmed != true) return;
-    await TreatmentService().deleteTreatment(widget.profile.id, entry);
-    if (!mounted) return;
-    setState(() {
-      widget.profile.treatmentHistory.entries.removeWhere(
-        (e) =>
-            e.date == entry.date &&
-            e.kind == entry.kind &&
-            e.name == entry.name,
-      );
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final history = widget.profile.treatmentHistory;
-    final entries = List.of(history.entries)
+    final entries = List.of(widget.profile.treatmentHistory.entries)
       ..sort((a, b) => b.date.compareTo(a.date));
 
     return DraggableSheet(
@@ -170,10 +167,8 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Тип мероприятия',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text('Тип мероприятия',
+                      style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 6,
@@ -188,16 +183,12 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                       );
                     }).toList(),
                   ),
-
                   const SizedBox(height: 12),
                   TextField(
                     controller: _nameCtrl,
                     decoration: baseInputDecoration('Название прививки'),
                   ),
-
                   const SizedBox(height: 12),
-
-                  // Date row
                   Row(
                     children: [
                       Expanded(
@@ -219,31 +210,23 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 12),
-
-                  // Remind before
                   Row(
                     children: [
                       Icon(
                         Icons.alarm,
                         size: 18,
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
+                        color: context.watch<AppearanceController>().primaryColor,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          'Напомнить за (дн.):',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                        child: Text('Напомнить за (дн.):',
+                            style: Theme.of(context).textTheme.bodyMedium),
                       ),
                       IconButton(
                         icon: const Icon(Icons.remove_circle_outline),
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
+                        color:
+                            context.watch<AppearanceController>().primaryColor,
                         onPressed: _remindBeforeDays > 0
                             ? () => setState(() => _remindBeforeDays -= 1)
                             : null,
@@ -259,9 +242,8 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline),
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
+                        color:
+                            context.watch<AppearanceController>().primaryColor,
                         onPressed: _remindBeforeDays < 60
                             ? () => setState(() => _remindBeforeDays += 1)
                             : null,
@@ -282,43 +264,377 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
               child: Text(
                 'Записей пока нет',
                 textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
+                style: Theme.of(context).textTheme.bodyMedium!
+                    .copyWith(color: ThemeColors.border),
               ),
             )
           else ...[
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 6),
-              child: Text(
-                'История',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              child: Text('История', style: Theme.of(context).textTheme.titleMedium),
             ),
             ...entries.map(
               (entry) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: GlassPlate(
-                  child: ListTile(
-                    leading: Icon(entry.kind.icon, color: entry.kind.color),
-                    title: Text(entry.displayName),
-                    subtitle: Text(
-                      'Сделано: ${formatSmartDate(entry.date)} • '
-                      'Следующее: ${formatSmartDate(entry.nextDate)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: ThemeColors.dangerZone,
+                  padding: 0,
+                  child: InkWell(
+                    onTap: () => _openDetail(entry),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: entry.kind.color.withAlpha(20),
+                            ),
+                            child: Icon(entry.kind.icon,
+                                color: entry.kind.color, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(entry.displayName,
+                                    style:
+                                        Theme.of(context).textTheme.titleSmall),
+                                Text(
+                                  'Сделано: ${formatSmartDate(entry.date)}  •  '
+                                  'Следующее: ${formatSmartDate(entry.nextDate)}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right,
+                              color: ThemeColors.border, size: 20),
+                        ],
                       ),
-                      onPressed: () => _delete(entry),
                     ),
                   ),
                 ),
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Sheet: детали препарата / вакцины ───────────────────────────────────────
+
+class TreatmentDetailSheet extends StatelessWidget {
+  final PetProfile profile;
+  final TreatmentKind kind;
+  final String? vaccineName; // non-null only for TreatmentKind.vaccine
+  final List<TreatmentEntry> entries; // newest first
+  final ValueChanged<TreatmentEntry> onDeleted;
+
+  const TreatmentDetailSheet({
+    super.key,
+    required this.profile,
+    required this.kind,
+    this.vaccineName,
+    required this.entries,
+    required this.onDeleted,
+  });
+
+  String get _title =>
+      vaccineName != null && vaccineName!.isNotEmpty
+          ? 'Прививка: $vaccineName'
+          : kind.label;
+
+  Future<void> _delete(BuildContext context, TreatmentEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить запись?'),
+        content: const Text(
+            'Запись и связанное напоминание будут удалены.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: ThemeColors.dangerZone),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await TreatmentService().deleteTreatment(profile.id, entry);
+    onDeleted(entry);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.watch<AppearanceController>().primaryColor;
+    final latest = entries.isNotEmpty ? entries.first : null;
+
+    // Next date countdown
+    String? countdownText;
+    Color countdownColor = ThemeColors.border;
+    if (latest != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final next = DateTime(
+          latest.nextDate.year, latest.nextDate.month, latest.nextDate.day);
+      final days = next.difference(today).inDays;
+      if (days < 0) {
+        countdownText = 'Просрочено на ${days.abs()} дн.';
+        countdownColor = ThemeColors.dangerZone;
+      } else if (days == 0) {
+        countdownText = 'Сегодня';
+        countdownColor = ThemeColors.warning.mainColor;
+      } else if (days <= latest.remindBeforeDays) {
+        countdownText = 'Через $days ${_daysWord(days)}';
+        countdownColor = ThemeColors.warning.mainColor;
+      } else {
+        countdownText = 'Через $days ${_daysWord(days)}';
+        countdownColor = ThemeColors.ok.mainColor;
+      }
+    }
+
+    return DraggableSheet(
+      title: 'История',
+      centerTitle: true,
+      onBack: () => Navigator.of(context).pop(),
+      initialSize: 0.75,
+      minSize: 0.4,
+      maxSize: 0.95,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Hero ────────────────────────────────────────────────────────
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: kind.color.withAlpha(20),
+                    border:
+                        Border.all(color: kind.color.withAlpha(60), width: 1.5),
+                  ),
+                  child: Icon(kind.icon, color: kind.color, size: 34),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _title,
+                  style: Theme.of(context).textTheme.headlineSmall!
+                      .copyWith(fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                if (countdownText != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: countdownColor.withAlpha(20),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: countdownColor.withAlpha(60)),
+                    ),
+                    child: Text(
+                      countdownText,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: countdownColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ── Следующая дата ───────────────────────────────────────────────
+          if (latest != null) ...[
+            GlassPlate(
+              padding: 0,
+              child: Column(
+                children: [
+                  _InfoRow(
+                    icon: Icons.event_available,
+                    iconColor: accent,
+                    label: 'Следующее: ${DateFormat('d MMMM yyyy', 'ru').format(latest.nextDate)}',
+                  ),
+                  Divider(height: 1, indent: 46,
+                      color: ThemeColors.border.withAlpha(60)),
+                  _InfoRow(
+                    icon: Icons.alarm,
+                    iconColor: accent,
+                    label: 'Напомнить за ${latest.remindBeforeDays} дн.',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ── История записей ──────────────────────────────────────────────
+          if (entries.isNotEmpty) ...[
+            Text('Записи', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...entries.asMap().entries.map((mapEntry) {
+              final i = mapEntry.key;
+              final entry = mapEntry.value;
+              final isLast = i == entries.length - 1;
+
+              return IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Timeline column
+                    SizedBox(
+                      width: 32,
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: i == 0 ? kind.color : ThemeColors.border,
+                              border: Border.all(
+                                color: (i == 0 ? kind.color : ThemeColors.border)
+                                    .withAlpha(60),
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          if (!isLast)
+                            Expanded(
+                              child: Center(
+                                child: Container(
+                                  width: 2,
+                                  color: ThemeColors.border.withAlpha(80),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Card
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: GlassPlate(
+                          padding: 0,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        DateFormat('d MMMM yyyy', 'ru')
+                                            .format(entry.date),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall!
+                                            .copyWith(
+                                              color: i == 0
+                                                  ? kind.color
+                                                  : null,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '→ ${DateFormat('d MMMM yyyy', 'ru').format(entry.nextDate)}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall!
+                                            .copyWith(
+                                                color: ThemeColors.border),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: ThemeColors.dangerZone,
+                                  ),
+                                  onPressed: () => _delete(context, entry),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                      minWidth: 32, minHeight: 32),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _daysWord(int n) {
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 14) return 'дней';
+    if (mod10 == 1) return 'день';
+    if (mod10 >= 2 && mod10 <= 4) return 'дня';
+    return 'дней';
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+
+  const _InfoRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ),
         ],
       ),
     );
