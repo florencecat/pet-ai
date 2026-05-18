@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/services/event_service.dart';
+import 'package:pet_ai/services/profile_service.dart';
 
 // ─── Предустановленные симптомы ──────────────────────────────────────────────
 
@@ -100,11 +102,7 @@ class NoteEntry implements BaseEntry {
   /// Если заметка создана по предустановленному симптому — его id, иначе null.
   final String? symptomId;
 
-  NoteEntry({
-    required this.date,
-    required this.note,
-    this.symptomId,
-  });
+  NoteEntry({required this.date, required this.note, this.symptomId});
 
   SymptomTag? get symptomTag =>
       symptomId != null ? SymptomTags.byId(symptomId!) : null;
@@ -119,23 +117,33 @@ class NoteEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toJson() => {
-        'date': date.toIso8601String(),
-        'note': note,
-        if (symptomId != null) 'symptomId': symptomId,
-      };
+    'date': date.toIso8601String(),
+    'note': note,
+    if (symptomId != null) 'symptomId': symptomId,
+  };
 }
 
 class NoteHistory extends History<NoteEntry> {
   NoteHistory({required super.entries});
   NoteHistory.empty() : super.empty();
 
-  void addNote(String text, {String? symptomId}) {
-    final entry = NoteEntry(
-      date: DateTime.now(),
-      note: text,
-      symptomId: symptomId,
-    );
+  Future<void> addNote(String text, {String? symptomId}) async {
+    final date = DateTime.now();
+    final entry = NoteEntry(date: date, note: text, symptomId: symptomId);
     add(entry);
+
+    final profileId = await ProfileService().getActiveProfileId();
+    if (profileId != null) {
+      final eventFromNote = PetEvent.fromNote(
+        name: text,
+        dateTime: date,
+        symptomTag: symptomId,
+      );
+      eventFromNote.petIds.add(profileId);
+      await EventService().createEvent(eventFromNote);
+    } else if (kDebugMode) {
+      print('addNote: failed to get active profileId');
+    }
   }
 
   static final noteSerializer = HistorySerializer<NoteEntry>(

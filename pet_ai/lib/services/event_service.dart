@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pet_ai/models/note.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
@@ -128,6 +129,9 @@ class PetEvent {
   Set<String> completedDates;
   /// Питомцы, с которыми связано событие
   List<String> petIds;
+  /// Связывание с заметками
+  String? symptomTag;
+
   RepeatInterval repeat;
   List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
   int remindBeforeMinutes;
@@ -157,6 +161,16 @@ class PetEvent {
     required this.customDays,
     required this.remindBeforeMinutes,
   });
+
+  PetEvent.fromNote({required this.name, required this.dateTime, this.symptomTag})
+      : id = UniqueKey().toString(),
+        category = EventCategories.empty,
+        starred = false,
+        completedDates = {},
+        petIds = [],
+        repeat = RepeatInterval.none,
+        customDays = const [],
+        remindBeforeMinutes = 0;
 
   PetEvent.empty()
       : id = UniqueKey().toString(),

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/models/history.dart';
+import 'package:pet_ai/models/pill_reminder.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/models/weight.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/health_service.dart';
+import 'package:pet_ai/services/pill_reminder_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:pet_ai/theme/font_awesome_icons.dart';
@@ -13,6 +15,7 @@ import 'package:pet_ai/theme/widgets/activity_indicator.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/mood_sheet.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/pill_reminder_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
@@ -135,6 +138,19 @@ class _HealthPageState extends State<HealthPage> {
     if (updated == true) await _initScreen();
   }
 
+  void _openPillReminders(BuildContext context) async {
+    if (_profile == null) return;
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PillReminderSheet(profile: _profile!),
+    );
+    if (updated == true) await _initScreen();
+  }
+
   void _openRecommendations(BuildContext context, List<HealthBadge> badges) {
     showModalBottomSheet<void>(
       context: context,
@@ -205,9 +221,10 @@ class _HealthPageState extends State<HealthPage> {
       ));
     }
 
-    // ── PetEvent (category: health) ────────────────────────────────────────
+    // ── PetEvent (category: health, non-repeating) ────────────────────────
     for (final e in _events) {
       if (e.category.id != 'health') continue;
+      if (e.repeat != RepeatInterval.none) continue; // repeating events don't become overdue
       final eventDay = DateTime(
         e.dateTime.year,
         e.dateTime.month,
@@ -520,6 +537,37 @@ class _HealthPageState extends State<HealthPage> {
                           ),
                         );
                       }).toList(),
+                    ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Препараты ─────────────────────────────────────────────────
+            Row(
+              children: [
+                Expanded(child: _PageTitle('Препараты')),
+                IconButton(
+                  icon: Icon(
+                    Icons.add_circle_outline,
+                    color: context.watch<AppearanceController>().secondaryColor,
+                  ),
+                  onPressed: _profile != null
+                      ? () => _openPillReminders(context)
+                      : null,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 4),
+
+            InlineLoading(
+              isLoading: _isLoadingProfile,
+              child: _profile == null
+                  ? const SizedBox.shrink()
+                  : _PillSection(
+                      profile: _profile!,
+                      onOpenSheet: () => _openPillReminders(context),
+                      onReload: _initScreen,
                     ),
             ),
           ],
@@ -898,6 +946,238 @@ class _PageTitle extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+    );
+  }
+}
+
+// ─── Секция «Препараты» ───────────────────────────────────────────────────────
+
+class _PillSection extends StatelessWidget {
+  final PetProfile profile;
+  final VoidCallback onOpenSheet;
+  final VoidCallback onReload;
+
+  const _PillSection({
+    required this.profile,
+    required this.onOpenSheet,
+    required this.onReload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = profile.pillReminders.where((r) => r.isActive).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    if (active.isEmpty) {
+      return GestureDetector(
+        onTap: onOpenSheet,
+        child: GlassPlate(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                SoftRoundedIcon(
+                  icon: Icons.medication_outlined,
+                  color: ThemeColors.secondary,
+                  size: 22,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Нет активных напоминаний',
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: ThemeColors.secondary,
+                    ),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: active.map((r) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: _PillReminderTile(
+          reminder: r,
+          petId: profile.id,
+          onReload: onReload,
+          onTap: onOpenSheet,
+        ),
+      )).toList(),
+    );
+  }
+}
+
+// ─── Тайл таблетки ───────────────────────────────────────────────────────────
+
+class _PillReminderTile extends StatefulWidget {
+  final PillReminder reminder;
+  final String petId;
+  final VoidCallback onReload;
+  final VoidCallback onTap;
+
+  const _PillReminderTile({
+    required this.reminder,
+    required this.petId,
+    required this.onReload,
+    required this.onTap,
+  });
+
+  @override
+  State<_PillReminderTile> createState() => _PillReminderTileState();
+}
+
+class _PillReminderTileState extends State<_PillReminderTile> {
+  late bool _takenToday;
+
+  @override
+  void initState() {
+    super.initState();
+    _takenToday = widget.reminder.isTakenOnDay(DateTime.now());
+  }
+
+  @override
+  void didUpdateWidget(_PillReminderTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _takenToday = widget.reminder.isTakenOnDay(DateTime.now());
+  }
+
+  Future<void> _toggleTaken() async {
+    final wasTaken = _takenToday;
+    setState(() => _takenToday = !wasTaken);
+    if (!wasTaken) {
+      await PillReminderService().markTaken(
+        petId: widget.petId,
+        reminderId: widget.reminder.id,
+        date: DateTime.now(),
+      );
+    } else {
+      await PillReminderService().markUntaken(
+        petId: widget.petId,
+        reminderId: widget.reminder.id,
+        date: DateTime.now(),
+      );
+    }
+    widget.onReload();
+  }
+
+  ({Color color, String label, IconData icon})? _todayStatus() {
+    final now = DateTime.now();
+    if (!widget.reminder.isScheduledForDay(now)) return null;
+
+    if (_takenToday) {
+      return (
+        color: ThemeColors.ok.mainColor,
+        label: 'Принято',
+        icon: Icons.check_circle_outline,
+      );
+    }
+
+    final scheduled = DateTime(
+      now.year, now.month, now.day,
+      widget.reminder.hour, widget.reminder.minute,
+    );
+    if (now.isAfter(scheduled)) {
+      return (
+        color: ThemeColors.warning.mainColor,
+        label: 'Пропущено',
+        icon: Icons.warning_amber_rounded,
+      );
+    }
+    return (
+      color: ThemeColors.info.mainColor,
+      label: 'Сегодня в ${widget.reminder.timeLabel}',
+      icon: Icons.access_time,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final scheduledToday = widget.reminder.isScheduledForDay(now);
+    final status = _todayStatus();
+    final accent = context.watch<AppearanceController>().primaryColor;
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: GlassPlate(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              SoftRoundedIcon(
+                icon: Icons.medication_outlined,
+                color: accent,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.reminder.name,
+                      style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (status != null)
+                      SoftGlassBadge(
+                        color: status.color,
+                        icon: status.icon,
+                        label: status.label,
+                        selected: false,
+                      )
+                    else
+                      _NextScheduledBadge(reminder: widget.reminder),
+                  ],
+                ),
+              ),
+              if (scheduledToday)
+                GestureDetector(
+                  onTap: _toggleTaken,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      _takenToday
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: _takenToday
+                          ? ThemeColors.ok.mainColor
+                          : ThemeColors.secondary,
+                      size: 26,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NextScheduledBadge extends StatelessWidget {
+  final PillReminder reminder;
+
+  const _NextScheduledBadge({required this.reminder});
+
+  @override
+  Widget build(BuildContext context) {
+    final next = reminder.nextScheduledDate();
+    final label = next != null
+        ? 'Следующий ${formatSmartDate(next, pattern: 'd MMMM')}'
+        : reminder.frequencyLabel;
+    return SoftGlassBadge(
+      color: ThemeColors.secondary,
+      icon: Icons.schedule,
+      label: label,
+      selected: false,
     );
   }
 }
