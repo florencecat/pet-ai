@@ -277,6 +277,27 @@ class HealthAnalyzer {
       );
     }
 
+    // ── Пропущенные таблетки ─────────────────────────────────────────────
+    // Считаем только если сегодня по расписанию И время уже прошло И не принято.
+    // Предстоящие приёмы не влияют на оценку здоровья.
+    for (final pill in profile.pillReminders) {
+      if (!pill.isActive) continue;
+      if (!pill.isScheduledForDay(now)) continue;
+      final scheduled = DateTime(
+        today.year, today.month, today.day, pill.hour, pill.minute,
+      );
+      if (now.isAfter(scheduled) && !pill.isTakenOnDay(now)) {
+        badges.add(HealthBadge(
+          title: 'Пропущен приём: ${pill.name}',
+          subtitle: pill.dose.isNotEmpty
+              ? '${pill.dose} · ${pill.timeLabel}'
+              : pill.timeLabel,
+          severity: HealthBadgeSeverity.warning,
+          icon: Icons.medication_outlined,
+        ));
+      }
+    }
+
     // ── Если нечего показать — общий "всё хорошо" ──────────────────────
     if (badges.isEmpty) {
       badges.add(

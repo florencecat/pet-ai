@@ -18,6 +18,7 @@ import 'package:pet_ai/models/weight.dart';
 import 'package:pet_ai/models/mood.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/models/food.dart';
+import 'package:pet_ai/models/pill_reminder.dart';
 
 class PetContextBuilder {
   static String build(PetProfile pet) {
@@ -103,6 +104,7 @@ class PetProfile {
   NoteHistory noteHistory;
   TreatmentHistory treatmentHistory;
   FoodHistory foodHistory;
+  List<PillReminder> pillReminders;
   ColorPalette palette;
 
   PetProfile({
@@ -119,6 +121,7 @@ class PetProfile {
        noteHistory = NoteHistory.empty(),
        treatmentHistory = TreatmentHistory.empty(),
        foodHistory = FoodHistory.empty(),
+       pillReminders = [],
        palette = ThemeColors.defaultProfilePalette;
 
   PetProfile.deserialize({
@@ -135,6 +138,7 @@ class PetProfile {
     required this.noteHistory,
     required this.treatmentHistory,
     required this.foodHistory,
+    required this.pillReminders,
     required this.palette,
   });
 
@@ -154,6 +158,7 @@ class PetProfile {
       treatmentHistory,
     ),
     'foodHistory': FoodHistory.foodSerializer.toJsonList(foodHistory),
+    'pillReminders': pillReminders.map((r) => r.toJson()).toList(),
     'palette': palette.toJson(),
   };
 
@@ -210,6 +215,10 @@ class PetProfile {
                   .entries,
             )
           : FoodHistory.empty(),
+      pillReminders: (json['pillReminders'] as List<dynamic>?)
+              ?.map((e) => PillReminder.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       palette: json['palette'] != null
           ? ColorPalette.fromJson(json['palette'])
           : ThemeColors.defaultProfilePalette,
@@ -402,7 +411,7 @@ class ProfileService {
   Future<void> addNote(String petId, String note, {String? symptomId}) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      profile.noteHistory.addNote(note, symptomId: symptomId);
+      await profile.noteHistory.addNote(note, symptomId: symptomId);
       await saveProfile(profile);
     }
   }
