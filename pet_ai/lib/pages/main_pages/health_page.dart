@@ -224,7 +224,8 @@ class _HealthPageState extends State<HealthPage> {
     // ── PetEvent (category: health, non-repeating) ────────────────────────
     for (final e in _events) {
       if (e.category.id != 'health') continue;
-      if (e.repeat != RepeatInterval.none) continue; // repeating events don't become overdue
+      if (e.repeat != RepeatInterval.none)
+        continue; // repeating events don't become overdue
       final eventDay = DateTime(
         e.dateTime.year,
         e.dateTime.month,
@@ -730,7 +731,10 @@ class _HealthActionButton extends StatelessWidget {
                 ).textTheme.titleMedium!.copyWith(inherit: true, fontSize: 16),
               ),
 
-            if (bottomWidget != null) ...[const SizedBox(height: 6), bottomWidget!]
+            if (bottomWidget != null) ...[
+              const SizedBox(height: 6),
+              bottomWidget!,
+            ],
           ],
         ),
       ),
@@ -969,44 +973,77 @@ class _PillSection extends StatelessWidget {
       ..sort((a, b) => a.name.compareTo(b.name));
 
     if (active.isEmpty) {
-      return GestureDetector(
-        onTap: onOpenSheet,
-        child: GlassPlate(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                SoftRoundedIcon(
-                  icon: Icons.medication_outlined,
-                  color: ThemeColors.secondary,
-                  size: 22,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Нет активных напоминаний',
-                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: ThemeColors.secondary,
-                    ),
-                  ),
-                )
-              ],
-            ),
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(height: 32),
+          Icon(
+            Icons.healing_outlined,
+            size: 72,
+            color: context
+                .watch<AppearanceController>()
+                .secondaryColor
+                .withAlpha(60),
           ),
-        ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Нет препаратов.',
+                style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                  inherit: true,
+                  color: context
+                      .watch<AppearanceController>()
+                      .secondaryColor
+                      .withAlpha(60),
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(padding: EdgeInsetsGeometry.all(5)),
+                onPressed: onOpenSheet,
+                child: Text(
+                  'Добавить',
+                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                    inherit: true,
+                    color: context
+                        .watch<AppearanceController>()
+                        .primaryColor
+                        .withAlpha(192),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       );
+
+      // return GestureDetector(
+      //   onTap: onOpenSheet,
+      //   child: Expanded(
+      //     child: Text(
+      //       'Нет активных напоминаний',
+      //       style: Theme.of(
+      //         context,
+      //       ).textTheme.bodyMedium!.copyWith(color: ThemeColors.secondary),
+      //     ),
+      //   ),
+      // );
     }
 
     return Column(
-      children: active.map((r) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: _PillReminderTile(
-          reminder: r,
-          petId: profile.id,
-          onReload: onReload,
-          onTap: onOpenSheet,
-        ),
-      )).toList(),
+      children: active
+          .map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _PillReminderTile(
+                reminder: r,
+                petId: profile.id,
+                onReload: onReload,
+                onTap: onOpenSheet,
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -1077,8 +1114,11 @@ class _PillReminderTileState extends State<_PillReminderTile> {
     }
 
     final scheduled = DateTime(
-      now.year, now.month, now.day,
-      widget.reminder.hour, widget.reminder.minute,
+      now.year,
+      now.month,
+      now.day,
+      widget.reminder.hour,
+      widget.reminder.minute,
     );
     if (now.isAfter(scheduled)) {
       return (

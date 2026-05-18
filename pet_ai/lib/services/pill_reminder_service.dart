@@ -32,6 +32,9 @@ class PillReminderService {
           : [],
       remindBeforeMinutes: 0,
       petIds: [petId],
+      // Связываем событие с напоминанием для двусторонней синхронизации статуса
+      source: EventSource.pill,
+      sourceId: reminder.id,
     );
 
     await EventService().createEvent(event);
@@ -97,9 +100,14 @@ class PillReminderService {
     } else if (!add) {
       newDates.remove(key);
     } else {
-      return;
+      return; // already in correct state
     }
     profile.pillReminders[idx] = old.copyWith(takenDates: newDates);
     await ProfileService().saveProfile(profile);
+
+    // Синхронизируем связанное событие в календаре
+    if (old.eventId != null) {
+      await EventService().setCompletedOn(old.eventId!, date, add);
+    }
   }
 }

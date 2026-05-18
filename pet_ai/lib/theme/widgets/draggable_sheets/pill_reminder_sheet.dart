@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_ai/models/pill_reminder.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/pill_reminder_service.dart';
@@ -8,6 +9,8 @@ import 'package:pet_ai/theme/widgets/base_widgets.dart';
 import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
+
+// ─── Sheet: список + создание напоминаний ────────────────────────────────────
 
 class PillReminderSheet extends StatefulWidget {
   final PetProfile profile;
@@ -23,7 +26,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
   final _doseCtrl = TextEditingController();
 
   PillFrequencyType _frequency = PillFrequencyType.daily;
-  final Set<int> _weekdays = {1, 2, 3, 4, 5}; // Пн–Пт by default
+  final Set<int> _weekdays = {1, 2, 3, 4, 5};
   TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
   DateTime _startDate = DateTime.now();
   bool _hasEndDate = false;
@@ -38,10 +41,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _time,
-    );
+    final picked = await showTimePicker(context: context, initialTime: _time);
     if (picked != null) setState(() => _time = picked);
   }
 
@@ -49,7 +49,6 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     final initial = isEnd ? _endDate : _startDate;
     final first = DateTime.now().subtract(const Duration(days: 30));
     final last = DateTime.now().add(const Duration(days: 365 * 5));
-
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -110,39 +109,29 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _delete(PillReminder reminder) async {
-    final confirmed = await showDialog<bool>(
+  void _openDetail(PillReminder reminder) async {
+    final updated = await showModalBottomSheet<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить напоминание?'),
-        content: const Text(
-          'Напоминание будет удалено. Связанное уведомление тоже отменится.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PillDetailSheet(
+        profile: widget.profile,
+        reminder: reminder,
       ),
     );
-    if (confirmed != true) return;
-
-    await PillReminderService().delete(
-      petId: widget.profile.id,
-      reminder: reminder,
-    );
-    if (!mounted) return;
-    setState(() {
-      widget.profile.pillReminders.removeWhere((r) => r.id == reminder.id);
-    });
+    if (updated == true && mounted) {
+      // Refresh local list if the reminder was deleted inside
+      final fresh = await ProfileService().loadProfile(widget.profile.id);
+      if (fresh != null && mounted) {
+        setState(() {
+          widget.profile.pillReminders
+            ..clear()
+            ..addAll(fresh.pillReminders);
+        });
+      }
+    }
   }
 
   @override
@@ -187,10 +176,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                     textCapitalization: TextCapitalization.sentences,
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Периодичность',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text('Периодичность', style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 6,
@@ -204,28 +190,19 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                       );
                     }).toList(),
                   ),
-
                   if (_frequency == PillFrequencyType.weekdays) ...[
                     const SizedBox(height: 10),
-                    Text(
-                      'Дни недели',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text('Дни недели', style: Theme.of(context).textTheme.bodySmall),
                     const SizedBox(height: 6),
                     _WeekdayPicker(
                       selected: _weekdays,
                       accent: accent,
                       onChanged: (days) => setState(() {
-                        _weekdays
-                          ..clear()
-                          ..addAll(days);
+                        _weekdays..clear()..addAll(days);
                       }),
                     ),
                   ],
-
                   const SizedBox(height: 12),
-
-                  // Time + Start date row
                   Row(
                     children: [
                       Expanded(
@@ -247,19 +224,14 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 10),
-
-                  // End date toggle
                   Row(
                     children: [
                       Icon(Icons.event_busy, size: 18, color: accent),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          'Дата окончания',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                        child: Text('Дата окончания',
+                            style: Theme.of(context).textTheme.bodyMedium),
                       ),
                       Switch(
                         value: _hasEndDate,
@@ -268,7 +240,6 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                       ),
                     ],
                   ),
-
                   if (_hasEndDate) ...[
                     const SizedBox(height: 6),
                     _FieldButton(
@@ -292,49 +263,500 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
               child: Text(
                 'Напоминаний пока нет',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                  color: ThemeColors.border,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium!
+                    .copyWith(color: ThemeColors.border),
               ),
             )
           else ...[
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 6),
-              child: Text(
-                'Активные напоминания',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              child: Text('Активные напоминания',
+                  style: Theme.of(context).textTheme.titleMedium),
             ),
             ...reminders.map(
               (r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: GlassPlate(
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.medication_outlined,
-                      color: accent,
-                    ),
-                    title: Text(r.name),
-                    subtitle: Text(
-                      [
-                        if (r.dose.isNotEmpty) r.dose,
-                        r.frequencyLabel,
-                        r.timeLabel,
-                      ].join(' · '),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: ThemeColors.dangerZone,
+                  padding: 0,
+                  child: InkWell(
+                    onTap: () => _openDetail(r),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accent.withAlpha(20),
+                            ),
+                            child: Icon(Icons.medication_outlined,
+                                color: accent, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(r.name,
+                                    style: Theme.of(context).textTheme.titleSmall),
+                                Text(
+                                  [
+                                    if (r.dose.isNotEmpty) r.dose,
+                                    r.frequencyLabel,
+                                    r.timeLabel,
+                                  ].join(' · '),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right,
+                              color: ThemeColors.border, size: 20),
+                        ],
                       ),
-                      onPressed: () => _delete(r),
                     ),
                   ),
                 ),
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Sheet: детали конкретного препарата ─────────────────────────────────────
+
+class PillDetailSheet extends StatefulWidget {
+  final PetProfile profile;
+  final PillReminder reminder;
+
+  const PillDetailSheet({
+    super.key,
+    required this.profile,
+    required this.reminder,
+  });
+
+  @override
+  State<PillDetailSheet> createState() => _PillDetailSheetState();
+}
+
+class _PillDetailSheetState extends State<PillDetailSheet> {
+  late PillReminder _reminder;
+
+  @override
+  void initState() {
+    super.initState();
+    _reminder = widget.reminder;
+  }
+
+  Future<void> _toggleToday() async {
+    final today = DateTime.now();
+    final taken = _reminder.isTakenOnDay(today);
+    if (taken) {
+      await PillReminderService().markUntaken(
+        petId: widget.profile.id,
+        reminderId: _reminder.id,
+        date: today,
+      );
+    } else {
+      await PillReminderService().markTaken(
+        petId: widget.profile.id,
+        reminderId: _reminder.id,
+        date: today,
+      );
+    }
+    // Reload reminder state
+    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    if (fresh != null && mounted) {
+      final updated = fresh.pillReminders.firstWhere(
+        (r) => r.id == _reminder.id,
+        orElse: () => _reminder,
+      );
+      setState(() => _reminder = updated);
+    }
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить напоминание?'),
+        content: const Text('Всё история приёмов тоже будет удалена.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await PillReminderService().delete(
+      petId: widget.profile.id,
+      reminder: _reminder,
+    );
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
+  /// Last [days] days where the reminder was scheduled, newest first.
+  List<DateTime> _scheduledDays(int days) {
+    final today = DateTime.now();
+    final result = <DateTime>[];
+    for (var i = 0; i < days; i++) {
+      final d = DateTime(today.year, today.month, today.day)
+          .subtract(Duration(days: i));
+      if (_reminder.isScheduledForDay(d)) result.add(d);
+    }
+    return result;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.watch<AppearanceController>().primaryColor;
+    final today = DateTime.now();
+    final isTakenToday = _reminder.isTakenOnDay(today);
+    final scheduledToday = _reminder.isScheduledForDay(today);
+    final scheduledDays = _scheduledDays(30);
+
+    return DraggableSheet(
+      title: 'Препарат',
+      centerTitle: true,
+      onBack: () => Navigator.of(context).pop(false),
+      initialSize: 0.75,
+      minSize: 0.5,
+      maxSize: 0.95,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.delete_outline),
+          color: ThemeColors.dangerZone,
+          onPressed: _delete,
+        ),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Hero ──────────────────────────────────────────────────────────
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accent.withAlpha(20),
+                    border: Border.all(color: accent.withAlpha(60), width: 1.5),
+                  ),
+                  child: Icon(Icons.medication_outlined, color: accent, size: 34),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _reminder.name,
+                  style: Theme.of(context).textTheme.headlineSmall!
+                      .copyWith(fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                if (_reminder.dose.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _reminder.dose,
+                    style: Theme.of(context).textTheme.bodyMedium!
+                        .copyWith(color: ThemeColors.border),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ── Расписание ────────────────────────────────────────────────────
+          GlassPlate(
+            padding: 0,
+            child: Column(
+              children: [
+                _DetailRow(
+                  icon: Icons.repeat,
+                  iconColor: accent,
+                  label: _reminder.frequencyLabel,
+                ),
+                Divider(height: 1, indent: 46, color: ThemeColors.border.withAlpha(60)),
+                _DetailRow(
+                  icon: Icons.access_time,
+                  iconColor: accent,
+                  label: _reminder.timeLabel,
+                ),
+                Divider(height: 1, indent: 46, color: ThemeColors.border.withAlpha(60)),
+                _DetailRow(
+                  icon: Icons.event,
+                  iconColor: accent,
+                  label: 'С ${formatSmartDate(_reminder.startDate)}',
+                  sublabel: _reminder.endDate != null
+                      ? 'по ${formatSmartDate(_reminder.endDate!)}'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Сегодня ───────────────────────────────────────────────────────
+          if (scheduledToday) ...[
+            Text('Сегодня', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            _TodayToggle(
+              isTaken: isTakenToday,
+              time: _reminder.timeLabel,
+              accent: accent,
+              onTap: _toggleToday,
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // ── История (30 дней) ─────────────────────────────────────────────
+          if (scheduledDays.isNotEmpty) ...[
+            Text('История (30 дней)',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            GlassPlate(
+              padding: 0,
+              child: Column(
+                children: scheduledDays.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final day = entry.value;
+                  final taken = _reminder.isTakenOnDay(day);
+                  final isFirst = i == 0;
+                  final isLast = i == scheduledDays.length - 1;
+
+                  return Column(
+                    children: [
+                      if (!isFirst)
+                        Divider(
+                            height: 1,
+                            indent: 16,
+                            color: ThemeColors.border.withAlpha(60)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 11),
+                        child: Row(
+                          children: [
+                            // Day label
+                            SizedBox(
+                              width: 80,
+                              child: Text(
+                                _dayLabel(day),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall!
+                                    .copyWith(
+                                      color: isFirst
+                                          ? ThemeColors.textPrimary
+                                          : ThemeColors.border,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Status icon
+                            Icon(
+                              taken
+                                  ? Icons.check_circle_rounded
+                                  : Icons.cancel_outlined,
+                              size: 18,
+                              color: taken
+                                  ? ThemeColors.ok.mainColor
+                                  : ThemeColors.border.withAlpha(150),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              taken ? 'Принято' : 'Пропущено',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall!
+                                  .copyWith(
+                                    color: taken
+                                        ? ThemeColors.ok.mainColor
+                                        : ThemeColors.border,
+                                    fontWeight: taken
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isLast) const SizedBox.shrink(),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ] else ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Нет записей за последние 30 дней',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium!
+                    .copyWith(color: ThemeColors.border),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _dayLabel(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Сегодня';
+    if (diff == 1) return 'Вчера';
+    return DateFormat('d MMM', 'ru').format(d);
+  }
+}
+
+// ─── Today toggle ─────────────────────────────────────────────────────────────
+
+class _TodayToggle extends StatelessWidget {
+  final bool isTaken;
+  final String time;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _TodayToggle({
+    required this.isTaken,
+    required this.time,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: isTaken ? ThemeColors.ok.mainColor : Colors.white,
+        border: Border.all(
+          color: isTaken
+              ? ThemeColors.ok.mainColor
+              : ThemeColors.border.withAlpha(100),
+        ),
+        boxShadow: isTaken
+            ? [
+                BoxShadow(
+                  color: ThemeColors.ok.mainColor.withAlpha(60),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : [],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 18,
+                  color: isTaken ? Colors.white : ThemeColors.border,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  time,
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    isTaken
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
+                    key: ValueKey(isTaken),
+                    color:
+                        isTaken ? Colors.white : accent,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isTaken ? 'Принято' : 'Отметить',
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Detail row ───────────────────────────────────────────────────────────────
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String? sublabel;
+
+  const _DetailRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    this.sublabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                if (sublabel != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    sublabel!,
+                    style: Theme.of(context).textTheme.bodySmall!
+                        .copyWith(color: ThemeColors.border),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
