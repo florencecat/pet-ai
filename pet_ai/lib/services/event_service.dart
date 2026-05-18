@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pet_ai/models/note.dart';
+import 'package:pet_ai/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 import 'profile_service.dart';
@@ -209,6 +211,33 @@ class PetEvent {
         remindBeforeMinutes = 0,
         source = EventSource.manual,
         sourceId = null;
+
+  bool get completable => source != EventSource.note;
+
+  String get categoryCaption {
+    switch(source) {
+      case EventSource.note: return 'Заметка';
+      case EventSource.pill: return 'Приём лекарств';
+      case EventSource.treatment: return 'Обработка';
+      case EventSource.manual: return category.name;
+    }
+  }
+
+  Color get categoryColor {
+    final defaultColor = ThemeColors.primary.withAlpha(128);
+    switch(source) {
+      case EventSource.note:
+        {
+          if (symptomTag != null) {
+            return SymptomTags.byId(symptomTag!)?.color ?? defaultColor;
+          }
+          return defaultColor;
+        }
+      case EventSource.pill: return category.color;
+      case EventSource.treatment: return category.color;
+      case EventSource.manual: return category.color;
+    }
+  }
 
   /// Форматирует дату как ключ "yyyy-MM-dd"
   static String _dateKey(DateTime date) =>

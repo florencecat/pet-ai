@@ -655,9 +655,8 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
   static const double _btnSize = 52.0;
   static const double _btnGap = 10.0;
   static const double _sidePad = 12.0;
-  static const double _actionsCount = 3;
-  static const double _actionWidth =
-      _btnSize * _actionsCount + _sidePad * 2 + _btnGap * (_actionsCount - 1);
+  static late double _actionsCount;
+  static late double _actionWidth;
 
   late final AnimationController _ctrl;
   late final Animation<double> _slide;
@@ -666,6 +665,11 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
   @override
   void initState() {
     super.initState();
+
+    _actionsCount = widget.event.completable ? 3 : 2;
+    _actionWidth =
+        _btnSize * _actionsCount + _sidePad * 2 + _btnGap * (_actionsCount - 1);
+
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 260),
@@ -714,19 +718,20 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
             bottom: 0,
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: _btnGap,
               children: [
-                _ActionBtn(
-                  icon: Icons.check,
-                  color: ThemeColors.positiveDynamics,
-                  label: 'Выполнено',
-                  onTap: () {
-                    _close();
-                    widget.onCompletedChanged?.call(
-                      widget.event.isCompletedOn(widget.selectedDate!),
-                    );
-                  },
-                ),
-                const SizedBox(width: _btnGap),
+                if (widget.event.completable)
+                  _ActionBtn(
+                    icon: Icons.check,
+                    color: ThemeColors.positiveDynamics,
+                    label: 'Выполнено',
+                    onTap: () {
+                      _close();
+                      widget.onCompletedChanged?.call(
+                        widget.event.isCompletedOn(widget.selectedDate!),
+                      );
+                    },
+                  ),
 
                 _ActionBtn(
                   icon: Icons.edit_outlined,
@@ -737,7 +742,6 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
                     widget.onEdit?.call();
                   },
                 ),
-                const SizedBox(width: _btnGap),
                 _ActionBtn(
                   icon: Icons.delete_outline,
                   color: ThemeColors.dangerZone,
@@ -865,26 +869,28 @@ class _EventTileCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // ── Time ─────────────────────────────────────────────────
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    time,
-                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                      color: overdue
-                          ? ThemeColors.dangerZone
-                          : event.category.color,
+                if (event.source != EventSource.note) ...[
+                  // ── Time ─────────────────────────────────────────────────
+                  Expanded(
+                    flex: 1,
+                    child: Text(
+                      time,
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                        color: overdue
+                            ? ThemeColors.dangerZone
+                            : event.category.color,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                ),
 
-                // ── Vertical splitter ─────────────────────────────────────
-                Container(
-                  width: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  color: ThemeColors.border.withAlpha(60),
-                ),
+                  // ── Vertical splitter ─────────────────────────────────────
+                  Container(
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    color: ThemeColors.border.withAlpha(60),
+                  ),
+                ],
 
                 // ── Icon + name + category + pet badges ───────────────────
                 Expanded(
@@ -894,7 +900,7 @@ class _EventTileCard extends StatelessWidget {
                     children: [
                       SoftRoundedIcon(
                         icon: event.category.icon,
-                        color: event.category.color,
+                        color: event.categoryColor,
                         size: 22,
                       ),
                       Column(
@@ -924,7 +930,7 @@ class _EventTileCard extends StatelessWidget {
                           ),
 
                           Text(
-                            event.category.name,
+                            event.categoryCaption,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
