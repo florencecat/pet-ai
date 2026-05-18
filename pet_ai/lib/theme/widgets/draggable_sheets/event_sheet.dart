@@ -424,14 +424,16 @@ class _EventSheetState extends State<EventSheet> {
         ),
       ),
 
-      const SizedBox(height: 12),
+      if (widget.event!.completable) ...[
+        const SizedBox(height: 12),
 
-      // ── Completion button ─────────────────────────────────────────────────
-      _CompletionButton(
-        isCompleted: isCompleted,
-        accent: accent,
-        onTap: _toggleCompleted,
-      ),
+        // ── Completion button ─────────────────────────────────────────────────
+        _CompletionButton(
+          isCompleted: isCompleted,
+          accent: accent,
+          onTap: _toggleCompleted,
+        ),
+      ]
     ];
   }
 
