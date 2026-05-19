@@ -303,75 +303,17 @@ class _NoteSheetState extends State<NoteSheet> {
             ...entries.map(
               (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _NoteEntryCard(entry: e, onDelete: () => _delete(e)),
+                child: GlassListTile(
+                  icon: e.symptomTag?.icon ?? Icons.notes,
+                  iconColor: e.symptomTag?.color.withAlpha(15) ?? Colors.white,
+                  title: e.note,
+                  subtitle: formatSmartDateTime(e.date),
+                  trailing: DeleteIconButton(callback: () => _delete(e)),
+                ),
               ),
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-// ─── Карточка записи ─────────────────────────────────────────────────────────
-
-class _NoteEntryCard extends StatelessWidget {
-  final NoteEntry entry;
-  final VoidCallback onDelete;
-
-  const _NoteEntryCard({required this.entry, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    final tag = entry.symptomTag;
-
-    return SoftGlassPlate(
-      color: tag != null ? tag.color.withAlpha(15) : Colors.white,
-
-      child: ListTile(
-        leading: tag != null
-            ? Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: tag.color.withAlpha(40),
-                ),
-                child: Icon(tag.icon, size: 20, color: tag.color),
-              )
-            : Icon(
-                Icons.notes,
-                size: 20,
-                color: context
-                    .watch<AppearanceController>()
-                    .secondaryColor
-                    .withAlpha(160),
-              ),
-        title: Text(
-          entry.note,
-          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-            inherit: true,
-            color:
-                tag?.color ??
-                context.watch<AppearanceController>().secondaryColor,
-          ),
-        ),
-        subtitle: Text(
-          formatSmartDateTime(entry.date),
-          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            inherit: true,
-            color:
-                tag?.color ??
-                context.watch<AppearanceController>().secondaryColor.withAlpha(
-                  162,
-                ),
-          ),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, size: 20),
-          color: ThemeColors.dangerZone.withAlpha(180),
-          onPressed: onDelete,
-        ),
       ),
     );
   }

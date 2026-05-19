@@ -385,6 +385,79 @@ class GlassBadge extends StatelessWidget {
   }
 }
 
+class GlassListTile extends StatelessWidget {
+  final IconData? icon;
+  final Color iconColor;
+  final Widget? customIcon;
+  final String title;
+  final String? subtitle;
+  final Widget? bottomBadge;
+  final Widget? trailing;
+  final VoidCallback? callback;
+
+  const GlassListTile({
+    super.key,
+    required this.iconColor,
+    required this.title,
+    this.icon,
+    this.subtitle,
+    this.customIcon,
+    this.bottomBadge,
+    this.trailing,
+    this.callback,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    assert(icon == null || customIcon == null);
+
+    Widget tileIcon;
+    if (icon != null) {
+      tileIcon = SoftRoundedIcon(
+        icon: icon!,
+        color: iconColor.withAlpha(128),
+        size: 22,
+      );
+    } else {
+      tileIcon = customIcon!;
+    }
+
+    return GlassPlate(
+      child: ListTile(
+        onTap: callback,
+        leading: tileIcon,
+        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        subtitle: Column(
+          spacing: 6,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (subtitle != null)
+              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+            ?bottomBadge,
+          ],
+        ),
+        trailing: trailing,
+      ),
+    );
+  }
+}
+
+class DeleteIconButton extends StatelessWidget {
+  final VoidCallback callback;
+
+  const DeleteIconButton({super.key, required this.callback});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.delete_outline, size: 20),
+      color: ThemeColors.dangerZone.withAlpha(180),
+      onPressed: callback,
+    );
+  }
+}
+
+
 class SoftGlassBadge extends StatefulWidget {
   final Color color;
   final IconData? icon;
@@ -472,11 +545,13 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
               const SizedBox(width: 5),
               Text(
                 widget.label,
-                style: widget.labelStyle ?? TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : color,
-                ),
+                style:
+                    widget.labelStyle ??
+                    TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : color,
+                    ),
               ),
             ],
           ),

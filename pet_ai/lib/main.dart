@@ -173,10 +173,11 @@ class _MainPageState extends State<MainPage> {
                 FloatingNavigationBar.bottomInset,
           ),
         ),
-        child: IndexedStack(
-          index: _selectedIndex.index,
-          children: pages,
-        ),
+        child: pages[_selectedIndex.index],
+        // child: IndexedStack(
+        //   index: _selectedIndex.index,
+        //   children: pages,
+        // ),
       ),
 
       // Using bottomNavigationBar (instead of Positioned) means Flutter

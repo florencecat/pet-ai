@@ -138,6 +138,44 @@ class _HealthPageState extends State<HealthPage> {
     if (updated == true) await _initScreen();
   }
 
+  void _openTreatment(BuildContext context, TreatmentEntry entry) async {
+    if (_profile == null) return;
+    final related =
+        _profile!.treatmentHistory.entries
+            .where(
+              (e) =>
+                  e.kind == entry.kind &&
+                  (entry.kind != TreatmentKind.vaccine || e.name == entry.name),
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TreatmentDetailSheet(
+        profile: _profile!,
+        kind: entry.kind,
+        vaccineName: entry.kind == TreatmentKind.vaccine ? entry.name : null,
+        entries: related,
+        onDeleted: (deleted) {
+          setState(() {
+            _profile!.treatmentHistory.entries.removeWhere(
+              (e) =>
+                  e.date == deleted.date &&
+                  e.kind == deleted.kind &&
+                  e.name == deleted.name,
+            );
+          });
+        },
+      ),
+    );
+    if (updated == true) await _initScreen();
+  }
+
   void _openPillReminders(BuildContext context) async {
     if (_profile == null) return;
     final updated = await showModalBottomSheet<bool>(
@@ -149,6 +187,29 @@ class _HealthPageState extends State<HealthPage> {
       builder: (_) => PillReminderSheet(profile: _profile!),
     );
     if (updated == true) await _initScreen();
+  }
+
+  void _openPillReminder(BuildContext context, PillReminder reminder) async {
+    if (_profile == null) return;
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PillDetailSheet(profile: _profile!, reminder: reminder),
+    );
+    if (updated == true && mounted) {
+      // Refresh local list if the reminder was deleted inside
+      final fresh = await ProfileService().loadProfile(_profile!.id);
+      if (fresh != null && mounted) {
+        setState(() {
+          _profile!.pillReminders
+            ..clear()
+            ..addAll(fresh.pillReminders);
+        });
+      }
+    }
   }
 
   void _openRecommendations(BuildContext context, List<HealthBadge> badges) {
@@ -319,6 +380,10 @@ class _HealthPageState extends State<HealthPage> {
     // Weight chart entries filtered by period
     final weightEntries =
         _profile?.weightHistory.filterByPeriod(_chartPeriod) ?? [];
+
+    final activeReminders =
+        _profile?.pillReminders.where((r) => r.isActive).toList()
+          ?..sort((a, b) => a.name.compareTo(b.name));
 
     return Scaffold(
       backgroundColor: ThemeColors.white,
@@ -534,7 +599,9 @@ class _HealthPageState extends State<HealthPage> {
                           child: _TreatmentStatusTile(
                             kind: kind,
                             lastEntry: last,
-                            onTap: () => _openTreatments(context, kind),
+                            onTap: last == null
+                                ? () => _openTreatments(context, kind)
+                                : () => _openTreatment(context, last),
                           ),
                         );
                       }).toList(),
@@ -563,12 +630,69 @@ class _HealthPageState extends State<HealthPage> {
 
             InlineLoading(
               isLoading: _isLoadingProfile,
-              child: _profile == null
+              child: _profile == null || activeReminders == null
                   ? const SizedBox.shrink()
-                  : _PillSection(
-                      profile: _profile!,
-                      onOpenSheet: () => _openPillReminders(context),
-                      onReload: _initScreen,
+                  : activeReminders.isEmpty
+                  ? Column(
+                      children: [
+                        SizedBox(height: 32),
+                        Icon(
+                          Icons.healing_outlined,
+                          size: 72,
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor
+                              .withAlpha(60),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Нет препаратов.',
+                              style: Theme.of(context).textTheme.titleLarge!
+                                  .copyWith(
+                                    inherit: true,
+                                    color: context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor
+                                        .withAlpha(60),
+                                  ),
+                            ),
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsetsGeometry.all(5),
+                              ),
+                              onPressed: () => {},
+                              child: Text(
+                                'Добавить',
+                                style: Theme.of(context).textTheme.titleLarge!
+                                    .copyWith(
+                                      inherit: true,
+                                      color: context
+                                          .watch<AppearanceController>()
+                                          .primaryColor
+                                          .withAlpha(192),
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: activeReminders
+                          .map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _PillReminderTile(
+                                reminder: r,
+                                petId: _profile!.id,
+                                onReload: () => {},
+                                onTap: () => _openPillReminder(context, r),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
             ),
           ],
@@ -950,100 +1074,6 @@ class _PageTitle extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-    );
-  }
-}
-
-// ─── Секция «Препараты» ───────────────────────────────────────────────────────
-
-class _PillSection extends StatelessWidget {
-  final PetProfile profile;
-  final VoidCallback onOpenSheet;
-  final VoidCallback onReload;
-
-  const _PillSection({
-    required this.profile,
-    required this.onOpenSheet,
-    required this.onReload,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final active = profile.pillReminders.where((r) => r.isActive).toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
-
-    if (active.isEmpty) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(height: 32),
-          Icon(
-            Icons.healing_outlined,
-            size: 72,
-            color: context
-                .watch<AppearanceController>()
-                .secondaryColor
-                .withAlpha(60),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Нет препаратов.',
-                style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                  inherit: true,
-                  color: context
-                      .watch<AppearanceController>()
-                      .secondaryColor
-                      .withAlpha(60),
-                ),
-              ),
-              TextButton(
-                style: TextButton.styleFrom(padding: EdgeInsetsGeometry.all(5)),
-                onPressed: onOpenSheet,
-                child: Text(
-                  'Добавить',
-                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                    inherit: true,
-                    color: context
-                        .watch<AppearanceController>()
-                        .primaryColor
-                        .withAlpha(192),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-
-      // return GestureDetector(
-      //   onTap: onOpenSheet,
-      //   child: Expanded(
-      //     child: Text(
-      //       'Нет активных напоминаний',
-      //       style: Theme.of(
-      //         context,
-      //       ).textTheme.bodyMedium!.copyWith(color: ThemeColors.secondary),
-      //     ),
-      //   ),
-      // );
-    }
-
-    return Column(
-      children: active
-          .map(
-            (r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _PillReminderTile(
-                reminder: r,
-                petId: profile.id,
-                onReload: onReload,
-                onTap: onOpenSheet,
-              ),
-            ),
-          )
-          .toList(),
     );
   }
 }

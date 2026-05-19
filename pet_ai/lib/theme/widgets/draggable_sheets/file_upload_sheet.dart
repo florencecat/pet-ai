@@ -201,6 +201,32 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
     }
   }
 
+  // ─── Open ───────────────────────────────────────────────────────────────
+
+  Future<void> _open(BuildContext context, PetDocument doc) async {
+    if (!doc.file.existsSync()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Файл не найден на устройстве')),
+        );
+      }
+      return;
+    }
+    if (doc.isImage && context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _ImagePreviewDialog(doc: doc),
+      );
+      return;
+    }
+    final result = await OpenFilex.open(doc.filePath);
+    if (result.type != ResultType.done && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось открыть файл: ${result.message}')),
+      );
+    }
+  }
+
   // ─── Delete ───────────────────────────────────────────────────────────────
 
   Future<void> _delete(PetDocument doc) async {
@@ -369,7 +395,33 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
             Text('История', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             ..._docs.map(
-              (doc) => _DocCard(doc: doc, onDelete: () => _delete(doc)),
+              (doc) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GlassListTile(
+                  callback: () => _open(context, doc),
+                  icon: doc.isImage ? null : doc.fileIcon,
+                  customIcon: doc.isImage && doc.file.existsSync()
+                      ? Image.file(
+                          doc.file,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                  iconColor:
+                      doc.category?.color ??
+                      context.watch<AppearanceController>().primaryColor,
+                  title: doc.name,
+                  subtitle: formatSmartDate(doc.date),
+                  bottomBadge: doc.category == null
+                      ? null
+                      : SoftGlassBadge(
+                          color: doc.category!.color,
+                          label: doc.category!.name,
+                        ),
+                  trailing: DeleteIconButton(callback: () => _delete(doc)),
+                ),
+              ),
             ),
           ],
         ],
@@ -481,137 +533,6 @@ class _FilePreview extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ─── Карточка документа ──────────────────────────────────────────────────────
-
-class _DocCard extends StatelessWidget {
-  final PetDocument doc;
-  final VoidCallback onDelete;
-
-  const _DocCard({required this.doc, required this.onDelete});
-
-  Future<void> _open(BuildContext context) async {
-    if (!doc.file.existsSync()) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Файл не найден на устройстве')),
-        );
-      }
-      return;
-    }
-    if (doc.isImage && context.mounted) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => _ImagePreviewDialog(doc: doc),
-      );
-      return;
-    }
-    final result = await OpenFilex.open(doc.filePath);
-    if (result.type != ResultType.done && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось открыть файл: ${result.message}')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cat = doc.category;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: () => _open(context),
-        child: GlassPlate(
-          child: ListTile(
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: _buildThumbnail(context),
-            ),
-            title: Text(
-              doc.name,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium!.copyWith(color: ThemeColors.textPrimary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  formatSmartDate(doc.date),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (cat != null) ...[
-                  const SizedBox(height: 6),
-                  _CategoryBadge(category: cat),
-                ],
-              ],
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              color: ThemeColors.dangerZone.withAlpha(180),
-              onPressed: onDelete,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThumbnail(BuildContext context) {
-    final file = doc.file;
-    if (doc.isImage && file.existsSync()) {
-      return Image.file(file, width: 64, height: 64, fit: BoxFit.cover);
-    }
-    final cat = doc.category;
-    return Container(
-      width: 50,
-      height: 50,
-      color: (cat?.color ?? context.watch<AppearanceController>().primaryColor)
-          .withAlpha(30),
-      child: Icon(
-        doc.fileIcon,
-        size: 32,
-        color: cat?.color ?? context.watch<AppearanceController>().primaryColor,
-      ),
-    );
-  }
-}
-
-// ─── Бейдж категории ─────────────────────────────────────────────────────────
-
-class _CategoryBadge extends StatelessWidget {
-  final DocumentCategory category;
-  const _CategoryBadge({required this.category});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: category.color.withAlpha(40),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: category.color.withAlpha(100), width: 0.8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(category.icon, size: 12, color: category.color),
-          const SizedBox(width: 4),
-          Text(
-            category.name,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: category.color.withAlpha(220),
-            ),
-          ),
-        ],
       ),
     );
   }

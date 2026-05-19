@@ -573,7 +573,8 @@ class HomePageState extends State<HomePage> {
               spacing: 16,
               children: [
                 Expanded(
-                  child: GlassPlate(
+                  child: GlassCard(
+                    callback: () => _openDocuments(context),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -607,20 +608,13 @@ class HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                          child: _SmallActionButton(
-                            icon: Icons.add_circle_outline,
-                            label: 'Добавить',
-                            onPressed: () => _openDocuments(context),
-                          ),
-                        ),
                       ],
                     ),
                   ),
                 ),
                 Expanded(
-                  child: GlassPlate(
+                  child: GlassCard(
+                    callback: () => _openNotes(context),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -652,14 +646,6 @@ class HomePageState extends State<HomePage> {
                                     ),
                               ),
                             ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                          child: _SmallActionButton(
-                            icon: Icons.note_add_outlined,
-                            label: 'Записать',
-                            onPressed: () => _openNotes(context),
                           ),
                         ),
                       ],
@@ -1045,48 +1031,6 @@ class _LineColumn extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── Маленькая кнопка действия ───────────────────────────────────────────────
-
-class _SmallActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  const _SmallActionButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      callback: onPressed,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 6,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: context.watch<AppearanceController>().secondaryColor,
-            ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: context.watch<AppearanceController>().secondaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
