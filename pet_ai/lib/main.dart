@@ -6,27 +6,30 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:pet_ai/pages/main_pages/ai_chat_page.dart';
+import 'package:pet_ai/pages/main_pages/events_page.dart';
 import 'package:pet_ai/pages/main_pages/health_page.dart';
+import 'package:pet_ai/pages/main_pages/home_page.dart';
+import 'package:pet_ai/pages/secondary_pages/pet_registration_flow.dart';
 import 'package:pet_ai/services/ai_service.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/services/health_service.dart';
 import 'package:pet_ai/services/notification_service.dart';
 import 'package:pet_ai/services/profile_service.dart';
-import 'package:provider/provider.dart';
-
-import 'package:pet_ai/pages/main_pages/home_page.dart';
-import 'package:pet_ai/pages/main_pages/ai_chat_page.dart';
-import 'package:pet_ai/pages/main_pages/events_page.dart';
-import 'package:pet_ai/pages/secondary_pages/pet_registration_flow.dart';
 import 'package:pet_ai/theme/app_theme.dart';
 import 'package:pet_ai/theme/widgets/floating_navigation_bar.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-    await NotificationService().init();
+    try {
+      await NotificationService().init();
+    } catch (_) {
+      // Notification service unavailable — continue without notifications.
+    }
   }
 
   await Hive.initFlutter();
@@ -83,6 +86,8 @@ class _MainPageState extends State<MainPage> {
   bool _hasProfile = false;
   NavigationTab _selectedIndex = NavigationTab.home;
   final _homeKey = GlobalKey<HomePageState>();
+  final _healthKey = GlobalKey<HealthPageState>();
+  final _eventsKey = GlobalKey<EventsPageState>();
   DateTime _calendarInitialDate = DateTime.now();
   Color? _healthScoreColor;
 
@@ -151,9 +156,9 @@ class _MainPageState extends State<MainPage> {
           context.read<AppearanceController>().reloadProfile();
         },
       ),
-      const HealthPage(),
+      HealthPage(key: _healthKey),
       const AIChatPage(),
-      EventsPage(initialDate: _calendarInitialDate),
+      EventsPage(key: _eventsKey, initialDate: _calendarInitialDate),
     ];
 
     return Scaffold(
@@ -173,11 +178,10 @@ class _MainPageState extends State<MainPage> {
                 FloatingNavigationBar.bottomInset,
           ),
         ),
-        child: pages[_selectedIndex.index],
-        // child: IndexedStack(
-        //   index: _selectedIndex.index,
-        //   children: pages,
-        // ),
+        child: IndexedStack(
+          index: _selectedIndex.index,
+          children: pages,
+        ),
       ),
 
       // Using bottomNavigationBar (instead of Positioned) means Flutter
@@ -199,7 +203,11 @@ class _MainPageState extends State<MainPage> {
                 _homeKey.currentState?.refresh();
               }
               if (index == NavigationTab.health.index) {
+                _healthKey.currentState?.refresh();
                 _refreshHealthScore();
+              }
+              if (index == NavigationTab.calendar.index) {
+                _eventsKey.currentState?.refresh();
               }
             },
           ),

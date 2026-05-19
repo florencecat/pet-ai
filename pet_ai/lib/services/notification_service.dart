@@ -39,8 +39,7 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
-
-    await _requestPermissions();
+    // Permissions are requested lazily on first event creation via ensurePermission().
   }
 
   /// Callback при нажатии на уведомление или действие в нём.
@@ -63,6 +62,16 @@ class NotificationService {
     return id;
   }
 
+  /// Call this before scheduling the first notification for a new event.
+  /// Requests OS permission if not already granted. Silently ignores errors.
+  Future<void> ensurePermission() async {
+    try {
+      await _requestPermissions();
+    } catch (_) {
+      // Permission denied or unavailable — continue without crashing.
+    }
+  }
+
   Future<void> _requestPermissions() async {
     if (!kIsWeb && Platform.isAndroid) {
       final androidPlugin = _notificationsPlugin
@@ -81,6 +90,7 @@ class NotificationService {
   }
 
   Future<void> scheduleEventNotification(events.PetEvent event) async {
+    if (!event.notify) return;
     final id = event.id.hashCode;
 
     // Вычисляем время напоминания (с учетом отсрочки)

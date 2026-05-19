@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_ai/models/note.dart';
 import 'package:pet_ai/models/treatment.dart';
 import 'package:pet_ai/services/appearance_controller.dart';
 import 'package:pet_ai/services/event_service.dart';
@@ -64,12 +65,15 @@ extension HealthBadgeSeverityX on HealthBadgeSeverity {
 }
 
 class HealthBadge {
+  /// Stable identifier used for dismissing the badge. Null = not dismissable.
+  final String? id;
   final String title;
   final String subtitle;
   final HealthBadgeSeverity severity;
   final IconData? icon;
 
   const HealthBadge({
+    this.id,
     required this.title,
     required this.subtitle,
     required this.severity,
@@ -127,12 +131,15 @@ class HealthAnalyzer {
     }
 
     // ── Базовые рекомендации по типам мероприятий ────────────────────────
+    // Only show these for treatment kinds that have at least no entry AND
+    // the badge is not dismissed. Each badge gets a stable dismissable id.
     for (final kind in TreatmentKind.values) {
       if (kind == TreatmentKind.vaccine) continue;
       final last = profile.treatmentHistory.lastOfKind(kind);
       if (last == null) {
         badges.add(
           HealthBadge(
+            id: 'treatment_remind_${kind.name}',
             title: kind.label,
             subtitle: 'Добавьте запись, чтобы получать напоминания',
             severity: HealthBadgeSeverity.warning,
@@ -140,6 +147,35 @@ class HealthAnalyzer {
           ),
         );
       }
+    }
+
+    // ── Анализ заметок (симптомы за последние 7 дней) ────────────────────
+    final sevenDaysAgo = today.subtract(const Duration(days: 7));
+    final recentNotes = profile.noteHistory.entries.where((n) {
+      final noteDay = DateTime(n.date.year, n.date.month, n.date.day);
+      return !noteDay.isBefore(sevenDaysAgo);
+    }).toList();
+    final symptomCounts = <String, int>{};
+    for (final n in recentNotes) {
+      if (n.symptomId != null) {
+        symptomCounts[n.symptomId!] =
+            (symptomCounts[n.symptomId!] ?? 0) + 1;
+      }
+    }
+    for (final entry in symptomCounts.entries) {
+      final tag = SymptomTags.byId(entry.key);
+      if (tag == null) continue;
+      final times = entry.value;
+      badges.add(
+        HealthBadge(
+          title: 'Симптом: ${tag.label}',
+          subtitle:
+              'Отмечено $times ${_timesWord(times)} за последние 7 дней — '
+              'обратите внимание на здоровье питомца',
+          severity: HealthBadgeSeverity.warning,
+          icon: tag.icon,
+        ),
+      );
     }
 
     // ── Вес ──────────────────────────────────────────────────────────────
@@ -355,18 +391,30 @@ class HealthAnalyzer {
     if (mod10 >= 2 && mod10 <= 4) return 'дня';
     return 'дн.';
   }
+
+  static String _timesWord(int n) {
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 14) return 'раз';
+    if (mod10 == 1) return 'раз';
+    if (mod10 >= 2 && mod10 <= 4) return 'раза';
+    return 'раз';
+  }
 }
 
 // ─── UI ─────────────────────────────────────────────────────────────────────
 
 class HealthBadgeTile extends StatelessWidget {
   final HealthBadge badge;
+  /// If provided, a dismiss button is shown for dismissable badges.
+  final VoidCallback? onDismiss;
 
-  const HealthBadgeTile({super.key, required this.badge});
+  const HealthBadgeTile({super.key, required this.badge, this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
     final color = badge.severity.palette.mainColor;
+    final canDismiss = onDismiss != null && badge.id != null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: SoftGlassPlate(
@@ -395,6 +443,14 @@ class HealthBadgeTile extends StatelessWidget {
               color: ThemeColors.textPrimary.withAlpha(180),
             ),
           ),
+          trailing: canDismiss
+              ? IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  color: ThemeColors.border,
+                  tooltip: 'Скрыть',
+                  onPressed: onDismiss,
+                )
+              : null,
         ),
       ),
     );

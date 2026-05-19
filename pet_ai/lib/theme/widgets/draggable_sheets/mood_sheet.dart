@@ -43,36 +43,41 @@ class _MoodSheetState extends State<MoodSheet> {
   }
 
   void save() async {
-    if (selectedMood != null) {
-      final entry = MoodEntry(
-        date: DateTime.now(),
-        mood: selectedMood!,
-        dayPart: selectedDayPart,
-      );
+    if (selectedMood == null) return;
 
-      // Если за сегодня уже есть запись с таким же настроением и другим
-      // временем суток — объединяем (не дублируем).
-      final now = DateTime.now();
-      final existingIdx = history.entries.indexWhere(
-        (e) =>
-            e.date.year == now.year &&
-            e.date.month == now.month &&
-            e.date.day == now.day &&
-            e.dayPart == selectedDayPart,
-      );
+    final entry = MoodEntry(
+      date: DateTime.now(),
+      mood: selectedMood!,
+      dayPart: selectedDayPart,
+    );
 
-      if (existingIdx >= 0) {
-        // Заменяем запись за это время суток
-        history.entries[existingIdx] = entry;
-      } else {
-        history.entries.add(entry);
-      }
+    // Если за сегодня уже есть запись с таким же настроением и другим
+    // временем суток — объединяем (не дублируем).
+    final now = DateTime.now();
+    final existingIdx = history.entries.indexWhere(
+      (e) =>
+          e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.date.day == now.day &&
+          e.dayPart == selectedDayPart,
+    );
 
-      await ProfileService().updateMoodHistory(widget.profile.id, entry);
+    if (existingIdx >= 0) {
+      history.entries[existingIdx] = entry;
+    } else {
+      history.entries.add(entry);
     }
 
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(true);
+    await ProfileService().updateMoodHistory(widget.profile.id, entry);
+
+    // Stay in sheet — reload history and reset selection
+    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    if (fresh != null && mounted) {
+      setState(() {
+        history = fresh.moodHistory;
+        selectedMood = null;
+        change = false;
+      });
     }
   }
 
@@ -107,17 +112,10 @@ class _MoodSheetState extends State<MoodSheet> {
     return DraggableSheet(
       title: "История настроения",
       centerTitle: true,
-      onBack: () => Navigator.of(context).pop(false),
+      onBack: () => Navigator.of(context).pop(true),
       initialSize: 0.75,
       minSize: 0.5,
       maxSize: 0.95,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.check),
-          color: context.watch<AppearanceController>().primaryColor,
-          onPressed: change ? save : null,
-        ),
-      ],
       body: Column(
         children: [
           SegmentedButton<HistoryPeriod>(
@@ -386,6 +384,25 @@ class _MoodSheetState extends State<MoodSheet> {
           ),
 
           const SizedBox(height: 12),
+
+          // ── Добавить ─────────────────────────────────────────────────────
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: change ? save : null,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Добавить'),
+              style: FilledButton.styleFrom(
+                backgroundColor:
+                    context.watch<AppearanceController>().primaryColor,
+                disabledBackgroundColor: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(60),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
 
           // ── History list ──────────────────────────────────────────────────
           if (history.entries.isNotEmpty) ...[

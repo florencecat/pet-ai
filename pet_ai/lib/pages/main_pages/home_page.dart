@@ -205,6 +205,10 @@ class HomePageState extends State<HomePage> {
     final items = <_TimelineItem>[];
 
     for (final e in _allEvents) {
+      // Pill/treatment events are already shown on the health page
+      if (e.source == EventSource.pill) continue;
+      if (e.source == EventSource.treatment) continue;
+
       if (e.repeat == RepeatInterval.none) {
         if (e.dateTime.isAfter(now) && e.dateTime.isBefore(in30Days)) {
           items.add(
@@ -261,8 +265,10 @@ class HomePageState extends State<HomePage> {
   List<_TimelineItem> _buildHistoryItems() {
     final items = <_TimelineItem>[];
 
-    // Completed events
+    // Completed events (exclude pill/treatment auto-events — they clutter the timeline)
     for (final event in _allEvents) {
+      if (event.source == EventSource.pill) continue;
+      if (event.source == EventSource.treatment) continue;
       for (final dateStr in event.completedDates) {
         final parts = dateStr.split('-');
         if (parts.length == 3) {
@@ -859,6 +865,10 @@ class _PetTimeline extends StatelessWidget {
     bool isLast = false,
   }) {
     final dateLabel = formatSmartDate(item.date, pattern: 'd MMMM');
+    final hasTime = item.date.hour != 0 || item.date.minute != 0;
+    final timeLabel = hasTime
+        ? DateFormat('HH:mm').format(item.date)
+        : null;
 
     return IntrinsicHeight(
       child: Row(
@@ -884,6 +894,21 @@ class _PetTimeline extends StatelessWidget {
                         : FontWeight.w600,
                   ),
                 ),
+                if (timeLabel != null)
+                  Text(
+                    timeLabel,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      fontSize: 10,
+                      height: 1.1,
+                      color: item.isCompleted
+                          ? context
+                                .watch<AppearanceController>()
+                                .secondaryColor
+                                .withAlpha(150)
+                          : item.color.withAlpha(150),
+                    ),
+                  ),
                 const SizedBox(height: 4),
                 // Точка
                 Container(

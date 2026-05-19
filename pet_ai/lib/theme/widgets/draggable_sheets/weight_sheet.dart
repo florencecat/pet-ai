@@ -35,8 +35,14 @@ class _WeightSheetState extends State<WeightSheet> {
 
   Future<void> _save() async {
     await ProfileService().updateWeightHistory(widget.profile.id, _weight);
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(true);
+    if (!mounted) return;
+    // Stay in sheet — reload history list
+    final updated = await ProfileService().loadProfile(widget.profile.id);
+    if (updated != null && mounted) {
+      setState(() {
+        _history = updated.weightHistory;
+        _changed = false;
+      });
     }
   }
 
@@ -68,22 +74,16 @@ class _WeightSheetState extends State<WeightSheet> {
   @override
   Widget build(BuildContext context) {
     final entries = _history.filterByPeriod(_period);
+    final primaryColor = context.watch<AppearanceController>().primaryColor;
     final color = context.watch<AppearanceController>().secondaryColor;
 
     return DraggableSheet(
-      onBack: () => Navigator.of(context).pop(false),
+      onBack: () => Navigator.of(context).pop(true),
       title: 'История веса',
       centerTitle: true,
       initialSize: 0.85,
       minSize: 0.4,
       maxSize: 1.0,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.check),
-          color: color,
-          onPressed: _changed ? _save : null,
-        ),
-      ],
       body: Column(
         children: [
           // ── Period selector ───────────────────────────────────────────────
@@ -120,6 +120,23 @@ class _WeightSheetState extends State<WeightSheet> {
                 _changed = true;
                 _weight = value;
               }),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Добавить ──────────────────────────────────────────────────────
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _changed ? _save : null,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Добавить'),
+              style: FilledButton.styleFrom(
+                backgroundColor: primaryColor,
+                disabledBackgroundColor: color.withAlpha(60),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
           ),
 

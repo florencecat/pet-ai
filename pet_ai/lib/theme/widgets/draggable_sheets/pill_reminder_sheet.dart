@@ -106,7 +106,29 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       reminder: reminder,
     );
     if (!mounted) return;
-    Navigator.of(context).pop(true);
+
+    // Stay in sheet — reload list and clear form
+    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    if (fresh != null && mounted) {
+      setState(() {
+        widget.profile.pillReminders
+          ..clear()
+          ..addAll(fresh.pillReminders);
+        _nameCtrl.clear();
+        _doseCtrl.clear();
+        _frequency = PillFrequencyType.daily;
+        _weekdays
+          ..clear()
+          ..addAll({1, 2, 3, 4, 5});
+        _time = const TimeOfDay(hour: 9, minute: 0);
+        _startDate = DateTime.now();
+        _hasEndDate = false;
+        _endDate = DateTime.now().add(const Duration(days: 30));
+        _saving = false;
+      });
+    } else {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   void _openDetail(PillReminder reminder) async {
@@ -143,17 +165,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     return DraggableSheet(
       title: 'Препараты',
       centerTitle: true,
-      onBack: () => Navigator.of(context).pop(false),
+      onBack: () => Navigator.of(context).pop(true),
       initialSize: 0.9,
       minSize: 0.5,
       maxSize: 1.0,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.check),
-          color: accent,
-          onPressed: _saving ? null : _save,
-        ),
-      ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -249,6 +264,28 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                       onTap: () => _pickDate(isEnd: true),
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.add, size: 18),
+                      label: const Text('Добавить'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -421,13 +458,36 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     return result;
   }
 
+  /// Returns only days in [_scheduledDays] where the pill was NOT taken (missed).
+  List<DateTime> _missedDays(int days) {
+    return _scheduledDays(days)
+        .where((d) => !_reminder.isTakenOnDay(d))
+        .toList();
+  }
+
+  Future<void> _markTaken(DateTime day) async {
+    await PillReminderService().markTaken(
+      petId: widget.profile.id,
+      reminderId: _reminder.id,
+      date: day,
+    );
+    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    if (fresh != null && mounted) {
+      final updated = fresh.pillReminders.firstWhere(
+        (r) => r.id == _reminder.id,
+        orElse: () => _reminder,
+      );
+      setState(() => _reminder = updated);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = context.watch<AppearanceController>().primaryColor;
     final today = DateTime.now();
     final isTakenToday = _reminder.isTakenOnDay(today);
     final scheduledToday = _reminder.isScheduledForDay(today);
-    final scheduledDays = _scheduledDays(30);
+    final missedDays = _missedDays(30);
 
     return DraggableSheet(
       title: 'Препарат',
@@ -525,31 +585,34 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
             const SizedBox(height: 12),
           ],
 
-          // ── История (30 дней) ─────────────────────────────────────────────
-          if (scheduledDays.isNotEmpty) ...[
-            Text('История (30 дней)',
-                style: Theme.of(context).textTheme.titleMedium),
+          // ── Пропущенные (30 дней) ────────────────────────────────────────
+          if (missedDays.isNotEmpty) ...[
+            Text(
+              'Пропущено (30 дней)',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             GlassPlate(
               padding: 0,
               child: Column(
-                children: scheduledDays.asMap().entries.map((entry) {
+                children: missedDays.asMap().entries.map((entry) {
                   final i = entry.key;
                   final day = entry.value;
-                  final taken = _reminder.isTakenOnDay(day);
                   final isFirst = i == 0;
-                  final isLast = i == scheduledDays.length - 1;
 
                   return Column(
                     children: [
                       if (!isFirst)
                         Divider(
-                            height: 1,
-                            indent: 16,
-                            color: ThemeColors.border.withAlpha(60)),
+                          height: 1,
+                          indent: 16,
+                          color: ThemeColors.border.withAlpha(60),
+                        ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 11),
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         child: Row(
                           children: [
                             // Day label
@@ -568,35 +631,65 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // Status icon
                             Icon(
-                              taken
-                                  ? Icons.check_circle_rounded
-                                  : Icons.cancel_outlined,
+                              Icons.cancel_outlined,
                               size: 18,
-                              color: taken
-                                  ? ThemeColors.ok.mainColor
-                                  : ThemeColors.border.withAlpha(150),
+                              color: ThemeColors.warning.mainColor
+                                  .withAlpha(200),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              taken ? 'Принято' : 'Пропущено',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall!
-                                  .copyWith(
-                                    color: taken
-                                        ? ThemeColors.ok.mainColor
-                                        : ThemeColors.border,
-                                    fontWeight: taken
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
+                            Expanded(
+                              child: Text(
+                                'Пропущено',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall!
+                                    .copyWith(
+                                      color: ThemeColors.warning.mainColor,
+                                    ),
+                              ),
+                            ),
+                            // Mark as taken button
+                            GestureDetector(
+                              onTap: () => _markTaken(day),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: ThemeColors.ok.mainColor
+                                      .withAlpha(20),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: ThemeColors.ok.mainColor
+                                        .withAlpha(80),
                                   ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.check,
+                                      size: 14,
+                                      color: ThemeColors.ok.mainColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Принято',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: ThemeColors.ok.mainColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      if (isLast) const SizedBox.shrink(),
                     ],
                   );
                 }).toList(),
@@ -605,11 +698,22 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
           ] else ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                'Нет записей за последние 30 дней',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium!
-                    .copyWith(color: ThemeColors.border),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: ThemeColors.ok.mainColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Нет пропусков за последние 30 дней',
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: ThemeColors.ok.mainColor,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

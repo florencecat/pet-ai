@@ -148,6 +148,8 @@ class PetEvent {
   RepeatInterval repeat;
   List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
   int remindBeforeMinutes;
+  /// When false, no push notifications are scheduled for this event.
+  bool notify;
 
   /// Откуда создано событие (вручную, препарат, вакцина, заметка).
   final EventSource source;
@@ -163,6 +165,7 @@ class PetEvent {
     this.repeat = RepeatInterval.none,
     this.customDays = const [],
     this.remindBeforeMinutes = 0,
+    this.notify = true,
     List<String>? petIds,
     this.source = EventSource.manual,
     this.sourceId,
@@ -182,6 +185,7 @@ class PetEvent {
     required this.repeat,
     required this.customDays,
     required this.remindBeforeMinutes,
+    this.notify = true,
     this.source = EventSource.manual,
     this.sourceId,
   });
@@ -195,6 +199,7 @@ class PetEvent {
         repeat = RepeatInterval.none,
         customDays = const [],
         remindBeforeMinutes = 0,
+        notify = false,
         source = EventSource.note,
         sourceId = null;
 
@@ -209,6 +214,7 @@ class PetEvent {
         repeat = RepeatInterval.none,
         customDays = const [],
         remindBeforeMinutes = 0,
+        notify = true,
         source = EventSource.manual,
         sourceId = null;
 
@@ -272,11 +278,13 @@ class PetEvent {
       RepeatInterval? repeat,
       List<int>? customDays,
       int? remindBeforeMinutes,
-      List<String>? petIds,
-      ) {
+      List<String>? petIds, {
+      bool? notify,
+      }) {
     this.name = name ?? this.name;
     this.category = category ?? this.category;
     this.dateTime = dateTime ?? this.dateTime;
+    if (notify != null) this.notify = notify;
     this.repeat = repeat ?? this.repeat;
     this.customDays = customDays ?? this.customDays;
     this.remindBeforeMinutes = remindBeforeMinutes ?? this.remindBeforeMinutes;
@@ -316,6 +324,7 @@ class PetEvent {
     'repeat': repeat.index,
     'customDays': customDays,
     'remindBeforeMinutes': remindBeforeMinutes,
+    'notify': notify,
     'source': source.name,
     if (sourceId != null) 'sourceId': sourceId,
   };
@@ -353,6 +362,7 @@ class PetEvent {
       customDays: (json['customDays'] as List<dynamic>?)
           ?.map((e) => e as int).toList() ?? const [],
       remindBeforeMinutes: json['remindBeforeMinutes'] as int? ?? 0,
+      notify: json['notify'] as bool? ?? true,
       source: source,
       sourceId: json['sourceId'] as String?,
     );
@@ -416,8 +426,13 @@ class EventService {
     all.add(event);
     await _persistAll(all);
 
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      await NotificationService().scheduleEventNotification(event);
+    if (event.notify && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        await NotificationService().ensurePermission();
+        await NotificationService().scheduleEventNotification(event);
+      } catch (_) {
+        // Silently ignore notification failures (e.g. permission denied).
+      }
     }
   }
 

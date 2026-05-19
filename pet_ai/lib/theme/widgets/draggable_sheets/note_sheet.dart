@@ -87,7 +87,17 @@ class _NoteSheetState extends State<NoteSheet> {
         noteText,
         symptomId: _selectedSymptom?.id,
       );
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        // Stay in sheet — reload history and clear form
+        final updated = await ProfileService().loadProfile(widget.profile.id);
+        if (updated != null && mounted) {
+          setState(() {
+            _history = updated.noteHistory;
+            _controller.clear();
+            _selectedSymptom = null;
+          });
+        }
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -136,26 +146,7 @@ class _NoteSheetState extends State<NoteSheet> {
       centerTitle: true,
       initialSize: 0.9,
       maxSize: 1.0,
-      onBack: () => Navigator.of(context).pop(false),
-      actions: [
-        if (_isSaving)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          )
-        else
-          IconButton(
-            icon: const Icon(Icons.check),
-            color: hasContent
-                ? context.watch<AppearanceController>().primaryColor
-                : context.watch<AppearanceController>().secondaryColor,
-            onPressed: hasContent ? _save : null,
-          ),
-      ],
+      onBack: () => Navigator.of(context).pop(true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -223,8 +214,35 @@ class _NoteSheetState extends State<NoteSheet> {
                   ),
                   const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // ── Добавить ──────────────────────────────────────────
+                      FilledButton.icon(
+                        onPressed: hasContent && !_isSaving ? _save : null,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.add, size: 18),
+                        label: const Text('Добавить'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                              context.watch<AppearanceController>().primaryColor,
+                          disabledBackgroundColor: context
+                              .watch<AppearanceController>()
+                              .secondaryColor
+                              .withAlpha(60),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         decoration: BoxDecoration(

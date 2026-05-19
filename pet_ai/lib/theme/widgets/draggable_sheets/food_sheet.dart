@@ -33,6 +33,10 @@ class _FoodSheetState extends State<FoodSheet> {
   void initState() {
     super.initState();
     _history = widget.profile.foodHistory;
+    // Pre-fill grams with the last recorded value for this pet
+    if (_history.entries.isNotEmpty) {
+      _grams = _history.entries.last.grams.toDouble();
+    }
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────
@@ -47,7 +51,18 @@ class _FoodSheetState extends State<FoodSheet> {
         grams: _grams.round(),
       );
       await ProfileService().updateFoodHistory(widget.profile.id, entry);
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        // Stay in sheet — reload history and reset form
+        final fresh = await ProfileService().loadProfile(widget.profile.id);
+        if (fresh != null && mounted) {
+          setState(() {
+            _history = fresh.foodHistory;
+            _date = DateTime.now();
+            _appetiteScore = 3;
+            _grams = 100;
+          });
+        }
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -103,24 +118,7 @@ class _FoodSheetState extends State<FoodSheet> {
       centerTitle: true,
       initialSize: 0.85,
       maxSize: 1.0,
-      onBack: () => Navigator.of(context).pop(false),
-      actions: [
-        if (_isSaving)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          )
-        else
-          IconButton(
-            icon: const Icon(Icons.check),
-            color: context.watch<AppearanceController>().primaryColor,
-            onPressed: _save,
-          ),
-      ],
+      onBack: () => Navigator.of(context).pop(true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -255,6 +253,33 @@ class _FoodSheetState extends State<FoodSheet> {
                   _GramStepper(
                     value: _grams,
                     onChanged: (v) => setState(() => _grams = v),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Добавить
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _isSaving ? null : _save,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.add, size: 18),
+                      label: const Text('Добавить'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
                   ),
                 ],
               ),

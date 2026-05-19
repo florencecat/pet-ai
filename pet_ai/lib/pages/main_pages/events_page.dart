@@ -18,10 +18,10 @@ class EventsPage extends StatefulWidget {
   const EventsPage({super.key, this.initialDate});
 
   @override
-  State<EventsPage> createState() => _EventsPageState();
+  State<EventsPage> createState() => EventsPageState();
 }
 
-class _EventsPageState extends State<EventsPage> {
+class EventsPageState extends State<EventsPage> {
   CalendarFormat _format = CalendarFormat.month;
   late DateTime _focusedDay;
   DateTime? _selectedDay;
@@ -68,6 +68,9 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   // ── Data helpers ────────────────────────────────────────────────────────────
+
+  /// Called by [MainPage] via GlobalKey to reload data when the tab becomes active.
+  void refresh() => _loadEvents();
 
   void _refresh() async => await _loadEvents();
 
@@ -387,8 +390,15 @@ class _EventsPageState extends State<EventsPage> {
                       weekendStyle: Theme.of(context).textTheme.bodySmall!
                           .copyWith(inherit: true, fontSize: 13),
                     ),
-                    eventLoader: (day) =>
-                        _events.where((e) => e.occursOn(day)).toList(),
+                    eventLoader: (day) => _events.where((e) {
+                      if (!e.occursOn(day)) return false;
+                      // Pills create repeating events — shown on health page,
+                      // no need for calendar dots for each occurrence.
+                      if (e.source == EventSource.pill) return false;
+                      // Completed events should not show as dots.
+                      if (e.isCompletedOn(day)) return false;
+                      return true;
+                    }).toList(),
                     calendarStyle: CalendarStyle(
                       todayDecoration: const BoxDecoration(
                         color: Colors.transparent,

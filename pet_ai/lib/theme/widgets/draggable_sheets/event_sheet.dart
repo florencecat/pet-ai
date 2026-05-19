@@ -61,10 +61,14 @@ class _EventSheetState extends State<EventSheet> {
   EventCategory? _selectedCategory;
   EventSheetMode _mode = EventSheetMode.view;
 
+  /// Set to true when the user toggles completion so the parent screen refreshes.
+  bool _hasChanges = false;
+
   bool _isRepeating = false;
   RepeatInterval _selectedRepeat = RepeatInterval.none;
   List<int> _customDays = [];
   int _remindBeforeMinutes = 0;
+  bool _notify = true;
 
   List<PetProfile> _allProfiles = [];
   List<String> _selectedPetIds = [];
@@ -84,6 +88,7 @@ class _EventSheetState extends State<EventSheet> {
       _isRepeating = _selectedRepeat != RepeatInterval.none;
       _customDays = List.of(widget.event!.customDays);
       _remindBeforeMinutes = widget.event!.remindBeforeMinutes;
+      _notify = widget.event!.notify;
     }
     _mode = widget.mode;
     _loadProfiles();
@@ -176,7 +181,9 @@ class _EventSheetState extends State<EventSheet> {
     final petId = event.petIds.isNotEmpty ? event.petIds.first : '';
     final date = widget.completionDate ?? event.dateTime;
     await EventService().toggleCompleted(petId, event, date);
-    setState(() {});
+    setState(() {
+      _hasChanges = true;
+    });
   }
 
   bool get _isCompletedForDate {
@@ -221,13 +228,15 @@ class _EventSheetState extends State<EventSheet> {
           repeat: repeat,
           customDays: customDays,
           remindBeforeMinutes: _remindBeforeMinutes,
+          notify: _notify,
           petIds: petIds,
         ),
       );
     }
     if (EventSheetModeX(_mode).isEdit) {
       final event = widget.event!;
-      event.assign(name, category, dateTime, repeat, customDays, _remindBeforeMinutes, petIds);
+      event.assign(name, category, dateTime, repeat, customDays,
+          _remindBeforeMinutes, petIds, notify: _notify);
       _editEvent(context, event);
     }
   }
@@ -257,7 +266,7 @@ class _EventSheetState extends State<EventSheet> {
     return DraggableSheet(
       centerTitle: true,
       title: _mode.label,
-      onBack: () => Navigator.of(context).pop(false),
+      onBack: () => Navigator.of(context).pop(_hasChanges),
       initialSize: _mode.isView ? 0.65 : 0.85,
       minSize: 0.4,
       maxSize: 0.95,
@@ -624,6 +633,20 @@ class _EventSheetState extends State<EventSheet> {
               ),
             ],
           ),
+        ),
+      ),
+
+      const SizedBox(height: 8),
+
+      GlassPlate(
+        child: SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          title: Text('Уведомления', style: Theme.of(context).textTheme.bodyLarge),
+          subtitle: Text('Отправлять push-уведомление',
+              style: Theme.of(context).textTheme.bodySmall),
+          value: _notify,
+          activeThumbColor: context.watch<AppearanceController>().primaryColor,
+          onChanged: (val) => setState(() => _notify = val),
         ),
       ),
 

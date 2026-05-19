@@ -21,15 +21,16 @@ import 'package:pet_ai/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:pet_ai/theme/widgets/weight_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthPage extends StatefulWidget {
   const HealthPage({super.key});
 
   @override
-  State<HealthPage> createState() => _HealthPageState();
+  State<HealthPage> createState() => HealthPageState();
 }
 
-class _HealthPageState extends State<HealthPage> {
+class HealthPageState extends State<HealthPage> {
   PetProfile? _profile;
   List<PetEvent> _events = [];
   bool _isLoadingProfile = true;
@@ -40,6 +41,9 @@ class _HealthPageState extends State<HealthPage> {
   String? _moodStatus;
   String? _foodStatus;
 
+  /// Ids of health badges the user has dismissed.
+  Set<String> _dismissedBadgeIds = {};
+
   // Period for the inline weight chart
   HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
 
@@ -47,6 +51,25 @@ class _HealthPageState extends State<HealthPage> {
   void initState() {
     super.initState();
     _initScreen();
+  }
+
+  /// Called by [MainPage] via GlobalKey to reload data when the tab becomes active.
+  void refresh() => _initScreen();
+
+  String _dismissedKey(String petId) => 'dismissed_health_badges_$petId';
+
+  Future<void> _saveDismissed(String petId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _dismissedKey(petId),
+      _dismissedBadgeIds.toList(),
+    );
+  }
+
+  Future<void> _dismissBadge(String id) async {
+    if (_profile == null) return;
+    setState(() => _dismissedBadgeIds.add(id));
+    await _saveDismissed(_profile!.id);
   }
 
   Future<void> _initScreen() async {
@@ -72,6 +95,8 @@ class _HealthPageState extends State<HealthPage> {
     final foodStatus = await ProfileService().lastFoodString();
     final moodStatus = await ProfileService().lastMoodString();
     final events = await EventService().loadEvents(profile.id);
+    final prefs = await SharedPreferences.getInstance();
+    final dismissed = prefs.getStringList(_dismissedKey(profile.id)) ?? [];
 
     if (!mounted) return;
     setState(() {
@@ -81,6 +106,7 @@ class _HealthPageState extends State<HealthPage> {
       _weightDynamics = weightDynamics;
       _foodStatus = foodStatus;
       _moodStatus = moodStatus;
+      _dismissedBadgeIds = dismissed.toSet();
     });
   }
 
@@ -125,7 +151,10 @@ class _HealthPageState extends State<HealthPage> {
     if (updated == true) await _initScreen();
   }
 
-  void _openTreatments(BuildContext context, TreatmentKind kind) async {
+  void _openTreatments(
+    BuildContext context, {
+    TreatmentKind kind = TreatmentKind.rabies,
+  }) async {
     if (_profile == null) return;
     final updated = await showModalBottomSheet<bool>(
       context: context,
@@ -213,13 +242,19 @@ class _HealthPageState extends State<HealthPage> {
   }
 
   void _openRecommendations(BuildContext context, List<HealthBadge> badges) {
+    final visible = badges
+        .where((b) => b.id == null || !_dismissedBadgeIds.contains(b.id))
+        .toList();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _RecommendationsSheet(badges: badges),
+      builder: (_) => _RecommendationsSheet(
+        badges: visible,
+        onDismiss: _profile != null ? _dismissBadge : null,
+      ),
     );
   }
 
@@ -285,8 +320,9 @@ class _HealthPageState extends State<HealthPage> {
     // ── PetEvent (category: health, non-repeating) ────────────────────────
     for (final e in _events) {
       if (e.category.id != 'health') continue;
-      if (e.repeat != RepeatInterval.none)
-        continue; // repeating events don't become overdue
+      if (e.repeat != RepeatInterval.none) {
+        continue;
+      } // repeating events don't become overdue
       final eventDay = DateTime(
         e.dateTime.year,
         e.dateTime.month,
@@ -344,21 +380,6 @@ class _HealthPageState extends State<HealthPage> {
     );
   }
 
-  String _periodLabel(HistoryPeriod p) {
-    switch (p) {
-      case HistoryPeriod.month:
-        return '1 мес';
-      case HistoryPeriod.halfYear:
-        return '6 мес';
-      case HistoryPeriod.year:
-        return 'Год';
-      case HistoryPeriod.all:
-        return 'Всё';
-      default:
-        return '';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
@@ -384,6 +405,19 @@ class _HealthPageState extends State<HealthPage> {
     final activeReminders =
         _profile?.pillReminders.where((r) => r.isActive).toList()
           ?..sort((a, b) => a.name.compareTo(b.name));
+
+    // TreatmentKind.values.map((kind) {
+    //   final last = _profile!.treatmentHistory.lastOfKind(
+    //     kind,
+    //   );
+
+    List<TreatmentEntry> activeTreatments = [];
+    for (var kind in TreatmentKind.values) {
+      final entry = _profile?.treatmentHistory.lastOfKind(kind);
+      if (entry != null) {
+        activeTreatments.add(entry);
+      }
+    }
 
     return Scaffold(
       backgroundColor: ThemeColors.white,
@@ -581,7 +615,25 @@ class _HealthPageState extends State<HealthPage> {
 
             const SizedBox(height: 20),
 
-            _PageTitle('Прививки и обработки'),
+            Row(
+              children: [
+                Expanded(child: _PageTitle('Прививки и обработки')),
+                TextButton.icon(
+                  iconAlignment: IconAlignment.end,
+                  label: Text(
+                    'Добавить',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  icon: Icon(
+                    Icons.chevron_right,
+                    color: context.watch<AppearanceController>().secondaryColor,
+                  ),
+                  onPressed: _profile != null
+                      ? () => _openTreatments(context)
+                      : null,
+                ),
+              ],
+            ),
 
             const SizedBox(height: 12),
 
@@ -590,18 +642,13 @@ class _HealthPageState extends State<HealthPage> {
               child: _profile == null
                   ? const SizedBox.shrink()
                   : Column(
-                      children: TreatmentKind.values.map((kind) {
-                        final last = _profile!.treatmentHistory.lastOfKind(
-                          kind,
-                        );
+                      children: activeTreatments.map((entry) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: _TreatmentStatusTile(
-                            kind: kind,
-                            lastEntry: last,
-                            onTap: last == null
-                                ? () => _openTreatments(context, kind)
-                                : () => _openTreatment(context, last),
+                            kind: entry.kind,
+                            lastEntry: entry,
+                            onTap: () => _openTreatment(context, entry),
                           ),
                         );
                       }).toList(),
@@ -614,15 +661,23 @@ class _HealthPageState extends State<HealthPage> {
             Row(
               children: [
                 Expanded(child: _PageTitle('Препараты')),
-                IconButton(
-                  icon: Icon(
-                    Icons.add_circle_outline,
-                    color: context.watch<AppearanceController>().secondaryColor,
+                if (activeReminders != null && activeReminders.isNotEmpty)
+                  TextButton.icon(
+                    iconAlignment: IconAlignment.end,
+                    label: Text(
+                      'Добавить',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    icon: Icon(
+                      Icons.chevron_right,
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
+                    ),
+                    onPressed: _profile != null
+                        ? () => _openPillReminders(context)
+                        : null,
                   ),
-                  onPressed: _profile != null
-                      ? () => _openPillReminders(context)
-                      : null,
-                ),
               ],
             ),
 
@@ -699,6 +754,21 @@ class _HealthPageState extends State<HealthPage> {
         ),
       ),
     );
+  }
+
+  String _periodLabel(HistoryPeriod p) {
+    switch (p) {
+      case HistoryPeriod.month:
+        return '1 мес';
+      case HistoryPeriod.halfYear:
+        return '6 мес';
+      case HistoryPeriod.year:
+        return 'Год';
+      case HistoryPeriod.all:
+        return 'Всё';
+      default:
+        return '';
+    }
   }
 }
 
@@ -1043,10 +1113,32 @@ class _TreatmentStatusTile extends StatelessWidget {
 
 // ─── Шит «Все рекомендации» ───────────────────────────────────────────────────
 
-class _RecommendationsSheet extends StatelessWidget {
+class _RecommendationsSheet extends StatefulWidget {
   final List<HealthBadge> badges;
+  final Future<void> Function(String id)? onDismiss;
 
-  const _RecommendationsSheet({required this.badges});
+  const _RecommendationsSheet({required this.badges, this.onDismiss});
+
+  @override
+  State<_RecommendationsSheet> createState() => _RecommendationsSheetState();
+}
+
+class _RecommendationsSheetState extends State<_RecommendationsSheet> {
+  late List<HealthBadge> _badges;
+
+  @override
+  void initState() {
+    super.initState();
+    _badges = List.from(widget.badges);
+  }
+
+  Future<void> _dismiss(HealthBadge badge) async {
+    if (badge.id == null || widget.onDismiss == null) return;
+    await widget.onDismiss!(badge.id!);
+    if (mounted) {
+      setState(() => _badges.removeWhere((b) => b.id == badge.id));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1058,7 +1150,16 @@ class _RecommendationsSheet extends StatelessWidget {
       maxSize: 1.0,
       onBack: () => Navigator.of(context).pop(),
       body: Column(
-        children: badges.map((b) => HealthBadgeTile(badge: b)).toList(),
+        children: _badges
+            .map(
+              (b) => HealthBadgeTile(
+                badge: b,
+                onDismiss: (b.id != null && widget.onDismiss != null)
+                    ? () => _dismiss(b)
+                    : null,
+              ),
+            )
+            .toList(),
       ),
     );
   }
