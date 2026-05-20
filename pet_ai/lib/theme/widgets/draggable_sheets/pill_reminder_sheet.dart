@@ -10,6 +10,52 @@ import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
+// ─── Shared form state ────────────────────────────────────────────────────────
+
+/// Holds mutable form state for create / edit.
+class _PillFormState {
+  final TextEditingController nameCtrl;
+  final TextEditingController doseCtrl;
+  PillFrequencyType frequency;
+  Set<int> weekdays;
+  List<TimeOfDay> schedules;
+  DateTime startDate;
+  bool hasEndDate;
+  DateTime endDate;
+
+  _PillFormState({
+    String name = '',
+    String dose = '',
+    this.frequency = PillFrequencyType.daily,
+    Set<int>? weekdays,
+    List<TimeOfDay>? schedules,
+    DateTime? startDate,
+    this.hasEndDate = false,
+    DateTime? endDate,
+  })  : nameCtrl = TextEditingController(text: name),
+        doseCtrl = TextEditingController(text: dose),
+        weekdays = weekdays ?? {1, 2, 3, 4, 5},
+        schedules = schedules ?? [const TimeOfDay(hour: 9, minute: 0)],
+        startDate = startDate ?? DateTime.now(),
+        endDate = endDate ?? DateTime.now().add(const Duration(days: 30));
+
+  factory _PillFormState.fromReminder(PillReminder r) => _PillFormState(
+        name: r.name,
+        dose: r.dose,
+        frequency: r.frequencyType,
+        weekdays: Set.of(r.weekdays),
+        schedules: r.schedules.map((s) => s.toTimeOfDay()).toList(),
+        startDate: r.startDate,
+        hasEndDate: r.endDate != null,
+        endDate: r.endDate ?? DateTime.now().add(const Duration(days: 30)),
+      );
+
+  void dispose() {
+    nameCtrl.dispose();
+    doseCtrl.dispose();
+  }
+}
+
 // ─── Sheet: список + создание напоминаний ────────────────────────────────────
 
 class PillReminderSheet extends StatefulWidget {
@@ -22,31 +68,39 @@ class PillReminderSheet extends StatefulWidget {
 }
 
 class _PillReminderSheetState extends State<PillReminderSheet> {
-  final _nameCtrl = TextEditingController();
-  final _doseCtrl = TextEditingController();
-
-  PillFrequencyType _frequency = PillFrequencyType.daily;
-  final Set<int> _weekdays = {1, 2, 3, 4, 5};
-  TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
-  DateTime _startDate = DateTime.now();
-  bool _hasEndDate = false;
-  DateTime _endDate = DateTime.now().add(const Duration(days: 30));
+  late _PillFormState _form;
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _form = _PillFormState();
+  }
+
+  @override
   void dispose() {
-    _nameCtrl.dispose();
-    _doseCtrl.dispose();
+    _form.dispose();
     super.dispose();
   }
 
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(context: context, initialTime: _time);
-    if (picked != null) setState(() => _time = picked);
+  Future<void> _addSchedule() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+    );
+    if (picked != null) setState(() => _form.schedules.add(picked));
+  }
+
+  Future<void> _editSchedule(int index) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _form.schedules[index],
+    );
+    if (picked != null) setState(() => _form.schedules[index] = picked);
   }
 
   Future<void> _pickDate({required bool isEnd}) async {
-    final initial = isEnd ? _endDate : _startDate;
+    final initial = isEnd ? _form.endDate : _form.startDate;
     final first = DateTime.now().subtract(const Duration(days: 30));
     final last = DateTime.now().add(const Duration(days: 365 * 5));
     final picked = await showDatePicker(
@@ -59,45 +113,58 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     if (picked == null) return;
     setState(() {
       if (isEnd) {
-        _endDate = picked;
+        _form.endDate = picked;
       } else {
-        _startDate = picked;
-        if (_hasEndDate && _endDate.isBefore(_startDate)) {
-          _endDate = _startDate.add(const Duration(days: 30));
+        _form.startDate = picked;
+        if (_form.hasEndDate && _form.endDate.isBefore(_form.startDate)) {
+          _form.endDate = _form.startDate.add(const Duration(days: 30));
         }
       }
     });
   }
 
   Future<void> _save() async {
-    final name = _nameCtrl.text.trim();
+    final name = _form.nameCtrl.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Введите название препарата')),
       );
       return;
     }
-    if (_frequency == PillFrequencyType.weekdays && _weekdays.isEmpty) {
+    if (_form.frequency == PillFrequencyType.weekdays &&
+        _form.weekdays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Выберите хотя бы один день')),
+      );
+      return;
+    }
+    if (_form.schedules.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Добавьте хотя бы одно время приёма')),
       );
       return;
     }
 
     setState(() => _saving = true);
 
+    final sortedSchedules = List.of(_form.schedules)
+      ..sort((a, b) => a.hour != b.hour
+          ? a.hour.compareTo(b.hour)
+          : a.minute.compareTo(b.minute));
+
     final reminder = PillReminder(
       id: UniqueKey().toString(),
       name: name,
-      dose: _doseCtrl.text.trim(),
-      frequencyType: _frequency,
-      weekdays: _frequency == PillFrequencyType.weekdays
-          ? (List.of(_weekdays)..sort())
+      dose: _form.doseCtrl.text.trim(),
+      frequencyType: _form.frequency,
+      weekdays: _form.frequency == PillFrequencyType.weekdays
+          ? (List.of(_form.weekdays)..sort())
           : [],
-      hour: _time.hour,
-      minute: _time.minute,
-      startDate: _startDate,
-      endDate: _hasEndDate ? _endDate : null,
+      schedules: sortedSchedules
+          .map((t) => PillSchedule.fromTimeOfDay(t))
+          .toList(),
+      startDate: _form.startDate,
+      endDate: _form.hasEndDate ? _form.endDate : null,
       takenDates: const [],
     );
 
@@ -107,23 +174,15 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     );
     if (!mounted) return;
 
-    // Stay in sheet — reload list and clear form
+    // Stay in sheet — reload list and reset form
     final fresh = await ProfileService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() {
         widget.profile.pillReminders
           ..clear()
           ..addAll(fresh.pillReminders);
-        _nameCtrl.clear();
-        _doseCtrl.clear();
-        _frequency = PillFrequencyType.daily;
-        _weekdays
-          ..clear()
-          ..addAll({1, 2, 3, 4, 5});
-        _time = const TimeOfDay(hour: 9, minute: 0);
-        _startDate = DateTime.now();
-        _hasEndDate = false;
-        _endDate = DateTime.now().add(const Duration(days: 30));
+        _form.dispose();
+        _form = _PillFormState();
         _saving = false;
       });
     } else {
@@ -144,7 +203,6 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       ),
     );
     if (updated == true && mounted) {
-      // Refresh local list if the reminder was deleted inside
       final fresh = await ProfileService().loadProfile(widget.profile.id);
       if (fresh != null && mounted) {
         setState(() {
@@ -172,196 +230,374 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ─── Форма ──────────────────────────────────────────────────────
+          // ─── Create form ─────────────────────────────────────────────────
           GlassPlate(
             child: Padding(
               padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _nameCtrl,
-                    decoration: baseInputDecoration('Название препарата'),
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _doseCtrl,
-                    decoration: baseInputDecoration('Доза (необязательно)'),
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                  const SizedBox(height: 12),
-                  Text('Периодичность', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    children: PillFrequencyType.values.map((f) {
-                      return SoftGlassBadge(
-                        color: accent,
-                        icon: f.icon,
-                        label: f.label,
-                        selected: _frequency == f,
-                        onChanged: (_) => setState(() => _frequency = f),
-                      );
-                    }).toList(),
-                  ),
-                  if (_frequency == PillFrequencyType.weekdays) ...[
-                    const SizedBox(height: 10),
-                    Text('Дни недели', style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 6),
-                    _WeekdayPicker(
-                      selected: _weekdays,
-                      accent: accent,
-                      onChanged: (days) => setState(() {
-                        _weekdays..clear()..addAll(days);
-                      }),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _FieldButton(
-                          label: 'Время',
-                          icon: Icons.access_time,
-                          value: _time.format(context),
-                          onTap: _pickTime,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _FieldButton(
-                          label: 'С даты',
-                          icon: Icons.event,
-                          value: formatSmartDate(_startDate),
-                          onTap: () => _pickDate(isEnd: false),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(Icons.event_busy, size: 18, color: accent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text('Дата окончания',
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      ),
-                      Switch(
-                        value: _hasEndDate,
-                        onChanged: (v) => setState(() => _hasEndDate = v),
-                        activeThumbColor: accent,
-                      ),
-                    ],
-                  ),
-                  if (_hasEndDate) ...[
-                    const SizedBox(height: 6),
-                    _FieldButton(
-                      label: 'По дату',
-                      icon: Icons.event_available,
-                      value: formatSmartDate(_endDate),
-                      onTap: () => _pickDate(isEnd: true),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add, size: 18),
-                      label: const Text('Добавить'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: accent,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                ],
+              child: _PillForm(
+                form: _form,
+                accent: accent,
+                saving: _saving,
+                onAddSchedule: _addSchedule,
+                onEditSchedule: _editSchedule,
+                onPickDate: _pickDate,
+                onSave: _save,
+                onChanged: () => setState(() {}),
               ),
             ),
           ),
 
           const SizedBox(height: 16),
 
-          // ─── Список существующих напоминаний ────────────────────────────
+          // ─── Existing reminders list ──────────────────────────────────────
           if (reminders.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
                 'Напоминаний пока нет',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium!
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium!
                     .copyWith(color: ThemeColors.border),
               ),
             )
           else ...[
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 6),
-              child: Text('Активные напоминания',
-                  style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                'Активные напоминания',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             ...reminders.map(
               (r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: GlassPlate(
-                  padding: 0,
-                  child: InkWell(
-                    onTap: () => _openDetail(r),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 16),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: accent.withAlpha(20),
-                            ),
-                            child: Icon(Icons.medication_outlined,
-                                color: accent, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(r.name,
-                                    style: Theme.of(context).textTheme.titleSmall),
-                                Text(
-                                  [
-                                    if (r.dose.isNotEmpty) r.dose,
-                                    r.frequencyLabel,
-                                    r.timeLabel,
-                                  ].join(' · '),
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right,
-                              color: ThemeColors.border, size: 20),
-                        ],
-                      ),
-                    ),
-                  ),
+                child: _ReminderListTile(
+                  reminder: r,
+                  accent: accent,
+                  onTap: () => _openDetail(r),
                 ),
               ),
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// ─── Shared form widget ───────────────────────────────────────────────────────
+
+class _PillForm extends StatelessWidget {
+  final _PillFormState form;
+  final Color accent;
+  final bool saving;
+  final VoidCallback onAddSchedule;
+  final void Function(int index) onEditSchedule;
+  final Future<void> Function({required bool isEnd}) onPickDate;
+  final VoidCallback onSave;
+  final VoidCallback onChanged;
+  final String saveLabel;
+
+  const _PillForm({
+    required this.form,
+    required this.accent,
+    required this.saving,
+    required this.onAddSchedule,
+    required this.onEditSchedule,
+    required this.onPickDate,
+    required this.onSave,
+    required this.onChanged,
+    this.saveLabel = 'Добавить',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: form.nameCtrl,
+          decoration: baseInputDecoration('Название препарата'),
+          textCapitalization: TextCapitalization.sentences,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: form.doseCtrl,
+          decoration: baseInputDecoration('Доза (необязательно)'),
+          textCapitalization: TextCapitalization.sentences,
+        ),
+
+        const SizedBox(height: 12),
+        Text(
+          'Периодичность',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          children: PillFrequencyType.values.map((f) {
+            return SoftGlassBadge(
+              color: accent,
+              icon: f.icon,
+              label: f.label,
+              selected: form.frequency == f,
+              onChanged: (_) {
+                form.frequency = f;
+                onChanged();
+              },
+            );
+          }).toList(),
+        ),
+
+        if (form.frequency == PillFrequencyType.weekdays) ...[
+          const SizedBox(height: 10),
+          Text('Дни недели', style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 6),
+          _WeekdayPicker(
+            selected: form.weekdays,
+            accent: accent,
+            onChanged: (days) {
+              form.weekdays
+                ..clear()
+                ..addAll(days);
+              onChanged();
+            },
+          ),
+        ],
+
+        // ── Times ────────────────────────────────────────────────────────
+        const SizedBox(height: 12),
+        Text('Время приёма', style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            ...form.schedules.asMap().entries.map((entry) {
+              final i = entry.key;
+              final t = entry.value;
+              final label =
+                  '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+              return InkWell(
+                onTap: () => onEditSchedule(i),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accent.withAlpha(20),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: accent.withAlpha(80)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.access_time, size: 14, color: accent),
+                      const SizedBox(width: 5),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: accent,
+                        ),
+                      ),
+                      if (form.schedules.length > 1) ...[
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () {
+                            form.schedules.removeAt(i);
+                            onChanged();
+                          },
+                          child: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: accent.withAlpha(180),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+            // "+" chip to add another time
+            InkWell(
+              onTap: onAddSchedule,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(160),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: accent.withAlpha(60)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, size: 14, color: accent),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Добавить',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: accent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _FieldButton(
+                label: 'С даты',
+                icon: Icons.event,
+                value: formatSmartDate(form.startDate),
+                onTap: () => onPickDate(isEnd: false),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Icon(Icons.event_busy, size: 18, color: accent),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Дата окончания',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            Switch(
+              value: form.hasEndDate,
+              activeThumbColor: accent,
+              onChanged: (v) {
+                form.hasEndDate = v;
+                onChanged();
+              },
+            ),
+          ],
+        ),
+        if (form.hasEndDate) ...[
+          const SizedBox(height: 6),
+          _FieldButton(
+            label: 'По дату',
+            icon: Icons.event_available,
+            value: formatSmartDate(form.endDate),
+            onTap: () => onPickDate(isEnd: true),
+          ),
+        ],
+
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: saving ? null : onSave,
+            icon: saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.check, size: 18),
+            label: Text(saveLabel),
+            style: FilledButton.styleFrom(
+              backgroundColor: accent,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Compact list tile for reminder in create sheet ───────────────────────────
+
+class _ReminderListTile extends StatelessWidget {
+  final PillReminder reminder;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _ReminderListTile({
+    required this.reminder,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPlate(
+      padding: 0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withAlpha(20),
+                ),
+                child: Icon(
+                  Icons.medication_outlined,
+                  color: accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reminder.name,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      [
+                        if (reminder.dose.isNotEmpty) reminder.dose,
+                        reminder.frequencyLabel,
+                        reminder.timeLabel,
+                      ].join(' · '),
+                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: ThemeColors.border,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -385,6 +621,11 @@ class PillDetailSheet extends StatefulWidget {
 
 class _PillDetailSheetState extends State<PillDetailSheet> {
   late PillReminder _reminder;
+  bool _editing = false;
+  bool _saving = false;
+
+  // Edit form state (initialised lazily when edit mode is entered)
+  _PillFormState? _form;
 
   @override
   void initState() {
@@ -392,31 +633,33 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     _reminder = widget.reminder;
   }
 
-  Future<void> _toggleToday() async {
+  @override
+  void dispose() {
+    _form?.dispose();
+    super.dispose();
+  }
+
+  // ── View mode actions ────────────────────────────────────────────────────
+
+  Future<void> _toggleSchedule(int scheduleIndex) async {
     final today = DateTime.now();
-    final taken = _reminder.isTakenOnDay(today);
-    if (taken) {
-      await PillReminderService().markUntaken(
+    final isTaken = _reminder.isScheduleTakenOnDay(today, scheduleIndex);
+    if (isTaken) {
+      await PillReminderService().markScheduleUntaken(
         petId: widget.profile.id,
         reminderId: _reminder.id,
         date: today,
+        scheduleIndex: scheduleIndex,
       );
     } else {
-      await PillReminderService().markTaken(
+      await PillReminderService().markScheduleTaken(
         petId: widget.profile.id,
         reminderId: _reminder.id,
         date: today,
+        scheduleIndex: scheduleIndex,
       );
     }
-    // Reload reminder state
-    final fresh = await ProfileService().loadProfile(widget.profile.id);
-    if (fresh != null && mounted) {
-      final updated = fresh.pillReminders.firstWhere(
-        (r) => r.id == _reminder.id,
-        orElse: () => _reminder,
-      );
-      setState(() => _reminder = updated);
-    }
+    await _reloadReminder();
   }
 
   Future<void> _delete() async {
@@ -424,14 +667,16 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Удалить напоминание?'),
-        content: const Text('Всё история приёмов тоже будет удалена.'),
+        content: const Text('Вся история приёмов тоже будет удалена.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Удалить'),
           ),
@@ -446,31 +691,16 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     if (mounted) Navigator.of(context).pop(true);
   }
 
-  /// Last [days] days where the reminder was scheduled, newest first.
-  List<DateTime> _scheduledDays(int days) {
-    final today = DateTime.now();
-    final result = <DateTime>[];
-    for (var i = 0; i < days; i++) {
-      final d = DateTime(today.year, today.month, today.day)
-          .subtract(Duration(days: i));
-      if (_reminder.isScheduledForDay(d)) result.add(d);
-    }
-    return result;
-  }
-
-  /// Returns only days in [_scheduledDays] where the pill was NOT taken (missed).
-  List<DateTime> _missedDays(int days) {
-    return _scheduledDays(days)
-        .where((d) => !_reminder.isTakenOnDay(d))
-        .toList();
-  }
-
   Future<void> _markTaken(DateTime day) async {
     await PillReminderService().markTaken(
       petId: widget.profile.id,
       reminderId: _reminder.id,
       date: day,
     );
+    await _reloadReminder();
+  }
+
+  Future<void> _reloadReminder() async {
     final fresh = await ProfileService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       final updated = fresh.pillReminders.firstWhere(
@@ -481,246 +711,139 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final accent = context.watch<AppearanceController>().primaryColor;
-    final today = DateTime.now();
-    final isTakenToday = _reminder.isTakenOnDay(today);
-    final scheduledToday = _reminder.isScheduledForDay(today);
-    final missedDays = _missedDays(30);
+  // ── Edit mode ────────────────────────────────────────────────────────────
 
-    return DraggableSheet(
-      title: 'Препарат',
-      centerTitle: true,
-      onBack: () => Navigator.of(context).pop(false),
-      initialSize: 0.75,
-      minSize: 0.5,
-      maxSize: 0.95,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.delete_outline),
-          color: ThemeColors.dangerZone,
-          onPressed: _delete,
-        ),
-      ],
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Hero ──────────────────────────────────────────────────────────
-          Center(
-            child: Column(
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: accent.withAlpha(20),
-                    border: Border.all(color: accent.withAlpha(60), width: 1.5),
-                  ),
-                  child: Icon(Icons.medication_outlined, color: accent, size: 34),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _reminder.name,
-                  style: Theme.of(context).textTheme.headlineSmall!
-                      .copyWith(fontWeight: FontWeight.w700),
-                  textAlign: TextAlign.center,
-                ),
-                if (_reminder.dose.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    _reminder.dose,
-                    style: Theme.of(context).textTheme.bodyMedium!
-                        .copyWith(color: ThemeColors.border),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // ── Расписание ────────────────────────────────────────────────────
-          GlassPlate(
-            padding: 0,
-            child: Column(
-              children: [
-                _DetailRow(
-                  icon: Icons.repeat,
-                  iconColor: accent,
-                  label: _reminder.frequencyLabel,
-                ),
-                Divider(height: 1, indent: 46, color: ThemeColors.border.withAlpha(60)),
-                _DetailRow(
-                  icon: Icons.access_time,
-                  iconColor: accent,
-                  label: _reminder.timeLabel,
-                ),
-                Divider(height: 1, indent: 46, color: ThemeColors.border.withAlpha(60)),
-                _DetailRow(
-                  icon: Icons.event,
-                  iconColor: accent,
-                  label: 'С ${formatSmartDate(_reminder.startDate)}',
-                  sublabel: _reminder.endDate != null
-                      ? 'по ${formatSmartDate(_reminder.endDate!)}'
-                      : null,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Сегодня ───────────────────────────────────────────────────────
-          if (scheduledToday) ...[
-            Text('Сегодня', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            _TodayToggle(
-              isTaken: isTakenToday,
-              time: _reminder.timeLabel,
-              accent: accent,
-              onTap: _toggleToday,
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // ── Пропущенные (30 дней) ────────────────────────────────────────
-          if (missedDays.isNotEmpty) ...[
-            Text(
-              'Пропущено (30 дней)',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            GlassPlate(
-              padding: 0,
-              child: Column(
-                children: missedDays.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final day = entry.value;
-                  final isFirst = i == 0;
-
-                  return Column(
-                    children: [
-                      if (!isFirst)
-                        Divider(
-                          height: 1,
-                          indent: 16,
-                          color: ThemeColors.border.withAlpha(60),
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          children: [
-                            // Day label
-                            SizedBox(
-                              width: 80,
-                              child: Text(
-                                _dayLabel(day),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall!
-                                    .copyWith(
-                                      color: isFirst
-                                          ? ThemeColors.textPrimary
-                                          : ThemeColors.border,
-                                    ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.cancel_outlined,
-                              size: 18,
-                              color: ThemeColors.warning.mainColor
-                                  .withAlpha(200),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Пропущено',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall!
-                                    .copyWith(
-                                      color: ThemeColors.warning.mainColor,
-                                    ),
-                              ),
-                            ),
-                            // Mark as taken button
-                            GestureDetector(
-                              onTap: () => _markTaken(day),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: ThemeColors.ok.mainColor
-                                      .withAlpha(20),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: ThemeColors.ok.mainColor
-                                        .withAlpha(80),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.check,
-                                      size: 14,
-                                      color: ThemeColors.ok.mainColor,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Принято',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: ThemeColors.ok.mainColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ] else ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    color: ThemeColors.ok.mainColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Нет пропусков за последние 30 дней',
-                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: ThemeColors.ok.mainColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+  void _enterEdit() {
+    _form?.dispose();
+    setState(() {
+      _form = _PillFormState.fromReminder(_reminder);
+      _editing = true;
+    });
   }
+
+  void _cancelEdit() {
+    setState(() {
+      _form?.dispose();
+      _form = null;
+      _editing = false;
+    });
+  }
+
+  Future<void> _saveEdit() async {
+    final form = _form!;
+    final name = form.nameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите название препарата')),
+      );
+      return;
+    }
+    if (form.frequency == PillFrequencyType.weekdays && form.weekdays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Выберите хотя бы один день')),
+      );
+      return;
+    }
+    if (form.schedules.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Добавьте хотя бы одно время приёма')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    final sortedSchedules = List.of(form.schedules)
+      ..sort((a, b) => a.hour != b.hour
+          ? a.hour.compareTo(b.hour)
+          : a.minute.compareTo(b.minute));
+
+    final updated = _reminder.copyWith(
+      name: name,
+      dose: form.doseCtrl.text.trim(),
+      frequencyType: form.frequency,
+      weekdays: form.frequency == PillFrequencyType.weekdays
+          ? (List.of(form.weekdays)..sort())
+          : [],
+      schedules: sortedSchedules
+          .map((t) => PillSchedule.fromTimeOfDay(t))
+          .toList(),
+      startDate: form.startDate,
+      endDate: form.hasEndDate ? form.endDate : null,
+      clearEndDate: !form.hasEndDate,
+    );
+
+    await PillReminderService().update(
+      petId: widget.profile.id,
+      updated: updated,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _reminder = updated;
+      _editing = false;
+      _form?.dispose();
+      _form = null;
+      _saving = false;
+    });
+  }
+
+  Future<void> _addSchedule() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+    );
+    if (picked != null) setState(() => _form!.schedules.add(picked));
+  }
+
+  Future<void> _editSchedule(int index) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _form!.schedules[index],
+    );
+    if (picked != null) setState(() => _form!.schedules[index] = picked);
+  }
+
+  Future<void> _pickDate({required bool isEnd}) async {
+    final form = _form!;
+    final initial = isEnd ? form.endDate : form.startDate;
+    final first = DateTime.now().subtract(const Duration(days: 30));
+    final last = DateTime.now().add(const Duration(days: 365 * 5));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
+      locale: const Locale('ru'),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isEnd) {
+        form.endDate = picked;
+      } else {
+        form.startDate = picked;
+        if (form.hasEndDate && form.endDate.isBefore(form.startDate)) {
+          form.endDate = form.startDate.add(const Duration(days: 30));
+        }
+      }
+    });
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  List<DateTime> _scheduledDays(int days) {
+    final today = DateTime.now();
+    final result = <DateTime>[];
+    for (var i = 0; i < days; i++) {
+      final d =
+          DateTime(today.year, today.month, today.day).subtract(Duration(days: i));
+      if (_reminder.isScheduledForDay(d)) result.add(d);
+    }
+    return result;
+  }
+
+  List<DateTime> _missedDays(int days) =>
+      _scheduledDays(days).where((d) => !_reminder.isTakenOnDay(d)).toList();
 
   String _dayLabel(DateTime d) {
     final now = DateTime.now();
@@ -730,6 +853,324 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     if (diff == 0) return 'Сегодня';
     if (diff == 1) return 'Вчера';
     return DateFormat('d MMM', 'ru').format(d);
+  }
+
+  // ── Build ────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.watch<AppearanceController>().primaryColor;
+
+    return DraggableSheet(
+      title: _editing ? 'Редактирование' : 'Препарат',
+      centerTitle: true,
+      onBack: _editing
+          ? _cancelEdit
+          : () => Navigator.of(context).pop(false),
+      initialSize: 0.75,
+      minSize: 0.5,
+      maxSize: 1.0,
+      actions: _editing
+          ? null
+          : [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                color: accent,
+                onPressed: _enterEdit,
+                tooltip: 'Редактировать',
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                color: ThemeColors.dangerZone,
+                onPressed: _delete,
+              ),
+            ],
+      body: _editing ? _buildEditBody(accent) : _buildViewBody(accent),
+    );
+  }
+
+  // ── View body ────────────────────────────────────────────────────────────
+
+  Widget _buildViewBody(Color accent) {
+    final today = DateTime.now();
+    final scheduledToday = _reminder.isScheduledForDay(today);
+    final missedDays = _missedDays(30);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Hero ────────────────────────────────────────────────────────────
+        Center(
+          child: Column(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withAlpha(20),
+                  border: Border.all(color: accent.withAlpha(60), width: 1.5),
+                ),
+                child: Icon(
+                  Icons.medication_outlined,
+                  color: accent,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _reminder.name,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall!
+                    .copyWith(fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+              ),
+              if (_reminder.dose.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _reminder.dose,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium!
+                      .copyWith(color: ThemeColors.border),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ── Schedule info ────────────────────────────────────────────────────
+        GlassPlate(
+          padding: 0,
+          child: Column(
+            children: [
+              _DetailRow(
+                icon: Icons.repeat,
+                iconColor: accent,
+                label: _reminder.frequencyLabel,
+              ),
+              Divider(
+                height: 1,
+                indent: 46,
+                color: ThemeColors.border.withAlpha(60),
+              ),
+              // Show each time as a separate row
+              ..._reminder.schedules.asMap().entries.map((entry) {
+                final i = entry.key;
+                final s = entry.value;
+                final isLast = i == _reminder.schedules.length - 1;
+                return Column(
+                  children: [
+                    _DetailRow(
+                      icon: Icons.access_time,
+                      iconColor: accent,
+                      label: s.label,
+                    ),
+                    if (!isLast)
+                      Divider(
+                        height: 1,
+                        indent: 46,
+                        color: ThemeColors.border.withAlpha(60),
+                      ),
+                  ],
+                );
+              }),
+              Divider(
+                height: 1,
+                indent: 46,
+                color: ThemeColors.border.withAlpha(60),
+              ),
+              _DetailRow(
+                icon: Icons.event,
+                iconColor: accent,
+                label: 'С ${formatSmartDate(_reminder.startDate)}',
+                sublabel: _reminder.endDate != null
+                    ? 'по ${formatSmartDate(_reminder.endDate!)}'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Today ────────────────────────────────────────────────────────────
+        if (scheduledToday) ...[
+          Text(
+            'Сегодня',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          // One toggle per schedule — each is toggled independently.
+          ..._reminder.schedules.asMap().entries.map((entry) {
+            final i = entry.key;
+            final s = entry.value;
+            final taken = _reminder.isScheduleTakenOnDay(today, i);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _TodayToggle(
+                isTaken: taken,
+                time: s.label,
+                accent: accent,
+                onTap: () => _toggleSchedule(i),
+              ),
+            );
+          }),
+          const SizedBox(height: 4),
+        ],
+
+        // ── Missed (30 days) ─────────────────────────────────────────────────
+        if (missedDays.isNotEmpty) ...[
+          Text(
+            'Пропущено (30 дней)',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          GlassPlate(
+            padding: 0,
+            child: Column(
+              children: missedDays.asMap().entries.map((entry) {
+                final i = entry.key;
+                final day = entry.value;
+                final isFirst = i == 0;
+                return Column(
+                  children: [
+                    if (!isFirst)
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        color: ThemeColors.border.withAlpha(60),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 80,
+                            child: Text(
+                              _dayLabel(day),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall!
+                                  .copyWith(
+                                    color: isFirst
+                                        ? ThemeColors.textPrimary
+                                        : ThemeColors.border,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.cancel_outlined,
+                            size: 18,
+                            color: ThemeColors.warning.mainColor.withAlpha(200),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Пропущено',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall!
+                                  .copyWith(
+                                    color: ThemeColors.warning.mainColor,
+                                  ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => _markTaken(day),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: ThemeColors.ok.mainColor.withAlpha(20),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: ThemeColors.ok.mainColor.withAlpha(80),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check,
+                                    size: 14,
+                                    color: ThemeColors.ok.mainColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Принято',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: ThemeColors.ok.mainColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ] else ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  color: ThemeColors.ok.mainColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Нет пропусков за последние 30 дней',
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: ThemeColors.ok.mainColor,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Edit body ────────────────────────────────────────────────────────────
+
+  Widget _buildEditBody(Color accent) {
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: _PillForm(
+          form: _form!,
+          accent: accent,
+          saving: _saving,
+          onAddSchedule: _addSchedule,
+          onEditSchedule: _editSchedule,
+          onPickDate: _pickDate,
+          onSave: _saveEdit,
+          onChanged: () => setState(() {}),
+          saveLabel: 'Сохранить',
+        ),
+      ),
+    );
   }
 }
 
@@ -789,8 +1230,9 @@ class _TodayToggle extends StatelessWidget {
                 Text(
                   time,
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
-                  ),
+                        color:
+                            isTaken ? Colors.white : ThemeColors.textPrimary,
+                      ),
                 ),
                 const Spacer(),
                 AnimatedSwitcher(
@@ -800,8 +1242,7 @@ class _TodayToggle extends StatelessWidget {
                         ? Icons.check_circle_rounded
                         : Icons.circle_outlined,
                     key: ValueKey(isTaken),
-                    color:
-                        isTaken ? Colors.white : accent,
+                    color: isTaken ? Colors.white : accent,
                     size: 22,
                   ),
                 ),
@@ -809,9 +1250,10 @@ class _TodayToggle extends StatelessWidget {
                 Text(
                   isTaken ? 'Принято' : 'Отметить',
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                        color:
+                            isTaken ? Colors.white : ThemeColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ],
             ),
@@ -854,7 +1296,9 @@ class _DetailRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     sublabel!,
-                    style: Theme.of(context).textTheme.bodySmall!
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall!
                         .copyWith(color: ThemeColors.border),
                   ),
                 ],
@@ -867,7 +1311,7 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-// ─── Выбор дней недели ────────────────────────────────────────────────────────
+// ─── Weekday picker ───────────────────────────────────────────────────────────
 
 class _WeekdayPicker extends StatelessWidget {
   final Set<int> selected;
@@ -911,7 +1355,7 @@ class _WeekdayPicker extends StatelessWidget {
   }
 }
 
-// ─── Кнопка-поле ─────────────────────────────────────────────────────────────
+// ─── Field button ─────────────────────────────────────────────────────────────
 
 class _FieldButton extends StatelessWidget {
   final String label;

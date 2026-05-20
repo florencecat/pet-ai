@@ -29,17 +29,53 @@ const _weekdayShort = {
   1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс',
 };
 
+// ─── Single intake time ───────────────────────────────────────────────────────
+
+class PillSchedule {
+  final int hour;
+  final int minute;
+
+  const PillSchedule({required this.hour, required this.minute});
+
+  String get label =>
+      '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
+  TimeOfDay toTimeOfDay() => TimeOfDay(hour: hour, minute: minute);
+
+  factory PillSchedule.fromTimeOfDay(TimeOfDay t) =>
+      PillSchedule(hour: t.hour, minute: t.minute);
+
+  Map<String, dynamic> toJson() => {'hour': hour, 'minute': minute};
+
+  factory PillSchedule.fromJson(Map<String, dynamic> json) => PillSchedule(
+    hour: json['hour'] as int,
+    minute: json['minute'] as int,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is PillSchedule && other.hour == hour && other.minute == minute;
+
+  @override
+  int get hashCode => Object.hash(hour, minute);
+}
+
+// ─── PillReminder ─────────────────────────────────────────────────────────────
+
 class PillReminder {
   final String id;
   final String name;
   final String dose;             // e.g., "1 таблетка", "5 мл"
   final PillFrequencyType frequencyType;
   final List<int> weekdays;      // 1=Пн..7=Вс; only for frequencyType.weekdays
-  final int hour;
-  final int minute;
+  /// Ordered list of daily intake times. At least one entry is always present.
+  final List<PillSchedule> schedules;
   final DateTime startDate;
   final DateTime? endDate;
-  final List<String> takenDates; // "yyyy-MM-dd" when each dose was taken
+  /// Legacy per-day taken flag (kept for backward compat reading old saves).
+  final List<String> takenDates;
+  /// Per-schedule taken state: dateKey → list of schedule indices that were taken.
+  final Map<String, List<int>> takenSchedules;
   final String? eventId;        // linked PetEvent for notifications
 
   const PillReminder({
@@ -48,13 +84,20 @@ class PillReminder {
     required this.dose,
     required this.frequencyType,
     required this.weekdays,
-    required this.hour,
-    required this.minute,
+    required this.schedules,
     required this.startDate,
     this.endDate,
     required this.takenDates,
+    this.takenSchedules = const {},
     this.eventId,
   });
+
+  // ── Backward-compat accessors ─────────────────────────────────────────────
+
+  int get hour => schedules.isNotEmpty ? schedules.first.hour : 9;
+  int get minute => schedules.isNotEmpty ? schedules.first.minute : 0;
+
+  // ── Computed properties ───────────────────────────────────────────────────
 
   bool get isActive {
     if (endDate == null) return true;
@@ -80,7 +123,31 @@ class PillReminder {
     }
   }
 
-  bool isTakenOnDay(DateTime day) => takenDates.contains(dateKey(day));
+  /// Returns true when every schedule for [day] is marked as taken.
+  bool isTakenOnDay(DateTime day) {
+    final key = dateKey(day);
+    if (takenSchedules.containsKey(key)) {
+      return (takenSchedules[key]?.length ?? 0) >= schedules.length;
+    }
+    // Backward compat: fall back to legacy per-day flag.
+    return takenDates.contains(key);
+  }
+
+  /// Whether a specific schedule [scheduleIndex] is marked as taken on [day].
+  bool isScheduleTakenOnDay(DateTime day, int scheduleIndex) {
+    final key = dateKey(day);
+    return takenSchedules[key]?.contains(scheduleIndex) ?? false;
+  }
+
+  /// Number of individual schedules marked as taken on [day].
+  int countTakenOnDay(DateTime day) {
+    final key = dateKey(day);
+    if (takenSchedules.containsKey(key)) {
+      return takenSchedules[key]?.length ?? 0;
+    }
+    // Backward compat: if legacy flag set, treat all schedules as taken.
+    return takenDates.contains(key) ? schedules.length : 0;
+  }
 
   DateTime? nextScheduledDate() {
     final now = DateTime.now();
@@ -92,8 +159,8 @@ class PillReminder {
     return null;
   }
 
-  String get timeLabel =>
-      '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  /// Human-readable label for all scheduled times.
+  String get timeLabel => schedules.map((s) => s.label).join(' · ');
 
   String get frequencyLabel {
     switch (frequencyType) {
@@ -106,46 +173,82 @@ class PillReminder {
     }
   }
 
+  // ── copyWith ──────────────────────────────────────────────────────────────
+
   PillReminder copyWith({
+    String? name,
+    String? dose,
+    PillFrequencyType? frequencyType,
+    List<int>? weekdays,
+    List<PillSchedule>? schedules,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool clearEndDate = false,
     List<String>? takenDates,
+    Map<String, List<int>>? takenSchedules,
     String? eventId,
   }) => PillReminder(
     id: id,
-    name: name,
-    dose: dose,
-    frequencyType: frequencyType,
-    weekdays: weekdays,
-    hour: hour,
-    minute: minute,
-    startDate: startDate,
-    endDate: endDate,
+    name: name ?? this.name,
+    dose: dose ?? this.dose,
+    frequencyType: frequencyType ?? this.frequencyType,
+    weekdays: weekdays ?? this.weekdays,
+    schedules: schedules ?? this.schedules,
+    startDate: startDate ?? this.startDate,
+    endDate: clearEndDate ? null : (endDate ?? this.endDate),
     takenDates: takenDates ?? this.takenDates,
+    takenSchedules: takenSchedules ?? this.takenSchedules,
     eventId: eventId ?? this.eventId,
   );
+
+  // ── Serialization ─────────────────────────────────────────────────────────
 
   static String dateKey(DateTime day) =>
       '${day.year.toString().padLeft(4, '0')}-'
       '${day.month.toString().padLeft(2, '0')}-'
       '${day.day.toString().padLeft(2, '0')}';
 
-  factory PillReminder.fromJson(Map<String, dynamic> json) => PillReminder(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    dose: json['dose'] as String? ?? '',
-    frequencyType: PillFrequencyType.values.firstWhere(
-      (f) => f.name == json['frequencyType'],
-      orElse: () => PillFrequencyType.daily,
-    ),
-    weekdays: (json['weekdays'] as List<dynamic>?)?.cast<int>() ?? [],
-    hour: json['hour'] as int? ?? 9,
-    minute: json['minute'] as int? ?? 0,
-    startDate: DateTime.parse(json['startDate'] as String),
-    endDate: json['endDate'] != null
-        ? DateTime.parse(json['endDate'] as String)
-        : null,
-    takenDates: (json['takenDates'] as List<dynamic>?)?.cast<String>() ?? [],
-    eventId: json['eventId'] as String?,
-  );
+  factory PillReminder.fromJson(Map<String, dynamic> json) {
+    // Backward compat: if new 'schedules' key is absent, read old hour/minute
+    final List<PillSchedule> schedules;
+    if (json['schedules'] != null) {
+      schedules = (json['schedules'] as List<dynamic>)
+          .map((s) => PillSchedule.fromJson(s as Map<String, dynamic>))
+          .toList();
+    } else {
+      schedules = [
+        PillSchedule(
+          hour: json['hour'] as int? ?? 9,
+          minute: json['minute'] as int? ?? 0,
+        ),
+      ];
+    }
+
+    return PillReminder(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      dose: json['dose'] as String? ?? '',
+      frequencyType: PillFrequencyType.values.firstWhere(
+        (f) => f.name == json['frequencyType'],
+        orElse: () => PillFrequencyType.daily,
+      ),
+      weekdays: (json['weekdays'] as List<dynamic>?)?.cast<int>() ?? [],
+      schedules: schedules,
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: json['endDate'] != null
+          ? DateTime.parse(json['endDate'] as String)
+          : null,
+      takenDates: (json['takenDates'] as List<dynamic>?)?.cast<String>() ?? [],
+      takenSchedules: _parseTakenSchedules(json['takenSchedules']),
+      eventId: json['eventId'] as String?,
+    );
+  }
+
+  static Map<String, List<int>> _parseTakenSchedules(dynamic raw) {
+    if (raw == null) return {};
+    final map = raw as Map<String, dynamic>;
+    return map.map((k, v) => MapEntry(k, (v as List<dynamic>).cast<int>()));
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -153,11 +256,14 @@ class PillReminder {
     'dose': dose,
     'frequencyType': frequencyType.name,
     'weekdays': weekdays,
+    'schedules': schedules.map((s) => s.toJson()).toList(),
+    // Also write legacy fields so old app versions can still read them
     'hour': hour,
     'minute': minute,
     'startDate': startDate.toIso8601String(),
     'endDate': endDate?.toIso8601String(),
     'takenDates': takenDates,
+    'takenSchedules': takenSchedules,
     'eventId': eventId,
   };
 }

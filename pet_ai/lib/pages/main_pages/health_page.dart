@@ -114,7 +114,7 @@ class HealthPageState extends State<HealthPage> {
 
   void _openWeightHistory(BuildContext context) async {
     if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -122,12 +122,13 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => WeightSheet(profile: _profile!),
     );
-    if (updated == true) await _initScreen();
+    // Always reload — user may have added/deleted data even if they swiped to close.
+    if (mounted) await _initScreen();
   }
 
   void _openMoodHistory(BuildContext context) async {
     if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -135,12 +136,12 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => MoodSheet(profile: _profile!),
     );
-    if (updated == true) await _initScreen();
+    if (mounted) await _initScreen();
   }
 
   void _openFoodHistory(BuildContext context) async {
     if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -148,7 +149,7 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => FoodSheet(profile: _profile!),
     );
-    if (updated == true) await _initScreen();
+    if (mounted) await _initScreen();
   }
 
   void _openTreatments(
@@ -156,7 +157,7 @@ class HealthPageState extends State<HealthPage> {
     TreatmentKind kind = TreatmentKind.rabies,
   }) async {
     if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -164,7 +165,7 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => TreatmentSheet(profile: _profile!, presetKind: kind),
     );
-    if (updated == true) await _initScreen();
+    if (mounted) await _initScreen();
   }
 
   void _openTreatment(BuildContext context, TreatmentEntry entry) async {
@@ -179,7 +180,7 @@ class HealthPageState extends State<HealthPage> {
             .toList()
           ..sort((a, b) => b.date.compareTo(a.date));
 
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -202,12 +203,12 @@ class HealthPageState extends State<HealthPage> {
         },
       ),
     );
-    if (updated == true) await _initScreen();
+    if (mounted) await _initScreen();
   }
 
   void _openPillReminders(BuildContext context) async {
     if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -215,12 +216,12 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => PillReminderSheet(profile: _profile!),
     );
-    if (updated == true) await _initScreen();
+    if (mounted) await _initScreen();
   }
 
   void _openPillReminder(BuildContext context, PillReminder reminder) async {
     if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -228,17 +229,7 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => PillDetailSheet(profile: _profile!, reminder: reminder),
     );
-    if (updated == true && mounted) {
-      // Refresh local list if the reminder was deleted inside
-      final fresh = await ProfileService().loadProfile(_profile!.id);
-      if (fresh != null && mounted) {
-        setState(() {
-          _profile!.pillReminders
-            ..clear()
-            ..addAll(fresh.pillReminders);
-        });
-      }
-    }
+    if (mounted) await _initScreen();
   }
 
   void _openRecommendations(BuildContext context, List<HealthBadge> badges) {
@@ -1283,7 +1274,10 @@ class _PillReminderTileState extends State<_PillReminderTile> {
     final now = DateTime.now();
     if (!widget.reminder.isScheduledForDay(now)) return null;
 
-    if (_takenToday) {
+    final total = widget.reminder.schedules.length;
+    final count = widget.reminder.countTakenOnDay(now);
+
+    if (count >= total) {
       return (
         color: ThemeColors.ok.mainColor,
         label: 'Принято',
@@ -1291,23 +1285,31 @@ class _PillReminderTileState extends State<_PillReminderTile> {
       );
     }
 
-    final scheduled = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      widget.reminder.hour,
-      widget.reminder.minute,
-    );
-    if (now.isAfter(scheduled)) {
+    if (count > 0) {
+      return (
+        color: ThemeColors.ok.mainColor,
+        label: '$count/$total принято',
+        icon: Icons.check_circle_outline,
+      );
+    }
+
+    // None taken — check whether all scheduled times have already passed.
+    final allPassed = widget.reminder.schedules.every((s) {
+      final scheduled = DateTime(now.year, now.month, now.day, s.hour, s.minute);
+      return now.isAfter(scheduled);
+    });
+
+    if (allPassed) {
       return (
         color: ThemeColors.warning.mainColor,
         label: 'Пропущено',
         icon: Icons.warning_amber_rounded,
       );
     }
+
     return (
       color: ThemeColors.info.mainColor,
-      label: 'Сегодня в ${widget.reminder.timeLabel}',
+      label: 'Сегодня · ${widget.reminder.timeLabel}',
       icon: Icons.access_time,
     );
   }
@@ -1355,7 +1357,16 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                   ],
                 ),
               ),
-              if (scheduledToday)
+              if (widget.reminder.schedules.length > 1)
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: ThemeColors.secondary,
+                    size: 26,
+                  ),
+                )
+              else if (scheduledToday)
                 GestureDetector(
                   onTap: _toggleTaken,
                   behavior: HitTestBehavior.opaque,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_ai/services/profile_service.dart';
 import 'package:pet_ai/theme/widgets/activity_indicator.dart';
+import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_ai/theme/widgets/glass_widgets.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -28,9 +29,6 @@ class EventsPageState extends State<EventsPage> {
 
   bool _isLoadingEvents = true;
   bool _showAllPets = false;
-  bool _showSearch = false;
-  String _searchQuery = '';
-  final TextEditingController _searchCtrl = TextEditingController();
 
   List<PetEvent> _events = [];
   List<PetProfile> _allProfiles = [];
@@ -59,12 +57,6 @@ class EventsPageState extends State<EventsPage> {
         _selectedDay = widget.initialDate!;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
   }
 
   // ── Data helpers ────────────────────────────────────────────────────────────
@@ -115,13 +107,10 @@ class EventsPageState extends State<EventsPage> {
     });
   }
 
-  /// Events for the selected day, filtered by search query.
+  /// Events for the selected day.
   List<PetEvent> get _filteredDayEvents {
     if (_selectedDay == null) return [];
-    final dayEvents = _events.where((e) => e.occursOn(_selectedDay!)).toList();
-    if (_searchQuery.isEmpty) return dayEvents;
-    final q = _searchQuery.toLowerCase();
-    return dayEvents.where((e) => e.name.toLowerCase().contains(q)).toList();
+    return _events.where((e) => e.occursOn(_selectedDay!)).toList();
   }
 
   /// Whether any event occurs in [_focusedDay]'s month for the given [petId].
@@ -168,6 +157,26 @@ class EventsPageState extends State<EventsPage> {
   }
 
   // ── Sheet helpers ───────────────────────────────────────────────────────────
+
+  void _openSearchSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EventSearchSheet(
+        events: _events,
+        petNames: _petNames,
+        petColors: _petColors,
+        onEventTap: (event) {
+          // Close search sheet first, then open event detail
+          Navigator.pop(context);
+          _openViewSheet(event);
+        },
+      ),
+    );
+  }
 
   void _openCreateSheet() async {
     final updated = await showModalBottomSheet<bool>(
@@ -253,45 +262,33 @@ class EventsPageState extends State<EventsPage> {
             padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 120),
             children: [
               // ── Header ───────────────────────────────────────────────────
-              _showSearch
-                  ? _SearchBar(
-                      controller: _searchCtrl,
-                      onChanged: (q) => setState(() => _searchQuery = q),
-                      onClose: () => setState(() {
-                        _showSearch = false;
-                        _searchQuery = '';
-                        _searchCtrl.clear();
-                      }),
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'События',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.headlineMedium,
-                              ),
-                              Text(
-                                monthLabel,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ],
-                          ),
+                        Text(
+                          'События',
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        GlassPlate(
-                          padding: 4,
-                          child: IconButton(
-                            icon: const Icon(Icons.search),
-                            onPressed: () => setState(() => _showSearch = true),
-                          ),
+                        Text(
+                          monthLabel,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
                     ),
+                  ),
+                  GlassPlate(
+                    padding: 4,
+                    child: IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: _openSearchSheet,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
 
               // ── Pet selector ─────────────────────────────────────────────
@@ -533,42 +530,6 @@ class EventsPageState extends State<EventsPage> {
     if (isSameDay(day, now.add(const Duration(days: 1)))) return 'Завтра';
     if (isSameDay(day, now.subtract(const Duration(days: 1)))) return 'Вчера';
     return DateFormat('d MMMM', 'ru_RU').format(day);
-  }
-}
-
-// ── Search bar ───────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClose;
-
-  const _SearchBar({
-    required this.controller,
-    required this.onChanged,
-    required this.onClose,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassPlate(
-      padding: 0,
-      child: TextField(
-        controller: controller,
-        autofocus: true,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          hintText: 'Поиск по событиям...',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: onClose,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
-    );
   }
 }
 
@@ -906,67 +867,276 @@ class _EventTileCard extends StatelessWidget {
                 Expanded(
                   flex: 4,
                   child: Row(
-                    spacing: 12,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SoftRoundedIcon(
                         icon: event.category.icon,
                         color: event.categoryColor,
                         size: 24,
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        spacing: 4,
-                        children: [
-                          Text(
-                            event.name,
-
-                            style: Theme.of(context).textTheme.titleLarge!
-                                .copyWith(
-                                  inherit: true,
-                                  decoration: _isCompleted
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  decorationColor: overdue
-                                      ? ThemeColors.dangerZone
-                                      : context
-                                            .watch<AppearanceController>()
-                                            .secondaryColor,
-                                  decorationThickness: 3,
-                                  color: overdue
-                                      ? ThemeColors.dangerZone
-                                      : context
-                                            .watch<AppearanceController>()
-                                            .secondaryColor,
-                                ),
-                          ),
-
-                          Text(
-                            event.categoryCaption,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: petBadges.map((badge) {
-                              return SoftGlassBadge(
-                                color: badge.$2,
-                                icon: Icons.pets,
-                                label: badge.$1,
-                                selected: false,
-                                onChanged: null,
-                              );
-                            }).toList(),
-                          ),
-                        ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              event.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleLarge!
+                                  .copyWith(
+                                    inherit: true,
+                                    decoration: _isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    decorationColor: overdue
+                                        ? ThemeColors.dangerZone
+                                        : context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor,
+                                    decorationThickness: 3,
+                                    color: overdue
+                                        ? ThemeColors.dangerZone
+                                        : context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              event.categoryCaption,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            if (petBadges.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: petBadges.map((badge) {
+                                  return SoftGlassBadge(
+                                    color: badge.$2,
+                                    icon: Icons.pets,
+                                    label: badge.$1,
+                                    selected: false,
+                                    onChanged: null,
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-
                     ],
                   ),
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Search sheet (all events) ────────────────────────────────────────────────
+
+class _EventSearchSheet extends StatefulWidget {
+  final List<PetEvent> events;
+  final Map<String, String> petNames;
+  final Map<String, Color> petColors;
+  final ValueChanged<PetEvent> onEventTap;
+
+  const _EventSearchSheet({
+    required this.events,
+    required this.petNames,
+    required this.petColors,
+    required this.onEventTap,
+  });
+
+  @override
+  State<_EventSearchSheet> createState() => _EventSearchSheetState();
+}
+
+class _EventSearchSheetState extends State<_EventSearchSheet> {
+  final _ctrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  List<PetEvent> get _results {
+    if (_query.isEmpty) return widget.events;
+    final q = _query.toLowerCase();
+    return widget.events
+        .where(
+          (e) =>
+              e.name.toLowerCase().contains(q) ||
+              e.category.name.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    final results = _results;
+
+    return DraggableSheet(
+      title: 'Поиск событий',
+      centerTitle: true,
+      onBack: () => Navigator.of(context).pop(),
+      initialSize: 0.9,
+      minSize: 0.5,
+      maxSize: 1.0,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Search field
+          GlassPlate(
+            padding: 0,
+            child: TextField(
+              controller: _ctrl,
+              autofocus: true,
+              onChanged: (q) => setState(() => _query = q),
+              decoration: InputDecoration(
+                hintText: 'Название события или категория...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _ctrl.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Result count
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              _query.isEmpty
+                  ? 'Все события (${results.length})'
+                  : 'Найдено: ${results.length}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ac.secondaryColor.withAlpha(160),
+                  ),
+            ),
+          ),
+
+          // Results list
+          if (results.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.search_off,
+                    size: 56,
+                    color: ac.primaryColor.withAlpha(60),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Ничего не найдено',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: ac.secondaryColor.withAlpha(120),
+                        ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...results.map(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _SearchResultTile(
+                  event: e,
+                  petNames: widget.petNames,
+                  petColors: widget.petColors,
+                  onTap: () => widget.onEventTap(e),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchResultTile extends StatelessWidget {
+  final PetEvent event;
+  final Map<String, String> petNames;
+  final Map<String, Color> petColors;
+  final VoidCallback onTap;
+
+  const _SearchResultTile({
+    required this.event,
+    required this.petNames,
+    required this.petColors,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    final dateLabel = formatSmartDate(event.dateTime, pattern: 'd MMMM yyyy');
+    final timeLabel = DateFormat('HH:mm').format(event.dateTime);
+    final overdue = event.isOverdue;
+
+    return GlassPlate(
+      padding: 0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              SoftRoundedIcon(
+                icon: event.category.icon,
+                color: event.categoryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: overdue
+                                ? ThemeColors.dangerZone
+                                : ac.secondaryColor,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$dateLabel · $timeLabel',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: ac.primaryColor.withAlpha(120),
+              ),
+            ],
           ),
         ),
       ),
