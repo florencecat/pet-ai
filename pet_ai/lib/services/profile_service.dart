@@ -1,11 +1,13 @@
 import 'dart:developer';
 import 'dart:io';
 import 'dart:math' hide log;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_ai/models/history.dart';
 import 'package:pet_ai/models/note.dart';
 import 'package:pet_ai/models/species.dart';
+import 'package:pet_ai/services/event_service.dart';
 import 'package:pet_ai/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -287,6 +289,17 @@ class ProfileService {
   Future<void> _saveAllProfiles(List<PetProfile> profiles) async {
     final jsonStr = jsonEncode(profiles.map((p) => p.toJson()).toList());
     await SharedPreferencesAsync().setString(_profilesKey, jsonStr);
+  }
+
+  Future<void> exportAllProfiles() async {
+    final profiles = await loadAllProfiles();
+    final events = await EventService().loadAllEvents(profiles.map((p) => p.id).toList());
+
+    final path = await FilePicker.platform.getDirectoryPath(initialDirectory: 'Экспорт всех профилей');
+    final profilesFile = File('$path/profiles.json');
+    final eventsFile = File('$path/events.json');
+    await profilesFile.writeAsString(jsonEncode(profiles.map((p) => p.toJson()).toList()));
+    await eventsFile.writeAsString(jsonEncode(events.values.map((l) => l.map((e) => e.toJson()).toList()).toList()));
   }
 
   // ─── Активный профиль ─────────────────────────────────────────────────────

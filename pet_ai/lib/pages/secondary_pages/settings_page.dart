@@ -74,7 +74,9 @@ class _SettingsPageState extends State<SettingsPage> {
       content:
           'Будут удалены все данные питомца, события и настройки. '
           'Приложение будет выглядеть как при первом запуске.',
-    )) { return; }
+    )) {
+      return;
+    }
 
     final profiles = await ProfileService().loadAllProfiles();
     await EventService().clearEventsForAll(profiles.map((p) => p.id).toList());
@@ -93,10 +95,14 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!await _confirmClear(
       context,
       content: 'Будут удалены все события питомца.',
-    )) { return; }
+    )) {
+      return;
+    }
 
     final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) { await EventService().clearEvents(profileId); }
+    if (profileId != null) {
+      await EventService().clearEvents(profileId);
+    }
 
     if (context.mounted) {
       ScaffoldMessenger.of(
@@ -109,10 +115,14 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!await _confirmClear(
       context,
       content: 'Будет удалена вся история веса.',
-    )) { return; }
+    )) {
+      return;
+    }
 
     final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) { await ProfileService().clearWeightHistory(profileId); }
+    if (profileId != null) {
+      await ProfileService().clearWeightHistory(profileId);
+    }
 
     if (context.mounted) {
       ScaffoldMessenger.of(
@@ -125,10 +135,14 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!await _confirmClear(
       context,
       content: 'Будет удалена вся история настроения.',
-    )) { return; }
+    )) {
+      return;
+    }
 
     final profileId = await ProfileService().getActiveProfileId();
-    if (profileId != null) { await ProfileService().clearMoodHistory(profileId); }
+    if (profileId != null) {
+      await ProfileService().clearMoodHistory(profileId);
+    }
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -142,7 +156,9 @@ class _SettingsPageState extends State<SettingsPage> {
       context,
       title: 'Очистить диалог?',
       content: 'Будет удалена вся история общения с ИИ.',
-    )) { return; }
+    )) {
+      return;
+    }
 
     await AIChatController.clearMessageHistory();
 
@@ -207,8 +223,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.add_circle_outline,
                   label: 'Добавить питомца',
                   iconColor: ac.primaryColor,
-                  onTap: () =>
-                      Navigator.pushNamed(context, '/registration'),
+                  onTap: () => Navigator.pushNamed(context, '/registration'),
                   last: true,
                 ),
               ],
@@ -223,12 +238,17 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               // Toggle row
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.notifications_outlined,
-                        color: ac.primaryColor, size: 20),
+                    Icon(
+                      Icons.notifications_outlined,
+                      color: ac.primaryColor,
+                      size: 20,
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -440,6 +460,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     );
                   },
                   last: true,
+                ),
+                _SettingsRow(
+                  icon: Icons.data_object,
+                  label: 'Экспорт данных',
+                  iconColor: Colors.blue,
+                  onTap: () async => await ProfileService().exportAllProfiles(),
                 ),
               ],
             ),
