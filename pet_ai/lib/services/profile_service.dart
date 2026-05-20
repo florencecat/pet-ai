@@ -97,6 +97,7 @@ class PetProfile {
   String breed;
   DateTime? birthDate;
   Gender gender;
+  bool castrated;
   String notes;
   File? profileImage;
   WeightHistory weightHistory;
@@ -113,6 +114,7 @@ class PetProfile {
     this.breed = '',
     this.birthDate,
     this.gender = Gender.none,
+    this.castrated = false,
     this.notes = '',
     this.profileImage,
   }) : id = UniqueKey().toString(),
@@ -131,6 +133,7 @@ class PetProfile {
     required this.breed,
     required this.birthDate,
     required this.gender,
+    this.castrated = false,
     required this.notes,
     required this.profileImage,
     required this.weightHistory,
@@ -149,6 +152,7 @@ class PetProfile {
     'breed': breed,
     'birthDate': birthDate?.toIso8601String(),
     'gender': gender.caption,
+    'castrated': castrated,
     'notes': notes,
     'profileImage': profileImage?.path,
     'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
@@ -176,6 +180,7 @@ class PetProfile {
       gender: json['gender'] != null
           ? Gender.values.firstWhere((g) => g.caption == json['gender'])
           : Gender.none,
+      castrated: json['castrated'] as bool? ?? false,
       notes: json['notes'] ?? '',
       profileImage: json['profileImage'] != null
           ? File(json['profileImage'])

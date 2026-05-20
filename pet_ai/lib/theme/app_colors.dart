@@ -62,15 +62,6 @@ class  ThemeColors {
     Color(0xFF5B6380)
   ];
 
-  // static const darkProfileColors = [
-  //   Color(0xFF50416F),
-  //   Color(0xFF416F61),
-  //   Color(0xFF6F6B41),
-  //   Color(0xFF6F4B41),
-  //   Color(0xFF38353C),
-  //   Color(0xFF3C554E),
-  // ];
-
   static const darkProfileColors = [
     Color(0xFF66473E),
     Color(0xFF3E4866),
@@ -79,15 +70,6 @@ class  ThemeColors {
     Color(0xFF452C24),
     Color(0xFF44464D)
   ];
-
-  // static const List<ColorPalette> profilePalettes = [
-  //   ColorPalette(Color(0xFFB896FF), Color(0xFF50416F)),
-  //   ColorPalette(Color(0xFF96FFE0), Color(0xFF416F61)),
-  //   ColorPalette(Color(0xFFF6F091), Color(0xFF6F6B41)),
-  //   ColorPalette(Color(0xFFFFAD96), Color(0xFF6F4B41)),
-  //   ColorPalette(Color(0xFF9C95AA), Color(0xFF38353C)),
-  //   ColorPalette(Color(0xFF5B8075), Color(0xFF3C554E)),
-  // ];
 
   static const List<ColorPalette> profilePalettes = [
     ColorPalette(Color(0xFFFFAD96), Color(0xFF66473E)),
