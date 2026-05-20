@@ -2,6 +2,58 @@
 
 ---
 
+## v0.3.3 — Treatment System & Major UI Refresh
+
+### Features
+
+#### Treatments & Medication
+- Added pill reminder system
+- Support for multiple medication takes per day
+- Improved treatment scheduling logic
+- Automatic synchronization between treatment history and health page
+- Support for uncompletable events
+- Treatment category preselection when opening treatment details
+
+#### Events
+- Redesigned events page
+- Redesigned event draggable sheet
+- Unified event type handling
+- Improved overdue event visualization
+- Improved event search
+- Improved event creation flow from notes
+- Unified draggable sheet system across the app
+
+#### Registration & Profiles
+- Redesigned pet registration flow
+- Redesigned profile page
+- Redesigned settings page
+- Added species support
+- Improved profile switching UX
+
+#### UI & UX
+- Added skeleton loading animations
+- Reduced lag during page transitions
+- Added GlassTileList widget
+- Unified draggable sheet styling
+- Redesigned AI chat page
+- Improved navigation bar
+- Added new color palette
+- Improved overall UI consistency and responsiveness
+
+### Improvements
+- Improved synchronization reliability across services
+- Improved event preview offsets and warnings
+- Optimized widget hierarchy and removed unnecessary widgets
+- Temporary cache disabling for debugging and synchronization fixes
+
+### Fixes
+- Fixed font colors on events page
+- Fixed synchronization issues on health page
+- Fixed several UI inconsistencies
+- Disabled notifications on unsupported debug platforms
+
+---
+
 ## v0.3.2 — Appearance System & UI Refinement
 
 ### Features

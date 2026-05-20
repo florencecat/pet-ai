@@ -449,7 +449,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Version footer ────────────────────────────────────────────────
           Center(
             child: Text(
-              'pet_ai · v 0.3.2 · сделано с 🐾',
+              'pet_ai · v 0.3.3 · сделано с 🐾',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: Colors.grey.shade500,
               ),
