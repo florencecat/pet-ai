@@ -98,7 +98,13 @@ class PetProfile {
   DateTime? birthDate;
   Gender gender;
   bool castrated;
+  DateTime? castratedDate;
+  String coat;
   String notes;
+  String allergies;
+  String chronicConditions;
+  String vetClinic;
+  String chipNumber;
   File? profileImage;
   WeightHistory weightHistory;
   MoodHistory moodHistory;
@@ -115,7 +121,13 @@ class PetProfile {
     this.birthDate,
     this.gender = Gender.none,
     this.castrated = false,
+    this.castratedDate,
+    this.coat = '',
     this.notes = '',
+    this.allergies = '',
+    this.chronicConditions = '',
+    this.vetClinic = '',
+    this.chipNumber = '',
     this.profileImage,
   }) : id = UniqueKey().toString(),
        weightHistory = WeightHistory.empty(),
@@ -134,7 +146,13 @@ class PetProfile {
     required this.birthDate,
     required this.gender,
     this.castrated = false,
+    this.castratedDate,
+    this.coat = '',
     required this.notes,
+    this.allergies = '',
+    this.chronicConditions = '',
+    this.vetClinic = '',
+    this.chipNumber = '',
     required this.profileImage,
     required this.weightHistory,
     required this.moodHistory,
@@ -153,7 +171,13 @@ class PetProfile {
     'birthDate': birthDate?.toIso8601String(),
     'gender': gender.caption,
     'castrated': castrated,
+    'castratedDate': castratedDate?.toIso8601String(),
+    'coat': coat,
     'notes': notes,
+    'allergies': allergies,
+    'chronicConditions': chronicConditions,
+    'vetClinic': vetClinic,
+    'chipNumber': chipNumber,
     'profileImage': profileImage?.path,
     'weightHistory': WeightHistory.weightSerializer.toJsonList(weightHistory),
     'moodHistory': MoodHistory.moodSerializer.toJsonList(moodHistory),
@@ -181,7 +205,15 @@ class PetProfile {
           ? Gender.values.firstWhere((g) => g.caption == json['gender'])
           : Gender.none,
       castrated: json['castrated'] as bool? ?? false,
+      castratedDate: json['castratedDate'] != null
+          ? DateTime.parse(json['castratedDate'])
+          : null,
+      coat: json['coat'] as String? ?? '',
       notes: json['notes'] ?? '',
+      allergies: json['allergies'] as String? ?? '',
+      chronicConditions: json['chronicConditions'] as String? ?? '',
+      vetClinic: json['vetClinic'] as String? ?? '',
+      chipNumber: json['chipNumber'] as String? ?? '',
       profileImage: json['profileImage'] != null
           ? File(json['profileImage'])
           : null,

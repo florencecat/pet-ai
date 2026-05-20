@@ -906,19 +906,21 @@ class _EventTileCard extends StatelessWidget {
                 Expanded(
                   flex: 4,
                   child: Row(
-                    spacing: 8,
+                    spacing: 12,
                     children: [
                       SoftRoundedIcon(
                         icon: event.category.icon,
                         color: event.categoryColor,
-                        size: 22,
+                        size: 24,
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
+                        spacing: 4,
                         children: [
                           Text(
                             event.name,
+
                             style: Theme.of(context).textTheme.titleLarge!
                                 .copyWith(
                                   inherit: true,
@@ -943,22 +945,23 @@ class _EventTileCard extends StatelessWidget {
                             event.categoryCaption,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
+
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: petBadges.map((badge) {
+                              return SoftGlassBadge(
+                                color: badge.$2,
+                                icon: Icons.pets,
+                                label: badge.$1,
+                                selected: false,
+                                onChanged: null,
+                              );
+                            }).toList(),
+                          ),
                         ],
                       ),
-                      Spacer(),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: petBadges.map((badge) {
-                          return SoftGlassBadge(
-                            color: badge.$2,
-                            icon: Icons.pets,
-                            label: badge.$1,
-                            selected: false,
-                            onChanged: null,
-                          );
-                        }).toList(),
-                      ),
+
                     ],
                   ),
                 ),

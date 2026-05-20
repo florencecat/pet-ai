@@ -641,6 +641,53 @@ class HealthPageState extends State<HealthPage> {
               isLoading: _isLoadingProfile,
               child: _profile == null
                   ? const SizedBox.shrink()
+                  : activeTreatments.isEmpty
+                  ? Column(
+                children: [
+                  SizedBox(height: 32),
+                  Icon(
+                    Icons.vaccines,
+                    size: 72,
+                    color: context
+                        .watch<AppearanceController>()
+                        .secondaryColor
+                        .withAlpha(60),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Нет прививок.',
+                        style: Theme.of(context).textTheme.titleLarge!
+                            .copyWith(
+                          inherit: true,
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor
+                              .withAlpha(60),
+                        ),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsetsGeometry.all(5),
+                        ),
+                        onPressed: () => _openTreatments(context),
+                        child: Text(
+                          'Добавить',
+                          style: Theme.of(context).textTheme.titleLarge!
+                              .copyWith(
+                            inherit: true,
+                            color: context
+                                .watch<AppearanceController>()
+                                .primaryColor
+                                .withAlpha(192),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              )
                   : Column(
                       children: activeTreatments.map((entry) {
                         return Padding(
@@ -717,7 +764,7 @@ class HealthPageState extends State<HealthPage> {
                               style: TextButton.styleFrom(
                                 padding: EdgeInsetsGeometry.all(5),
                               ),
-                              onPressed: () => {},
+                              onPressed: () => _openPillReminders(context),
                               child: Text(
                                 'Добавить',
                                 style: Theme.of(context).textTheme.titleLarge!
