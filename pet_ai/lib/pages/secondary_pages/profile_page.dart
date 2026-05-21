@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/models/species.dart';
-import 'package:pet_ai/services/appearance_controller.dart';
-import 'package:pet_ai/services/profile_service.dart';
-import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/widgets/breed_selector.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/models/species.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/breed_selector.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 // ─── Page ────────────────────────────────────────────────────────────────────

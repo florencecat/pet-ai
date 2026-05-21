@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pet_ai/pages/secondary_pages/appearance_page.dart';
-import 'package:pet_ai/pages/secondary_pages/profile_page.dart';
-import 'package:pet_ai/services/ai_service.dart';
-import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/services/appearance_controller.dart';
-import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/pages/secondary_pages/appearance_page.dart';
+import 'package:pet_satellite/pages/secondary_pages/profile_page.dart';
+import 'package:pet_satellite/services/ai_service.dart';
+import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
-import '../../services/profile_service.dart';
+import '../../services/pet_profile_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

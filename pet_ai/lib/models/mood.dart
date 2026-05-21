@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pet_ai/models/history.dart';
+import 'package:pet_satellite/models/history.dart';
 
 /// Время суток для записи настроения / питания.
 enum DayPart { morning, afternoon, evening }

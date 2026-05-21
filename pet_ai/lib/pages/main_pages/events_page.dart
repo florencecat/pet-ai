@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/services/profile_service.dart';
-import 'package:pet_ai/theme/widgets/activity_indicator.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/event_sheet.dart';
-import 'package:pet_ai/services/appearance_controller.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class EventsPage extends StatefulWidget {

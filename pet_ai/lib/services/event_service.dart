@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pet_ai/models/note.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_satellite/models/note.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
-import 'profile_service.dart';
+import 'pet_profile_service.dart';
 import '../models/pill_reminder.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }

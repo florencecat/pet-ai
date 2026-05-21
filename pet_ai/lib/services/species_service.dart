@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pet_ai/models/species.dart';
+import 'package:pet_satellite/models/species.dart';
 
 class SpeciesService {
   static const _cacheKey = 'cached_species';

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 
 class ColorPalette {
   final Color mainColor;

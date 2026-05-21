@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/services/profile_service.dart';
-import 'package:pet_ai/theme/widgets/chart_placeholder.dart';
-import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/models/history.dart';
-import 'package:pet_ai/models/mood.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/theme/widgets/chart_placeholder.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/models/mood.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../../services/appearance_controller.dart';

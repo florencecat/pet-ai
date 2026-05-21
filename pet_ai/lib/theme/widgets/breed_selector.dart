@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pet_ai/theme/widgets/draggable_bottom_sheet.dart';
+import 'package:pet_satellite/theme/widgets/draggable_bottom_sheet.dart';
 
 /// Generic bottom-sheet selector backed by [DraggableBottomSheet].
 ///

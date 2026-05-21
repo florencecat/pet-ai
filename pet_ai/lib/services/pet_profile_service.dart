@@ -4,11 +4,11 @@ import 'dart:math' hide log;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pet_ai/models/history.dart';
-import 'package:pet_ai/models/note.dart';
-import 'package:pet_ai/models/species.dart';
-import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/models/note.dart';
+import 'package:pet_satellite/models/species.dart';
+import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -16,11 +16,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:pet_ai/models/weight.dart';
-import 'package:pet_ai/models/mood.dart';
-import 'package:pet_ai/models/treatment.dart';
-import 'package:pet_ai/models/food.dart';
-import 'package:pet_ai/models/pill_reminder.dart';
+import 'package:pet_satellite/models/weight.dart';
+import 'package:pet_satellite/models/mood.dart';
+import 'package:pet_satellite/models/treatment.dart';
+import 'package:pet_satellite/models/food.dart';
+import 'package:pet_satellite/models/pill_reminder.dart';
 
 class PetContextBuilder {
   static String build(PetProfile pet) {

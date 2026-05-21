@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/services/ai_service.dart';
-import 'package:pet_ai/services/appearance_controller.dart';
-import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/widgets/activity_indicator.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/services/ai_service.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 class AIChatPage extends StatefulWidget {

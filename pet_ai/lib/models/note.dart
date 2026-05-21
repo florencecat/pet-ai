@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pet_ai/models/history.dart';
-import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/services/profile_service.dart';
+import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
 
 // ─── Предустановленные симптомы ──────────────────────────────────────────────
 

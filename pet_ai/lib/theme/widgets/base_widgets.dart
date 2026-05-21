@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/app_theme.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_theme.dart';
 
 InputDecoration baseInputDecoration(String label, {Widget? suffixIcon}) {
   return InputDecoration(

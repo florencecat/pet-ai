@@ -1,4 +1,4 @@
-import 'package:pet_ai/models/history.dart';
+import 'package:pet_satellite/models/history.dart';
 
 class WeightEntry implements BaseEntry {
   @override

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:pet_ai/services/appearance_controller.dart';
-import 'package:pet_ai/services/file_storage_service.dart';
-import 'package:pet_ai/services/profile_service.dart';
-import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_ai/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/file_storage_service.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 class FilesHistorySheet extends StatefulWidget {

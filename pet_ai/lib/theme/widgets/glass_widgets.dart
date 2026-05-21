@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pet_ai/services/appearance_controller.dart';
-import 'package:pet_ai/services/event_service.dart';
-import 'package:pet_ai/theme/app_colors.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
 /// Имитация liquid-glass карточки без BackdropFilter.

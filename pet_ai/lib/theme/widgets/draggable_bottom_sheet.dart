@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pet_ai/services/appearance_controller.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:provider/provider.dart';
 
 class DraggableBottomSheet extends StatefulWidget {

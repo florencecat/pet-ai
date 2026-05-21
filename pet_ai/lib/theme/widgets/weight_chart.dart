@@ -1,9 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_ai/models/weight.dart';
-import 'package:pet_ai/theme/app_colors.dart';
-import 'package:pet_ai/theme/widgets/chart_placeholder.dart';
+import 'package:pet_satellite/models/weight.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/chart_placeholder.dart';
 
 /// Reusable weight line chart.
 /// Pass a pre-filtered [entries] list; the widget handles rendering.
