@@ -2,6 +2,10 @@
 
 ---
 
+## v0.3.4 — LocalNotification hotfix
+
+- Suppress shrinking for com.google.gson to avoid RuntimeException 'Missing type parameter'
+
 ## v0.3.3 — Treatment System & Major UI Refresh
 
 ### Features
