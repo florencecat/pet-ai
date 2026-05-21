@@ -19,11 +19,12 @@ jobs:
           cache: true
 
       - name: Install dependencies
+        working-directory: ./pet_ai
         run: flutter pub get
 
       - name: Build IPA (no codesign)
+        working-directory: ./pet_ai
         run: |
-          cd pet_ai
           flutter build ios --release --no-codesign
           cd build/ios/iphoneos
           mkdir Payload
