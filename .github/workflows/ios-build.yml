@@ -16,6 +16,14 @@ jobs:
           flutter-version: '3.41.4'
           channel: 'stable'
           cache: true
+      - name: Debug structure
+        run: |
+          echo "=== PWD ==="
+          pwd
+          echo "=== ROOT ==="
+          ls $GITHUB_WORKSPACE
+          echo "=== pet_ai ==="
+          ls $GITHUB_WORKSPACE/pet_ai
       - name: Install dependencies
         run: flutter pub get
       - name: Build IPA (no codesign)
