@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/secondary_pages/appearance_page.dart';
-import 'package:pet_satellite/pages/secondary_pages/profile_page.dart';
+import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
+import 'package:pet_satellite/pages/registration_flows/user_profile_page.dart';
+import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/user_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +24,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   List<PetProfile> _profiles = [];
   bool _loadingProfiles = true;
+  UserProfile? _user;
 
   // Notification stubs
   bool _remindersEnabled = true;
@@ -27,16 +32,71 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _loadProfiles();
+    _loadAll();
   }
 
-  Future<void> _loadProfiles() async {
+  Future<void> _loadAll() async {
     final profiles = await ProfileService().loadAllProfiles();
+    final user = await UserService().load();
     if (mounted) {
       setState(() {
         _profiles = profiles;
         _loadingProfiles = false;
+        _user = user;
       });
+    }
+  }
+
+  Future<void> _openUserProfile() async {
+    if (_user == null) {
+      // No profile yet → registration flow
+      final result = await Navigator.push<UserProfile>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const UserRegistrationFlow(),
+          fullscreenDialog: true,
+        ),
+      );
+      if (result != null && mounted) setState(() => _user = result);
+    } else {
+      // Profile exists → edit page; null return = deleted
+      final result = await Navigator.push<UserProfile?>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UserProfileEditPage(profile: _user!),
+        ),
+      );
+      if (mounted) {
+        // result == null means the user deleted their profile inside the page
+        setState(() => _user = result);
+      }
+    }
+  }
+
+  Future<void> _deleteUserProfile() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить профиль?'),
+        content: const Text(
+            'Данные вашего аккаунта будут удалены с устройства.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: ThemeColors.dangerZone),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await UserService().delete();
+      if (mounted) setState(() => _user = null);
     }
   }
 
@@ -183,8 +243,13 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 48),
         children: [
-          // ── User account (entry point — not yet implemented) ──────────────
-          _UserAccountCard(primaryColor: ac.primaryColor),
+          // ── User account ─────────────────────────────────────────────────
+          _UserAccountCard(
+            user: _user,
+            primaryColor: ac.primaryColor,
+            onTap: _openUserProfile,
+            onDelete: _user != null ? _deleteUserProfile : null,
+          ),
           const SizedBox(height: 24),
 
           // ── Питомцы ──────────────────────────────────────────────────────
@@ -397,9 +462,11 @@ class _SettingsPageState extends State<SettingsPage> {
               _SettingsRow(
                 icon: Icons.logout,
                 label: 'Выйти из аккаунта',
-                onTap: null, // stub
-                iconColor: ThemeColors.dangerZone,
-                labelColor: ThemeColors.dangerZone,
+                onTap: _user != null ? _deleteUserProfile : null,
+                iconColor: _user != null
+                    ? ThemeColors.dangerZone
+                    : ThemeColors.border,
+                labelColor: _user != null ? ThemeColors.dangerZone : null,
                 last: true,
               ),
             ],
@@ -488,69 +555,119 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-// ─── User account card (entry point) ─────────────────────────────────────────
+// ─── User account card ────────────────────────────────────────────────────────
 
 class _UserAccountCard extends StatelessWidget {
+  final UserProfile? user;
   final Color primaryColor;
-  const _UserAccountCard({required this.primaryColor});
+  final VoidCallback onTap;
+  final VoidCallback? onDelete;
+
+  const _UserAccountCard({
+    required this.user,
+    required this.primaryColor,
+    required this.onTap,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ac = context.watch<AppearanceController>();
+    final hasUser = user != null;
 
     return GlassPlate(
-      child: Row(
-        children: [
-          // Avatar placeholder
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: primaryColor.withAlpha(30),
-              border: Border.all(color: primaryColor.withAlpha(80), width: 1.5),
-            ),
-            child: Icon(Icons.person_outline, color: primaryColor, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Войдите в аккаунт',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+      padding: 0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primaryColor.withAlpha(30),
+                  border:
+                      Border.all(color: primaryColor.withAlpha(80), width: 1.5),
                 ),
-                Text(
-                  'Синхронизация и резервные копии',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: ac.secondaryColor.withAlpha(160),
-                  ),
+                child: Icon(
+                  hasUser ? Icons.person_rounded : Icons.person_outline,
+                  color: primaryColor,
+                  size: 24,
                 ),
-              ],
-            ),
-          ),
-          // Entry point badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: primaryColor.withAlpha(30),
-            ),
-            child: Text(
-              'Скоро',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: primaryColor,
-                fontWeight: FontWeight.w600,
               ),
-            ),
+              const SizedBox(width: 14),
+
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasUser ? user!.name : 'Войти в аккаунт',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasUser
+                          ? _subtitle(user!)
+                          : 'Синхронизация и резервные копии',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ac.secondaryColor.withAlpha(160),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Badge / chevron
+              if (!hasUser)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: primaryColor.withAlpha(25),
+                  ),
+                  child: Text(
+                    'Войти',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              else ...[
+                if (user!.emailVerified)
+                  Icon(Icons.verified_outlined,
+                      color: ThemeColors.ok.mainColor, size: 18),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right,
+                    color: ac.secondaryColor.withAlpha(120), size: 20),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  String _subtitle(UserProfile u) {
+    final parts = <String>[];
+    if (u.email.isNotEmpty) parts.add(u.email);
+    if (u.city.isNotEmpty) parts.add(u.city);
+    if (parts.isEmpty) return 'Профиль заполнен';
+    return parts.join(' · ');
   }
 }
 

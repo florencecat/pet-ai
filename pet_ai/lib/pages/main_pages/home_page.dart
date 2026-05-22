@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/mood.dart';
+import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/secondary_pages/settings_page.dart';
 import 'package:pet_satellite/services/file_storage_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/services/user_service.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/skeleton.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
-import 'package:pet_satellite/pages/secondary_pages/profile_page.dart';
+import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/services/health_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
@@ -38,6 +40,7 @@ class HomePage extends StatefulWidget {
 
 class HomePageState extends State<HomePage> {
   PetProfile? _profile;
+  UserProfile? _user;
   bool? _multipleProfiles;
 
   bool _isLoadingProfile = true;
@@ -62,6 +65,7 @@ class HomePageState extends State<HomePage> {
       _isLoadingEvents = true;
     });
 
+    final user = await UserService().load();
     final profile = await ProfileService().loadActiveProfile();
 
     if (profile == null) {
@@ -76,6 +80,7 @@ class HomePageState extends State<HomePage> {
     final multipleProfiles = await ProfileService().hasMultipleProfiles();
 
     setState(() {
+      _user = user;
       _profile = profile;
       _multipleProfiles = multipleProfiles;
       _isLoadingProfile = false;
@@ -94,6 +99,14 @@ class HomePageState extends State<HomePage> {
       _filesCount = filesCount;
       _notesCount = notesCount ?? 0;
     });
+  }
+
+  static String _timeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'Доброе утро';
+    if (hour >= 12 && hour < 17) return 'Добрый день';
+    if (hour >= 17 && hour < 22) return 'Добрый вечер';
+    return 'Доброй ночи';
   }
 
   String _profileDescription() {
@@ -355,7 +368,11 @@ class HomePageState extends State<HomePage> {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Доброе утро,'),
+                            Text(
+                              _user != null
+                                  ? '${_timeGreeting()}, ${_user!.name}!'
+                                  : '${_timeGreeting()},',
+                            ),
                             Text(
                               'как там ${_profile!.name}?🐾',
                               style: Theme.of(context).textTheme.titleLarge!

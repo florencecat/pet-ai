@@ -10,7 +10,7 @@ import 'package:pet_satellite/pages/main_pages/ai_chat_page.dart';
 import 'package:pet_satellite/pages/main_pages/events_page.dart';
 import 'package:pet_satellite/pages/main_pages/health_page.dart';
 import 'package:pet_satellite/pages/main_pages/home_page.dart';
-import 'package:pet_satellite/pages/secondary_pages/pet_registration_flow.dart';
+import 'package:pet_satellite/pages/registration_flows/pet_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/event_service.dart';

@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
 
-class DraggableSheet extends StatefulWidget {
+// DraggableSheet is intentionally a plain StatelessWidget — it no longer wraps
+// a DraggableScrollableSheet.
+//
+// Root cause of the removed code:
+//   DraggableScrollableSheet uses a LayoutBuilder internally. LayoutBuilder
+//   builds its child during the *layout* phase (not the build phase). If the
+//   containing showModalBottomSheet route is dismissed between a setState() and
+//   the next layout pass, Flutter deactivates the element tree while a pending
+//   layout is still queued. InheritedElements inside the subtree are deactivated
+//   before their dependents are removed, which fires:
+//     '_dependents.isEmpty': is not true
+//
+//   showModalBottomSheet already provides drag-to-dismiss, so
+//   DraggableScrollableSheet is not needed for that behaviour. Keyboard
+//   avoidance is handled via MediaQuery.viewInsetsOf.
+
+class DraggableSheet extends StatelessWidget {
   final Widget body;
 
   final String? title;
@@ -9,6 +25,7 @@ class DraggableSheet extends StatefulWidget {
   final List<Widget>? actions;
   final VoidCallback? onBack;
 
+  // Kept for API compatibility only — no longer used for sizing.
   final double initialSize;
   final double minSize;
   final double maxSize;
@@ -26,116 +43,60 @@ class DraggableSheet extends StatefulWidget {
   });
 
   @override
-  State<DraggableSheet> createState() => _DraggableSheetState();
-}
-
-class _DraggableSheetState extends State<DraggableSheet>
-    with WidgetsBindingObserver {
-  late DraggableScrollableController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = DraggableScrollableController();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void expand() {
-    if (_controller.isAttached) {
-      _controller.animateTo(
-        widget.maxSize,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
-      );
-    }
-  }
-
-  void collapse() {
-    if (_controller.isAttached) {
-      _controller.animateTo(
-        widget.initialSize,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
-      );
-    }
-  }
-
-  @override
-  void didChangeMetrics() {
-    final bottomInset = WidgetsBinding
-        .instance
-        .platformDispatcher
-        .views
-        .first
-        .viewInsets
-        .bottom;
-
-    if (bottomInset > 0) {
-      expand();
-    }
-    else {
-      collapse();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    // All InheritedWidget lookups happen on this normal StatelessElement
+    // context, which is deactivated in the correct (bottom-up) order.
+    final theme = Theme.of(context);
+    final surfaceColor = theme.colorScheme.surface;
+    final primaryColor = theme.colorScheme.primary;
+    final titleStyle = theme.textTheme.titleMedium;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return DraggableScrollableSheet(
-      controller: _controller,
-      initialChildSize: widget.initialSize,
-      minChildSize: widget.minSize,
-      maxChildSize: widget.maxSize,
-      snap: true,
-      snapSizes: [widget.initialSize, widget.maxSize],
-      builder: (context, scrollController) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: ListView(
-            controller: scrollController,
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 24 + bottomInset),
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      // SingleChildScrollView → Column(min) is the canonical Flutter pattern
+      // for bottom-sheet content that may exceed the visible area.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Drag handle ───────────────────────────────────────────────
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
+            ),
 
-              _buildHeader(context),
+            // ── Header ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _buildHeader(primaryColor, titleStyle),
+            ),
 
-              const SizedBox(height: 12),
-
-              widget.body,
-            ],
-          ),
-        );
-      },
+            // ── Body ──────────────────────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, keyboardInset + 24),
+              child: body,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final hasBack = widget.onBack != null;
-    final hasActions = widget.actions != null && widget.actions!.isNotEmpty;
+  Widget _buildHeader(Color primaryColor, TextStyle? titleStyle) {
+    final hasBack = onBack != null;
+    final hasActions = actions != null && actions!.isNotEmpty;
 
     return SizedBox(
       height: 48,
@@ -144,25 +105,25 @@ class _DraggableSheetState extends State<DraggableSheet>
           if (hasBack)
             IconButton(
               icon: const Icon(Icons.arrow_back),
-              color: Theme.of(context).colorScheme.primary,
-              onPressed: widget.onBack,
+              color: primaryColor,
+              onPressed: onBack,
             )
-          else if (widget.centerTitle && hasActions)
+          else if (centerTitle && hasActions)
             const SizedBox(width: kMinInteractiveDimension),
 
-          if (widget.centerTitle) const Spacer(),
+          if (centerTitle) const Spacer(),
 
-          if (widget.title != null)
+          if (title != null)
             Text(
-              widget.title!,
-              style: Theme.of(context).textTheme.titleMedium,
+              title!,
+              style: titleStyle,
             ),
 
-          if (widget.centerTitle) const Spacer(),
+          if (centerTitle) const Spacer(),
 
           if (hasActions)
-            ...widget.actions!
-          else if (widget.centerTitle && hasBack)
+            ...actions!
+          else if (centerTitle && hasBack)
             const SizedBox(width: kMinInteractiveDimension),
         ],
       ),
