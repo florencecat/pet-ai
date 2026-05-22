@@ -30,7 +30,7 @@ extension TreatmentKindX on TreatmentKind {
       case TreatmentKind.ticks:
         return 'Клещи/блохи';
       case TreatmentKind.worms:
-        return 'Глисты';
+        return 'Гельминты';
       case TreatmentKind.vaccine:
         return 'Прививка';
     }

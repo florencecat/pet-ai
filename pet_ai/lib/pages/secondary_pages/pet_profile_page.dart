@@ -70,6 +70,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
       context,
       title: 'Кличка',
       initialValue: _profile!.name,
+      limit: 20
     );
     if (result != null && result.trim().isNotEmpty) {
       setState(() => _profile!.name = result.trim());
@@ -187,6 +188,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
       initialValue: _profile!.chipNumber,
       keyboardType: TextInputType.number,
       hint: '15 цифр',
+      limit: 15
     );
     if (result != null) setState(() => _profile!.chipNumber = result.trim());
   }
@@ -699,6 +701,7 @@ Future<String?> _showTextSheet(
   bool multiline = false,
   String? hint,
   TextInputType? keyboardType,
+  int? limit
 }) async {
   return showModalBottomSheet<String>(
     context: context,
@@ -711,6 +714,7 @@ Future<String?> _showTextSheet(
       multiline: multiline,
       hint: hint,
       keyboardType: keyboardType,
+      limit: limit,
     ),
   );
 }
@@ -766,6 +770,7 @@ class _TextSheet extends StatefulWidget {
   final bool multiline;
   final String? hint;
   final TextInputType? keyboardType;
+  final int? limit;
 
   const _TextSheet({
     required this.title,
@@ -773,6 +778,7 @@ class _TextSheet extends StatefulWidget {
     this.multiline = false,
     this.hint,
     this.keyboardType,
+    this.limit,
   });
 
   @override
@@ -849,6 +855,7 @@ class _TextSheetState extends State<_TextSheet> {
                 vertical: 14,
               ),
             ),
+            maxLength: widget.limit,
           ),
           const SizedBox(height: 16),
           SizedBox(

@@ -420,8 +420,9 @@ class _Step1 extends StatelessWidget {
                                 .secondaryColor
                                 .withAlpha(172),
                           ),
-                      border: InputBorder.none,
+                      border: InputBorder.none
                     ),
+                    maxLength: 20,
                   ),
                 ),
 

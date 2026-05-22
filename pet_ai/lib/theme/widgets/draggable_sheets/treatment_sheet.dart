@@ -86,7 +86,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
   Future<void> _save() async {
     if (_kind == TreatmentKind.vaccine && _nameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите название прививки')),
+        const SnackBar(content: Text('Введите Название')),
       );
       return;
     }
@@ -195,7 +195,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _nameCtrl,
-                    decoration: baseInputDecoration('Название прививки'),
+                    decoration: baseInputDecoration('Название'),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -674,7 +674,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                     if (widget.kind == TreatmentKind.vaccine) ...[
                       TextField(
                         controller: _nameCtrl,
-                        decoration: baseInputDecoration('Название прививки'),
+                        decoration: baseInputDecoration('Название'),
                       ),
                       const SizedBox(height: 10),
                     ],
