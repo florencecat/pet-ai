@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
-import 'package:pet_satellite/services/user_service.dart';
+import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';

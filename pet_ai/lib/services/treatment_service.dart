@@ -1,6 +1,7 @@
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/models/event.dart';
 
 /// Сервис мед. мероприятий: ведёт историю в [PetProfile.treatmentHistory]
 /// и автоматически создаёт связанное событие в календаре с напоминанием.

@@ -10,6 +10,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/models/event.dart';
 import 'package:provider/provider.dart';
 
 class WeightInputFormatter extends TextInputFormatter {

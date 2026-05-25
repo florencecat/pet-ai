@@ -15,6 +15,13 @@ class UserProfile {
     this.emailVerified = false,
   });
 
+  const UserProfile.empty()
+    : id = '',
+      name = '',
+      email = '',
+      city = '',
+      emailVerified = false;
+
   UserProfile copyWith({
     String? name,
     String? email,

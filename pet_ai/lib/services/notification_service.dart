@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:pet_satellite/models/event.dart' as model;
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'event_service.dart' as events;
 import 'dart:io';
 
 class NotificationService {
@@ -89,7 +89,7 @@ class NotificationService {
     }
   }
 
-  Future<void> scheduleEventNotification(events.PetEvent event) async {
+  Future<void> scheduleEventNotification(model.PetEvent event) async {
     if (!event.notify) return;
     final id = event.id.hashCode;
 
@@ -99,18 +99,18 @@ class NotificationService {
     );
 
     if (scheduledTime.isBefore(DateTime.now()) &&
-        event.repeat == events.RepeatInterval.none) {
+        event.repeat == model.RepeatInterval.none) {
       return; // Пропускаем, если время уже прошло и повторов нет
     }
 
     // Преобразуем интервал в формат библиотеки
     DateTimeComponents? matchComponents;
-    if (event.repeat == events.RepeatInterval.daily) {
+    if (event.repeat == model.RepeatInterval.daily) {
       matchComponents = DateTimeComponents.time;
-    } else if (event.repeat == events.RepeatInterval.weekly ||
-               event.repeat == events.RepeatInterval.custom) {
+    } else if (event.repeat == model.RepeatInterval.weekly ||
+               event.repeat == model.RepeatInterval.custom) {
       matchComponents = DateTimeComponents.dayOfWeekAndTime;
-    } else if (event.repeat == events.RepeatInterval.monthly) {
+    } else if (event.repeat == model.RepeatInterval.monthly) {
       matchComponents = DateTimeComponents.dayOfMonthAndTime;
     }
 
@@ -135,7 +135,7 @@ class NotificationService {
         ? "${event.name} (через ${event.remindBeforeMinutes} мин)"
         : event.name;
 
-    if (event.repeat == events.RepeatInterval.custom &&
+    if (event.repeat == model.RepeatInterval.custom &&
         event.customDays.isNotEmpty) {
       // Для custom — планируем уведомление на каждый выбранный день недели
       for (int i = 0; i < event.customDays.length; i++) {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/theme/widgets/swipeable_event_card.dart';
 
 class EventPreviewBlock extends StatelessWidget {

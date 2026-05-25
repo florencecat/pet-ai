@@ -4,6 +4,7 @@ import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/pill_reminder.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/weight.dart';
+import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/health_service.dart';

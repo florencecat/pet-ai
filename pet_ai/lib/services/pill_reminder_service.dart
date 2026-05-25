@@ -1,6 +1,7 @@
 import 'package:pet_satellite/models/pill_reminder.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/models/event.dart';
 
 class PillReminderService {
   Future<PillReminder> add({
