@@ -228,7 +228,19 @@ class _UserRegistrationFlowState extends State<UserRegistrationFlow> {
     }
   }
 
-  // ── Finish ────────────────────────────────────────────────────────────────
+  // ── Login redirect ────────────────────────────────────────────────────────
+
+  Future<void> _goToLogin() async {
+    final profile = await Navigator.of(context).push<UserProfile?>(
+      MaterialPageRoute(builder: (_) => const UserLoginPage()),
+    );
+    // If login succeeded, bubble the profile up and close the registration flow.
+    if (profile != null && mounted) {
+      Navigator.of(context).pop(profile);
+    }
+  }
+
+  // ── Finish (registration) ─────────────────────────────────────────────────
 
   Future<void> _finish() async {
     // Read the server-assigned user ID from the PocketBase auth store.
@@ -293,6 +305,7 @@ class _UserRegistrationFlowState extends State<UserRegistrationFlow> {
           nameCtrl: _nameCtrl,
           onNext: _submitName,
           onExit: _exit,
+          onLogin: _goToLogin,
         );
       case 1:
         return _Step1(
@@ -306,6 +319,7 @@ class _UserRegistrationFlowState extends State<UserRegistrationFlow> {
           loading: _loading,
           onNext: _submitCredentials,
           onBack: _back,
+          onLogin: _goToLogin,
         );
       case 2:
         return _Step2(
@@ -417,11 +431,13 @@ class _Step0 extends StatelessWidget {
   final TextEditingController nameCtrl;
   final VoidCallback onNext;
   final VoidCallback onExit;
+  final VoidCallback onLogin;
 
   const _Step0({
     required this.nameCtrl,
     required this.onNext,
     required this.onExit,
+    required this.onLogin,
   });
 
   @override
@@ -469,6 +485,8 @@ class _Step0 extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+                _LoginLink(onLogin: onLogin),
               ],
             ),
           ),
@@ -497,6 +515,7 @@ class _Step1 extends StatefulWidget {
   final bool loading;
   final VoidCallback onNext;
   final VoidCallback onBack;
+  final VoidCallback onLogin;
 
   const _Step1({
     required this.emailCtrl,
@@ -509,6 +528,7 @@ class _Step1 extends StatefulWidget {
     required this.loading,
     required this.onNext,
     required this.onBack,
+    required this.onLogin,
   });
 
   @override
@@ -664,6 +684,9 @@ class _Step1State extends State<_Step1> {
                   const SizedBox(height: 12),
                   _ServerError(widget.serverError!),
                 ],
+
+                const SizedBox(height: 24),
+                _LoginLink(onLogin: widget.onLogin),
               ],
             ),
           ),
@@ -1015,4 +1038,470 @@ class _SideButton extends StatelessWidget {
           ),
         ),
       );
+}
+
+// ─── "Уже зарегистрированы?" ссылка ──────────────────────────────────────────
+
+class _LoginLink extends StatelessWidget {
+  final VoidCallback onLogin;
+  const _LoginLink({required this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    return Center(
+      child: GestureDetector(
+        onTap: onLogin,
+        child: RichText(
+          text: TextSpan(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade400,
+                ),
+            children: [
+              const TextSpan(text: 'Уже зарегистрированы? '),
+              TextSpan(
+                text: 'Войти',
+                style: TextStyle(
+                  color: ac.secondaryColor,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                  decorationColor: ac.secondaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Login page ───────────────────────────────────────────────────────────────
+//
+// Two modes managed by [_showReset]:
+//   false → email + password login
+//   true  → email-only password-reset request
+
+class UserLoginPage extends StatefulWidget {
+  const UserLoginPage({super.key});
+
+  @override
+  State<UserLoginPage> createState() => _UserLoginPageState();
+}
+
+class _UserLoginPageState extends State<UserLoginPage> {
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
+  bool _passwordVisible = false;
+  bool _loading = false;
+  bool _showReset = false;  // toggle between login and reset views
+  bool _resetSent = false;  // true after a reset email has been dispatched
+
+  String? _emailError;
+  String? _passwordError;
+  String? _serverError;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Login ─────────────────────────────────────────────────────────────────
+
+  bool _validateLogin() {
+    String? emailErr, pwdErr;
+    if (!_isValidEmail(_emailCtrl.text)) emailErr = 'Некорректный адрес';
+    if (_passwordCtrl.text.isEmpty) pwdErr = 'Введите пароль';
+    setState(() {
+      _emailError = emailErr;
+      _passwordError = pwdErr;
+      _serverError = null;
+    });
+    return emailErr == null && pwdErr == null;
+  }
+
+  Future<void> _login() async {
+    if (!_validateLogin()) return;
+
+    setState(() => _loading = true);
+
+    final result = await UserService().login(
+      email: _emailCtrl.text.trim(),
+      // Password forwarded directly to HTTPS endpoint, never stored.
+      password: _passwordCtrl.text,
+    );
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (result.success) {
+      await _finishLogin();
+    } else {
+      setState(
+        () => _serverError =
+            result.errorMessage ?? 'Ошибка входа — попробуйте позже',
+      );
+    }
+  }
+
+  Future<void> _finishLogin() async {
+    final record = AuthService.pb.authStore.record;
+    final verified = record?.data['verified'] as bool? ?? false;
+    final profile = UserProfile(
+      id: record?.id ?? '',
+      name: record?.data['name'] as String? ?? '',
+      email: _emailCtrl.text.trim(),
+      emailVerified: verified,
+    );
+    await UserService().save(profile);
+    if (mounted) Navigator.of(context).pop(profile);
+  }
+
+  // ── Password reset ────────────────────────────────────────────────────────
+
+  bool _validateResetEmail() {
+    final err = _isValidEmail(_emailCtrl.text) ? null : 'Некорректный адрес';
+    setState(() { _emailError = err; _serverError = null; });
+    return err == null;
+  }
+
+  Future<void> _requestReset() async {
+    if (!_validateResetEmail()) return;
+
+    setState(() => _loading = true);
+
+    // requestPasswordReset always returns ok (even if email not found) to
+    // prevent enumeration — we always show the success state.
+    await UserService().requestPasswordReset(_emailCtrl.text.trim());
+
+    if (!mounted) return;
+    setState(() { _loading = false; _resetSent = true; });
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+
+  void _openReset() => setState(() {
+        _showReset = true;
+        _resetSent = false;
+        _emailError = null;
+        _serverError = null;
+      });
+
+  void _backToLogin() => setState(() {
+        _showReset = false;
+        _resetSent = false;
+        _emailError = null;
+        _serverError = null;
+      });
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: ThemeColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _SimpleHeader(
+              title: _showReset ? 'Восстановление' : 'Вход',
+              onBack: Navigator.of(context).pop,
+            ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: KeyedSubtree(
+                  key: ValueKey(_showReset),
+                  child: _showReset ? _buildReset() : _buildLogin(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Login content ─────────────────────────────────────────────────────────
+
+  Widget _buildLogin() {
+    final ac = context.watch<AppearanceController>();
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Добро\nпожаловать!',
+                    style: theme.textTheme.headlineMedium),
+                const SizedBox(height: 8),
+                Text(
+                  'Войдите, чтобы синхронизировать данные и резервные копии.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: ac.secondaryColor.withAlpha(160),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Email
+                _card(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  child: TextField(
+                    controller: _emailCtrl,
+                    style: theme.textTheme.bodyLarge,
+                    cursorColor: ac.secondaryColor,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: InputDecoration(
+                      hintText: 'Эл. почта',
+                      hintStyle: theme.textTheme.bodyLarge!
+                          .copyWith(color: Colors.grey.shade400),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                if (_emailError != null) _FieldError(_emailError!),
+
+                const SizedBox(height: 12),
+
+                // Password
+                _card(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  child: TextField(
+                    controller: _passwordCtrl,
+                    style: theme.textTheme.bodyLarge,
+                    cursorColor: ac.secondaryColor,
+                    obscureText: !_passwordVisible,
+                    textInputAction: TextInputAction.done,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    onSubmitted: (_) => _login(),
+                    decoration: InputDecoration(
+                      hintText: 'Пароль',
+                      hintStyle: theme.textTheme.bodyLarge!
+                          .copyWith(color: Colors.grey.shade400),
+                      border: InputBorder.none,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 20,
+                          color: Colors.grey.shade400,
+                        ),
+                        onPressed: () => setState(
+                            () => _passwordVisible = !_passwordVisible),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_passwordError != null) _FieldError(_passwordError!),
+
+                if (_serverError != null) ...[
+                  const SizedBox(height: 12),
+                  _ServerError(_serverError!),
+                ],
+
+                const SizedBox(height: 16),
+
+                // Forgot password
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: _openReset,
+                    child: Text(
+                      'Забыли пароль?',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ac.secondaryColor,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: ac.secondaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        _BottomBar(
+          label: 'Войти',
+          nextIcon: Icons.login_rounded,
+          onNext: _login,
+          onNextAvailable: !_loading,
+          loading: _loading,
+          onBack: Navigator.of(context).pop,
+        ),
+      ],
+    );
+  }
+
+  // ── Password reset content ────────────────────────────────────────────────
+
+  Widget _buildReset() {
+    final ac = context.watch<AppearanceController>();
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: _resetSent
+                ? _buildResetSuccess(ac, theme)
+                : _buildResetForm(ac, theme),
+          ),
+        ),
+        if (!_resetSent)
+          _BottomBar(
+            label: 'Отправить',
+            nextIcon: Icons.send_rounded,
+            onNext: _requestReset,
+            onNextAvailable: !_loading,
+            loading: _loading,
+            onBack: _backToLogin,
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: _SideButton(
+              icon: Icons.arrow_back_ios_new_rounded,
+              onTap: _backToLogin,
+              ac: context.read<AppearanceController>(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildResetForm(AppearanceController ac, ThemeData theme) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Сброс\nпароля', style: theme.textTheme.headlineMedium),
+          const SizedBox(height: 8),
+          Text(
+            'Введите почту — мы отправим ссылку для создания нового пароля.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: ac.secondaryColor.withAlpha(160),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _card(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: TextField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+              autocorrect: false,
+              enableSuggestions: false,
+              onSubmitted: (_) => _requestReset(),
+              style: theme.textTheme.bodyLarge,
+              cursorColor: ac.secondaryColor,
+              decoration: InputDecoration(
+                hintText: 'Эл. почта',
+                hintStyle: theme.textTheme.bodyLarge!
+                    .copyWith(color: Colors.grey.shade400),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          if (_emailError != null) _FieldError(_emailError!),
+          if (_serverError != null) ...[
+            const SizedBox(height: 12),
+            _ServerError(_serverError!),
+          ],
+        ],
+      );
+
+  Widget _buildResetSuccess(AppearanceController ac, ThemeData theme) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Success icon
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: ac.primaryColor.withAlpha(20),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.mark_email_read_outlined,
+                  size: 34, color: ac.secondaryColor),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Письмо отправлено',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Проверьте почту ${_emailCtrl.text.trim()} и перейдите по ссылке в письме, чтобы создать новый пароль.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: ac.secondaryColor.withAlpha(160),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Если письмо не пришло, проверьте папку «Спам».',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.grey.shade400,
+            ),
+          ),
+        ],
+      );
+}
+
+// ─── Simple page header (login page) ─────────────────────────────────────────
+
+class _SimpleHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback onBack;
+
+  const _SimpleHeader({required this.title, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 12, 16, 16),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: onBack,
+            color: ac.secondaryColor,
+          ),
+          Expanded(
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          const SizedBox(width: 48), // balance
+        ],
+      ),
+    );
+  }
 }

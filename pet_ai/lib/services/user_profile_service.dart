@@ -64,4 +64,17 @@ class UserService {
   /// Requests a new OTP (resend).
   Future<AuthResult> resendOTP(String email) =>
       AuthService().resendOTP(email);
+
+  /// Signs in with [email] and [password].
+  ///
+  /// On success, [AuthService.pb].authStore holds the session and user record.
+  Future<AuthResult> login({
+    required String email,
+    required String password,
+  }) =>
+      AuthService().login(email: email, password: password);
+
+  /// Sends a password-reset link to [email].
+  Future<AuthResult> requestPasswordReset(String email) =>
+      AuthService().requestPasswordReset(email);
 }

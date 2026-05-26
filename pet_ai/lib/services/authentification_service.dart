@@ -137,6 +137,61 @@ class AuthService {
   /// Requests a new OTP for [email] (e.g. when the user taps "Отправить снова").
   Future<AuthResult> resendOTP(String email) => _requestOTP(email);
 
+  /// Signs in an existing user with [email] and [password].
+  ///
+  /// On success, [pb].authStore is populated — callers read the profile from
+  /// [pb].authStore.record.
+  ///
+  /// Security: the same generic message is returned whether the email does not
+  /// exist or the password is wrong, to prevent account enumeration.
+  Future<AuthResult> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _pb
+          .collection(_usersCollection)
+          .authWithPassword(email, password);
+      return AuthResult.ok();
+    } on ClientException catch (e) {
+      // PocketBase returns 400 for wrong credentials and 401 for invalid token.
+      // Both map to the same user-facing message to prevent enumeration.
+      if (e.statusCode == 400 || e.statusCode == 401) {
+        return AuthResult.fail(
+          e.statusCode,
+          errorMessage: 'Неверный адрес или пароль',
+        );
+      }
+      return _networkError(e.statusCode);
+    } catch (_) {
+      return _offlineError();
+    }
+  }
+
+  /// Sends a password-reset link to [email].
+  ///
+  /// PocketBase always returns success even if the email is not registered, so
+  /// callers can safely show a "check your inbox" message without leaking
+  /// whether the address exists in the system.
+  Future<AuthResult> requestPasswordReset(String email) async {
+    try {
+      await _pb
+          .collection(_usersCollection)
+          .requestPasswordReset(email);
+      return AuthResult.ok();
+    } on ClientException catch (e) {
+      if (e.statusCode == 429) {
+        return AuthResult.fail(
+          429,
+          errorMessage: 'Слишком много запросов — повторите позже',
+        );
+      }
+      return _networkError(e.statusCode);
+    } catch (_) {
+      return _offlineError();
+    }
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   Future<AuthResult> _requestOTP(String email) async {
