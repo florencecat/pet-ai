@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
+import 'package:http/io_client.dart';
 import 'dart:convert';
 import 'package:pet_satellite/services/http_client.dart';
 import 'package:uuid/uuid.dart';
@@ -105,61 +106,19 @@ class AuthService {
   }
 }
 
-class GigaChatService {
-  static const _baseUrl =
-      'https://gigachat.devices.sberbank.ru/api/v1/chat/completions';
-
-  final AuthService authService;
-
-  GigaChatService({required this.authService});
-
-  Future<String> sendMessage({
-    required List<ChatMessage> history,
-    required String petContext,
-  }) async {
-    final httpClient = await createIOClient();
-    final token = await authService.getAccessToken();
-    final limitedHistory = history.take(10).toList();
-
-    final messages = [
-      {
-        "role": "system",
-        "content":
-            "Ты ветеринарный ассистент. Отвечай кратко, понятно и по делу. "
-            "Учитывай контекст питомца: $petContext",
-      },
-      ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
-    ];
-
-    final response = await httpClient.post(
-      Uri.parse(_baseUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        "model": "GigaChat-2",
-        "messages": messages,
-        "n": 1,
-        "stream": false,
-        "max_tokens": 350,
-        "repetition_penalty": 1.05,
-      }),
-    );
-
-    final data = jsonDecode(response.body);
-
-    return data['choices'][0]['message']['content'];
-  }
-}
-
 class AIChatController extends ChangeNotifier {
   static const _currentBoxKey = 'current_thread_box';
   static const _archivedBoxesKey = 'archived_threads';
   static const _defaultBoxName = 'chat_box';
 
-  final GigaChatService service;
+  final String baseUrl;
+
+  final Uri _healthRoute;
+  final Uri _messagesRoute;
+
+
+  late final IOClient _httpClient;
+
 
   ChatRepository? _repo;
   PetProfile? _pet;
@@ -168,13 +127,17 @@ class AIChatController extends ChangeNotifier {
   bool isLoading = false;
   bool isInitialized = false;
 
-  AIChatController({required this.service});
+  AIChatController({required this.baseUrl})
+      : _healthRoute = Uri.parse('$baseUrl/health'),
+  _messagesRoute = Uri.parse('$baseUrl/chat');
 
   Future<void> init() async {
     isLoading = true;
     notifyListeners();
 
     try {
+      _httpClient = await createIOClient();
+
       final prefs = await SharedPreferences.getInstance();
       _currentBoxName = prefs.getString(_currentBoxKey) ?? _defaultBoxName;
 
@@ -241,11 +204,13 @@ class AIChatController extends ChangeNotifier {
     for (final name in names.reversed) {
       final box = await Hive.openBox<ChatMessage>(name);
       if (box.isNotEmpty) {
-        threads.add(ArchivedThread(
-          boxName: name,
-          date: box.values.first.timestamp,
-          messages: box.values.toList(),
-        ));
+        threads.add(
+          ArchivedThread(
+            boxName: name,
+            date: box.values.first.timestamp,
+            messages: box.values.toList(),
+          ),
+        );
       }
     }
     return threads;
@@ -292,12 +257,35 @@ class AIChatController extends ChangeNotifier {
     notifyListeners();
 
     final petContext = PetContextBuilder.build(_pet!);
+    final limitedHistory = messages.take(10).toList();
+    final context = [
+      {
+        "role": "system",
+        "content":
+            "Ты ветеринарный ассистент. Отвечай кратко, понятно и по делу. "
+            "Учитывай контекст питомца: $petContext",
+      },
+      ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
+    ];
 
-    final fullResponse = await service.sendMessage(
-      history: messages,
-      petContext: petContext,
+    final response = await _httpClient.post(
+      _messagesRoute,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        "model": "GigaChat-2",
+        "messages": context,
+        "n": 1,
+        "stream": false,
+        "max_tokens": 350,
+        "repetition_penalty": 1.05,
+      }),
     );
 
+    final data = jsonDecode(response.body);
+    final fullResponse = data['choices'][0]['message']['content'];
     final botMsg = ChatMessage(
       role: 'assistant',
       content: '',
@@ -313,6 +301,15 @@ class AIChatController extends ChangeNotifier {
       await botMsg.save();
       notifyListeners();
     }
+  }
+
+  Future<bool> healthCheck() async {
+    final response = await _httpClient.get(_healthRoute, headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    });
+
+    return response.statusCode == 200;
   }
 
   static Future<void> clearMessageHistory() async {

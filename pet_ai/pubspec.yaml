@@ -57,6 +57,7 @@ dependencies:
   flutter_svg: ^2.2.4
   package_info_plus: ^9.0.1
   pocketbase: ^0.24.0
+  get_it: ^9.2.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

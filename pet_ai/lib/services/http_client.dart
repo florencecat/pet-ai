@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:http/io_client.dart';
 
 Future<HttpClient> createHttpClient() async {
-  final context = SecurityContext(withTrustedRoots: false);
+  final context = SecurityContext(withTrustedRoots: true);
 
   final certData =
-  await rootBundle.load('assets/certs/russian_trusted_root_ca.pem');
+      await rootBundle.load('assets/certs/russian_trusted_root_ca.pem');
 
   context.setTrustedCertificatesBytes(certData.buffer.asUint8List());
 

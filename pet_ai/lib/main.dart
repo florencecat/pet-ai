@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,6 +13,7 @@ import 'package:pet_satellite/pages/main_pages/health_page.dart';
 import 'package:pet_satellite/pages/main_pages/home_page.dart';
 import 'package:pet_satellite/pages/registration_flows/pet_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
+import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/health_service.dart';
@@ -24,20 +26,25 @@ import 'package:provider/provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // enable notifications only for web
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
     try {
       await NotificationService().init();
-    } catch (_) {
-      // Notification service unavailable — continue without notifications.
-    }
+    } catch (_) { }
   }
-
+  // initialize hive db
   await Hive.initFlutter();
   Hive.registerAdapter(ChatMessageAdapter());
-
+  // initialize environment
   await dotenv.load(fileName: ".env");
-
+  // initialize locale
   await initializeDateFormatting('ru_RU', null);
+  // register api service
+  GetIt.instance.registerSingleton<ApiService>(
+      ApiService(
+          apiUrl: 'https://api.pet-sputnik.ru',
+          aiUrl: 'https://ai.pet-sputnik.ru'
+      ));
   runApp(const PetHealthApp());
 }
 

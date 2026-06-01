@@ -1,10 +1,10 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/services/ai_service.dart';
+import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
@@ -25,15 +25,13 @@ class _AIChatPageState extends State<AIChatPage> {
   void initState() {
     super.initState();
 
-    final service = GigaChatService(
-      authService: AuthService(authorizationKey: dotenv.env["GIGACHAT_KEY"]!),
-    );
-
-    _future = _createController(service);
+    _future = _createController();
   }
 
-  Future<AIChatController> _createController(GigaChatService service) async {
-    final controller = AIChatController(service: service);
+  Future<AIChatController> _createController() async {
+    final controller = AIChatController(
+      baseUrl: GetIt.instance<ApiService>().aiUrl,
+    );
     await controller.init();
     return controller;
   }
@@ -79,20 +77,30 @@ class _AIChatPageState extends State<AIChatPage> {
   }
 }
 
-// ──────────────────────────────────────────────────────────
-// Animated online dot
-// ──────────────────────────────────────────────────────────
-
-class _PulsingDot extends StatefulWidget {
-  final Color color;
-
-  const _PulsingDot({required this.color});
-
+class _OfflineDot extends StatelessWidget {
   @override
-  State<_PulsingDot> createState() => _PulsingDotState();
+  Widget build(BuildContext context) {
+    final color = Colors.grey;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: [BoxShadow(color: color.withAlpha(128))],
+      ),
+    );
+  }
 }
 
-class _PulsingDotState extends State<_PulsingDot>
+class _OnlineDot extends StatefulWidget {
+  final Color color;
+
+  const _OnlineDot({required this.color});
+
+  @override
+  State<_OnlineDot> createState() => _OnlineDotState();
+}
+
+class _OnlineDotState extends State<_OnlineDot>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _opacity;
@@ -150,8 +158,26 @@ class _PulsingDotState extends State<_PulsingDot>
 // Main chat view
 // ──────────────────────────────────────────────────────────
 
-class _ChatView extends StatelessWidget {
+class _ChatView extends StatefulWidget {
   const _ChatView();
+
+  @override
+  State<_ChatView> createState() => _ChatViewState();
+}
+
+class _ChatViewState extends State<_ChatView> {
+  late final AIChatController _controller;
+  late final Future<bool> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    // context.read — не регистрирует подписку; подходит для initState.
+    // context.watch нельзя использовать вне build() — вызывает ошибку
+    // деактивации InheritedElement и, как следствие, краш Scaffold layout.
+    _controller = context.read<AIChatController>();
+    _future = _controller.healthCheck();
+  }
 
   void _openHistorySheet(BuildContext context, AIChatController controller) {
     showModalBottomSheet(
@@ -166,8 +192,12 @@ class _ChatView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    // Watch for reactive rebuilds when messages arrive or isLoading changes.
+    // _controller (set in initState via context.read) is only used for
+    // healthCheck(); all live state is read from the watched instance here.
     final controller = context.watch<AIChatController>();
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     final isEmpty = controller.messages.isEmpty;
 
     return Stack(
@@ -220,8 +250,7 @@ class _ChatView extends StatelessWidget {
             alignment: Alignment.topCenter,
             child: GlassCard(
               callback: () {
-                final ctrl = context.read<AIChatController>();
-                _openHistorySheet(context, ctrl);
+                _openHistorySheet(context, controller);
               },
               transparent: false,
               child: ListTile(
@@ -233,17 +262,37 @@ class _ChatView extends StatelessWidget {
                   'Помощник по уходу',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                subtitle: Row(
-                  spacing: 6,
-                  children: [
-                    _PulsingDot(color: ThemeColors.aiChatOnlineColor),
-                    Text(
-                      'на связи',
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: ThemeColors.aiChatOnlineColor,
-                      ),
-                    ),
-                  ],
+                subtitle: FutureBuilder(
+                  future: _future,
+                  builder: (context, snapshot) {
+                    return Row(
+                      spacing: 6,
+                      children: [
+                        if (!snapshot.hasData) ...[
+                          _OnlineDot(color: ThemeColors.aiChatOnlineColor),
+                          Text(
+                            'на связи',
+                            style: Theme.of(context).textTheme.bodyMedium!
+                                .copyWith(color: ThemeColors.aiChatOnlineColor),
+                          ),
+                        ] else if (snapshot.data!) ...[
+                          _OnlineDot(color: ThemeColors.aiChatOnlineColor),
+                          Text(
+                            'на связи',
+                            style: Theme.of(context).textTheme.bodyMedium!
+                                .copyWith(color: ThemeColors.aiChatOnlineColor),
+                          ),
+                        ] else ...[
+                          _OfflineDot(),
+                          Text(
+                            'оффлайн',
+                            style: Theme.of(context).textTheme.bodyMedium!
+                                .copyWith(color: Colors.grey),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
                 trailing: Icon(
                   Icons.history,
@@ -342,17 +391,23 @@ class _WelcomeState extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: quickReplies.map((reply) {
-                return GlassCard(callback: () {
-                  HapticFeedback.lightImpact();
-                  chat.sendMessage(reply);
-                },padding: 10, transparent: true, color: primaryColor, child: Text(
-                  reply,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
+                return GlassCard(
+                  callback: () {
+                    HapticFeedback.lightImpact();
+                    chat.sendMessage(reply);
+                  },
+                  padding: 10,
+                  transparent: true,
+                  color: primaryColor,
+                  child: Text(
+                    reply,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ));
+                );
               }).toList(),
             ),
           ),
@@ -435,8 +490,9 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
@@ -470,7 +526,9 @@ class _InputBarState extends State<_InputBar> {
 
   @override
   Widget build(BuildContext context) {
-    final chat = context.read<AIChatController>();
+    // watch — so the send button disables while the AI is replying.
+    final chat = context.watch<AIChatController>();
+    final canSend = controller.text.isNotEmpty && !chat.isLoading;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -496,21 +554,21 @@ class _InputBarState extends State<_InputBar> {
           const SizedBox(width: 8),
 
           GlassCard(
-            callback: controller.text.isEmpty
-                ? null
-                : () {
+            callback: canSend
+                ? () {
                     HapticFeedback.mediumImpact();
                     chat.sendMessage(controller.text);
                     controller.clear();
                     setState(() {});
-                  },
+                  }
+                : null,
             child: Padding(
               padding: const EdgeInsets.all(10),
               child: Icon(
                 Icons.send,
-                color: controller.text.isEmpty
-                    ? Colors.grey.shade400
-                    : context.watch<AppearanceController>().primaryColor,
+                color: canSend
+                    ? context.watch<AppearanceController>().primaryColor
+                    : Colors.grey.shade400,
               ),
             ),
           ),
@@ -596,7 +654,8 @@ class _HistorySheet extends StatelessWidget {
                           .where((m) => m.role == 'user')
                           .map((m) => m.content)
                           .firstOrNull;
-                      final preview = firstUserMsg ?? thread.messages.first.content;
+                      final preview =
+                          firstUserMsg ?? thread.messages.first.content;
 
                       return ListTile(
                         leading: Icon(
