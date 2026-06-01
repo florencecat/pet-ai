@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Manages local persistence of [UserProfile] and delegates remote auth
@@ -25,6 +27,8 @@ class UserService {
   Future<void> save(UserProfile profile) async {
     final prefs = SharedPreferencesAsync();
     await prefs.setString(_key, jsonEncode(profile.toJson()));
+    
+    await GetIt.instance<PocketBaseService>().pb.collection('users').update(profile.id, body: profile.toJson());
   }
 
   Future<void> delete() async {
@@ -46,7 +50,7 @@ class UserService {
     required String password,
     required String passwordConfirm,
   }) =>
-      AuthService().register(
+      GetIt.instance<AuthService>().register(
         name: name,
         email: email,
         password: password,
@@ -59,11 +63,11 @@ class UserService {
     required String otpId,
     required String code,
   }) =>
-      AuthService().verifyOTP(otpId: otpId, code: code);
+      GetIt.instance<AuthService>().verifyOTP(otpId: otpId, code: code);
 
   /// Requests a new OTP (resend).
   Future<AuthResult> resendOTP(String email) =>
-      AuthService().resendOTP(email);
+      GetIt.instance<AuthService>().resendOTP(email);
 
   /// Signs in with [email] and [password].
   ///
@@ -72,9 +76,9 @@ class UserService {
     required String email,
     required String password,
   }) =>
-      AuthService().login(email: email, password: password);
+      GetIt.instance<AuthService>().login(email: email, password: password);
 
   /// Sends a password-reset link to [email].
   Future<AuthResult> requestPasswordReset(String email) =>
-      AuthService().requestPasswordReset(email);
+      GetIt.instance<AuthService>().requestPasswordReset(email);
 }

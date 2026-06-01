@@ -19,7 +19,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/treatment.dart';
-import 'package:pet_satellite/models/food.dart';
+import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/models/pill_reminder.dart';
 
 class PetContextBuilder {
@@ -112,7 +112,7 @@ class PetProfile {
   MoodHistory moodHistory;
   NoteHistory noteHistory;
   TreatmentHistory treatmentHistory;
-  FoodHistory foodHistory;
+  MealHistory foodHistory;
   List<PillReminder> pillReminders;
   ColorPalette palette;
 
@@ -136,7 +136,7 @@ class PetProfile {
        moodHistory = MoodHistory.empty(),
        noteHistory = NoteHistory.empty(),
        treatmentHistory = TreatmentHistory.empty(),
-       foodHistory = FoodHistory.empty(),
+       foodHistory = MealHistory.empty(),
        pillReminders = [],
        palette = ThemeColors.defaultProfilePalette;
 
@@ -187,7 +187,7 @@ class PetProfile {
     'treatmentHistory': TreatmentHistory.treatmentSerializer.toJsonList(
       treatmentHistory,
     ),
-    'foodHistory': FoodHistory.foodSerializer.toJsonList(foodHistory),
+    'foodHistory': MealHistory.foodSerializer.toJsonList(foodHistory),
     'pillReminders': pillReminders.map((r) => r.toJson()).toList(),
     'palette': palette.toJson(),
   };
@@ -248,12 +248,12 @@ class PetProfile {
             )
           : TreatmentHistory.empty(),
       foodHistory: json['foodHistory'] != null
-          ? FoodHistory(
-              entries: FoodHistory.foodSerializer
+          ? MealHistory(
+              entries: MealHistory.foodSerializer
                   .fromJsonList(json['foodHistory'])
                   .entries,
             )
-          : FoodHistory.empty(),
+          : MealHistory.empty(),
       pillReminders: (json['pillReminders'] as List<dynamic>?)
               ?.map((e) => PillReminder.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -426,7 +426,7 @@ class ProfileService {
     }
   }
 
-  Future<void> updateFoodHistory(String petId, FoodEntry entry) async {
+  Future<void> updateFoodHistory(String petId, MealEntry entry) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
       profile.foodHistory.add(entry);

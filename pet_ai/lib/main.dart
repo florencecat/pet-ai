@@ -15,9 +15,11 @@ import 'package:pet_satellite/pages/registration_flows/pet_registration_flow.dar
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/authentification_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/health_service.dart';
 import 'package:pet_satellite/services/notification_service.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_theme.dart';
 import 'package:pet_satellite/theme/widgets/floating_navigation_bar.dart';
@@ -30,7 +32,7 @@ void main() async {
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
     try {
       await NotificationService().init();
-    } catch (_) { }
+    } catch (_) {}
   }
   // initialize hive db
   await Hive.initFlutter();
@@ -39,12 +41,21 @@ void main() async {
   await dotenv.load(fileName: ".env");
   // initialize locale
   await initializeDateFormatting('ru_RU', null);
-  // register api service
+
+  // register services
   GetIt.instance.registerSingleton<ApiService>(
-      ApiService(
-          apiUrl: 'https://api.pet-sputnik.ru',
-          aiUrl: 'https://ai.pet-sputnik.ru'
-      ));
+    ApiService(
+      apiUrl: 'https://api.pet-sputnik.ru',
+      aiUrl: 'https://ai.pet-sputnik.ru',
+    ),
+  );
+  GetIt.instance.registerSingleton<PocketBaseService>(
+    PocketBaseService(basePath: GetIt.instance<ApiService>().apiUrl),
+  );
+  GetIt.instance.registerSingleton<AuthService>(
+    AuthService(pbService: GetIt.instance<PocketBaseService>()),
+  );
+
   runApp(const PetHealthApp());
 }
 
@@ -120,8 +131,7 @@ class _MainPageState extends State<MainPage> {
   Future<void> _checkProfile() async {
     // Однократная миграция событий из старого per-pet хранилища в глобальное v2
     final profiles = await ProfileService().loadAllProfiles();
-    await EventService()
-        .migrateFromLegacy(profiles.map((p) => p.id).toList());
+    await EventService().migrateFromLegacy(profiles.map((p) => p.id).toList());
 
     final hasProfile = await ProfileService().hasProfiles();
     if (mounted) {
@@ -181,14 +191,12 @@ class _MainPageState extends State<MainPage> {
       body: MediaQuery(
         data: MediaQuery.of(context).copyWith(
           padding: MediaQuery.of(context).padding.copyWith(
-            bottom: MediaQuery.of(context).padding.bottom +
+            bottom:
+                MediaQuery.of(context).padding.bottom +
                 FloatingNavigationBar.bottomInset,
           ),
         ),
-        child: IndexedStack(
-          index: _selectedIndex.index,
-          children: pages,
-        ),
+        child: IndexedStack(index: _selectedIndex.index, children: pages),
       ),
 
       // Using bottomNavigationBar (instead of Positioned) means Flutter

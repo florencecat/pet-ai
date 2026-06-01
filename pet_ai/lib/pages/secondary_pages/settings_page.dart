@@ -60,16 +60,11 @@ class _SettingsPageState extends State<SettingsPage> {
       if (result != null && mounted) setState(() => _user = result);
     } else {
       // Profile exists → edit page; null return = deleted
-      final result = await Navigator.push<UserProfile?>(
+      await Navigator.push<UserProfile?>(
         context,
-        MaterialPageRoute(
-          builder: (_) => UserProfileEditPage(profile: _user!),
-        ),
+        MaterialPageRoute(builder: (_) => UserProfileEditPage(profile: _user!)),
       );
-      if (mounted) {
-        // result == null means the user deleted their profile inside the page
-        setState(() => _user = result);
-      }
+      _loadAll();
     }
   }
 
@@ -79,7 +74,8 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Удалить профиль?'),
         content: const Text(
-            'Данные вашего аккаунта будут удалены с устройства.'),
+          'Данные вашего аккаунта будут удалены с устройства.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -87,7 +83,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: ThemeColors.dangerZone),
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Удалить'),
           ),
@@ -592,8 +589,10 @@ class _UserAccountCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: primaryColor.withAlpha(30),
-                  border:
-                      Border.all(color: primaryColor.withAlpha(80), width: 1.5),
+                  border: Border.all(
+                    color: primaryColor.withAlpha(80),
+                    width: 1.5,
+                  ),
                 ),
                 child: Icon(
                   hasUser ? Icons.person_rounded : Icons.person_outline,
@@ -633,8 +632,10 @@ class _UserAccountCard extends StatelessWidget {
               // Badge / chevron
               if (!hasUser)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     color: primaryColor.withAlpha(25),
@@ -649,11 +650,17 @@ class _UserAccountCard extends StatelessWidget {
                 )
               else ...[
                 if (user!.emailVerified)
-                  Icon(Icons.verified_outlined,
-                      color: ThemeColors.ok.mainColor, size: 18),
+                  Icon(
+                    Icons.verified_outlined,
+                    color: ThemeColors.ok.mainColor,
+                    size: 18,
+                  ),
                 const SizedBox(width: 4),
-                Icon(Icons.chevron_right,
-                    color: ac.secondaryColor.withAlpha(120), size: 20),
+                Icon(
+                  Icons.chevron_right,
+                  color: ac.secondaryColor.withAlpha(120),
+                  size: 20,
+                ),
               ],
             ],
           ),

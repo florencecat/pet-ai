@@ -1,22 +1,12 @@
+import 'package:get_it/get_it.dart';
+import 'package:pet_satellite/services/api_service.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-/// Result returned by every [AuthService] operation.
-///
-/// Callers must check [success] before reading [otpId] or [errorMessage].
 class AuthResult {
-  /// Whether the operation succeeded.
   final bool success;
-
-  /// HTTP status code (200 on success; 4xx / 5xx on remote error; 0 if the
-  /// device is offline or a non-HTTP exception was thrown).
   final int code;
-
-  /// OTP session identifier — set only after a successful [AuthService.register]
-  /// or [AuthService.resendOTP]. Pass it to [AuthService.verifyOTP].
   final String? otpId;
-
-  /// Localised, user-facing error text. Null when [success] is true.
-  /// Never contains raw server internals.
   final String? errorMessage;
 
   const AuthResult._({
@@ -39,41 +29,16 @@ class AuthResult {
       );
 }
 
-/// Remote authentication service backed by PocketBase.
-///
-/// Security notes
-/// ─────────────
-/// • Passwords are never stored or logged — they are forwarded directly to the
-///   HTTPS endpoint and then discarded.
-/// • Error messages exposed to callers are generic; raw server responses are
-///   not surfaced to the UI.
-/// • The singleton PocketBase client retains the session token in memory.
-///   Persistence across app restarts should be wired via [AsyncAuthStore] in
-///   a future iteration.
 class AuthService {
-  static const _apiUrl = 'https://api.pet-sputnik.ru';
-  static const _usersCollection = 'users';
+  static final _usersCollection = GetIt.instance<ApiService>().usersRoute;
 
-  // Shared PocketBase client. One instance per app lifetime.
-  static final PocketBase _pb = PocketBase(_apiUrl);
+  final PocketBaseService pbService;
 
-  /// The shared PocketBase client.
-  ///
-  /// After a successful [verifyOTP], [pb].authStore is populated with the
-  /// session token and user record. Callers can read the server-assigned user
-  /// ID from [pb].authStore.record?.id.
-  static PocketBase get pb => _pb;
+  AuthService({required this.pbService});
 
-  // ── Public API ────────────────────────────────────────────────────────────
+  RecordModel? get userRecord => pbService.pb.authStore.record;
+  String get token => pbService.pb.authStore.token;
 
-  /// Creates a new user account with [name], [email] and [password], then
-  /// requests an OTP for email verification.
-  ///
-  /// If the account already exists (e.g. the user went back after a partial
-  /// registration), the creation step is skipped and a new OTP is requested,
-  /// so the user can still complete verification.
-  ///
-  /// Returns [AuthResult.ok] with [AuthResult.otpId] on success.
   Future<AuthResult> register({
     required String name,
     required String email,
@@ -81,7 +46,7 @@ class AuthService {
     required String passwordConfirm,
   }) async {
     try {
-      await _pb.collection(_usersCollection).create(body: {
+      await pbService.pb.collection(_usersCollection).create(body: {
         'name': name,
         'email': email,
         'password': password,
@@ -115,7 +80,7 @@ class AuthService {
     required String code,
   }) async {
     try {
-      await _pb.collection(_usersCollection).authWithOTP(otpId, code);
+      await pbService.pb.collection(_usersCollection).authWithOTP(otpId, code);
       return AuthResult.ok();
     } on ClientException catch (e) {
       switch (e.statusCode) {
@@ -149,7 +114,7 @@ class AuthService {
     required String password,
   }) async {
     try {
-      await _pb
+      await pbService.pb
           .collection(_usersCollection)
           .authWithPassword(email, password);
       return AuthResult.ok();
@@ -175,7 +140,7 @@ class AuthService {
   /// whether the address exists in the system.
   Future<AuthResult> requestPasswordReset(String email) async {
     try {
-      await _pb
+      await pbService.pb
           .collection(_usersCollection)
           .requestPasswordReset(email);
       return AuthResult.ok();
@@ -196,7 +161,7 @@ class AuthService {
 
   Future<AuthResult> _requestOTP(String email) async {
     try {
-      final res = await _pb.collection(_usersCollection).requestOTP(email);
+      final res = await pbService.pb.collection(_usersCollection).requestOTP(email);
       return AuthResult.ok(otpId: res.otpId);
     } on ClientException catch (e) {
       if (e.statusCode == 429) {

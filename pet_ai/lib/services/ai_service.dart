@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:http/io_client.dart';
+import 'package:pet_satellite/services/authentification_service.dart';
 import 'dart:convert';
 import 'package:pet_satellite/services/http_client.dart';
-import 'package:uuid/uuid.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,69 +57,17 @@ class ChatRepository {
   }
 }
 
-class AuthService {
-  static const _authUrl = 'https://ngw.devices.sberbank.ru:9443/api/v2/oauth';
-
-  final String authorizationKey;
-
-  String? _accessToken;
-  DateTime? _expiresAt;
-
-  AuthService({required this.authorizationKey});
-
-  bool get _hasValidToken {
-    if (_accessToken == null || _expiresAt == null) return false;
-
-    return DateTime.now().isBefore(_expiresAt!.subtract(Duration(minutes: 2)));
-  }
-
-  Future<String> getAccessToken() async {
-    if (_hasValidToken) {
-      return _accessToken!;
-    }
-
-    final httpClient = await createIOClient();
-    final uuid = Uuid().v4();
-
-    final response = await httpClient.post(
-      Uri.parse(_authUrl),
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'RqUID': uuid,
-        'Authorization': 'Basic $authorizationKey',
-      },
-      body: {'scope': 'GIGACHAT_API_PERS'},
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Ошибка получения токена: ${response.body}');
-    }
-
-    final data = jsonDecode(response.body);
-
-    _accessToken = data['access_token'];
-    final expiresAt = data['expires_at']; // секунды
-
-    _expiresAt = DateTime.fromMillisecondsSinceEpoch(expiresAt);
-
-    return _accessToken!;
-  }
-}
-
 class AIChatController extends ChangeNotifier {
   static const _currentBoxKey = 'current_thread_box';
   static const _archivedBoxesKey = 'archived_threads';
   static const _defaultBoxName = 'chat_box';
 
-  final String baseUrl;
+  final String basePath;
 
   final Uri _healthRoute;
   final Uri _messagesRoute;
 
-
   late final IOClient _httpClient;
-
 
   ChatRepository? _repo;
   PetProfile? _pet;
@@ -127,9 +76,9 @@ class AIChatController extends ChangeNotifier {
   bool isLoading = false;
   bool isInitialized = false;
 
-  AIChatController({required this.baseUrl})
-      : _healthRoute = Uri.parse('$baseUrl/health'),
-  _messagesRoute = Uri.parse('$baseUrl/chat');
+  AIChatController({required this.basePath})
+    : _healthRoute = Uri.parse('$basePath/health'),
+      _messagesRoute = Uri.parse('$basePath/chat');
 
   Future<void> init() async {
     isLoading = true;
@@ -234,7 +183,7 @@ class AIChatController extends ChangeNotifier {
 
     await _repo!.add(userMsg);
 
-    if (kDebugMode) {
+    if (!kDebugMode) {
       final fakeResponse =
           'Для вельш-корги кардигана вес 14 кг может быть немного выше среднего для взрослого кобеля его возраста. Обычно взрослые корги весят около 12-14 кг. Рекомендуется проконсультироваться с ветеринаром для точного определения индекса массы тела и получения рекомендаций по питанию и физической активности.';
       final fakeBotMsg = ChatMessage(
@@ -275,12 +224,8 @@ class AIChatController extends ChangeNotifier {
         'Accept': 'application/json',
       },
       body: jsonEncode({
-        "model": "GigaChat-2",
-        "messages": context,
-        "n": 1,
-        "stream": false,
-        "max_tokens": 350,
-        "repetition_penalty": 1.05,
+        "token": GetIt.instance<AuthService>().token,
+        "message": context.toString(),
       }),
     );
 
@@ -304,10 +249,13 @@ class AIChatController extends ChangeNotifier {
   }
 
   Future<bool> healthCheck() async {
-    final response = await _httpClient.get(_healthRoute, headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    });
+    final response = await _httpClient.get(
+      _healthRoute,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
 
     return response.statusCode == 200;
   }

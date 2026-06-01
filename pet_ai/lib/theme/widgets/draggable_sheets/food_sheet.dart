@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_satellite/models/food.dart';
+import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
@@ -20,7 +20,7 @@ class FoodSheet extends StatefulWidget {
 }
 
 class _FoodSheetState extends State<FoodSheet> {
-  late FoodHistory _history;
+  late MealHistory _history;
 
   // ── New-entry form state ─────────────────────────────────────────────────
   int _appetiteScore = 3;
@@ -44,7 +44,7 @@ class _FoodSheetState extends State<FoodSheet> {
   Future<void> _save() async {
     setState(() => _isSaving = true);
     try {
-      final entry = FoodEntry(
+      final entry = MealEntry(
         date: _date,
         mealTime: _mealTime,
         appetiteScore: _appetiteScore,
@@ -84,7 +84,7 @@ class _FoodSheetState extends State<FoodSheet> {
 
   // ── Delete entry ─────────────────────────────────────────────────────────
 
-  Future<void> _delete(FoodEntry entry) async {
+  Future<void> _delete(MealEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -111,7 +111,7 @@ class _FoodSheetState extends State<FoodSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = List<FoodEntry>.from(_history.entries.reversed);
+    final entries = List<MealEntry>.from(_history.entries.reversed);
 
     return DraggableSheet(
       title: 'История питания',
@@ -396,7 +396,7 @@ class _GramStepperState extends State<_GramStepper> {
 // ─── History entry card ───────────────────────────────────────────────────────
 
 class _FoodEntryCard extends StatelessWidget {
-  final FoodEntry entry;
+  final MealEntry entry;
   final VoidCallback onDelete;
 
   const _FoodEntryCard({required this.entry, required this.onDelete});

@@ -31,22 +31,22 @@ extension MealTimeX on MealTime {
   }
 }
 
-class FoodEntry implements BaseEntry {
+class MealEntry implements BaseEntry {
   @override
   final DateTime date;
   final MealTime mealTime;
   final int appetiteScore; // 1–5
   final int grams;
 
-  FoodEntry({
+  MealEntry({
     required this.date,
     required this.mealTime,
     required this.appetiteScore,
     required this.grams,
   });
 
-  factory FoodEntry.fromJson(Map<String, dynamic> json) {
-    return FoodEntry(
+  factory MealEntry.fromJson(Map<String, dynamic> json) {
+    return MealEntry(
       date: DateTime.parse(json['date'] as String),
       mealTime: MealTime.values.firstWhere(
         (e) => e.name == json['mealTime'],
@@ -66,11 +66,11 @@ class FoodEntry implements BaseEntry {
       };
 }
 
-class FoodHistory extends History<FoodEntry> {
-  FoodHistory({required super.entries});
-  FoodHistory.empty() : super.empty();
+class MealHistory extends History<MealEntry> {
+  MealHistory({required super.entries});
+  MealHistory.empty() : super.empty();
 
-  static final foodSerializer = HistorySerializer<FoodEntry>(
-    fromJson: FoodEntry.fromJson,
+  static final foodSerializer = HistorySerializer<MealEntry>(
+    fromJson: MealEntry.fromJson,
   );
 }

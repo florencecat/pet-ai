@@ -30,7 +30,7 @@ class _AIChatPageState extends State<AIChatPage> {
 
   Future<AIChatController> _createController() async {
     final controller = AIChatController(
-      baseUrl: GetIt.instance<ApiService>().aiUrl,
+      basePath: GetIt.instance<ApiService>().aiUrl,
     );
     await controller.init();
     return controller;

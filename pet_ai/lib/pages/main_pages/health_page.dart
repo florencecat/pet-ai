@@ -48,6 +48,13 @@ class HealthPageState extends State<HealthPage> {
   // Period for the inline weight chart
   HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
 
+  // Collapse/expand state for the three main sections.
+  // Set once on first data load; subsequent reloads preserve user's choice.
+  bool _hasInitializedSections = false;
+  bool _weightExpanded = true;
+  bool _treatmentsExpanded = true;
+  bool _pillsExpanded = true;
+
   @override
   void initState() {
     super.initState();
@@ -108,6 +115,15 @@ class HealthPageState extends State<HealthPage> {
       _foodStatus = foodStatus;
       _moodStatus = moodStatus;
       _dismissedBadgeIds = dismissed.toSet();
+      // Default collapse state: only on first load so user toggles persist.
+      if (!_hasInitializedSections) {
+        _weightExpanded = profile.weightHistory.entries.length >= 2;
+        _treatmentsExpanded = TreatmentKind.values.any(
+          (k) => profile.treatmentHistory.lastOfKind(k) != null,
+        );
+        _pillsExpanded = profile.pillReminders.any((r) => r.isActive);
+        _hasInitializedSections = true;
+      }
     });
   }
 
@@ -513,281 +529,315 @@ class HealthPageState extends State<HealthPage> {
             const SizedBox(height: 20),
 
             // ── Вес ──────────────────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    _PageTitle('Вес'),
-                    const SizedBox(width: 8),
-                    Text('•', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(width: 4),
-                    PopupMenuButton<HistoryPeriod>(
-                      initialValue: _chartPeriod,
-                      onSelected: (p) => setState(() => _chartPeriod = p),
-                      itemBuilder: (_) =>
-                          [
-                                HistoryPeriod.month,
-                                HistoryPeriod.halfYear,
-                                HistoryPeriod.year,
-                                HistoryPeriod.all,
-                              ]
-                              .map(
-                                (p) => PopupMenuItem(
-                                  value: p,
-                                  child: Text(_periodLabel(p)),
-                                ),
-                              )
-                              .toList(),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(width: 4),
-                          Text(
-                            _periodLabel(_chartPeriod),
-                            style: Theme.of(context).textTheme.titleLarge!
-                                .copyWith(
-                                  color: context
-                                      .watch<AppearanceController>()
-                                      .secondaryColor,
-                                ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.expand_more,
-                            size: 24,
-                            color: context
-                                .watch<AppearanceController>()
-                                .secondaryColor,
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                TextButton.icon(
-                  onPressed: () => _openWeightHistory(context),
-                  label: Text(
-                    'Детали',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  icon: Icon(
-                    Icons.chevron_right,
-                    color: context.watch<AppearanceController>().secondaryColor,
-                  ),
-                  iconAlignment: IconAlignment.end,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            GlassPlate(
-              child: Column(
+            _CollapsibleSection(
+              expanded: _weightExpanded,
+              onToggle: () =>
+                  setState(() => _weightExpanded = !_weightExpanded),
+              titleContent: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  WeightChart(entries: weightEntries, height: 180),
-                  if (_profile != null &&
-                      _profile!.weightHistory.entries.length >= 3)
-                    Padding(
-                      padding: EdgeInsetsGeometry.symmetric(
-                        vertical: 4,
-                        horizontal: 8,
-                      ),
-                      child: _WeightSummaryRow(
-                        history: _profile!.weightHistory,
-                      ),
+                  Text('Вес', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(width: 8),
+                  Text('•', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(width: 4),
+                  PopupMenuButton<HistoryPeriod>(
+                    initialValue: _chartPeriod,
+                    onSelected: (p) => setState(() => _chartPeriod = p),
+                    itemBuilder: (_) => [
+                      HistoryPeriod.month,
+                      HistoryPeriod.halfYear,
+                      HistoryPeriod.year,
+                      HistoryPeriod.all,
+                    ]
+                        .map(
+                          (p) => PopupMenuItem(
+                            value: p,
+                            child: Text(_periodLabel(p)),
+                          ),
+                        )
+                        .toList(),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 4),
+                        Text(
+                          _periodLabel(_chartPeriod),
+                          style: Theme.of(context).textTheme.titleLarge!
+                              .copyWith(
+                                color: context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor,
+                              ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.expand_more,
+                          size: 24,
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor,
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                     ),
+                  ),
+                ],
+              ),
+              trailing: TextButton.icon(
+                onPressed: () => _openWeightHistory(context),
+                label: Text(
+                  'Детали',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: context.watch<AppearanceController>().secondaryColor,
+                ),
+                iconAlignment: IconAlignment.end,
+              ),
+              body: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 8),
+                  GlassPlate(
+                    child: Column(
+                      children: [
+                        WeightChart(entries: weightEntries, height: 180),
+                        if (_profile != null &&
+                            _profile!.weightHistory.entries.length >= 3)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 8,
+                            ),
+                            child: _WeightSummaryRow(
+                              history: _profile!.weightHistory,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
 
             const SizedBox(height: 20),
 
-            Row(
-              children: [
-                Expanded(child: _PageTitle('Прививки и обработки')),
-                TextButton.icon(
-                  iconAlignment: IconAlignment.end,
-                  label: Text(
-                    'Добавить',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  icon: Icon(
-                    Icons.chevron_right,
-                    color: context.watch<AppearanceController>().secondaryColor,
-                  ),
-                  onPressed: _profile != null
-                      ? () => _openTreatments(context)
-                      : null,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            InlineLoading(
-              isLoading: _isLoadingProfile,
-              child: _profile == null
-                  ? const SizedBox.shrink()
-                  : activeTreatments.isEmpty
-                  ? Column(
+            // ── Прививки и обработки ──────────────────────────────────────────
+            _CollapsibleSection(
+              expanded: _treatmentsExpanded,
+              onToggle: () =>
+                  setState(() => _treatmentsExpanded = !_treatmentsExpanded),
+              titleContent: Text(
+                'Прививки и обработки',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              // "Добавить" hidden when list is empty — the empty state already
+              // has its own inline "Добавить" link.
+              trailing: activeTreatments.isNotEmpty
+                  ? TextButton.icon(
+                      iconAlignment: IconAlignment.end,
+                      label: Text(
+                        'Добавить',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      icon: Icon(
+                        Icons.chevron_right,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor,
+                      ),
+                      onPressed: _profile != null
+                          ? () => _openTreatments(context)
+                          : null,
+                    )
+                  : null,
+              body: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(height: 32),
-                  Icon(
-                    Icons.vaccines,
-                    size: 72,
-                    color: context
-                        .watch<AppearanceController>()
-                        .secondaryColor
-                        .withAlpha(60),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Нет прививок.',
-                        style: Theme.of(context).textTheme.titleLarge!
-                            .copyWith(
-                          inherit: true,
-                          color: context
-                              .watch<AppearanceController>()
-                              .secondaryColor
-                              .withAlpha(60),
-                        ),
-                      ),
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsetsGeometry.all(5),
-                        ),
-                        onPressed: () => _openTreatments(context),
-                        child: Text(
-                          'Добавить',
-                          style: Theme.of(context).textTheme.titleLarge!
-                              .copyWith(
-                            inherit: true,
-                            color: context
-                                .watch<AppearanceController>()
-                                .primaryColor
-                                .withAlpha(192),
+                  const SizedBox(height: 12),
+                  InlineLoading(
+                    isLoading: _isLoadingProfile,
+                    child: _profile == null
+                        ? const SizedBox.shrink()
+                        : activeTreatments.isEmpty
+                        ? Column(
+                            children: [
+                              const SizedBox(height: 32),
+                              Icon(
+                                Icons.vaccines,
+                                size: 72,
+                                color: context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                                    .withAlpha(60),
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Нет прививок.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge!
+                                        .copyWith(
+                                          inherit: true,
+                                          color: context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor
+                                              .withAlpha(60),
+                                        ),
+                                  ),
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsetsGeometry.all(5),
+                                    ),
+                                    onPressed: () => _openTreatments(context),
+                                    child: Text(
+                                      'Добавить',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge!
+                                          .copyWith(
+                                            inherit: true,
+                                            color: context
+                                                .watch<AppearanceController>()
+                                                .primaryColor
+                                                .withAlpha(192),
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: activeTreatments.map((entry) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _TreatmentStatusTile(
+                                  kind: entry.kind,
+                                  lastEntry: entry,
+                                  onTap: () => _openTreatment(context, entry),
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
-              )
-                  : Column(
-                      children: activeTreatments.map((entry) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _TreatmentStatusTile(
-                            kind: entry.kind,
-                            lastEntry: entry,
-                            onTap: () => _openTreatment(context, entry),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+              ),
             ),
 
             const SizedBox(height: 12),
 
-            // ── Препараты ─────────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(child: _PageTitle('Препараты')),
-                if (activeReminders != null && activeReminders.isNotEmpty)
-                  TextButton.icon(
-                    iconAlignment: IconAlignment.end,
-                    label: Text(
-                      'Добавить',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    icon: Icon(
-                      Icons.chevron_right,
-                      color: context
-                          .watch<AppearanceController>()
-                          .secondaryColor,
-                    ),
-                    onPressed: _profile != null
-                        ? () => _openPillReminders(context)
-                        : null,
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 4),
-
-            InlineLoading(
-              isLoading: _isLoadingProfile,
-              child: _profile == null || activeReminders == null
-                  ? const SizedBox.shrink()
-                  : activeReminders.isEmpty
-                  ? Column(
-                      children: [
-                        SizedBox(height: 32),
-                        Icon(
-                          Icons.healing_outlined,
-                          size: 72,
-                          color: context
-                              .watch<AppearanceController>()
-                              .secondaryColor
-                              .withAlpha(60),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Нет препаратов.',
-                              style: Theme.of(context).textTheme.titleLarge!
-                                  .copyWith(
-                                    inherit: true,
-                                    color: context
-                                        .watch<AppearanceController>()
-                                        .secondaryColor
-                                        .withAlpha(60),
-                                  ),
-                            ),
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsetsGeometry.all(5),
-                              ),
-                              onPressed: () => _openPillReminders(context),
-                              child: Text(
-                                'Добавить',
-                                style: Theme.of(context).textTheme.titleLarge!
-                                    .copyWith(
-                                      inherit: true,
-                                      color: context
-                                          .watch<AppearanceController>()
-                                          .primaryColor
-                                          .withAlpha(192),
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+            // ── Препараты ─────────────────────────────────────────────────────
+            _CollapsibleSection(
+              expanded: _pillsExpanded,
+              onToggle: () =>
+                  setState(() => _pillsExpanded = !_pillsExpanded),
+              titleContent: Text(
+                'Препараты',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              trailing: activeReminders != null && activeReminders.isNotEmpty
+                  ? TextButton.icon(
+                      iconAlignment: IconAlignment.end,
+                      label: Text(
+                        'Добавить',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      icon: Icon(
+                        Icons.chevron_right,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor,
+                      ),
+                      onPressed: _profile != null
+                          ? () => _openPillReminders(context)
+                          : null,
                     )
-                  : Column(
-                      children: activeReminders
-                          .map(
-                            (r) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _PillReminderTile(
-                                reminder: r,
-                                petId: _profile!.id,
-                                onReload: () => {},
-                                onTap: () => _openPillReminder(context, r),
+                  : null,
+              body: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 4),
+                  InlineLoading(
+                    isLoading: _isLoadingProfile,
+                    child: _profile == null || activeReminders == null
+                        ? const SizedBox.shrink()
+                        : activeReminders.isEmpty
+                        ? Column(
+                            children: [
+                              const SizedBox(height: 32),
+                              Icon(
+                                Icons.healing_outlined,
+                                size: 72,
+                                color: context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                                    .withAlpha(60),
                               ),
-                            ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Нет препаратов.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge!
+                                        .copyWith(
+                                          inherit: true,
+                                          color: context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor
+                                              .withAlpha(60),
+                                        ),
+                                  ),
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsetsGeometry.all(5),
+                                    ),
+                                    onPressed: () =>
+                                        _openPillReminders(context),
+                                    child: Text(
+                                      'Добавить',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge!
+                                          .copyWith(
+                                            inherit: true,
+                                            color: context
+                                                .watch<AppearanceController>()
+                                                .primaryColor
+                                                .withAlpha(192),
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           )
-                          .toList(),
-                    ),
+                        : Column(
+                            children: activeReminders
+                                .map(
+                                  (r) => Padding(
+                                    padding:
+                                        const EdgeInsets.only(bottom: 8),
+                                    child: _PillReminderTile(
+                                      reminder: r,
+                                      petId: _profile!.id,
+                                      onReload: () => {},
+                                      onTap: () =>
+                                          _openPillReminder(context, r),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1204,16 +1254,85 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
   }
 }
 
-class _PageTitle extends StatelessWidget {
-  final String title;
+// ─── Коллапсируемая секция ────────────────────────────────────────────────────
+//
+// Шеврон слева от заголовка поворачивается на 90° (право→низ) при раскрытии.
+// Тело анимируется через AnimatedAlign.heightFactor (0 → 1).
+// Состояние expand/collapse управляется снаружи через [expanded] + [onToggle].
 
-  const _PageTitle(this.title);
+class _CollapsibleSection extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  /// Контент между шевроном и [trailing] (например, текст или Row с пикером).
+  final Widget titleContent;
+
+  /// Необязательный виджет справа (кнопка «Добавить», «Детали» и т.п.).
+  final Widget? trailing;
+
+  /// Тело секции — показывается/скрывается с анимацией.
+  final Widget body;
+
+  const _CollapsibleSection({
+    required this.expanded,
+    required this.onToggle,
+    required this.titleContent,
+    this.trailing,
+    required this.body,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Строка заголовка ──────────────────────────────────────────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: onToggle,
+                behavior: HitTestBehavior.opaque,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2, right: 2),
+                      child: AnimatedRotation(
+                        turns: expanded ? 0.25 : 0.0,
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeInOut,
+                        child: Icon(
+                          Icons.chevron_right,
+                          size: 22,
+                          color: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.color
+                              ?.withAlpha(160),
+                        ),
+                      ),
+                    ),
+                    Flexible(child: titleContent),
+                  ],
+                ),
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
+        ),
+        // ── Тело (анимированное) ──────────────────────────────────────────
+        ClipRect(
+          child: AnimatedAlign(
+            alignment: Alignment.topCenter,
+            heightFactor: expanded ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            child: body,
+          ),
+        ),
+      ],
     );
   }
 }

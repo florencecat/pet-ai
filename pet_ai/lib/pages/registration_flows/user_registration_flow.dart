@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
@@ -244,7 +245,7 @@ class _UserRegistrationFlowState extends State<UserRegistrationFlow> {
 
   Future<void> _finish() async {
     // Read the server-assigned user ID from the PocketBase auth store.
-    final record = AuthService.pb.authStore.record;
+    final record = null;
     final profile = UserProfile(
       id: record?.id ?? '',
       name: _nameCtrl.text.trim(),
@@ -269,7 +270,6 @@ class _UserRegistrationFlowState extends State<UserRegistrationFlow> {
               step: _step,
               totalSteps: _totalSteps,
               onBack: _step > 0 ? _back : null,
-              onClose: _exit,
             ),
             Expanded(
               child: AnimatedSwitcher(
@@ -1148,7 +1148,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
   }
 
   Future<void> _finishLogin() async {
-    final record = AuthService.pb.authStore.record;
+    final record = GetIt.instance<AuthService>().userRecord;
     final verified = record?.data['verified'] as bool? ?? false;
     final profile = UserProfile(
       id: record?.id ?? '',
