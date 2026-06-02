@@ -21,7 +21,7 @@ class PetProfilePage extends StatefulWidget {
 }
 
 class _PetProfilePageState extends State<PetProfilePage> {
-  PetProfile? _profile;
+  Pet? _profile;
   bool _loading = true;
   bool _saving = false;
 
@@ -34,7 +34,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   // ── Load ──────────────────────────────────────────────────────────────────
 
   Future<void> _loadProfile() async {
-    final profile = await ProfileService().loadActiveProfile();
+    final profile = await PetService().loadActiveProfile();
     if (profile == null) {
       if (mounted) Navigator.of(context).pushReplacementNamed('/registration');
       return;
@@ -48,7 +48,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     if (_profile == null) return;
     setState(() => _saving = true);
     try {
-      await ProfileService().saveProfile(_profile!);
+      await PetService().saveProfile(_profile!);
       if (mounted) {
         context.read<AppearanceController>().updatePetPalette(_profile!.palette);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -194,7 +194,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _editAvatar() async {
-    final path = await ProfileService().pickProfileImage(_profile!.id);
+    final path = await PetService().pickProfileImage(_profile!.id);
     if (path != null && mounted) {
       setState(() => _profile!.profileImage = File(path));
     }
@@ -224,7 +224,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    await ProfileService().deleteProfile(_profile!.id);
+    await PetService().deleteProfile(_profile!.id);
     if (mounted) Navigator.of(context).pushReplacementNamed('/registration');
   }
 
@@ -557,7 +557,7 @@ class _InfoRow extends StatelessWidget {
 // ─── Avatar section ───────────────────────────────────────────────────────────
 
 class _AvatarSection extends StatelessWidget {
-  final PetProfile profile;
+  final Pet profile;
   final VoidCallback onTap;
   final Color primaryColor;
 

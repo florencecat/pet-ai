@@ -16,6 +16,7 @@ import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/health_service.dart';
 import 'package:pet_satellite/services/notification_service.dart';
@@ -54,6 +55,9 @@ void main() async {
   );
   GetIt.instance.registerSingleton<AuthService>(
     AuthService(pbService: GetIt.instance<PocketBaseService>()),
+  );
+  GetIt.instance.registerSingleton<CloudSyncService>(
+    CloudSyncService(pbService: GetIt.instance<PocketBaseService>()),
   );
 
   runApp(const PetHealthApp());
@@ -130,10 +134,10 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _checkProfile() async {
     // Однократная миграция событий из старого per-pet хранилища в глобальное v2
-    final profiles = await ProfileService().loadAllProfiles();
+    final profiles = await PetService().loadAllProfiles();
     await EventService().migrateFromLegacy(profiles.map((p) => p.id).toList());
 
-    final hasProfile = await ProfileService().hasProfiles();
+    final hasProfile = await PetService().hasProfiles();
     if (mounted) {
       setState(() {
         _hasProfile = hasProfile;
@@ -144,7 +148,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _refreshHealthScore() async {
-    final profile = await ProfileService().loadActiveProfile();
+    final profile = await PetService().loadActiveProfile();
     if (profile == null) return;
     final events = await EventService().loadEvents(profile.id);
     final badges = HealthAnalyzer.analyze(profile, events);

@@ -18,6 +18,13 @@ class WeightEntry implements BaseEntry {
   Map<String, dynamic> toJson() {
     return {'date': date.toIso8601String(), 'weight': weight};
   }
+
+  @override
+  Map<String, dynamic> toPocketBase(String petId) => {
+    'pet': petId,
+    'date': date.toIso8601String(),
+    'weight': weight,
+  };
 }
 
 class WeightHistory extends History<WeightEntry> {

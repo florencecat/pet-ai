@@ -119,12 +119,10 @@ class AuthService {
           .authWithPassword(email, password);
       return AuthResult.ok();
     } on ClientException catch (e) {
-      // PocketBase returns 400 for wrong credentials and 401 for invalid token.
-      // Both map to the same user-facing message to prevent enumeration.
       if (e.statusCode == 400 || e.statusCode == 401) {
         return AuthResult.fail(
           e.statusCode,
-          errorMessage: 'Неверный адрес или пароль',
+          errorMessage: 'Неверный адрес или пароль.',
         );
       }
       return _networkError(e.statusCode);

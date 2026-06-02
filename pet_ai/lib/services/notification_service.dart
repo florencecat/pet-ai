@@ -89,7 +89,7 @@ class NotificationService {
     }
   }
 
-  Future<void> scheduleEventNotification(model.PetEvent event) async {
+  Future<void> scheduleEventNotification(model.Event event) async {
     if (!event.notify) return;
     final id = event.id.hashCode;
 

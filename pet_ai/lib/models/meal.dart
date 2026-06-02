@@ -59,11 +59,20 @@ class MealEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toJson() => {
-        'date': date.toIso8601String(),
-        'mealTime': mealTime.name,
-        'appetiteScore': appetiteScore,
-        'grams': grams,
-      };
+    'date': date.toIso8601String(),
+    'mealTime': mealTime.name,
+    'appetiteScore': appetiteScore,
+    'grams': grams,
+  };
+
+  @override
+  Map<String, dynamic> toPocketBase(String petId) => {
+    'pet': petId,
+    'date': date.toIso8601String(),
+    'day_part': mealTime.name,
+    'score': appetiteScore,
+    'grams': grams,
+  };
 }
 
 class MealHistory extends History<MealEntry> {

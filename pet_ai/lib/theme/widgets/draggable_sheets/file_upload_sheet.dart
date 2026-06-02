@@ -55,7 +55,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
 
   Future<void> _loadDocs() async {
     setState(() => _isLoading = true);
-    final petId = await ProfileService().getActiveProfileId();
+    final petId = await PetService().getActiveProfileId();
     if (petId == null) {
       if (mounted) setState(() => _isLoading = false);
       return;
@@ -169,7 +169,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
 
     setState(() => _isSaving = true);
     try {
-      final petId = await ProfileService().getActiveProfileId();
+      final petId = await PetService().getActiveProfileId();
       if (petId == null) throw Exception('Нет активного профиля');
 
       await FileStorageService().addDocument(

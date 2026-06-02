@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class NoteSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
 
   const NoteSheet({super.key, required this.profile});
 
@@ -82,14 +82,14 @@ class _NoteSheetState extends State<NoteSheet> {
     final noteText = text.isNotEmpty ? text : (_selectedSymptom?.label ?? '');
     setState(() => _isSaving = true);
     try {
-      await ProfileService().addNote(
+      await PetService().addNote(
         widget.profile.id,
         noteText,
         symptomId: _selectedSymptom?.id,
       );
       if (mounted) {
         // Stay in sheet — reload history and clear form
-        final updated = await ProfileService().loadProfile(widget.profile.id);
+        final updated = await PetService().loadProfile(widget.profile.id);
         if (updated != null && mounted) {
           setState(() {
             _history = updated.noteHistory;
@@ -124,7 +124,7 @@ class _NoteSheetState extends State<NoteSheet> {
       ),
     );
     if (confirmed != true) return;
-    await ProfileService().deleteNoteEntry(widget.profile.id, entry.date);
+    await PetService().deleteNoteEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => _history.deleteEntry(entry.date));
   }
 

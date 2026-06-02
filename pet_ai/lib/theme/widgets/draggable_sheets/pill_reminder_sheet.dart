@@ -59,7 +59,7 @@ class _PillFormState {
 // ─── Sheet: список + создание напоминаний ────────────────────────────────────
 
 class PillReminderSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
 
   const PillReminderSheet({super.key, required this.profile});
 
@@ -153,7 +153,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
           : a.minute.compareTo(b.minute));
 
     final reminder = PillReminder(
-      id: UniqueKey().toString(),
+      id: generateId(),
       name: name,
       dose: _form.doseCtrl.text.trim(),
       frequencyType: _form.frequency,
@@ -175,7 +175,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     if (!mounted) return;
 
     // Stay in sheet — reload list and reset form
-    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    final fresh = await PetService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() {
         widget.profile.pillReminders
@@ -203,7 +203,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       ),
     );
     if (updated == true && mounted) {
-      final fresh = await ProfileService().loadProfile(widget.profile.id);
+      final fresh = await PetService().loadProfile(widget.profile.id);
       if (fresh != null && mounted) {
         setState(() {
           widget.profile.pillReminders
@@ -606,7 +606,7 @@ class _ReminderListTile extends StatelessWidget {
 // ─── Sheet: детали конкретного препарата ─────────────────────────────────────
 
 class PillDetailSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
   final PillReminder reminder;
 
   const PillDetailSheet({
@@ -701,7 +701,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
   }
 
   Future<void> _reloadReminder() async {
-    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    final fresh = await PetService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       final updated = fresh.pillReminders.firstWhere(
         (r) => r.id == _reminder.id,

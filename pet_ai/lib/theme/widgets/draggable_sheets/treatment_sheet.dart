@@ -13,7 +13,7 @@ import 'package:provider/provider.dart';
 // ─── Sheet: добавление + история всех обработок ──────────────────────────────
 
 class TreatmentSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
   final TreatmentKind presetKind;
 
   const TreatmentSheet({
@@ -103,7 +103,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
     if (!mounted) return;
 
     // Stay in sheet — reload list and reset form
-    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    final fresh = await PetService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() {
         widget.profile.treatmentHistory.entries
@@ -364,7 +364,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
 // ─── Sheet: детали препарата / вакцины ───────────────────────────────────────
 
 class TreatmentDetailSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
   final TreatmentKind kind;
   final String? vaccineName; // non-null only for TreatmentKind.vaccine
   final List<TreatmentEntry> entries; // newest first
@@ -445,7 +445,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
     );
 
     // Reload entries
-    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    final fresh = await PetService().loadProfile(widget.profile.id);
     if (!mounted) return;
     if (fresh != null) {
       final related = fresh.treatmentHistory.entries

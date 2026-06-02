@@ -1,13 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/secondary_pages/appearance_page.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/pages/registration_flows/user_profile_page.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
@@ -22,21 +26,33 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  List<PetProfile> _profiles = [];
+  List<Pet> _profiles = [];
   bool _loadingProfiles = true;
   UserProfile? _user;
 
   // Notification stubs
   bool _remindersEnabled = true;
 
+  late final CloudSyncService _sync;
+
   @override
   void initState() {
     super.initState();
+    _sync = CloudSyncService.instance;
+    _sync.addListener(_onSyncChanged);
     _loadAll();
   }
 
+  @override
+  void dispose() {
+    _sync.removeListener(_onSyncChanged);
+    super.dispose();
+  }
+
+  void _onSyncChanged() => setState(() {});
+
   Future<void> _loadAll() async {
-    final profiles = await ProfileService().loadAllProfiles();
+    final profiles = await PetService().loadAllProfiles();
     final user = await UserService().load();
     if (mounted) {
       setState(() {
@@ -97,6 +113,73 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // ── Sync actions ──────────────────────────────────────────────────────────
+
+  Future<void> _syncPushAll(BuildContext context) async {
+    final petId = await PetService().getActiveProfileId();
+    if (petId == null) return;
+    try {
+      await _sync.pushAll(petId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Данные успешно отправлены на сервер')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_sync.lastError ?? 'Ошибка синхронизации')),
+        );
+      }
+    }
+  }
+
+  Future<void> _syncPullAll(BuildContext context) async {
+    final petId = await PetService().getActiveProfileId();
+    if (petId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Загрузить с сервера?'),
+        content: const Text(
+          'Локальные данные питомца будут заменены данными с сервера. '
+          'Это действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Загрузить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _sync.pullAll(petId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Данные загружены с сервера')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_sync.lastError ?? 'Ошибка загрузки')),
+        );
+      }
+    }
+  }
+
   // ── Debug actions ─────────────────────────────────────────────────────────
 
   Future<bool> _confirmClear(
@@ -135,10 +218,12 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profiles = await ProfileService().loadAllProfiles();
+    final profiles = await PetService().loadAllProfiles();
     await EventService().clearEventsForAll(profiles.map((p) => p.id).toList());
-    await ProfileService().clearAll();
+    await PetService().clearAll();
     await AIChatController.clearMessageHistory();
+
+    GetIt.instance<PocketBaseService>().pb.authStore.clear();
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -156,7 +241,7 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profileId = await ProfileService().getActiveProfileId();
+    final profileId = await PetService().getActiveProfileId();
     if (profileId != null) {
       await EventService().clearEvents(profileId);
     }
@@ -176,9 +261,9 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profileId = await ProfileService().getActiveProfileId();
+    final profileId = await PetService().getActiveProfileId();
     if (profileId != null) {
-      await ProfileService().clearWeightHistory(profileId);
+      await PetService().clearWeightHistory(profileId);
     }
 
     if (context.mounted) {
@@ -196,9 +281,9 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profileId = await ProfileService().getActiveProfileId();
+    final profileId = await PetService().getActiveProfileId();
     if (profileId != null) {
-      await ProfileService().clearMoodHistory(profileId);
+      await PetService().clearMoodHistory(profileId);
     }
 
     if (context.mounted) {
@@ -268,7 +353,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     profile: p,
                     isLast: isLast && false, // always show divider before "add"
                     onTap: () async {
-                      await ProfileService().setActiveProfile(p.id);
+                      await PetService().setActiveProfile(p.id);
                       await ac.reloadProfile();
                       if (context.mounted) {
                         Navigator.push(
@@ -398,28 +483,28 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Данные и приватность ─────────────────────────────────────────
           _SectionLabel('Данные и приватность'),
           const SizedBox(height: 8),
+          _SyncCard(
+            sync: _sync,
+            isAuthenticated: _user != null,
+            primaryColor: ac.primaryColor,
+            onPushAll: () => _syncPushAll(context),
+            onPullAll: () => _syncPullAll(context),
+          ),
+          const SizedBox(height: 8),
           _SettingsCard(
             children: [
-              _SettingsRow(
-                icon: Icons.cloud_outlined,
-                label: 'Облачная синхронизация',
-                subtitle: 'Скоро',
-                onTap: null, // stub
-                iconColor: ac.primaryColor,
-              ),
-              _Divider(),
               _SettingsRow(
                 icon: Icons.download_outlined,
                 label: 'Экспорт данных',
                 subtitle: 'Скоро',
-                onTap: null, // stub
+                onTap: null,
                 iconColor: ac.primaryColor,
               ),
               _Divider(),
               _SettingsRow(
                 icon: Icons.fingerprint,
                 label: 'Биометрия при входе',
-                onTap: null, // stub
+                onTap: null,
                 iconColor: ac.primaryColor,
                 last: true,
               ),
@@ -518,7 +603,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   label: 'Заполнить историю веса',
                   iconColor: Colors.blue,
                   onTap: () {
-                    ProfileService().fillWeightHistory();
+                    PetService().fillWeightHistory();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('История веса заполнена')),
                     );
@@ -529,7 +614,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.data_object,
                   label: 'Экспорт данных',
                   iconColor: Colors.blue,
-                  onTap: () async => await ProfileService().exportAllProfiles(),
+                  onTap: () async => await PetService().exportAllProfiles(),
                 ),
               ],
             ),
@@ -547,6 +632,185 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Sync status card ────────────────────────────────────────────────────────
+
+class _SyncCard extends StatelessWidget {
+  final CloudSyncService sync;
+  final bool isAuthenticated;
+  final Color primaryColor;
+  final VoidCallback onPushAll;
+  final VoidCallback onPullAll;
+
+  const _SyncCard({
+    required this.sync,
+    required this.isAuthenticated,
+    required this.primaryColor,
+    required this.onPushAll,
+    required this.onPullAll,
+  });
+
+  Color get _statusColor {
+    if (!isAuthenticated) return Colors.grey.shade400;
+    switch (sync.status) {
+      case SyncStatus.idle:
+        return Colors.grey.shade400;
+      case SyncStatus.syncing:
+        return Colors.amber.shade600;
+      case SyncStatus.success:
+        return Colors.green.shade500;
+      case SyncStatus.error:
+        return Colors.red.shade400;
+    }
+  }
+
+  String get _statusLabel {
+    if (!isAuthenticated) return 'Требуется вход в аккаунт';
+    switch (sync.status) {
+      case SyncStatus.idle:
+        return sync.lastSync != null ? _formatSync(sync.lastSync!) : 'Нет данных';
+      case SyncStatus.syncing:
+        return 'Синхронизация…';
+      case SyncStatus.success:
+        return sync.lastSync != null ? _formatSync(sync.lastSync!) : 'Готово';
+      case SyncStatus.error:
+        return sync.lastError ?? 'Ошибка синхронизации';
+    }
+  }
+
+  String _formatSync(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Только что';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} мин. назад';
+    if (diff.inHours < 24) return '${diff.inHours} ч. назад';
+    return DateFormat('d MMM, HH:mm', 'ru_RU').format(dt);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final canSync = isAuthenticated && !sync.isSyncing;
+
+    return GlassPlate(
+      padding: 0,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header row ──────────────────────────────────────────────────
+            Row(
+              children: [
+                // Coloured cloud icon
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _statusColor.withAlpha(30),
+                  ),
+                  child: Icon(
+                    sync.status == SyncStatus.syncing
+                        ? Icons.cloud_sync_outlined
+                        : Icons.cloud_outlined,
+                    color: _statusColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Облачная синхронизация',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _statusLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: sync.status == SyncStatus.error
+                              ? Colors.red.shade400
+                              : Colors.grey.shade500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                // Spinning indicator while syncing
+                if (sync.isSyncing)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.amber.shade600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            // ── Action buttons (only when authenticated) ─────────────────────
+            if (isAuthenticated) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  // Push all
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: canSync ? onPushAll : null,
+                      icon: const Icon(Icons.upload_outlined, size: 16),
+                      label: const Text('Загрузить на сервер'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: primaryColor,
+                        side: BorderSide(color: primaryColor.withAlpha(80)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        textStyle: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Pull all
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: canSync ? onPullAll : null,
+                      icon: const Icon(Icons.download_outlined, size: 16),
+                      label: const Text('Скачать с сервера'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade600,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        textStyle: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -717,7 +981,7 @@ class _SettingsCard extends StatelessWidget {
 // ─── Pet profile row ──────────────────────────────────────────────────────────
 
 class _PetRow extends StatelessWidget {
-  final PetProfile profile;
+  final Pet profile;
   final bool isLast;
   final VoidCallback? onTap;
 

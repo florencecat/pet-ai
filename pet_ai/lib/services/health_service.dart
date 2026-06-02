@@ -86,7 +86,7 @@ class HealthBadge {
 
 /// Анализатор: на основе данных профиля + событий формирует список бейджей.
 class HealthAnalyzer {
-  static List<HealthBadge> analyze(PetProfile profile, List<PetEvent> events) {
+  static List<HealthBadge> analyze(Pet profile, List<Event> events) {
     final badges = <HealthBadge>[];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -469,8 +469,8 @@ class HealthSummaryModal extends StatefulWidget {
 }
 
 class _HealthSummaryModalState extends State<HealthSummaryModal> {
-  PetProfile? _profile;
-  List<PetEvent> _events = [];
+  Pet? _profile;
+  List<Event> _events = [];
   bool _loading = true;
 
   @override
@@ -480,7 +480,7 @@ class _HealthSummaryModalState extends State<HealthSummaryModal> {
   }
 
   Future<void> _load() async {
-    final profile = await ProfileService().loadActiveProfile();
+    final profile = await PetService().loadActiveProfile();
     if (profile == null) {
       if (mounted) setState(() => _loading = false);
       return;

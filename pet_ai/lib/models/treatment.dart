@@ -130,6 +130,16 @@ class TreatmentEntry implements BaseEntry {
     'remindBeforeDays': remindBeforeDays,
     'eventId': eventId,
   };
+
+  @override
+  Map<String, dynamic> toPocketBase(String petId) => {
+    'pet': petId,
+    'date': date.toIso8601String(),
+    'kind': kind.name,
+    'name': name,
+    'next': nextDate.toIso8601String(),
+    'remind_before_days': remindBeforeDays,
+  };
 }
 
 class TreatmentHistory extends History<TreatmentEntry> {

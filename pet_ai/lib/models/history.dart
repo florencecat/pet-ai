@@ -4,6 +4,7 @@ abstract class BaseEntry {
   DateTime get date;
 
   Map<String, dynamic> toJson();
+  Map<String, dynamic> toPocketBase(String petId);
 }
 
 class History<T extends BaseEntry> {

@@ -1,4 +1,5 @@
 import 'package:pet_satellite/models/pill_reminder.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/models/event.dart';
@@ -8,7 +9,7 @@ class PillReminderService {
     required String petId,
     required PillReminder reminder,
   }) async {
-    final profile = await ProfileService().loadProfile(petId);
+    final profile = await PetService().loadProfile(petId);
     if (profile == null) return reminder;
 
     final eventDateTime = DateTime(
@@ -23,7 +24,7 @@ class PillReminderService {
         ? RepeatInterval.daily
         : RepeatInterval.custom;
 
-    final event = PetEvent(
+    final event = Event(
       name: reminder.name,
       category: EventCategories.health,
       dateTime: eventDateTime,
@@ -42,7 +43,10 @@ class PillReminderService {
 
     final saved = reminder.copyWith(eventId: event.id);
     profile.pillReminders.add(saved);
-    await ProfileService().saveProfile(profile);
+    await PetService().saveProfile(profile);
+
+    // Fire-and-forget cloud push.
+    CloudSyncService.instance.pushAsync('pills', saved.toJson(), petId: petId);
 
     return saved;
   }
@@ -54,23 +58,23 @@ class PillReminderService {
     required String petId,
     required PillReminder updated,
   }) async {
-    final profile = await ProfileService().loadProfile(petId);
+    final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
     final idx = profile.pillReminders.indexWhere((r) => r.id == updated.id);
     if (idx < 0) return;
     profile.pillReminders[idx] = updated;
-    await ProfileService().saveProfile(profile);
+    await PetService().saveProfile(profile);
   }
 
   Future<void> delete({
     required String petId,
     required PillReminder reminder,
   }) async {
-    final profile = await ProfileService().loadProfile(petId);
+    final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
 
     profile.pillReminders.removeWhere((r) => r.id == reminder.id);
-    await ProfileService().saveProfile(profile);
+    await PetService().saveProfile(profile);
 
     if (reminder.eventId != null) {
       final all = await EventService().loadEvents(petId);
@@ -137,7 +141,7 @@ class PillReminderService {
     required DateTime date,
     required bool add,
   }) async {
-    final profile = await ProfileService().loadProfile(petId);
+    final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
 
     final idx = profile.pillReminders.indexWhere((r) => r.id == reminderId);
@@ -169,7 +173,7 @@ class PillReminderService {
       takenDates: newDates,
       takenSchedules: newTakenSchedules,
     );
-    await ProfileService().saveProfile(profile);
+    await PetService().saveProfile(profile);
 
     // Синхронизируем связанное событие в календаре
     if (old.eventId != null) {
@@ -184,7 +188,7 @@ class PillReminderService {
     required int scheduleIndex,
     required bool add,
   }) async {
-    final profile = await ProfileService().loadProfile(petId);
+    final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
 
     final idx = profile.pillReminders.indexWhere((r) => r.id == reminderId);
@@ -225,7 +229,7 @@ class PillReminderService {
       takenDates: newDates,
       takenSchedules: newTakenSchedules,
     );
-    await ProfileService().saveProfile(profile);
+    await PetService().saveProfile(profile);
 
     // Sync linked calendar event: complete when all schedules are taken.
     if (old.eventId != null) {

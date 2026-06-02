@@ -11,7 +11,7 @@ import 'package:pet_satellite/models/weight.dart';
 import 'package:provider/provider.dart';
 
 class WeightSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
 
   const WeightSheet({super.key, required this.profile});
 
@@ -34,10 +34,10 @@ class _WeightSheetState extends State<WeightSheet> {
   }
 
   Future<void> _save() async {
-    await ProfileService().updateWeightHistory(widget.profile.id, _weight);
+    await PetService().updateWeightHistory(widget.profile.id, _weight);
     if (!mounted) return;
     // Stay in sheet — reload history list
-    final updated = await ProfileService().loadProfile(widget.profile.id);
+    final updated = await PetService().loadProfile(widget.profile.id);
     if (updated != null && mounted) {
       setState(() {
         _history = updated.weightHistory;
@@ -67,7 +67,7 @@ class _WeightSheetState extends State<WeightSheet> {
       ),
     );
     if (confirmed != true) return;
-    await ProfileService().deleteWeightEntry(widget.profile.id, entry.date);
+    await PetService().deleteWeightEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => _history.deleteEntry(entry.date));
   }
 

@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 /// Обёртка над [GlassEventCard], добавляющая свайп влево для
 /// отображения круглых кнопок «Редактировать» и «Удалить».
 class SwipeableEventCard extends StatefulWidget {
-  final PetEvent event;
+  final Event event;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;

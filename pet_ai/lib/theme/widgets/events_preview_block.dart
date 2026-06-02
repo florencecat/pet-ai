@@ -3,15 +3,15 @@ import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/theme/widgets/swipeable_event_card.dart';
 
 class EventPreviewBlock extends StatelessWidget {
-  final List<PetEvent> events;
-  final void Function(PetEvent event) onTap;
+  final List<Event> events;
+  final void Function(Event event) onTap;
   final void Function(DateTime date) onOpenCalendar;
-  final void Function(PetEvent event)? onEdit;
-  final void Function(PetEvent event)? onDelete;
+  final void Function(Event event)? onEdit;
+  final void Function(Event event)? onDelete;
 
   /// Callback for the completion checkbox. When provided, a checkbox is shown
   /// on each card; when the user taps it the event is toggled.
-  final void Function(PetEvent event, bool completed)? onCompletedChanged;
+  final void Function(Event event, bool completed)? onCompletedChanged;
 
   const EventPreviewBlock({
     super.key,

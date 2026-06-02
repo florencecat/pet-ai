@@ -70,7 +70,7 @@ class AIChatController extends ChangeNotifier {
   late final IOClient _httpClient;
 
   ChatRepository? _repo;
-  PetProfile? _pet;
+  Pet? _pet;
   String _currentBoxName = _defaultBoxName;
 
   bool isLoading = false;
@@ -91,11 +91,11 @@ class AIChatController extends ChangeNotifier {
       _currentBoxName = prefs.getString(_currentBoxKey) ?? _defaultBoxName;
 
       final results = await Future.wait([
-        ProfileService().loadActiveProfile(),
+        PetService().loadActiveProfile(),
         Hive.openBox<ChatMessage>(_currentBoxName),
       ]);
 
-      final pet = results[0] as PetProfile?;
+      final pet = results[0] as Pet?;
       var box = results[1] as Box<ChatMessage>;
 
       if (pet == null) {

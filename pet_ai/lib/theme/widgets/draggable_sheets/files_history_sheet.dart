@@ -29,7 +29,7 @@ class _FilesHistorySheetState extends State<FilesHistorySheet> {
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
-    final petId = await ProfileService().getActiveProfileId();
+    final petId = await PetService().getActiveProfileId();
     if (petId == null) {
       setState(() => _isLoading = false);
       return;

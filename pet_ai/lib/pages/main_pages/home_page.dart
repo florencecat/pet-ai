@@ -40,13 +40,13 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageState extends State<HomePage> {
-  PetProfile? _profile;
+  Pet? _profile;
   UserProfile? _user;
   bool? _multipleProfiles;
 
   bool _isLoadingProfile = true;
   bool _isLoadingEvents = true;
-  List<PetEvent> _allEvents = [];
+  List<Event> _allEvents = [];
   int _filesCount = 0;
   int _notesCount = 0;
 
@@ -67,7 +67,7 @@ class HomePageState extends State<HomePage> {
     });
 
     final user = await UserService().load();
-    final profile = await ProfileService().loadActiveProfile();
+    final profile = await PetService().loadActiveProfile();
 
     if (profile == null) {
       if (mounted) {
@@ -78,7 +78,7 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    final multipleProfiles = await ProfileService().hasMultipleProfiles();
+    final multipleProfiles = await PetService().hasMultipleProfiles();
 
     setState(() {
       _user = user;
@@ -119,7 +119,7 @@ class HomePageState extends State<HomePage> {
     return description;
   }
 
-  void _openEventSheet(BuildContext context, PetEvent event) async {
+  void _openEventSheet(BuildContext context, Event event) async {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -184,7 +184,7 @@ class HomePageState extends State<HomePage> {
   }
 
   void _showProfileSwitcher(BuildContext context) async {
-    final profiles = await ProfileService().loadAllProfiles();
+    final profiles = await PetService().loadAllProfiles();
     final activeId = _profile?.id;
 
     if (!context.mounted) return;
@@ -205,7 +205,7 @@ class HomePageState extends State<HomePage> {
         widget.onProfileSwitched?.call();
       }
     } else {
-      await ProfileService().setActiveProfile(result);
+      await PetService().setActiveProfile(result);
       widget.onProfileSwitched?.call();
       await _initScreen();
     }
@@ -740,7 +740,7 @@ class _TimelineItem {
   final Color color;
   final bool isCompleted;
   final bool isBirthday;
-  final PetEvent? event;
+  final Event? event;
 
   const _TimelineItem({
     required this.date,
@@ -1082,7 +1082,7 @@ class _LineColumn extends StatelessWidget {
 // ─── Переключатель профилей ───────────────────────────────────────────────────
 
 class _ProfileSwitcherSheet extends StatelessWidget {
-  final List<PetProfile> profiles;
+  final List<Pet> profiles;
   final String? activeId;
 
   const _ProfileSwitcherSheet({required this.profiles, required this.activeId});
@@ -1220,8 +1220,8 @@ class _ProfileSwitcherSheet extends StatelessWidget {
 // ─── Карточка для ветеринара ──────────────────────────────────────────────────
 
 class _VetCardSheet extends StatelessWidget {
-  final PetProfile profile;
-  final List<PetEvent> events;
+  final Pet profile;
+  final List<Event> events;
 
   const _VetCardSheet({required this.profile, required this.events});
 

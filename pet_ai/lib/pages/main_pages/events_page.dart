@@ -30,9 +30,9 @@ class EventsPageState extends State<EventsPage> {
   bool _isLoadingEvents = true;
   bool _showAllPets = false;
 
-  List<PetEvent> _events = [];
-  List<PetProfile> _allProfiles = [];
-  PetProfile? _activeProfile;
+  List<Event> _events = [];
+  List<Pet> _allProfiles = [];
+  Pet? _activeProfile;
   Map<String, Color> _petColors = {};
   Map<String, String> _petNames = {};
 
@@ -69,12 +69,12 @@ class EventsPageState extends State<EventsPage> {
   Future<void> _loadEvents() async {
     setState(() => _isLoadingEvents = true);
 
-    final allProfiles = await ProfileService().loadAllProfiles();
-    final activeId = await ProfileService().getActiveProfileId();
+    final allProfiles = await PetService().loadAllProfiles();
+    final activeId = await PetService().getActiveProfileId();
 
     final petColors = <String, Color>{};
     final petNames = <String, String>{};
-    PetProfile? activeProfile;
+    Pet? activeProfile;
 
     for (final p in allProfiles) {
       petColors[p.id] = p.palette.mainColor;
@@ -82,7 +82,7 @@ class EventsPageState extends State<EventsPage> {
       if (p.id == activeId) activeProfile = p;
     }
 
-    List<PetEvent> events;
+    List<Event> events;
     if (_showAllPets) {
       final allIds = allProfiles.map((p) => p.id).toList();
       events = await EventService().loadEventsForPets(allIds);
@@ -108,7 +108,7 @@ class EventsPageState extends State<EventsPage> {
   }
 
   /// Events for the selected day.
-  List<PetEvent> get _filteredDayEvents {
+  List<Event> get _filteredDayEvents {
     if (_selectedDay == null) return [];
     return _events.where((e) => e.occursOn(_selectedDay!)).toList();
   }
@@ -130,7 +130,7 @@ class EventsPageState extends State<EventsPage> {
   }
 
   /// Marker dot color for a calendar event.
-  Color _markerColor(PetEvent event) {
+  Color _markerColor(Event event) {
     if (_showAllPets && event.petIds.isNotEmpty) {
       return _petColors[event.petIds.first] ?? event.category.color;
     }
@@ -139,7 +139,7 @@ class EventsPageState extends State<EventsPage> {
 
   /// Pet name + color pairs for an event's badge row.
   /// Returns [("Все", grey)] when the event covers all known pets.
-  List<(String, Color)> _petBadgesFor(PetEvent event) {
+  List<(String, Color)> _petBadgesFor(Event event) {
     if (event.petIds.isEmpty) return [];
     final allIds = _allProfiles.map((p) => p.id).toSet();
     final eventIds = event.petIds.toSet();
@@ -191,7 +191,7 @@ class EventsPageState extends State<EventsPage> {
     if (updated == true) _refresh();
   }
 
-  void _openViewSheet(PetEvent event) async {
+  void _openViewSheet(Event event) async {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -203,7 +203,7 @@ class EventsPageState extends State<EventsPage> {
     if (updated == true) _refresh();
   }
 
-  Future<void> _deleteEvent(PetEvent event) async {
+  Future<void> _deleteEvent(Event event) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -358,7 +358,7 @@ class EventsPageState extends State<EventsPage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: events.take(3).map((event) {
-                              final e = event as PetEvent;
+                              final e = event as Event;
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 2,
@@ -502,7 +502,7 @@ class EventsPageState extends State<EventsPage> {
                         onEdit: () => _openViewSheet(e),
                         onDelete: () => _deleteEvent(e),
                         onCompletedChanged: (val) async {
-                          final profileId = await ProfileService()
+                          final profileId = await PetService()
                               .getActiveProfileId();
                           if (profileId != null) {
                             await EventService().toggleCompleted(
@@ -599,7 +599,7 @@ class _PetSelectorChip extends StatelessWidget {
 // ── Swipeable wrapper ────────────────────────────────────────────────────────
 
 class _SwipeableEventTile extends StatefulWidget {
-  final PetEvent event;
+  final Event event;
   final List<(String, Color)> petBadges;
   final DateTime? selectedDate;
   final VoidCallback? onTap;
@@ -803,7 +803,7 @@ class _ActionBtn extends StatelessWidget {
 // ── Event tile card ──────────────────────────────────────────────────────────
 
 class _EventTileCard extends StatelessWidget {
-  final PetEvent event;
+  final Event event;
   final List<(String, Color)> petBadges;
   final DateTime? selectedDate;
   final VoidCallback? onTap;
@@ -942,10 +942,10 @@ class _EventTileCard extends StatelessWidget {
 // ── Search sheet (all events) ────────────────────────────────────────────────
 
 class _EventSearchSheet extends StatefulWidget {
-  final List<PetEvent> events;
+  final List<Event> events;
   final Map<String, String> petNames;
   final Map<String, Color> petColors;
-  final ValueChanged<PetEvent> onEventTap;
+  final ValueChanged<Event> onEventTap;
 
   const _EventSearchSheet({
     required this.events,
@@ -968,7 +968,7 @@ class _EventSearchSheetState extends State<_EventSearchSheet> {
     super.dispose();
   }
 
-  List<PetEvent> get _results {
+  List<Event> get _results {
     if (_query.isEmpty) return widget.events;
     final q = _query.toLowerCase();
     return widget.events
@@ -1075,7 +1075,7 @@ class _EventSearchSheetState extends State<_EventSearchSheet> {
 }
 
 class _SearchResultTile extends StatelessWidget {
-  final PetEvent event;
+  final Event event;
   final Map<String, String> petNames;
   final Map<String, Color> petColors;
   final VoidCallback onTap;

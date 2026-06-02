@@ -30,7 +30,7 @@ extension EventSheetModeX on EventSheetMode {
 
 class EventSheet extends StatefulWidget {
   final EventSheetMode mode;
-  final PetEvent? event;
+  final Event? event;
   final DateTime? dateTime;
 
   /// Дата вхождения, для которой проверяется/переключается статус выполнения.
@@ -71,7 +71,7 @@ class _EventSheetState extends State<EventSheet> {
   int _remindBeforeMinutes = 0;
   bool _notify = true;
 
-  List<PetProfile> _allProfiles = [];
+  List<Pet> _allProfiles = [];
   List<String> _selectedPetIds = [];
   bool _profilesLoaded = false;
 
@@ -102,8 +102,8 @@ class _EventSheetState extends State<EventSheet> {
   }
 
   Future<void> _loadProfiles() async {
-    final profiles = await ProfileService().loadAllProfiles();
-    final activeId = await ProfileService().getActiveProfileId();
+    final profiles = await PetService().loadAllProfiles();
+    final activeId = await PetService().getActiveProfileId();
 
     List<String> preselected;
     if (widget.mode == EventSheetMode.create) {
@@ -143,7 +143,7 @@ class _EventSheetState extends State<EventSheet> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
-  Future<void> _deleteEvent(BuildContext context, PetEvent event) async {
+  Future<void> _deleteEvent(BuildContext context, Event event) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -167,12 +167,12 @@ class _EventSheetState extends State<EventSheet> {
     if (context.mounted) Navigator.of(context).pop(true);
   }
 
-  Future<void> _createEvent(BuildContext context, PetEvent event) async {
+  Future<void> _createEvent(BuildContext context, Event event) async {
     await EventService().createEvent(event);
     if (context.mounted) Navigator.of(context).pop(true);
   }
 
-  Future<void> _editEvent(BuildContext context, PetEvent event) async {
+  Future<void> _editEvent(BuildContext context, Event event) async {
     await EventService().saveEvent(event);
     if (context.mounted) Navigator.of(context).pop(true);
   }
@@ -222,7 +222,7 @@ class _EventSheetState extends State<EventSheet> {
     if (EventSheetModeX(_mode).isCreate) {
       _createEvent(
         context,
-        PetEvent(
+        Event(
           name: name,
           category: category,
           dateTime: dateTime,
@@ -914,7 +914,7 @@ class _InfoRow extends StatelessWidget {
 
 class _PetsInfoRow extends StatelessWidget {
   final List<String> petIds;
-  final List<PetProfile> profiles;
+  final List<Pet> profiles;
   final Color accent;
 
   const _PetsInfoRow({

@@ -11,7 +11,7 @@ import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 class FoodSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
 
   const FoodSheet({super.key, required this.profile});
 
@@ -50,10 +50,10 @@ class _FoodSheetState extends State<FoodSheet> {
         appetiteScore: _appetiteScore,
         grams: _grams.round(),
       );
-      await ProfileService().updateFoodHistory(widget.profile.id, entry);
+      await PetService().updateFoodHistory(widget.profile.id, entry);
       if (mounted) {
         // Stay in sheet — reload history and reset form
-        final fresh = await ProfileService().loadProfile(widget.profile.id);
+        final fresh = await PetService().loadProfile(widget.profile.id);
         if (fresh != null && mounted) {
           setState(() {
             _history = fresh.foodHistory;
@@ -103,7 +103,7 @@ class _FoodSheetState extends State<FoodSheet> {
       ),
     );
     if (confirmed != true) return;
-    await ProfileService().deleteFoodEntry(widget.profile.id, entry.date);
+    await PetService().deleteFoodEntry(widget.profile.id, entry.date);
     if (mounted) {
       setState(() => _history.deleteEntry(entry.date));
     }

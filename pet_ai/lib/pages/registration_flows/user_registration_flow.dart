@@ -3,6 +3,9 @@ import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
+import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:provider/provider.dart';
@@ -245,7 +248,7 @@ class _UserRegistrationFlowState extends State<UserRegistrationFlow> {
 
   Future<void> _finish() async {
     // Read the server-assigned user ID from the PocketBase auth store.
-    final record = null;
+    final record = GetIt.instance<PocketBaseService>().pb.authStore.record;
     final profile = UserProfile(
       id: record?.id ?? '',
       name: _nameCtrl.text.trim(),
@@ -254,7 +257,43 @@ class _UserRegistrationFlowState extends State<UserRegistrationFlow> {
     );
 
     await UserService().save(profile);
+    if (!mounted) return;
+
+    await _checkAndOfferSync();
+
     if (mounted) Navigator.of(context).pop(profile);
+  }
+
+  /// Checks whether the server holds any data for the currently authenticated
+  /// user. If it does, shows a confirmation dialog and — on approval — pulls
+  /// everything into the first available local pet profile.
+  Future<void> _checkAndOfferSync() async {
+    final sync = CloudSyncService.instance;
+    final hasRemote = await sync.checkHasRemoteData();
+    if (!hasRemote || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _SyncOfferDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final profiles = await PetService().loadAllProfiles();
+    if (profiles.isEmpty || !mounted) return;
+
+    try {
+      await sync.pullAll(profiles.first.id);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось загрузить данные с сервера'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -1157,7 +1196,43 @@ class _UserLoginPageState extends State<UserLoginPage> {
       emailVerified: verified,
     );
     await UserService().save(profile);
+    if (!mounted) return;
+
+    await _checkAndOfferSync();
+
     if (mounted) Navigator.of(context).pop(profile);
+  }
+
+  /// Checks whether the server holds any data for the currently authenticated
+  /// user. If it does, shows a confirmation dialog and — on approval — pulls
+  /// everything into the first available local pet profile.
+  Future<void> _checkAndOfferSync() async {
+    final sync = CloudSyncService.instance;
+    final hasRemote = await sync.checkHasRemoteData();
+    if (!hasRemote || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _SyncOfferDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final profiles = await PetService().loadAllProfiles();
+    if (profiles.isEmpty || !mounted) return;
+
+    try {
+      await sync.pullAll(profiles.first.id);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось загрузить данные с сервера'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   // ── Password reset ────────────────────────────────────────────────────────
@@ -1470,6 +1545,61 @@ class _UserLoginPageState extends State<UserLoginPage> {
           ),
         ],
       );
+}
+
+// ─── Sync-offer dialog ────────────────────────────────────────────────────────
+
+/// Shown after successful login / OTP verification when the server holds data
+/// for the authenticated user. Returns `true` if the user confirms the pull.
+class _SyncOfferDialog extends StatelessWidget {
+  const _SyncOfferDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: ThemeColors.white,
+      title: Row(
+        children: [
+          Icon(Icons.cloud_download_outlined,
+              color: ac.secondaryColor, size: 22),
+          const SizedBox(width: 10),
+          Text('Данные на сервере', style: theme.textTheme.titleMedium),
+        ],
+      ),
+      content: Text(
+        'На сервере найдены ваши данные. Загрузить их на это устройство?\n\n'
+        'Текущие локальные данные будут заменены.',
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: ac.secondaryColor.withAlpha(180)),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(
+            'Пропустить',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: ac.secondaryColor.withAlpha(140),
+            ),
+          ),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: ac.secondaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Загрузить'),
+        ),
+      ],
+    );
+  }
 }
 
 // ─── Simple page header (login page) ─────────────────────────────────────────

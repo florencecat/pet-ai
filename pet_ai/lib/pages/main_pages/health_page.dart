@@ -32,8 +32,8 @@ class HealthPage extends StatefulWidget {
 }
 
 class HealthPageState extends State<HealthPage> {
-  PetProfile? _profile;
-  List<PetEvent> _events = [];
+  Pet? _profile;
+  List<Event> _events = [];
   bool _isLoadingProfile = true;
   bool _isLoadingEvents = true;
 
@@ -86,7 +86,7 @@ class HealthPageState extends State<HealthPage> {
       _isLoadingEvents = true;
     });
 
-    final profile = await ProfileService().loadActiveProfile();
+    final profile = await PetService().loadActiveProfile();
     if (profile == null) {
       if (mounted) setState(() => _isLoadingProfile = false);
       return;
@@ -100,8 +100,8 @@ class HealthPageState extends State<HealthPage> {
 
     final weightStatus = profile.weightHistory.lastWeightString();
     final weightDynamics = profile.weightHistory.weightDynamic();
-    final foodStatus = await ProfileService().lastFoodString();
-    final moodStatus = await ProfileService().lastMoodString();
+    final foodStatus = await PetService().lastFoodString();
+    final moodStatus = await PetService().lastMoodString();
     final events = await EventService().loadEvents(profile.id);
     final prefs = await SharedPreferences.getInstance();
     final dismissed = prefs.getStringList(_dismissedKey(profile.id)) ?? [];
@@ -271,7 +271,7 @@ class HealthPageState extends State<HealthPage> {
   /// Picks the single most relevant upcoming/overdue health event to surface
   /// in the alert banner. Only considers time-bound, health-related items:
   /// - [TreatmentEntry] records (all have a [nextDate])
-  /// - [PetEvent] with category 'health'
+  /// - [Event] with category 'health'
   ///
   /// Sort order: overdue danger first (most overdue = earliest date first),
   /// then warning (soonest upcoming within remindBeforeDays / 7d),

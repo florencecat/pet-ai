@@ -25,49 +25,49 @@ class SymptomTag {
 
 class SymptomTags {
   static const vomiting = SymptomTag(
-    id: 'vomiting',
+    id: 'lb18x8wz0uav3zs',
     label: 'Рвота',
     icon: Icons.sick_outlined,
     colorValue: 0xFFE53935,
   );
   static const diarrhea = SymptomTag(
-    id: 'diarrhea',
+    id: '65invddq8bmt3fm',
     label: 'Жидкий стул',
     icon: Icons.warning_amber_rounded,
     colorValue: 0xFFFF8F00,
   );
   static const refusedFood = SymptomTag(
-    id: 'refused_food',
+    id: '2zxi8jlzyh649wm',
     label: 'Отказ от еды',
     icon: Icons.no_food_outlined,
     colorValue: 0xFFF57F17,
   );
   static const lethargy = SymptomTag(
-    id: 'lethargy',
+    id: 'woakc6ce2ka3d41',
     label: 'Вялость',
     icon: Icons.bedtime_outlined,
     colorValue: 0xFF1565C0,
   );
   static const sneezing = SymptomTag(
-    id: 'sneezing',
+    id: '1hk0ae4mfip81xu',
     label: 'Чихание',
     icon: Icons.air_outlined,
     colorValue: 0xFF6A1B9A,
   );
   static const coughing = SymptomTag(
-    id: 'coughing',
+    id: '6xstbg23me36gxw',
     label: 'Кашель',
     icon: Icons.masks_outlined,
     colorValue: 0xFF558B2F,
   );
   static const scratching = SymptomTag(
-    id: 'scratching',
+    id: '0at5r8rjmubktl7',
     label: 'Расчёсывается',
     icon: Icons.touch_app_outlined,
     colorValue: 0xFF00838F,
   );
   static const limping = SymptomTag(
-    id: 'limping',
+    id: 'qsjy1av39qa33xq',
     label: 'Хромает',
     icon: Icons.accessible_forward_outlined,
     colorValue: 0xFF4E342E,
@@ -122,6 +122,14 @@ class NoteEntry implements BaseEntry {
     'note': note,
     if (symptomId != null) 'symptomId': symptomId,
   };
+
+  @override
+  Map<String, dynamic> toPocketBase(String petId) => {
+    'pet': petId,
+    'date': date.toIso8601String(),
+    'note': note,
+    if (symptomId != null) 'symptomId': symptomId,
+  };
 }
 
 class NoteHistory extends History<NoteEntry> {
@@ -133,9 +141,9 @@ class NoteHistory extends History<NoteEntry> {
     final entry = NoteEntry(date: date, note: text, symptomId: symptomId);
     add(entry);
 
-    final profileId = await ProfileService().getActiveProfileId();
+    final profileId = await PetService().getActiveProfileId();
     if (profileId != null) {
-      final eventFromNote = PetEvent.fromNote(
+      final eventFromNote = Event.fromNote(
         name: text,
         dateTime: date,
         symptomTag: symptomId,

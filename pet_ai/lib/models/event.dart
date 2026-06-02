@@ -8,10 +8,10 @@ enum RepeatInterval { none, daily, weekly, monthly, custom }
 /// Позволяет связать событие с породившим его объектом (препарат, вакцина, заметка)
 /// и применить контекстно-корректное поведение (синхронизация статуса, UI).
 enum EventSource {
-  manual,    // создано вручную через EventSheet
-  pill,      // создано из напоминания о препарате (PillReminder)
+  manual, // создано вручную через EventSheet
+  pill, // создано из напоминания о препарате (PillReminder)
   treatment, // создано из прививки / обработки (TreatmentEntry)
-  note,      // создано из заметки
+  note, // создано из заметки
 }
 
 /// Дни недели для custom-повторений (1=Пн, 7=Вс)
@@ -55,7 +55,7 @@ class EventCategory {
 
 class EventCategories {
   static const empty = EventCategory(
-    id: 'empty',
+    id: 'ittnghnkjarq0yk',
     name: '',
     description: '',
     colorValue: 0,
@@ -63,7 +63,7 @@ class EventCategories {
   );
 
   static const health = EventCategory(
-    id: 'health',
+    id: 'mhrd94cplxchfn1',
     name: 'Здоровье',
     description: 'Визиты к врачу, прививки',
     colorValue: 0xFFE53935,
@@ -71,7 +71,7 @@ class EventCategories {
   );
 
   static const grooming = EventCategory(
-    id: 'grooming',
+    id: '9r31dxunasavx8m',
     name: 'Груминг',
     description: 'Стрижка, купание',
     colorValue: 0xFF1E88E5,
@@ -79,7 +79,7 @@ class EventCategories {
   );
 
   static const food = EventCategory(
-    id: 'food',
+    id: 'qy647j7m7u2quv8',
     name: 'Питание',
     description: 'Кормление, добавки',
     colorValue: 0xFF43A047,
@@ -87,7 +87,7 @@ class EventCategories {
   );
 
   static const walk = EventCategory(
-    id: 'walk',
+    id: 'dk5esfoxqqee3fs',
     name: 'Прогулка',
     description: 'Выгул, активности на улице',
     colorValue: 0xFFFF9800,
@@ -95,7 +95,7 @@ class EventCategories {
   );
 
   static const training = EventCategory(
-    id: 'training',
+    id: 'effz3wiif4a5bvk',
     name: 'Дрессировка',
     description: 'Тренировки, обучение',
     colorValue: 0xFF7B1FA2,
@@ -103,7 +103,7 @@ class EventCategories {
   );
 
   static const vaccination = EventCategory(
-    id: 'vaccination',
+    id: '5c3568xphdbr70p',
     name: 'Вакцинация',
     description: 'Прививки, профилактика',
     colorValue: 0xFFD32F2F,
@@ -111,36 +111,49 @@ class EventCategories {
   );
 
   static const other = EventCategory(
-    id: 'other',
+    id: '3jb7qj80d412uhz',
     name: 'Другое',
     description: 'Прочие события',
     colorValue: 0xFF607D8B,
     icon: Icons.more_horiz,
   );
 
-  static const all = [empty, health, grooming, food, walk, training, vaccination, other];
+  static const all = [
+    empty,
+    health,
+    grooming,
+    food,
+    walk,
+    training,
+    vaccination,
+    other,
+  ];
 
   static EventCategory byId(String id) {
     return all.firstWhere((c) => c.id == id, orElse: () => other);
   }
 }
 
-class PetEvent {
+class Event {
   final String id;
   String name;
   EventCategory category;
   DateTime dateTime;
   bool starred;
+
   /// Даты выполнения в формате "yyyy-MM-dd" — отдельно для каждого вхождения
   Set<String> completedDates;
+
   /// Питомцы, с которыми связано событие
   List<String> petIds;
+
   /// Связывание с заметками
   String? symptomTag;
 
   RepeatInterval repeat;
   List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
   int remindBeforeMinutes;
+
   /// When false, no push notifications are scheduled for this event.
   bool notify;
 
@@ -151,7 +164,7 @@ class PetEvent {
   /// для [EventSource.treatment] — не используется (link хранится в TreatmentEntry.eventId).
   final String? sourceId;
 
-  PetEvent({
+  Event({
     required this.name,
     required this.category,
     required this.dateTime,
@@ -162,12 +175,12 @@ class PetEvent {
     List<String>? petIds,
     this.source = EventSource.manual,
     this.sourceId,
-  }) : id = UniqueKey().toString(),
-        starred = false,
-        completedDates = {},
-        petIds = petIds ?? [];
+  }) : id = generateId(),
+       starred = false,
+       completedDates = {},
+       petIds = petIds ?? [];
 
-  PetEvent.deserialize({
+  Event.deserialize({
     required this.id,
     required this.name,
     required this.category,
@@ -183,48 +196,55 @@ class PetEvent {
     this.sourceId,
   });
 
-  PetEvent.fromNote({required this.name, required this.dateTime, this.symptomTag})
-      : id = UniqueKey().toString(),
-        category = EventCategories.empty,
-        starred = false,
-        completedDates = {},
-        petIds = [],
-        repeat = RepeatInterval.none,
-        customDays = const [],
-        remindBeforeMinutes = 0,
-        notify = false,
-        source = EventSource.note,
-        sourceId = null;
+  Event.fromNote({
+    required this.name,
+    required this.dateTime,
+    this.symptomTag,
+  }) : id = generateId(),
+       category = EventCategories.empty,
+       starred = false,
+       completedDates = {},
+       petIds = [],
+       repeat = RepeatInterval.none,
+       customDays = const [],
+       remindBeforeMinutes = 0,
+       notify = false,
+       source = EventSource.note,
+       sourceId = null;
 
-  PetEvent.empty()
-      : id = UniqueKey().toString(),
-        name = "",
-        category = EventCategories.empty,
-        dateTime = DateTime.now(),
-        starred = false,
-        completedDates = {},
-        petIds = [],
-        repeat = RepeatInterval.none,
-        customDays = const [],
-        remindBeforeMinutes = 0,
-        notify = true,
-        source = EventSource.manual,
-        sourceId = null;
+  Event.empty()
+    : id = generateId(),
+      name = "",
+      category = EventCategories.empty,
+      dateTime = DateTime.now(),
+      starred = false,
+      completedDates = {},
+      petIds = [],
+      repeat = RepeatInterval.none,
+      customDays = const [],
+      remindBeforeMinutes = 0,
+      notify = true,
+      source = EventSource.manual,
+      sourceId = null;
 
   bool get completable => source != EventSource.note;
 
   String get categoryCaption {
-    switch(source) {
-      case EventSource.note: return 'Заметка';
-      case EventSource.pill: return 'Приём лекарств';
-      case EventSource.treatment: return 'Обработка';
-      case EventSource.manual: return category.name;
+    switch (source) {
+      case EventSource.note:
+        return 'Заметка';
+      case EventSource.pill:
+        return 'Приём лекарств';
+      case EventSource.treatment:
+        return 'Обработка';
+      case EventSource.manual:
+        return category.name;
     }
   }
 
   Color get categoryColor {
     final defaultColor = ThemeColors.primary.withAlpha(128);
-    switch(source) {
+    switch (source) {
       case EventSource.note:
         {
           if (symptomTag != null) {
@@ -232,9 +252,12 @@ class PetEvent {
           }
           return defaultColor;
         }
-      case EventSource.pill: return category.color;
-      case EventSource.treatment: return category.color;
-      case EventSource.manual: return category.color;
+      case EventSource.pill:
+        return category.color;
+      case EventSource.treatment:
+        return category.color;
+      case EventSource.manual:
+        return category.color;
     }
   }
 
@@ -265,15 +288,15 @@ class PetEvent {
   }
 
   void assign(
-      String? name,
-      EventCategory? category,
-      DateTime? dateTime,
-      RepeatInterval? repeat,
-      List<int>? customDays,
-      int? remindBeforeMinutes,
-      List<String>? petIds, {
-        bool? notify,
-      }) {
+    String? name,
+    EventCategory? category,
+    DateTime? dateTime,
+    RepeatInterval? repeat,
+    List<int>? customDays,
+    int? remindBeforeMinutes,
+    List<String>? petIds, {
+    bool? notify,
+  }) {
     this.name = name ?? this.name;
     this.category = category ?? this.category;
     this.dateTime = dateTime ?? this.dateTime;
@@ -322,7 +345,21 @@ class PetEvent {
     if (sourceId != null) 'sourceId': sourceId,
   };
 
-  factory PetEvent.fromJson(Map<String, dynamic> json) {
+  Map<String, dynamic> toPocketBase() => {
+    'id': id,
+    'name': name,
+    'category': category.id,
+    'starred': starred,
+    'datetime': dateTime.toIso8601String(),
+    'pets': petIds,
+    'repeat_interval': repeat.name,
+    if (customDays.isNotEmpty) 'repeat_days': customDays,
+    'remind_before_minutes': remindBeforeMinutes,
+    'notify': notify,
+    'source': source.name,
+  };
+
+  factory Event.fromJson(Map<String, dynamic> json) {
     // Поддержка старого формата: completed: bool → completedDates
     Set<String> completedDates = {};
     if (json['completedDates'] != null) {
@@ -334,16 +371,16 @@ class PetEvent {
       completedDates = {dateKey(dt)};
     }
 
-    final petIds = (json['petIds'] as List<dynamic>?)
-        ?.map((e) => e as String)
-        .toList() ?? [];
+    final petIds =
+        (json['petIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+        [];
 
     final source = EventSource.values.firstWhere(
-          (s) => s.name == (json['source'] as String?),
+      (s) => s.name == (json['source'] as String?),
       orElse: () => EventSource.manual,
     );
 
-    return PetEvent.deserialize(
+    return Event.deserialize(
       id: json['id'] as String,
       name: json['name'] as String,
       category: EventCategories.byId(json['category'] as String),
@@ -352,8 +389,11 @@ class PetEvent {
       completedDates: completedDates,
       petIds: petIds,
       repeat: RepeatInterval.values[json['repeat'] as int? ?? 0],
-      customDays: (json['customDays'] as List<dynamic>?)
-          ?.map((e) => e as int).toList() ?? const [],
+      customDays:
+          (json['customDays'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          const [],
       remindBeforeMinutes: json['remindBeforeMinutes'] as int? ?? 0,
       notify: json['notify'] as bool? ?? true,
       source: source,

@@ -25,10 +25,22 @@ class UserService {
   }
 
   Future<void> save(UserProfile profile) async {
+    // Persist locally.
     final prefs = SharedPreferencesAsync();
     await prefs.setString(_key, jsonEncode(profile.toJson()));
-    
-    await GetIt.instance<PocketBaseService>().pb.collection('users').update(profile.id, body: profile.toJson());
+
+    // Sync editable fields to PocketBase (only when authenticated and id is set).
+    if (profile.id.isEmpty) return;
+    final pb = GetIt.instance<PocketBaseService>().pb;
+    if (!pb.authStore.isValid) return;
+    try {
+      await pb.collection('users').update(profile.id, body: {
+        'name': profile.name,
+        'city': profile.city,
+      });
+    } catch (_) {
+      // Non-fatal: local save already succeeded.
+    }
   }
 
   Future<void> delete() async {

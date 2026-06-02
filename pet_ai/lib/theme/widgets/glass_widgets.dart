@@ -175,7 +175,7 @@ class GlassCard extends StatelessWidget {
 
 class GlassEventCard extends StatelessWidget {
   final VoidCallback? callback;
-  final PetEvent event;
+  final Event event;
   final IconData? trailingIcon;
   final VoidCallback? trailingCallback;
   final ValueChanged<bool>? onCompletedChanged;

@@ -4,7 +4,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pet_satellite/models/species.dart';
+import 'package:pet_satellite/models/user_profile.dart';
+import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
@@ -136,11 +139,67 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   // Step 3
   File? _photo;
 
+  // Cloud restore / finish loading
+  bool _isFinishing = false;
+
   @override
   void dispose() {
     _nameCtrl.dispose();
     _breedCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Cloud restore ─────────────────────────────────────────────────────────
+
+  /// Флоу «Восстановить из облака»:
+  /// авторизация → проверка данных → fullRestore() → навигация на главный экран.
+  /// Создание питомца пропускается — профиль восстанавливается с сервера.
+  Future<void> _openRestoreFromCloud() async {
+    final sync = CloudSyncService.instance;
+
+    // 1. Авторизация (если ещё не выполнена).
+    if (!sync.isAuthenticated) {
+      final result = await Navigator.of(context).push<UserProfile?>(
+        MaterialPageRoute(
+          builder: (_) => const UserLoginPage(),
+          fullscreenDialog: true,
+        ),
+      );
+      if (result == null || !mounted) return; // пользователь отменил вход
+    }
+
+    if (!mounted) return;
+
+    // 2. Проверяем, есть ли данные на сервере.
+    final hasRemote = await sync.checkHasRemoteData();
+    if (!mounted) return;
+
+    if (!hasRemote) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Данных на сервере не найдено'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 3. Данные найдены — восстанавливаем немедленно.
+    setState(() => _isFinishing = true);
+    try {
+      await sync.fullRestore();
+      if (mounted) Navigator.pushReplacementNamed(context, '/');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isFinishing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось загрузить данные с сервера'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   List<String> get _popularBreeds {
@@ -182,7 +241,9 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   }
 
   Future<void> _finish() async {
-    final profile = PetProfile(
+    setState(() => _isFinishing = true);
+
+    final profile = Pet(
       name: _nameCtrl.text.trim(),
       species: _species,
       breed: _breedCtrl.text.trim(),
@@ -191,8 +252,16 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
       castrated: _castrated,
       profileImage: _photo,
     );
-    await ProfileService().saveProfile(profile);
-    await ProfileService().setActiveProfile(profile.id);
+    await PetService().saveProfile(profile);
+    await PetService().setActiveProfile(profile.id);
+
+    // Push pet identity to cloud so it can be restored on a new device.
+    CloudSyncService.instance.pushAsync(
+      'pets',
+      profile.toIdentityJson(),
+      petId: profile.id,
+    );
+
     if (mounted) Navigator.pushReplacementNamed(context, '/');
   }
 
@@ -200,38 +269,71 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ThemeColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _Header(
-              step: _step,
-              totalSteps: _totalSteps,
-              onBack: _step > 0 ? _back : null,
-              onClose: _step == 0 && Navigator.of(context).canPop()
-                  ? () => Navigator.of(context).pop()
-                  : null,
-            ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                transitionBuilder: (child, anim) => FadeTransition(
-                  opacity: anim,
-                  child: SlideTransition(
-                    position:
-                        Tween<Offset>(
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                _Header(
+                  step: _step,
+                  totalSteps: _totalSteps,
+                  onBack: _step > 0 ? _back : null,
+                  onClose: _step == 0 && Navigator.of(context).canPop()
+                      ? () => Navigator.of(context).pop()
+                      : null,
+                ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
                           begin: const Offset(0.04, 0),
                           end: Offset.zero,
                         ).animate(
                           CurvedAnimation(parent: anim, curve: Curves.easeOut),
                         ),
-                    child: child,
+                        child: child,
+                      ),
+                    ),
+                    child: KeyedSubtree(key: ValueKey(_step), child: _buildStep()),
                   ),
                 ),
-                child: KeyedSubtree(key: ValueKey(_step), child: _buildStep()),
+              ],
+            ),
+          ),
+          // Full-screen loading overlay while saving + pulling cloud data.
+          if (_isFinishing)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withAlpha(60),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                    decoration: BoxDecoration(
+                      color: ThemeColors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          color: context.read<AppearanceController>().secondaryColor,
+                          strokeWidth: 3,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Загружаем данные с сервера…',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -252,6 +354,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
           popularBreeds: _popularBreeds,
           onNext: _next,
           onExit: () => Navigator.of(context).pop(),
+          onRestore: _openRestoreFromCloud,
         );
       case 1:
         return _Step2(
@@ -371,6 +474,7 @@ class _Step1 extends StatelessWidget {
   final List<String> popularBreeds;
   final VoidCallback onNext;
   final VoidCallback onExit;
+  final VoidCallback onRestore;
 
   const _Step1({
     required this.nameCtrl,
@@ -380,6 +484,7 @@ class _Step1 extends StatelessWidget {
     required this.popularBreeds,
     required this.onNext,
     required this.onExit,
+    required this.onRestore,
   });
 
   @override
@@ -568,6 +673,10 @@ class _Step1 extends StatelessWidget {
                         .toList(),
                   ),
                 ],
+
+                // ── Восстановить из облака ────────────────────────────────
+                const SizedBox(height: 24),
+                _RestoreCloudLink(onTap: onRestore),
               ],
             ),
           ),
@@ -578,6 +687,47 @@ class _Step1 extends StatelessWidget {
           label: 'Дальше',
         ),
       ],
+    );
+  }
+}
+
+// ─── Restore-from-cloud link ──────────────────────────────────────────────────
+
+/// Shown at the bottom of Step 1.
+/// Tapping starts the auth → check → fullRestore → navigate flow.
+class _RestoreCloudLink extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _RestoreCloudLink({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    final theme = Theme.of(context);
+
+    return Center(
+      child: GestureDetector(
+        onTap: onTap,
+        child: RichText(
+          text: TextSpan(
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.grey.shade400,
+            ),
+            children: [
+              const TextSpan(text: 'Уже пользовались приложением? '),
+              TextSpan(
+                text: 'Восстановить из облака',
+                style: TextStyle(
+                  color: ac.secondaryColor,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                  decorationColor: ac.secondaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

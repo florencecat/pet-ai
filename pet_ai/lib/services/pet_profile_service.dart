@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/species.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,7 +24,7 @@ import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/models/pill_reminder.dart';
 
 class PetContextBuilder {
-  static String build(PetProfile pet) {
+  static String build(Pet pet) {
     return """
       Имя: ${pet.name}
       Вид: ${pet.breed}
@@ -92,7 +93,7 @@ extension GenderX on Gender {
   }
 }
 
-class PetProfile {
+class Pet {
   final String id;
   String name;
   PetSpecies species;
@@ -116,7 +117,7 @@ class PetProfile {
   List<PillReminder> pillReminders;
   ColorPalette palette;
 
-  PetProfile({
+  Pet({
     this.name = '',
     this.species = BuiltInSpecies.other,
     this.breed = '',
@@ -131,7 +132,7 @@ class PetProfile {
     this.vetClinic = '',
     this.chipNumber = '',
     this.profileImage,
-  }) : id = UniqueKey().toString(),
+  }) : id = generateId(),
        weightHistory = WeightHistory.empty(),
        moodHistory = MoodHistory.empty(),
        noteHistory = NoteHistory.empty(),
@@ -140,7 +141,7 @@ class PetProfile {
        pillReminders = [],
        palette = ThemeColors.defaultProfilePalette;
 
-  PetProfile.deserialize({
+  Pet.deserialize({
     required this.id,
     required this.name,
     required this.species,
@@ -192,8 +193,43 @@ class PetProfile {
     'palette': palette.toJson(),
   };
 
-  factory PetProfile.fromJson(Map<String, dynamic> json) {
-    return PetProfile.deserialize(
+  /// Identity-only JSON — все поля кроме истории (весов, настроений и т.д.).
+  /// Используется для синхронизации профиля питомца с облаком.
+  Map<String, dynamic> toIdentityJson() => {
+    'id': id,
+    'name': name,
+    'species': species.toJson(),
+    'breed': breed,
+    'birthDate': birthDate?.toIso8601String(),
+    'gender': gender.caption,
+    'castrated': castrated,
+    'castratedDate': castratedDate?.toIso8601String(),
+    'coat': coat,
+    'notes': notes,
+    'allergies': allergies,
+    'chronicConditions': chronicConditions,
+    'vetClinic': vetClinic,
+    'chipNumber': chipNumber,
+    'palette': palette.toJson(),
+  };
+
+  Map<String, dynamic> toPocketBase(String userId) => {
+    'id': id,
+    'name': name,
+    'user': userId,
+    'gender': gender.name,
+    'castrated': castrated,
+    'castration_date': castratedDate,
+    'coat': coat,
+    'notes': notes,
+    'allergies': allergies,
+    'chronic_conditions': chronicConditions,
+    'vet_clinic': vetClinic,
+    'chip_number': chipNumber
+  };
+
+  factory Pet.fromJson(Map<String, dynamic> json) {
+    return Pet.deserialize(
       id: json['id'],
       name: json['name'] ?? '',
       species: json['species'] != null
@@ -265,20 +301,20 @@ class PetProfile {
   }
 }
 
-class ProfileService {
+class PetService {
   static const _profilesKey = 'pet_profiles';
   static const _activeIdKey = 'active_pet_id';
 
   // ─── Чтение/запись всей коллекции ────────────────────────────────────────
 
-  Future<List<PetProfile>> loadAllProfiles() async {
+  Future<List<Pet>> loadAllProfiles() async {
     final prefs = SharedPreferencesAsync();
     final jsonStr = await prefs.getString(_profilesKey);
     if (jsonStr == null) return [];
     try {
       final list = jsonDecode(jsonStr) as List<dynamic>;
       return list
-          .map((e) => PetProfile.fromJson(e as Map<String, dynamic>))
+          .map((e) => Pet.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (e) {
       log('ProfileService.loadAllProfiles: $e');
@@ -286,7 +322,7 @@ class ProfileService {
     }
   }
 
-  Future<void> _saveAllProfiles(List<PetProfile> profiles) async {
+  Future<void> _saveAllProfiles(List<Pet> profiles) async {
     final jsonStr = jsonEncode(profiles.map((p) => p.toJson()).toList());
     await SharedPreferencesAsync().setString(_profilesKey, jsonStr);
   }
@@ -320,7 +356,7 @@ class ProfileService {
 
   /// Возвращает активный профиль. Если активный id не задан или устарел —
   /// возвращает первый из списка (и обновляет сохранённый id).
-  Future<PetProfile?> loadActiveProfile() async {
+  Future<Pet?> loadActiveProfile() async {
     final profiles = await loadAllProfiles();
     if (profiles.isEmpty) return null;
 
@@ -339,7 +375,7 @@ class ProfileService {
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────
 
-  Future<PetProfile?> loadProfile(String petId) async {
+  Future<Pet?> loadProfile(String petId) async {
     final profiles = await loadAllProfiles();
     try {
       return profiles.firstWhere((p) => p.id == petId);
@@ -349,7 +385,7 @@ class ProfileService {
   }
 
   /// Добавляет новый профиль. Если это первый профиль — делает его активным.
-  Future<void> addProfile(PetProfile profile) async {
+  Future<void> addProfile(Pet profile) async {
     final profiles = await loadAllProfiles();
     profiles.add(profile);
     await _saveAllProfiles(profiles);
@@ -360,7 +396,7 @@ class ProfileService {
   }
 
   /// Сохраняет (обновляет) существующий профиль по [profile.id].
-  Future<void> saveProfile(PetProfile profile) async {
+  Future<void> saveProfile(Pet profile) async {
     final profiles = await loadAllProfiles();
     final idx = profiles.indexWhere((p) => p.id == profile.id);
     if (idx == -1) {
@@ -415,6 +451,15 @@ class ProfileService {
     if (profile != null) {
       profile.weightHistory.addWeight(weight);
       await saveProfile(profile);
+      // Fire-and-forget cloud push for the latest weight entry.
+      final last = profile.weightHistory.entries.isNotEmpty
+          ? profile.weightHistory.entries.last
+          : null;
+      if (last != null) {
+        CloudSyncService.instance.pushAsync(
+          'weights', last.toJson(), petId: petId,
+        );
+      }
     }
   }
 
@@ -423,6 +468,8 @@ class ProfileService {
     if (profile != null) {
       profile.moodHistory.add(entry);
       await saveProfile(profile);
+      // Fire-and-forget cloud push.
+      CloudSyncService.instance.pushAsync('moods', entry.toJson(), petId: petId);
     }
   }
 
@@ -431,6 +478,8 @@ class ProfileService {
     if (profile != null) {
       profile.foodHistory.add(entry);
       await saveProfile(profile);
+      // Fire-and-forget cloud push.
+      CloudSyncService.instance.pushAsync('meals', entry.toJson(), petId: petId);
     }
   }
 
@@ -463,6 +512,13 @@ class ProfileService {
     if (profile != null) {
       await profile.noteHistory.addNote(note, symptomId: symptomId);
       await saveProfile(profile);
+      // Fire-and-forget cloud push for the latest note entry.
+      final last = profile.noteHistory.entries.isNotEmpty
+          ? profile.noteHistory.entries.last
+          : null;
+      if (last != null) {
+        CloudSyncService.instance.pushAsync('notes', last.toJson(), petId: petId);
+      }
     }
   }
 

@@ -13,7 +13,7 @@ import 'package:provider/provider.dart';
 import '../../../services/appearance_controller.dart';
 
 class MoodSheet extends StatefulWidget {
-  final PetProfile profile;
+  final Pet profile;
 
   const MoodSheet({super.key, required this.profile});
 
@@ -68,10 +68,10 @@ class _MoodSheetState extends State<MoodSheet> {
       history.entries.add(entry);
     }
 
-    await ProfileService().updateMoodHistory(widget.profile.id, entry);
+    await PetService().updateMoodHistory(widget.profile.id, entry);
 
     // Stay in sheet — reload history and reset selection
-    final fresh = await ProfileService().loadProfile(widget.profile.id);
+    final fresh = await PetService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() {
         history = fresh.moodHistory;
@@ -100,7 +100,7 @@ class _MoodSheetState extends State<MoodSheet> {
       ),
     );
     if (confirmed != true) return;
-    await ProfileService().deleteMoodEntry(widget.profile.id, entry.date);
+    await PetService().deleteMoodEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => history.deleteEntry(entry.date));
   }
 
