@@ -32,23 +32,23 @@ class _PillFormState {
     DateTime? startDate,
     this.hasEndDate = false,
     DateTime? endDate,
-  })  : nameCtrl = TextEditingController(text: name),
-        doseCtrl = TextEditingController(text: dose),
-        weekdays = weekdays ?? {1, 2, 3, 4, 5},
-        schedules = schedules ?? [const TimeOfDay(hour: 9, minute: 0)],
-        startDate = startDate ?? DateTime.now(),
-        endDate = endDate ?? DateTime.now().add(const Duration(days: 30));
+  }) : nameCtrl = TextEditingController(text: name),
+       doseCtrl = TextEditingController(text: dose),
+       weekdays = weekdays ?? {1, 2, 3, 4, 5},
+       schedules = schedules ?? [const TimeOfDay(hour: 9, minute: 0)],
+       startDate = startDate ?? DateTime.now(),
+       endDate = endDate ?? DateTime.now().add(const Duration(days: 30));
 
   factory _PillFormState.fromReminder(PillReminder r) => _PillFormState(
-        name: r.name,
-        dose: r.dose,
-        frequency: r.frequencyType,
-        weekdays: Set.of(r.weekdays),
-        schedules: r.schedules.map((s) => s.toTimeOfDay()).toList(),
-        startDate: r.startDate,
-        hasEndDate: r.endDate != null,
-        endDate: r.endDate ?? DateTime.now().add(const Duration(days: 30)),
-      );
+    name: r.name,
+    dose: r.dose,
+    frequency: r.frequencyType,
+    weekdays: Set.of(r.weekdays),
+    schedules: r.schedules.map((s) => s.toTimeOfDay()).toList(),
+    startDate: r.startDate,
+    hasEndDate: r.endDate != null,
+    endDate: r.endDate ?? DateTime.now().add(const Duration(days: 30)),
+  );
 
   void dispose() {
     nameCtrl.dispose();
@@ -60,7 +60,6 @@ class _PillFormState {
 
 class PillReminderSheet extends StatefulWidget {
   final Pet profile;
-
   const PillReminderSheet({super.key, required this.profile});
 
   @override
@@ -70,6 +69,8 @@ class PillReminderSheet extends StatefulWidget {
 class _PillReminderSheetState extends State<PillReminderSheet> {
   late _PillFormState _form;
   bool _saving = false;
+  bool _actualRemindersExpanded = true;
+  bool _archiveRemindersExpanded = false;
 
   @override
   void initState() {
@@ -148,9 +149,11 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     setState(() => _saving = true);
 
     final sortedSchedules = List.of(_form.schedules)
-      ..sort((a, b) => a.hour != b.hour
-          ? a.hour.compareTo(b.hour)
-          : a.minute.compareTo(b.minute));
+      ..sort(
+        (a, b) => a.hour != b.hour
+            ? a.hour.compareTo(b.hour)
+            : a.minute.compareTo(b.minute),
+      );
 
     final reminder = PillReminder(
       id: generateId(),
@@ -197,10 +200,8 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => PillDetailSheet(
-        profile: widget.profile,
-        reminder: reminder,
-      ),
+      builder: (_) =>
+          PillDetailSheet(profile: widget.profile, reminder: reminder),
     );
     if (updated == true && mounted) {
       final fresh = await PetService().loadProfile(widget.profile.id);
@@ -219,6 +220,15 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     final accent = context.watch<AppearanceController>().primaryColor;
     final reminders = List.of(widget.profile.pillReminders)
       ..sort((a, b) => a.name.compareTo(b.name));
+    final actualReminders = reminders.where(
+      (r) =>
+          r.endDate == null ||
+          r.endDate!.isAfter(DateTime.now()) ||
+          r.endDate!.isAtSameMomentAs(DateTime.now()),
+    );
+    final archiveReminders = reminders.where(
+      (r) => r.endDate != null && r.endDate!.isBefore(DateTime.now()),
+    );
 
     return DraggableSheet(
       title: 'Препараты',
@@ -250,37 +260,99 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
           const SizedBox(height: 16),
 
           // ─── Existing reminders list ──────────────────────────────────────
-          if (reminders.isEmpty)
+          if (actualReminders.isEmpty && archiveReminders.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
                 'Напоминаний пока нет',
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium!
-                    .copyWith(color: ThemeColors.border),
-              ),
-            )
-          else ...[
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 6),
-              child: Text(
-                'Активные напоминания',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
               ),
             ),
-            ...reminders.map(
-              (r) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: _ReminderListTile(
-                  reminder: r,
-                  accent: accent,
-                  onTap: () => _openDetail(r),
-                ),
+
+          if (actualReminders.isNotEmpty)
+            CollapsibleSection(
+              expanded: _actualRemindersExpanded,
+              onToggle: () => setState(
+                () => _actualRemindersExpanded = !_actualRemindersExpanded,
+              ),
+              titleContent: Row(
+                spacing: 4,
+                children: [
+                  Text(
+                    'Активные курсы',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (!_actualRemindersExpanded)
+                    Text(
+                      '( ${archiveReminders.length.toString()} )',
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor
+                            .withAlpha(192),
+                      ),
+                    ),
+                ],
+              ),
+
+              body: Column(
+                children: [
+                  ...actualReminders.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: _ReminderListTile(
+                        reminder: r,
+                        accent: accent,
+                        onTap: () => _openDetail(r),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          if (archiveReminders.isNotEmpty)
+            CollapsibleSection(
+              expanded: _archiveRemindersExpanded,
+              onToggle: () => setState(
+                () => _archiveRemindersExpanded = !_archiveRemindersExpanded,
+              ),
+              titleContent: Row(
+                spacing: 4,
+                children: [
+                  Text(
+                    'Законченные курсы',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (!_archiveRemindersExpanded)
+                    Text(
+                      '( ${archiveReminders.length.toString()} )',
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor
+                            .withAlpha(192),
+                      ),
+                    ),
+                ],
+              ),
+              body: Column(
+                children: [
+                  ...archiveReminders.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: _ReminderListTile(
+                        reminder: r,
+                        accent: accent,
+                        onTap: () => _openDetail(r),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -330,10 +402,7 @@ class _PillForm extends StatelessWidget {
         ),
 
         const SizedBox(height: 12),
-        Text(
-          'Периодичность',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text('Периодичность', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 6),
         Wrap(
           spacing: 6,
@@ -562,11 +631,7 @@ class _ReminderListTile extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: accent.withAlpha(20),
                 ),
-                child: Icon(
-                  Icons.medication_outlined,
-                  color: accent,
-                  size: 20,
-                ),
+                child: Icon(Icons.medication_outlined, color: accent, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -754,9 +819,11 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     setState(() => _saving = true);
 
     final sortedSchedules = List.of(form.schedules)
-      ..sort((a, b) => a.hour != b.hour
-          ? a.hour.compareTo(b.hour)
-          : a.minute.compareTo(b.minute));
+      ..sort(
+        (a, b) => a.hour != b.hour
+            ? a.hour.compareTo(b.hour)
+            : a.minute.compareTo(b.minute),
+      );
 
     final updated = _reminder.copyWith(
       name: name,
@@ -835,8 +902,11 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     final today = DateTime.now();
     final result = <DateTime>[];
     for (var i = 0; i < days; i++) {
-      final d =
-          DateTime(today.year, today.month, today.day).subtract(Duration(days: i));
+      final d = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).subtract(Duration(days: i));
       if (_reminder.isScheduledForDay(d)) result.add(d);
     }
     return result;
@@ -864,9 +934,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     return DraggableSheet(
       title: _editing ? 'Редактирование' : 'Препарат',
       centerTitle: true,
-      onBack: _editing
-          ? _cancelEdit
-          : () => Navigator.of(context).pop(false),
+      onBack: _editing ? _cancelEdit : () => Navigator.of(context).pop(false),
       initialSize: 0.75,
       minSize: 0.5,
       maxSize: 1.0,
@@ -911,29 +979,23 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                   color: accent.withAlpha(20),
                   border: Border.all(color: accent.withAlpha(60), width: 1.5),
                 ),
-                child: Icon(
-                  Icons.medication_outlined,
-                  color: accent,
-                  size: 34,
-                ),
+                child: Icon(Icons.medication_outlined, color: accent, size: 34),
               ),
               const SizedBox(height: 12),
               Text(
                 _reminder.name,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall!
-                    .copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
                 textAlign: TextAlign.center,
               ),
               if (_reminder.dose.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
                   _reminder.dose,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium!
-                      .copyWith(color: ThemeColors.border),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
                 ),
               ],
             ],
@@ -999,10 +1061,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
 
         // ── Today ────────────────────────────────────────────────────────────
         if (scheduledToday) ...[
-          Text(
-            'Сегодня',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('Сегодня', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           // One toggle per schedule — each is toggled independently.
           ..._reminder.schedules.asMap().entries.map((entry) {
@@ -1055,9 +1114,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                             width: 80,
                             child: Text(
                               _dayLabel(day),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall!
+                              style: Theme.of(context).textTheme.bodySmall!
                                   .copyWith(
                                     color: isFirst
                                         ? ThemeColors.textPrimary
@@ -1075,9 +1132,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                           Expanded(
                             child: Text(
                               'Пропущено',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall!
+                              style: Theme.of(context).textTheme.bodySmall!
                                   .copyWith(
                                     color: ThemeColors.warning.mainColor,
                                   ),
@@ -1141,8 +1196,8 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                 Text(
                   'Нет пропусков за последние 30 дней',
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: ThemeColors.ok.mainColor,
-                      ),
+                    color: ThemeColors.ok.mainColor,
+                  ),
                 ),
               ],
             ),
@@ -1230,9 +1285,8 @@ class _TodayToggle extends StatelessWidget {
                 Text(
                   time,
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color:
-                            isTaken ? Colors.white : ThemeColors.textPrimary,
-                      ),
+                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
+                  ),
                 ),
                 const Spacer(),
                 AnimatedSwitcher(
@@ -1250,10 +1304,9 @@ class _TodayToggle extends StatelessWidget {
                 Text(
                   isTaken ? 'Принято' : 'Отметить',
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color:
-                            isTaken ? Colors.white : ThemeColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -1296,10 +1349,9 @@ class _DetailRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     sublabel!,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall!
-                        .copyWith(color: ThemeColors.border),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall!.copyWith(color: ThemeColors.border),
                   ),
                 ],
               ],
@@ -1325,8 +1377,13 @@ class _WeekdayPicker extends StatelessWidget {
   });
 
   static const _days = [
-    (1, 'Пн'), (2, 'Вт'), (3, 'Ср'), (4, 'Чт'),
-    (5, 'Пт'), (6, 'Сб'), (7, 'Вс'),
+    (1, 'Пн'),
+    (2, 'Вт'),
+    (3, 'Ср'),
+    (4, 'Чт'),
+    (5, 'Пт'),
+    (6, 'Сб'),
+    (7, 'Вс'),
   ];
 
   @override

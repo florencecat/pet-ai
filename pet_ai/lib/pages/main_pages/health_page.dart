@@ -529,7 +529,7 @@ class HealthPageState extends State<HealthPage> {
             const SizedBox(height: 20),
 
             // ── Вес ──────────────────────────────────────────────────────────
-            _CollapsibleSection(
+            CollapsibleSection(
               expanded: _weightExpanded,
               onToggle: () =>
                   setState(() => _weightExpanded = !_weightExpanded),
@@ -625,7 +625,7 @@ class HealthPageState extends State<HealthPage> {
             const SizedBox(height: 20),
 
             // ── Прививки и обработки ──────────────────────────────────────────
-            _CollapsibleSection(
+            CollapsibleSection(
               expanded: _treatmentsExpanded,
               onToggle: () =>
                   setState(() => _treatmentsExpanded = !_treatmentsExpanded),
@@ -732,7 +732,7 @@ class HealthPageState extends State<HealthPage> {
             const SizedBox(height: 12),
 
             // ── Препараты ─────────────────────────────────────────────────────
-            _CollapsibleSection(
+            CollapsibleSection(
               expanded: _pillsExpanded,
               onToggle: () =>
                   setState(() => _pillsExpanded = !_pillsExpanded),
@@ -1250,89 +1250,6 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
             )
             .toList(),
       ),
-    );
-  }
-}
-
-// ─── Коллапсируемая секция ────────────────────────────────────────────────────
-//
-// Шеврон слева от заголовка поворачивается на 90° (право→низ) при раскрытии.
-// Тело анимируется через AnimatedAlign.heightFactor (0 → 1).
-// Состояние expand/collapse управляется снаружи через [expanded] + [onToggle].
-
-class _CollapsibleSection extends StatelessWidget {
-  final bool expanded;
-  final VoidCallback onToggle;
-
-  /// Контент между шевроном и [trailing] (например, текст или Row с пикером).
-  final Widget titleContent;
-
-  /// Необязательный виджет справа (кнопка «Добавить», «Детали» и т.п.).
-  final Widget? trailing;
-
-  /// Тело секции — показывается/скрывается с анимацией.
-  final Widget body;
-
-  const _CollapsibleSection({
-    required this.expanded,
-    required this.onToggle,
-    required this.titleContent,
-    this.trailing,
-    required this.body,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // ── Строка заголовка ──────────────────────────────────────────────
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: onToggle,
-                behavior: HitTestBehavior.opaque,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 2, right: 2),
-                      child: AnimatedRotation(
-                        turns: expanded ? 0.25 : 0.0,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeInOut,
-                        child: Icon(
-                          Icons.chevron_right,
-                          size: 22,
-                          color: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.color
-                              ?.withAlpha(160),
-                        ),
-                      ),
-                    ),
-                    Flexible(child: titleContent),
-                  ],
-                ),
-              ),
-            ),
-            if (trailing != null) trailing!,
-          ],
-        ),
-        // ── Тело (анимированное) ──────────────────────────────────────────
-        ClipRect(
-          child: AnimatedAlign(
-            alignment: Alignment.topCenter,
-            heightFactor: expanded ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOut,
-            child: body,
-          ),
-        ),
-      ],
     );
   }
 }
