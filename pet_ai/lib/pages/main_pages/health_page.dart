@@ -622,7 +622,7 @@ class HealthPageState extends State<HealthPage> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
             // ── Прививки и обработки ──────────────────────────────────────────
             CollapsibleSection(
