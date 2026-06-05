@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/models/species.dart';
+import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/theme/widgets/draggable_bottom_sheet.dart';
 
 /// Generic bottom-sheet selector backed by [DraggableBottomSheet].
@@ -6,7 +8,7 @@ import 'package:pet_satellite/theme/widgets/draggable_bottom_sheet.dart';
 /// Returns the chosen string, or `null` if the user dismissed without selecting.
 Future<String?> showItemSelector(
   BuildContext context, {
-  required List<String> items,
+  required Map<String, String> items,
   required String hintText,
   IconData leadingIcon = Icons.list,
 }) async {
@@ -37,7 +39,6 @@ Future<String?> showItemSelector(
             child: DraggableBottomSheet(
               allItems: items,
               hintText: hintText,
-              leadingIcon: leadingIcon,
               scrollController: scrollController,
             ),
           );
@@ -49,41 +50,17 @@ Future<String?> showItemSelector(
 }
 
 /// Convenience wrapper: breed selector.
-Future<String?> showBreedSelector(BuildContext context) async {
-  const allBreeds = [
-    'Абиссинская',
-    'Акита-ину',
-    'Алабай',
-    'Английский бульдог',
-    'Бигль',
-    'Бишон фризе',
-    'Бордоский дог',
-    'Вельш-корги пемброк',
-    'Вельш-корги кардиган',
-    'Доберман',
-    'Йоркширский терьер',
-    'Кане-корсо',
-    'Лабрадор ретривер',
-    'Мопс',
-    'Немецкая овчарка',
-    'Першерон',
-    'Польская низинная овчарка',
-    'Померанский шпиц',
-    'Ретривер (золотистый)',
-    'Русский той',
-    'Самоед',
-    'Сибирский хаски',
-    'Такса',
-    'Французский бульдог',
-    'Чихуахуа',
-    'Шпиц',
-    'Ши-тцу',
-    'Шнауцер',
-  ];
-
+Future<String?> showBreedSelector(
+  BuildContext context,
+  PetSpecies species,
+) async {
   return showItemSelector(
     context,
-    items: allBreeds,
+    items: Map.fromEntries(
+      PetBreedService.breedsBySpecies(
+        species,
+      ).map((b) => MapEntry(b.id, b.name)),
+    ),
     hintText: 'Поиск породы...',
     leadingIcon: Icons.pets,
   );

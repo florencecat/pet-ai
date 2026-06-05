@@ -8,6 +8,7 @@ import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
+import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
@@ -15,7 +16,6 @@ import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 // ─── Design tokens (from Figma) ──────────────────────────────────────────────
-
 
 // ─── Quick-pick breeds per species ───────────────────────────────────────────
 
@@ -129,6 +129,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   final _nameCtrl = TextEditingController();
   PetSpecies _species = BuiltInSpecies.dog;
   final _breedCtrl = TextEditingController();
+  PetBreed _breed = PetBreed.empty();
 
   // Step 2
   DateTime? _birthDate;
@@ -145,7 +146,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _breedCtrl.dispose();
     super.dispose();
   }
 
@@ -246,7 +246,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     final profile = Pet(
       name: _nameCtrl.text.trim(),
       species: _species,
-      breed: _breedCtrl.text.trim(),
+      breed: _breed,
       birthDate: _unknownDate ? null : _birthDate,
       gender: _gender,
       castrated: _castrated,
@@ -288,16 +288,23 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                     transitionBuilder: (child, anim) => FadeTransition(
                       opacity: anim,
                       child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.04, 0),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(parent: anim, curve: Curves.easeOut),
-                        ),
+                        position:
+                            Tween<Offset>(
+                              begin: const Offset(0.04, 0),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: anim,
+                                curve: Curves.easeOut,
+                              ),
+                            ),
                         child: child,
                       ),
                     ),
-                    child: KeyedSubtree(key: ValueKey(_step), child: _buildStep()),
+                    child: KeyedSubtree(
+                      key: ValueKey(_step),
+                      child: _buildStep(),
+                    ),
                   ),
                 ),
               ],
@@ -310,7 +317,10 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                 color: Colors.black.withAlpha(60),
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 24,
+                    ),
                     decoration: BoxDecoration(
                       color: ThemeColors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -319,7 +329,9 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircularProgressIndicator(
-                          color: context.read<AppearanceController>().secondaryColor,
+                          color: context
+                              .read<AppearanceController>()
+                              .secondaryColor,
                           strokeWidth: 3,
                         ),
                         const SizedBox(height: 16),
@@ -347,10 +359,17 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
           onSpeciesChanged: (s) => setState(() {
             if (s != _species) {
               _species = s;
-              _breedCtrl.clear();
+              _breed = PetBreed.empty();
             }
           }),
           breedCtrl: _breedCtrl,
+          selectedBreed: _breed,
+          onBreedChanged: (b) => setState(() {
+            if (b != _breed) {
+              _breed = b;
+              _breedCtrl.text = _breed.name;
+            }
+          }),
           popularBreeds: _popularBreeds,
           onNext: _next,
           onExit: () => Navigator.of(context).pop(),
@@ -385,7 +404,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
         return _Step4(
           petName: _nameCtrl.text.trim(),
           species: _species,
-          breed: _breedCtrl.text.trim(),
+          breed: _breed,
           birthDate: _unknownDate ? null : _birthDate,
           gender: _gender,
           castrated: _castrated,
@@ -450,7 +469,10 @@ class _Header extends StatelessWidget {
                       borderRadius: BorderRadius.circular(2),
                       color: active
                           ? context.watch<AppearanceController>().secondaryColor
-                          : context.watch<AppearanceController>().primaryColor.withAlpha(92),
+                          : context
+                                .watch<AppearanceController>()
+                                .primaryColor
+                                .withAlpha(92),
                     ),
                   ),
                 );
@@ -471,6 +493,8 @@ class _Step1 extends StatelessWidget {
   final PetSpecies selectedSpecies;
   final ValueChanged<PetSpecies> onSpeciesChanged;
   final TextEditingController breedCtrl;
+  final PetBreed selectedBreed;
+  final ValueChanged<PetBreed> onBreedChanged;
   final List<String> popularBreeds;
   final VoidCallback onNext;
   final VoidCallback onExit;
@@ -481,6 +505,8 @@ class _Step1 extends StatelessWidget {
     required this.selectedSpecies,
     required this.onSpeciesChanged,
     required this.breedCtrl,
+    required this.selectedBreed,
+    required this.onBreedChanged,
     required this.popularBreeds,
     required this.onNext,
     required this.onExit,
@@ -525,7 +551,7 @@ class _Step1 extends StatelessWidget {
                                 .secondaryColor
                                 .withAlpha(172),
                           ),
-                      border: InputBorder.none
+                      border: InputBorder.none,
                     ),
                     maxLength: 20,
                   ),
@@ -560,7 +586,10 @@ class _Step1 extends StatelessWidget {
                                 ? context
                                       .watch<AppearanceController>()
                                       .secondaryColor
-                                : context.watch<AppearanceController>().primaryColor.withAlpha(92),
+                                : context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withAlpha(92),
                             width: selected ? 2 : 1,
                           ),
                         ),
@@ -590,9 +619,16 @@ class _Step1 extends StatelessWidget {
                 // ── Порода ────────────────────────────────────────────────
                 GestureDetector(
                   onTap: () async {
-                    final result = await showBreedSelector(context);
+                    final result = await showBreedSelector(
+                      context,
+                      selectedSpecies,
+                    );
                     if (result != null && result.isNotEmpty) {
-                      breedCtrl.text = result;
+                      final breed = PetBreedService.breedById(
+                        selectedSpecies,
+                        result,
+                      );
+                      onBreedChanged(breed);
                     }
                   },
                   child: _card(
@@ -625,7 +661,10 @@ class _Step1 extends StatelessWidget {
                         ),
                         Icon(
                           Icons.chevron_right_rounded,
-                          color: context.watch<AppearanceController>().secondaryColor.withAlpha(128),
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor
+                              .withAlpha(128),
                           size: 20,
                         ),
                       ],
@@ -661,7 +700,12 @@ class _Step1 extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: ThemeColors.white,
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: context.watch<AppearanceController>().primaryColor.withAlpha(92)),
+                                border: Border.all(
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withAlpha(92),
+                                ),
                               ),
                               child: Text(
                                 b,
@@ -818,7 +862,10 @@ class _Step2 extends StatelessWidget {
                                 ? context
                                       .watch<AppearanceController>()
                                       .secondaryColor
-                                : context.watch<AppearanceController>().primaryColor.withAlpha(92),
+                                : context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withAlpha(92),
                             width: 1.5,
                           ),
                         ),
@@ -931,7 +978,10 @@ class _Step2 extends StatelessWidget {
                                   ? context
                                         .watch<AppearanceController>()
                                         .secondaryColor
-                                  : context.watch<AppearanceController>().primaryColor.withAlpha(92),
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                        .withAlpha(92),
                               width: 1.5,
                             ),
                           ),
@@ -1120,7 +1170,11 @@ class _GenderButton extends StatelessWidget {
           color: selected ? color.withAlpha(40) : ThemeColors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? color : context.watch<AppearanceController>().primaryColor.withAlpha(92),
+            color: selected
+                ? color
+                : context.watch<AppearanceController>().primaryColor.withAlpha(
+                    92,
+                  ),
             width: selected ? 2 : 1,
           ),
         ),
@@ -1130,7 +1184,12 @@ class _GenderButton extends StatelessWidget {
               symbol,
               style: TextStyle(
                 fontSize: 28,
-                color: selected ? color : context.watch<AppearanceController>().secondaryColor.withAlpha(128),
+                color: selected
+                    ? color
+                    : context
+                          .watch<AppearanceController>()
+                          .secondaryColor
+                          .withAlpha(128),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1336,7 +1395,7 @@ class _PhotoSourceCard extends StatelessWidget {
 class _Step4 extends StatelessWidget {
   final String petName;
   final PetSpecies species;
-  final String breed;
+  final PetBreed breed;
   final DateTime? birthDate;
   final Gender gender;
   final bool castrated;
@@ -1369,8 +1428,8 @@ class _Step4 extends StatelessWidget {
 
   String _buildSubtitle() {
     final parts = <String>[];
-    if (breed.isNotEmpty) {
-      parts.add(breed);
+    if (!breed.isEmpty) {
+      parts.add(breed.name);
     } else {
       parts.add(species.name);
     }
@@ -1526,7 +1585,9 @@ class _DashedOptionalCard extends StatelessWidget {
         color: ThemeColors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: context.watch<AppearanceController>().primaryColor.withAlpha(92),
+          color: context.watch<AppearanceController>().primaryColor.withAlpha(
+            92,
+          ),
           width: 1.5,
           // Dashed look via decoration pattern
         ),
@@ -1545,7 +1606,13 @@ class _DashedOptionalCard extends StatelessWidget {
           const SizedBox(width: 12),
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
           const Spacer(),
-          Icon(Icons.add_circle_outline, size: 20, color: context.watch<AppearanceController>().primaryColor.withAlpha(92)),
+          Icon(
+            Icons.add_circle_outline,
+            size: 20,
+            color: context.watch<AppearanceController>().primaryColor.withAlpha(
+              92,
+            ),
+          ),
         ],
       ),
     );
@@ -1584,7 +1651,12 @@ class _BottomBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: ThemeColors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: context.watch<AppearanceController>().primaryColor.withAlpha(92)),
+                  border: Border.all(
+                    color: context
+                        .watch<AppearanceController>()
+                        .primaryColor
+                        .withAlpha(92),
+                  ),
                 ),
                 child: Icon(
                   Icons.close_rounded,
@@ -1607,7 +1679,12 @@ class _BottomBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: ThemeColors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: context.watch<AppearanceController>().primaryColor.withAlpha(92)),
+                  border: Border.all(
+                    color: context
+                        .watch<AppearanceController>()
+                        .primaryColor
+                        .withAlpha(92),
+                  ),
                 ),
                 child: Icon(
                   Icons.arrow_back_ios_new_rounded,

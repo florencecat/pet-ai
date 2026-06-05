@@ -111,7 +111,10 @@ class HomePageState extends State<HomePage> {
   }
 
   String _profileDescription() {
-    String description = _profile?.breed ?? '';
+    String description = _profile?.breed.name ?? '';
+    if (description.isEmpty) {
+      description = _profile?.species.name ?? 'Спутник';
+    }
     if (_profile != null && _profile!.birthDate != null) {
       final duration = _profile!.birthDate!.difference(DateTime.now());
       return '$description · ${formatPetAge(duration)}';
@@ -451,9 +454,8 @@ class HomePageState extends State<HomePage> {
                                         ),
                                         child: CircleAvatar(
                                           radius: 30,
-                                          backgroundColor: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
+                                          backgroundColor: Colors.white
+                                              .withValues(alpha: 0.3),
                                           child: _profile?.profileImage == null
                                               ? const Icon(
                                                   Icons.pets,
@@ -507,7 +509,8 @@ class HomePageState extends State<HomePage> {
                                     vertical: 10,
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: const [
                                       SkeletonText(width: 130, height: 18),
                                       SizedBox(height: 8),
@@ -520,7 +523,8 @@ class HomePageState extends State<HomePage> {
                                     spacing: 6,
                                     children: [
                                       Text(
-                                        _profile == null || _profile!.name.isEmpty
+                                        _profile == null ||
+                                                _profile!.name.isEmpty
                                             ? 'Без имени'
                                             : _profile!.name,
                                         style: Theme.of(
@@ -552,7 +556,9 @@ class HomePageState extends State<HomePage> {
                                     description.isEmpty
                                         ? 'Порода и возраст'
                                         : description,
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                   ),
                                 ),
                         ),
@@ -575,7 +581,7 @@ class HomePageState extends State<HomePage> {
                 ),
                 title: Text(
                   'Карточка для ветеринара',
-                  style: Theme.of(context).textTheme.titleMedium
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
                 subtitle: Text(
                   'Прививки, вес, аллергии и другие важные сведения',
@@ -884,9 +890,7 @@ class _PetTimeline extends StatelessWidget {
   }) {
     final dateLabel = formatSmartDate(item.date, pattern: 'd MMMM');
     final hasTime = item.date.hour != 0 || item.date.minute != 0;
-    final timeLabel = hasTime
-        ? DateFormat('HH:mm').format(item.date)
-        : null;
+    final timeLabel = hasTime ? DateFormat('HH:mm').format(item.date) : null;
 
     return IntrinsicHeight(
       child: Row(
@@ -1160,7 +1164,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                   subtitle: Text(
                     profile.breed.isEmpty
                         ? profile.species.name
-                        : profile.breed,
+                        : profile.breed.name,
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(
                       color: isActive
                           ? Colors.white.withAlpha(204)
@@ -1252,7 +1256,7 @@ class _VetCardSheet extends StatelessWidget {
                   _infoRow(
                     context,
                     'Порода',
-                    profile.breed.isEmpty ? '—' : profile.breed,
+                    profile.breed.isEmpty ? '—' : profile.breed.name,
                   ),
                   _infoRow(context, 'Пол', profile.gender.caption),
                   _infoRow(context, 'Возраст', _formatAge()),
@@ -1515,7 +1519,10 @@ class _VetCardSheet extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodySmall!
                               .copyWith(
                                 color: t.nextDate.isBefore(DateTime.now())
-                                    ? HealthBadgeSeverity.danger.palette.mainColor
+                                    ? HealthBadgeSeverity
+                                          .danger
+                                          .palette
+                                          .mainColor
                                     : context
                                           .watch<AppearanceController>()
                                           .secondaryColor

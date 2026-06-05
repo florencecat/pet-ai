@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:pet_satellite/services/appearance_controller.dart';
-import 'package:provider/provider.dart';
 
 class DraggableBottomSheet extends StatefulWidget {
-  final List<String> allItems;
+  final Map<String, String> allItems;
   final String hintText;
-  final IconData leadingIcon;
   final ScrollController? scrollController;
 
   const DraggableBottomSheet({
     super.key,
     required this.allItems,
     required this.hintText,
-    required this.leadingIcon,
     this.scrollController,
   });
 
@@ -21,7 +17,7 @@ class DraggableBottomSheet extends StatefulWidget {
 }
 
 class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
-  late List<String> _filtered;
+  late Map<String, String> _filtered;
   final TextEditingController _searchCtrl = TextEditingController();
 
   @override
@@ -34,9 +30,11 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
   void _filter() {
     final query = _searchCtrl.text.toLowerCase();
     setState(() {
-      _filtered = widget.allItems
-          .where((b) => b.toLowerCase().contains(query))
-          .toList();
+      _filtered =
+          widget.allItems.entries.where(
+                (e) => e.value.toLowerCase().contains(query),
+              )
+              as Map<String, String>;
     });
   }
 
@@ -90,16 +88,11 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
                     controller: widget.scrollController,
                     itemCount: _filtered.length,
                     itemBuilder: (context, index) {
-                      final result = _filtered[index];
+                      final id = _filtered.keys.elementAt(index);
+                      final name = _filtered.values.elementAt(index);
                       return ListTile(
-                        leading: Icon(
-                          widget.leadingIcon,
-                          color: context
-                              .watch<AppearanceController>()
-                              .primaryColor,
-                        ),
-                        title: Text(result),
-                        onTap: () => Navigator.pop(context, result),
+                        title: Text(name),
+                        onTap: () => Navigator.pop(context, id),
                       );
                     },
                   ),

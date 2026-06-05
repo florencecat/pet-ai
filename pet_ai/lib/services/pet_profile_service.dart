@@ -9,6 +9,7 @@ import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -97,7 +98,7 @@ class Pet {
   final String id;
   String name;
   PetSpecies species;
-  String breed;
+  PetBreed breed;
   DateTime? birthDate;
   Gender gender;
   bool castrated;
@@ -120,7 +121,7 @@ class Pet {
   Pet({
     this.name = '',
     this.species = BuiltInSpecies.other,
-    this.breed = '',
+    this.breed = const PetBreed.empty(),
     this.birthDate,
     this.gender = Gender.none,
     this.castrated = false,
@@ -170,7 +171,7 @@ class Pet {
     'id': id,
     'name': name,
     'species': species.toJson(),
-    'breed': breed,
+    'breed': breed.toJson(),
     'birthDate': birthDate?.toIso8601String(),
     'gender': gender.caption,
     'castrated': castrated,
@@ -199,7 +200,7 @@ class Pet {
     'id': id,
     'name': name,
     'species': species.toJson(),
-    'breed': breed,
+    'breed': breed.toJson(),
     'birthDate': birthDate?.toIso8601String(),
     'gender': gender.caption,
     'castrated': castrated,
@@ -217,6 +218,8 @@ class Pet {
     'id': id,
     'name': name,
     'user': userId,
+    'species': species.id,
+    'breed': breed.id,
     'gender': gender.name,
     'castrated': castrated,
     'castration_date': castratedDate,
@@ -225,7 +228,7 @@ class Pet {
     'allergies': allergies,
     'chronic_conditions': chronicConditions,
     'vet_clinic': vetClinic,
-    'chip_number': chipNumber
+    'chip_number': chipNumber,
   };
 
   factory Pet.fromJson(Map<String, dynamic> json) {
@@ -235,7 +238,9 @@ class Pet {
       species: json['species'] != null
           ? PetSpecies.fromJson(json['species'] as Map<String, dynamic>)
           : BuiltInSpecies.other,
-      breed: json['breed'] ?? '',
+      breed: json['breed'] != null
+          ? PetBreed.fromJson(json['breed'] as Map<String, dynamic>)
+          : PetBreed.empty(),
       birthDate: json['birthDate'] != null
           ? DateTime.parse(json['birthDate'])
           : null,
@@ -290,7 +295,8 @@ class Pet {
                   .entries,
             )
           : MealHistory.empty(),
-      pillReminders: (json['pillReminders'] as List<dynamic>?)
+      pillReminders:
+          (json['pillReminders'] as List<dynamic>?)
               ?.map((e) => PillReminder.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -313,9 +319,7 @@ class PetService {
     if (jsonStr == null) return [];
     try {
       final list = jsonDecode(jsonStr) as List<dynamic>;
-      return list
-          .map((e) => Pet.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return list.map((e) => Pet.fromJson(e as Map<String, dynamic>)).toList();
     } catch (e) {
       log('ProfileService.loadAllProfiles: $e');
       return [];
@@ -329,13 +333,23 @@ class PetService {
 
   Future<void> exportAllProfiles() async {
     final profiles = await loadAllProfiles();
-    final events = await EventService().loadAllEvents(profiles.map((p) => p.id).toList());
+    final events = await EventService().loadAllEvents(
+      profiles.map((p) => p.id).toList(),
+    );
 
-    final path = await FilePicker.platform.getDirectoryPath(initialDirectory: 'Экспорт всех профилей');
+    final path = await FilePicker.platform.getDirectoryPath(
+      initialDirectory: 'Экспорт всех профилей',
+    );
     final profilesFile = File('$path/profiles.json');
     final eventsFile = File('$path/events.json');
-    await profilesFile.writeAsString(jsonEncode(profiles.map((p) => p.toJson()).toList()));
-    await eventsFile.writeAsString(jsonEncode(events.values.map((l) => l.map((e) => e.toJson()).toList()).toList()));
+    await profilesFile.writeAsString(
+      jsonEncode(profiles.map((p) => p.toJson()).toList()),
+    );
+    await eventsFile.writeAsString(
+      jsonEncode(
+        events.values.map((l) => l.map((e) => e.toJson()).toList()).toList(),
+      ),
+    );
   }
 
   // ─── Активный профиль ─────────────────────────────────────────────────────
@@ -457,7 +471,9 @@ class PetService {
           : null;
       if (last != null) {
         CloudSyncService.instance.pushAsync(
-          'weights', last.toJson(), petId: petId,
+          'weights',
+          last.toJson(),
+          petId: petId,
         );
       }
     }
@@ -469,7 +485,11 @@ class PetService {
       profile.moodHistory.add(entry);
       await saveProfile(profile);
       // Fire-and-forget cloud push.
-      CloudSyncService.instance.pushAsync('moods', entry.toJson(), petId: petId);
+      CloudSyncService.instance.pushAsync(
+        'moods',
+        entry.toJson(),
+        petId: petId,
+      );
     }
   }
 
@@ -479,7 +499,11 @@ class PetService {
       profile.foodHistory.add(entry);
       await saveProfile(profile);
       // Fire-and-forget cloud push.
-      CloudSyncService.instance.pushAsync('meals', entry.toJson(), petId: petId);
+      CloudSyncService.instance.pushAsync(
+        'meals',
+        entry.toJson(),
+        petId: petId,
+      );
     }
   }
 
@@ -517,7 +541,11 @@ class PetService {
           ? profile.noteHistory.entries.last
           : null;
       if (last != null) {
-        CloudSyncService.instance.pushAsync('notes', last.toJson(), petId: petId);
+        CloudSyncService.instance.pushAsync(
+          'notes',
+          last.toJson(),
+          petId: petId,
+        );
       }
     }
   }

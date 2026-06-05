@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
@@ -39,7 +40,11 @@ class _PetProfilePageState extends State<PetProfilePage> {
       if (mounted) Navigator.of(context).pushReplacementNamed('/registration');
       return;
     }
-    if (mounted) setState(() { _profile = profile; _loading = false; });
+    if (mounted)
+      setState(() {
+        _profile = profile;
+        _loading = false;
+      });
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -50,7 +55,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
     try {
       await PetService().saveProfile(_profile!);
       if (mounted) {
-        context.read<AppearanceController>().updatePetPalette(_profile!.palette);
+        context.read<AppearanceController>().updatePetPalette(
+          _profile!.palette,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Профиль сохранён'),
@@ -70,7 +77,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
       context,
       title: 'Кличка',
       initialValue: _profile!.name,
-      limit: 20
+      limit: 20,
     );
     if (result != null && result.trim().isNotEmpty) {
       setState(() => _profile!.name = result.trim());
@@ -78,28 +85,36 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _editSpecies() async {
-    final speciesNames = BuiltInSpecies.all
-        .map((s) => '${s.emoji} ${s.name}')
-        .toList();
+    final speciesNames = Map.fromEntries(
+      BuiltInSpecies.all.map((s) => MapEntry(s.id, s.name)),
+    );
     final result = await showItemSelector(
       context,
       items: speciesNames,
       hintText: 'Поиск вида...',
       leadingIcon: Icons.category_outlined,
     );
-    if (result != null) {
+    if (result != null && result != _profile!.species.id) {
       final matched = BuiltInSpecies.all.firstWhere(
-        (s) => result.contains(s.name),
+        (s) => result.contains(s.id),
         orElse: () => BuiltInSpecies.other,
       );
-      setState(() => _profile!.species = matched);
+      setState(() {
+        _profile!.species = matched;
+        _profile!.breed = PetBreed.empty();
+      });
     }
   }
 
   Future<void> _editBreed() async {
-    final result = await showBreedSelector(context);
+    final result = await showBreedSelector(context, _profile!.species);
     if (result != null && result.isNotEmpty) {
-      setState(() => _profile!.breed = result);
+      setState(
+        () => _profile!.breed = PetBreedService.breedById(
+          _profile!.species,
+          result,
+        ),
+      );
     }
   }
 
@@ -188,7 +203,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
       initialValue: _profile!.chipNumber,
       keyboardType: TextInputType.number,
       hint: '15 цифр',
-      limit: 15
+      limit: 15,
     );
     if (result != null) setState(() => _profile!.chipNumber = result.trim());
   }
@@ -324,14 +339,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
               value: p.name.isEmpty ? 'Не указана' : p.name,
               onTap: _editName,
             ),
-            _InfoRow(
-              label: 'Вид',
-              value: _speciesLabel(),
-              onTap: _editSpecies,
-            ),
+            _InfoRow(label: 'Вид', value: _speciesLabel(), onTap: _editSpecies),
             _InfoRow(
               label: 'Порода',
-              value: p.breed.isEmpty ? 'Не указана' : p.breed,
+              value: p.breed.name.isEmpty ? 'Не указана' : p.breed.name,
               onTap: _editBreed,
             ),
             _InfoRow(
@@ -350,11 +361,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
               value: _formatDate(p.birthDate),
               onTap: _editBirthDate,
             ),
-            _InfoRow(
-              label: 'Пол',
-              value: p.gender.label,
-              onTap: _editGender,
-            ),
+            _InfoRow(label: 'Пол', value: p.gender.label, onTap: _editGender),
             _InfoRow(
               label: 'Стерилизация',
               value: _castrationLabel(),
@@ -465,10 +472,7 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassPlate(
       padding: 0,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: children,
-      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 }
@@ -701,7 +705,7 @@ Future<String?> _showTextSheet(
   bool multiline = false,
   String? hint,
   TextInputType? keyboardType,
-  int? limit
+  int? limit,
 }) async {
   return showModalBottomSheet<String>(
     context: context,
@@ -837,7 +841,8 @@ class _TextSheetState extends State<_TextSheet> {
             controller: _controller,
             focusNode: _focus,
             maxLines: widget.multiline ? 5 : 1,
-            keyboardType: widget.keyboardType ??
+            keyboardType:
+                widget.keyboardType ??
                 (widget.multiline
                     ? TextInputType.multiline
                     : TextInputType.text),
@@ -1035,8 +1040,9 @@ class _GenderSheet extends StatelessWidget {
                     Text(
                       g.label,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         color: selected ? ac.primaryColor : null,
                       ),
                     ),
@@ -1133,7 +1139,9 @@ class _CastrationSheetState extends State<_CastrationSheet> {
                   activeThumbColor: ac.primaryColor,
                   onChanged: (v) => setState(() {
                     _castrated = v;
-                    if (!v) { _date = null; }
+                    if (!v) {
+                      _date = null;
+                    }
                   }),
                 ),
               ],
