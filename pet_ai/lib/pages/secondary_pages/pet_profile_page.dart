@@ -25,6 +25,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   Pet? _profile;
   bool _loading = true;
   bool _saving = false;
+  bool _paletteChanged = false;
 
   @override
   void initState() {
@@ -324,8 +325,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
         // ── Palette ─────────────────────────────────────────────────────────
         _PaletteSection(
           current: p.palette,
-          onChanged: (palette) => setState(() => p.palette = palette),
+          onChanged: (palette) => setState(() { p.palette = palette; _paletteChanged = true;}),
           primaryColor: ac.primaryColor,
+          paletteChanged: _paletteChanged,
         ),
 
         const SizedBox(height: 28),
@@ -625,20 +627,23 @@ class _PaletteSection extends StatelessWidget {
   final ColorPalette current;
   final ValueChanged<ColorPalette> onChanged;
   final Color primaryColor;
+  final bool paletteChanged;
 
   const _PaletteSection({
     required this.current,
     required this.onChanged,
     required this.primaryColor,
+    required this.paletteChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 12,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          padding: const EdgeInsets.only(left: 4),
           child: Text(
             'Цвет профиля',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -656,7 +661,9 @@ class _PaletteSection extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final palette = ThemeColors.profilePalettes[index];
-              final isSelected = current == palette;
+              final isSelected =
+                  current.mainColor == palette.mainColor &&
+                  current.darkShade == palette.darkShade;
               return GestureDetector(
                 onTap: () => onChanged(palette),
                 child: AnimatedContainer(
@@ -665,10 +672,7 @@ class _PaletteSection extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      stops: const [0.5, 0.5],
-                      colors: [palette.mainColor, palette.darkShade],
-                    ),
+                    color: palette.mainColor,
                     border: Border.all(
                       color: isSelected ? Colors.black54 : Colors.transparent,
                       width: 3,
@@ -683,13 +687,42 @@ class _PaletteSection extends StatelessWidget {
                     ],
                   ),
                   child: isSelected
-                      ? const Icon(Icons.check, color: Colors.white, size: 20)
+                      ? Icon(
+                          Icons.check_outlined,
+                          color: current.darkShade,
+                          size: 30,
+                        )
                       : null,
                 ),
               );
             },
           ),
         ),
+        if (paletteChanged && !context.watch<AppearanceController>().usePetColor)
+          SoftGlassPlate(
+            color: context.watch<AppearanceController>().primaryColor.withAlpha(
+              30,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: context.watch<AppearanceController>().primaryColor,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Применить цвет профиля активного питомца как основной цвет приложения можно в настройках',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }

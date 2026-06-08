@@ -29,13 +29,14 @@ class AppearanceController extends ChangeNotifier {
 
   /// Градиентный фон страниц, адаптированный к текущему primaryColor.
   BoxDecoration get gradientDecoration => BoxDecoration(
+    backgroundBlendMode: BlendMode.darken,
     gradient: LinearGradient(
-      tileMode: TileMode.mirror,
+      tileMode: TileMode.clamp,
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        primaryColor.withAlpha(96),
-        ThemeColors.gradientEnd.withAlpha(64),
+        primaryColor.withAlpha(128),
+        ThemeColors.gradientEnd.withAlpha(64)
       ],
     ),
   );

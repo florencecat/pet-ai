@@ -849,7 +849,7 @@ class _EventTileCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge!.copyWith(
                         color: overdue
                             ? ThemeColors.dangerZone
-                            : event.category.color,
+                            : context.watch<AppearanceController>().secondaryColor,
                       ),
                       textAlign: TextAlign.center,
                     ),

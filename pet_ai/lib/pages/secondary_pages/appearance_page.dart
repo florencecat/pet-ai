@@ -27,71 +27,61 @@ class AppearancePage extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  'Тема',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('Тема', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                GlassPlate(
-                  child: SwitchListTile(
-                    value: appearance.usePetColor,
-                    onChanged: (v) =>
-                        context.read<AppearanceController>().setUsePetColor(v),
-                    activeTrackColor: appearance.petColor,
-                    activeThumbColor: appearance.petColor,
-                    title: const Text('Использовать цвет питомца'),
-                    subtitle: Text(
-                      'Применяет цвет профиля активного питомца'
-                      ' как основной цвет приложения',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    secondary: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: appearance.usePetColor
-                            ? appearance.petColor
-                            : ThemeColors.primary,
-                        border: Border.all(
-                          color: Colors.white.withAlpha(120),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (appearance.usePetColor
-                                    ? appearance.petColor
-                                    : ThemeColors.primary)
-                                .withAlpha(80),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+
+                SettingsCard(
+                  children: [
+                    SettingsRow(
+                      icon: Icons.notifications_outlined,
+                      label: 'Использовать цвет питомца',
+                      subtitle:
+                          'Применяет цвет профиля активного питомца как основной цвет приложения',
+                      trailing: Switch(
+                        inactiveThumbColor: appearance.petColor,
+                        trackOutlineColor:
+                            WidgetStateProperty.resolveWith<Color?>((
+                              Set<WidgetState> states,
+                            ) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors
+                                    .transparent; // Border color when ON
+                              }
+                              return appearance
+                                  .petColor; // Border color when OFF
+                            }),
+                        value: appearance.usePetColor,
+                        activeThumbColor: appearance.petColor,
+                        onChanged: (v) async => await context
+                            .read<AppearanceController>()
+                            .setUsePetColor(v),
                       ),
+                      iconColor: appearance.petColor,
                     ),
-                  ),
+                  ],
                 ),
 
                 if (appearance.usePetColor) ...[
                   const SizedBox(height: 12),
-                  GlassPlate(
+                  SoftGlassPlate(
                     color: appearance.petColor.withAlpha(30),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline,
-                              size: 18, color: appearance.petColor),
+                          Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: appearance.petColor,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               'Изменить цвет питомца можно в его профиле.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall!
-                                  .copyWith(color: ThemeColors.textPrimary),
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
                         ],

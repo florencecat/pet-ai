@@ -337,7 +337,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Питомцы ──────────────────────────────────────────────────────
           _SectionLabel('Питомцы'),
           const SizedBox(height: 8),
-          _SettingsCard(
+          SettingsCard(
             children: [
               if (_loadingProfiles)
                 const Padding(
@@ -366,7 +366,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   );
                 }),
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.add_circle_outline,
                   label: 'Добавить питомца',
                   iconColor: ac.primaryColor,
@@ -381,49 +381,28 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Уведомления ───────────────────────────────────────────────────
           _SectionLabel('Уведомления'),
           const SizedBox(height: 8),
-          _SettingsCard(
+          SettingsCard(
             children: [
-              // Toggle row
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+              SettingsRow(
+                icon: Icons.notifications_outlined,
+                label: 'Напоминания',
+                subtitle: 'Прививки, корм, прогулки',
+                trailing: Switch(
+                  inactiveThumbColor: ac.primaryColor,
+                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.transparent; // Border color when ON
+                    }
+                    return ac.primaryColor; // Border color when OFF
+                  }),
+                  value: _remindersEnabled,
+                  activeThumbColor: ac.primaryColor,
+                  onChanged: (v) => setState(() => _remindersEnabled = v),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.notifications_outlined,
-                      color: ac.primaryColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Напоминания',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          Text(
-                            'Прививки, корм, прогулки',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: ac.secondaryColor.withAlpha(160),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: _remindersEnabled,
-                      activeThumbColor: ac.primaryColor,
-                      onChanged: (v) => setState(() => _remindersEnabled = v),
-                    ),
-                  ],
-                ),
+                iconColor: ac.primaryColor,
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.bedtime_outlined,
                 label: 'Тихие часы',
                 subtitle: '22:00 – 08:00',
@@ -431,7 +410,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.lightbulb_outline,
                 label: 'Советы помощника',
                 subtitle: 'Не чаще раза в день',
@@ -446,21 +425,21 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Оформление ────────────────────────────────────────────────────
           _SectionLabel('Оформление'),
           const SizedBox(height: 8),
-          _SettingsCard(
+          SettingsCard(
             children: [
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.palette_outlined,
                 label: 'Тема и цвета',
                 subtitle: 'Оформление приложения',
                 iconColor: ac.primaryColor,
-                trailingIcon: Icons.chevron_right,
+                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AppearancePage()),
                 ),
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.language_outlined,
                 label: 'Язык',
                 subtitle: 'Русский',
@@ -468,7 +447,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.straighten_outlined,
                 label: 'Единицы',
                 subtitle: 'кг · км',
@@ -491,9 +470,9 @@ class _SettingsPageState extends State<SettingsPage> {
             onPullAll: () => _syncPullAll(context),
           ),
           const SizedBox(height: 8),
-          _SettingsCard(
+          SettingsCard(
             children: [
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.download_outlined,
                 label: 'Экспорт данных',
                 subtitle: 'Скоро',
@@ -501,7 +480,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.fingerprint,
                 label: 'Биометрия при входе',
                 onTap: null,
@@ -515,33 +494,33 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── О приложении ─────────────────────────────────────────────────
           _SectionLabel('О приложении'),
           const SizedBox(height: 8),
-          _SettingsCard(
+          SettingsCard(
             children: [
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.help_outline,
                 label: 'Помощь и FAQ',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-                trailingIcon: Icons.chevron_right,
+                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.star_outline,
                 label: 'Оценить приложение',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-                trailingIcon: Icons.chevron_right,
+                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.shield_outlined,
                 label: 'Условия и конфиденциальность',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-                trailingIcon: Icons.chevron_right,
+                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
               ),
               _Divider(),
-              _SettingsRow(
+              SettingsRow(
                 icon: Icons.logout,
                 label: 'Выйти из аккаунта',
                 onTap: _user != null ? _deleteUserProfile : null,
@@ -559,9 +538,9 @@ class _SettingsPageState extends State<SettingsPage> {
           if (kDebugMode) ...[
             _SectionLabel('Отладка'),
             const SizedBox(height: 8),
-            _SettingsCard(
+            SettingsCard(
               children: [
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить все данные',
                   subtitle: 'Сброс SharedPreferences',
@@ -570,35 +549,35 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: () => _clearAppData(context),
                 ),
                 _Divider(),
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить события',
                   iconColor: Colors.red,
                   onTap: () => _clearEvents(context),
                 ),
                 _Divider(),
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить историю веса',
                   iconColor: Colors.red,
                   onTap: () => _clearWeightHistory(context),
                 ),
                 _Divider(),
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить историю настроения',
                   iconColor: Colors.red,
                   onTap: () => _clearMoodHistory(context),
                 ),
                 _Divider(),
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить диалог с ИИ',
                   iconColor: Colors.red,
                   onTap: () => _clearMessageHistory(context),
                 ),
                 _Divider(),
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.data_object,
                   label: 'Заполнить историю веса',
                   iconColor: Colors.blue,
@@ -610,7 +589,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                   last: true,
                 ),
-                _SettingsRow(
+                SettingsRow(
                   icon: Icons.data_object,
                   label: 'Экспорт данных',
                   iconColor: Colors.blue,
@@ -672,7 +651,9 @@ class _SyncCard extends StatelessWidget {
     if (!isAuthenticated) return 'Требуется вход в аккаунт';
     switch (sync.status) {
       case SyncStatus.idle:
-        return sync.lastSync != null ? _formatSync(sync.lastSync!) : 'Нет данных';
+        return sync.lastSync != null
+            ? _formatSync(sync.lastSync!)
+            : 'Нет данных';
       case SyncStatus.syncing:
         return 'Синхронизация…';
       case SyncStatus.success:
@@ -965,19 +946,6 @@ class _SectionLabel extends StatelessWidget {
 
 // ─── Settings card ────────────────────────────────────────────────────────────
 
-class _SettingsCard extends StatelessWidget {
-  final List<Widget> children;
-  const _SettingsCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassPlate(
-      padding: 0,
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
-    );
-  }
-}
-
 // ─── Pet profile row ──────────────────────────────────────────────────────────
 
 class _PetRow extends StatelessWidget {
@@ -1065,85 +1033,6 @@ class _PetRow extends StatelessWidget {
   }
 }
 
-// ─── Generic settings row ─────────────────────────────────────────────────────
-
-class _SettingsRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String? subtitle;
-  final Color? iconColor;
-  final Color? labelColor;
-  final IconData? trailingIcon;
-  final VoidCallback? onTap;
-  final bool last;
-
-  const _SettingsRow({
-    required this.icon,
-    required this.label,
-    this.subtitle,
-    this.iconColor,
-    this.labelColor,
-    this.trailingIcon,
-    this.onTap,
-    this.last = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ac = context.watch<AppearanceController>();
-    final effectiveIconColor = iconColor ?? ac.primaryColor;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: last
-          ? const BorderRadius.vertical(bottom: Radius.circular(20))
-          : BorderRadius.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: effectiveIconColor),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: labelColor,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: ac.secondaryColor.withAlpha(160),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (trailingIcon != null)
-              Icon(
-                trailingIcon,
-                size: 18,
-                color: ac.primaryColor.withAlpha(140),
-              )
-            else if (onTap != null)
-              Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: ac.primaryColor.withAlpha(80),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Thin divider ─────────────────────────────────────────────────────────────
 
 class _Divider extends StatelessWidget {
@@ -1158,3 +1047,6 @@ class _Divider extends StatelessWidget {
     );
   }
 }
+
+Icon _chevronIcon(Color color) =>
+    Icon(Icons.chevron_right, size: 18, color: color);

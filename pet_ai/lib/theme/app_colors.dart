@@ -46,40 +46,34 @@ class  ThemeColors {
     Color(0xFF50416F),
   );
 
-  // static const profileColors = [
-  //   Color(0xFFB896FF),
-  //   Color(0xFF96FFE0),
-  //   Color(0xFFF6F091),
-  //   Color(0xFFFFAD96),
-  //   Color(0xFF9C95AA),
-  //   Color(0xFF5B8075),
-  // ];
-
   static const profileColors = [
+    Color(0xFFB896FF),
     Color(0xFFFFAD96),
     Color(0xFF96AEFF),
-    Color(0xFFB1DB81),
     Color(0xFFFF96B1),
     Color(0xFFAA9A95),
-    Color(0xFF5B6380)
+    Color(0xFF5B6380),
+    Color(0xFF5B8075)
   ];
 
   static const darkProfileColors = [
+    Color(0xFF50416F),
     Color(0xFF66473E),
     Color(0xFF3E4866),
-    Color(0xFF53663E),
     Color(0xFF663E48),
     Color(0xFF452C24),
-    Color(0xFF44464D)
+    Color(0xFF44464D),
+    Color(0xFF3C554E)
   ];
 
   static const List<ColorPalette> profilePalettes = [
+    ColorPalette(Color(0xFFB896FF), Color(0xFF50416F)),
     ColorPalette(Color(0xFFFFAD96), Color(0xFF66473E)),
     ColorPalette(Color(0xFF96AEFF), Color(0xFF3E4866)),
-    ColorPalette(Color(0xFFCEFF96), Color(0xFF53663E)),
     ColorPalette(Color(0xFFFF96B1), Color(0xFF663E48)),
     ColorPalette(Color(0xFFAA9A95), Color(0xFF452C24)),
     ColorPalette(Color(0xFF5B6380), Color(0xFF44464D)),
+    ColorPalette(Color(0xFF5B8075), Color(0xFF3C554E))
   ];
 
   static const textPrimary = Color(0xFF41355b);
