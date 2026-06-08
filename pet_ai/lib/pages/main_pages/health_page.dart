@@ -414,11 +414,6 @@ class HealthPageState extends State<HealthPage> {
         _profile?.pillReminders.where((r) => r.isActive).toList()
           ?..sort((a, b) => a.name.compareTo(b.name));
 
-    // TreatmentKind.values.map((kind) {
-    //   final last = _profile!.treatmentHistory.lastOfKind(
-    //     kind,
-    //   );
-
     List<TreatmentEntry> activeTreatments = [];
     for (var kind in TreatmentKind.values) {
       final entry = _profile?.treatmentHistory.lastOfKind(kind);
@@ -1153,6 +1148,7 @@ class _TreatmentStatusTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: GlassPlate(
+        useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
@@ -1361,6 +1357,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
     return GestureDetector(
       onTap: widget.onTap,
       child: GlassPlate(
+        useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(

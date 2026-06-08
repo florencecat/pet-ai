@@ -20,6 +20,7 @@ class GlassPlate extends StatelessWidget {
   final bool transparent;
   final double padding;
   final List<Color>? gradientColors;
+  final bool useShadow;
 
   const GlassPlate({
     super.key,
@@ -28,6 +29,7 @@ class GlassPlate extends StatelessWidget {
     this.transparent = true,
     this.padding = 8,
     this.gradientColors,
+    this.useShadow = true,
   });
 
   @override
@@ -72,13 +74,15 @@ class GlassPlate extends StatelessWidget {
           borderRadius: borderRadius,
           color: fillColor,
           border: Border.all(color: borderColor, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(20),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: useShadow
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
         ),
         child: gradientColors != null
             ? DecoratedBox(
@@ -457,7 +461,6 @@ class DeleteIconButton extends StatelessWidget {
   }
 }
 
-
 class SoftGlassBadge extends StatefulWidget {
   final Color color;
   final IconData? icon;
@@ -652,11 +655,9 @@ class CollapsibleSection extends StatelessWidget {
                         child: Icon(
                           Icons.chevron_right,
                           size: 22,
-                          color: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.color
-                              ?.withAlpha(160),
+                          color: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.color?.withAlpha(160),
                         ),
                       ),
                     ),
