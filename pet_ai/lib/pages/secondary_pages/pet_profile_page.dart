@@ -40,11 +40,12 @@ class _PetProfilePageState extends State<PetProfilePage> {
       if (mounted) Navigator.of(context).pushReplacementNamed('/registration');
       return;
     }
-    if (mounted)
+    if (mounted) {
       setState(() {
         _profile = profile;
         _loading = false;
       });
+    }
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────

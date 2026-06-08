@@ -77,6 +77,20 @@ class PetBreedService {
     }
   }
 
+  static List<PetBreed> popularBreedsBySpecies(PetSpecies species) {
+    switch (species.id) {
+      case 'pqmhnzkblhx1xuw':
+        return popularDogBreeds();
+      case 'au3t9kfooqc6zb5':
+        return popularCatBreeds();
+      case 'nr4uj8azpruxo9y':
+        return popularRabbitBreeds();
+      default:
+        return [];
+    }
+  }
+
+
   static List<PetBreed> dogBreeds() => [
     PetBreed.dog(id: '7qx1sd25jnvcm5f', name: 'Абиссинская'),
     PetBreed.dog(id: 'eoj0rkrjhv9lqh8', name: 'Акита-ину'),
@@ -92,6 +106,7 @@ class PetBreedService {
     PetBreed.dog(id: 'gwq17q3rhx9nrss', name: 'Йоркширский терьер'),
     PetBreed.dog(id: 's5km4ai65m87hem', name: 'Кане-корсо'),
     PetBreed.dog(id: 'xtnf1p5fiajay3w', name: 'Лабрадор ретривер'),
+    PetBreed.dog(id: '3uz5khjr1yj5by1', name: 'Метис'),
     PetBreed.dog(id: 'uljv1uv7v53cai0', name: 'Мопс'),
     PetBreed.dog(id: 'wmo7k628mqv916d', name: 'Немецкая овчарка'),
     PetBreed.dog(id: '724d9ee9bigg7in', name: 'Першерон'),
@@ -100,13 +115,22 @@ class PetBreedService {
     PetBreed.dog(id: '0rkpqfifhzmpej8', name: 'Ретривер (золотистый)'),
     PetBreed.dog(id: '7gj6nrer4z2wpvj', name: 'Русский той'),
     PetBreed.dog(id: 'm1nji62metnq5q4', name: 'Самоед'),
-    PetBreed.dog(id: '9oh0qwq7ihg7a03', name: 'Сибирский хаски'),
     PetBreed.dog(id: 'itduyzvd0bvkaaf', name: 'Такса'),
     PetBreed.dog(id: 'sp5iwfjvm8tu758', name: 'Французский бульдог'),
+    PetBreed.dog(id: '9oh0qwq7ihg7a03', name: 'Хаски'),
     PetBreed.dog(id: '33d1f0aon8x4g9r', name: 'Чихуахуа'),
     PetBreed.dog(id: 'hzwh0ezz8ri9lbu', name: 'Шпиц'),
     PetBreed.dog(id: '39tf70tpixpeva0', name: 'Ши-тцу'),
+    PetBreed.dog(id: '6c8d9852aj0ckrx', name: 'Шиба-ину'),
     PetBreed.dog(id: '6cbkuttbknuvq2u', name: 'Шнауцер'),
+  ];
+
+  static List<PetBreed> popularDogBreeds() => [
+    PetBreed.dog(id: 'xtnf1p5fiajay3w', name: 'Лабрадор ретривер'),
+    PetBreed.dog(id: '9oh0qwq7ihg7a03', name: 'Сибирский хаски'),
+    PetBreed.dog(id: 'rf3xu3mqc8rfzyb', name: 'Вельш-корги пемброк'),
+    PetBreed.dog(id: '6c8d9852aj0ckrx', name: 'Шиба-ину'),
+    PetBreed.dog(id: '3uz5khjr1yj5by1', name: 'Метис')
   ];
 
   static List<PetBreed> catBreeds() => [
@@ -114,7 +138,7 @@ class PetBreedService {
     PetBreed.cat(id: 'gfkgcnrtgw8dali', name: 'Американская короткошерстная'),
     PetBreed.cat(id: 'yms3e0medxlf8av', name: 'Бенгальская'),
     PetBreed.cat(id: '818c3vw4brbrte7', name: 'Бирманская'),
-    PetBreed.cat(id: 'aplzahgtevyoel9', name: 'Британская короткошерстная'),
+    PetBreed.cat(id: 'aplzahgtevyoel9', name: 'Британская'),
     PetBreed.cat(id: 'a0g2dme6wpxohfg', name: 'Бурманская'),
     PetBreed.cat(id: 'cl3rkpzkzc2lx2x', name: 'Девон-рекс'),
     PetBreed.cat(id: 'oszzdteijxn97l8', name: 'Корниш-рекс'),
@@ -136,6 +160,14 @@ class PetBreedService {
     PetBreed.cat(id: 'v7ami39ma078lad', name: 'Экзотическая короткошерстная'),
     PetBreed.cat(id: 'zpoy97a4jtxfbos', name: 'Шотландская вислоухая'),
     PetBreed.cat(id: 'vam8onm0pep2maa', name: 'Шотландская прямоухая'),
+  ];
+
+  static List<PetBreed> popularCatBreeds() => [
+    PetBreed.cat(id: 'aplzahgtevyoel9', name: 'Британская'),
+    PetBreed.cat(id: 'trarxajcfpe4842', name: 'Мейн-кун'),
+    PetBreed.cat(id: 'pnpu8kq9c0kqpo9', name: 'Сфинкс'),
+    PetBreed.cat(id: 'yms3e0medxlf8av', name: 'Бенгальская'),
+    PetBreed.cat(id: 'rhzr9bz6ek9m2ta', name: 'Метис')
   ];
 
   static List<PetBreed> rabbitBreeds() => [
@@ -160,6 +192,12 @@ class PetBreedService {
     PetBreed.rabbit(id: 'llplbai9gsol816', name: 'Фландр'),
     PetBreed.rabbit(id: 'cnha69kc9jg4rc6', name: 'Французский баран'),
     PetBreed.rabbit(id: 'etpnqqdv29opb6u', name: 'Хотот'),
+  ];
+
+  static List<PetBreed> popularRabbitBreeds() => [
+    PetBreed.rabbit(id: 'cdstx9zf5keijgl', name: 'Вислоухий'),
+    PetBreed.rabbit(id: '62g408tmiwjyhq8', name: 'Карликовый'),
+    PetBreed.rabbit(id: 'saxh73763u2g61h', name: 'Ангорский')
   ];
 
   static List<PetBreed> carrotBreeds() => [

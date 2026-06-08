@@ -15,21 +15,6 @@ import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
-// ─── Design tokens (from Figma) ──────────────────────────────────────────────
-
-// ─── Quick-pick breeds per species ───────────────────────────────────────────
-
-const _kPopularDog = ['Лабрадор', 'Хаски', 'Корги', 'Шиба-ину', 'Метис'];
-const _kPopularCat = [
-  'Британская',
-  'Мейн-кун',
-  'Сфинкс',
-  'Бенгальская',
-  'Метис',
-];
-const _kPopularRabbit = ['Вислоухий', 'Карликовый', 'Ангорский'];
-const _kPopularOther = <String>[];
-
 // ─── Species display list ─────────────────────────────────────────────────────
 
 class _SpeciesOption {
@@ -128,6 +113,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   // Step 1
   final _nameCtrl = TextEditingController();
   PetSpecies _species = BuiltInSpecies.dog;
+  bool _breedInputAvaliable = true;
   final _breedCtrl = TextEditingController();
   PetBreed _breed = PetBreed.empty();
 
@@ -200,13 +186,6 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
         );
       }
     }
-  }
-
-  List<String> get _popularBreeds {
-    if (_species == BuiltInSpecies.dog) return _kPopularDog;
-    if (_species == BuiltInSpecies.cat) return _kPopularCat;
-    if (_species == BuiltInSpecies.rabbit) return _kPopularRabbit;
-    return _kPopularOther;
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
@@ -360,8 +339,10 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
             if (s != _species) {
               _species = s;
               _breed = PetBreed.empty();
+              _breedInputAvaliable = _species != BuiltInSpecies.other;
             }
           }),
+          breedInputAvaliable: _breedInputAvaliable,
           breedCtrl: _breedCtrl,
           selectedBreed: _breed,
           onBreedChanged: (b) => setState(() {
@@ -370,7 +351,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
               _breedCtrl.text = _breed.name;
             }
           }),
-          popularBreeds: _popularBreeds,
+          popularBreeds: PetBreedService.popularBreedsBySpecies(_species),
           onNext: _next,
           onExit: () => Navigator.of(context).pop(),
           onRestore: _openRestoreFromCloud,
@@ -492,10 +473,11 @@ class _Step1 extends StatelessWidget {
   final TextEditingController nameCtrl;
   final PetSpecies selectedSpecies;
   final ValueChanged<PetSpecies> onSpeciesChanged;
+  final bool breedInputAvaliable;
   final TextEditingController breedCtrl;
   final PetBreed selectedBreed;
   final ValueChanged<PetBreed> onBreedChanged;
-  final List<String> popularBreeds;
+  final List<PetBreed> popularBreeds;
   final VoidCallback onNext;
   final VoidCallback onExit;
   final VoidCallback onRestore;
@@ -504,6 +486,7 @@ class _Step1 extends StatelessWidget {
     required this.nameCtrl,
     required this.selectedSpecies,
     required this.onSpeciesChanged,
+    required this.breedInputAvaliable,
     required this.breedCtrl,
     required this.selectedBreed,
     required this.onBreedChanged,
@@ -525,7 +508,7 @@ class _Step1 extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Расскажите о\nновом друге',
+                  'Расскажите о новом\nдруге',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 24),
@@ -618,7 +601,7 @@ class _Step1 extends StatelessWidget {
 
                 // ── Порода ────────────────────────────────────────────────
                 GestureDetector(
-                  onTap: () async {
+                  onTap: breedInputAvaliable ? () async {
                     final result = await showBreedSelector(
                       context,
                       selectedSpecies,
@@ -630,7 +613,7 @@ class _Step1 extends StatelessWidget {
                       );
                       onBreedChanged(breed);
                     }
-                  },
+                  } : null,
                   child: _card(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -652,13 +635,14 @@ class _Step1 extends StatelessWidget {
                                       color: context
                                           .watch<AppearanceController>()
                                           .secondaryColor
-                                          .withAlpha(172),
+                                          .withAlpha(breedInputAvaliable ? 172 : 64),
                                     ),
                                 border: InputBorder.none,
                               ),
                             ),
                           ),
                         ),
+                        if (breedInputAvaliable)
                         Icon(
                           Icons.chevron_right_rounded,
                           color: context
@@ -691,7 +675,7 @@ class _Step1 extends StatelessWidget {
                     children: popularBreeds
                         .map(
                           (b) => GestureDetector(
-                            onTap: () => breedCtrl.text = b,
+                            onTap: () => onBreedChanged(b),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -708,7 +692,7 @@ class _Step1 extends StatelessWidget {
                                 ),
                               ),
                               child: Text(
-                                b,
+                                b.name,
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),

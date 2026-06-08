@@ -619,6 +619,7 @@ class CollapsibleSection extends StatelessWidget {
   final Widget body;
 
   const CollapsibleSection({
+    super.key,
     required this.expanded,
     required this.onToggle,
     required this.titleContent,
