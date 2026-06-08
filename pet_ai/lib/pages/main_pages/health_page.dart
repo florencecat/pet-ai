@@ -48,17 +48,34 @@ class HealthPageState extends State<HealthPage> {
   // Period for the inline weight chart
   HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
 
-  // Collapse/expand state for the three main sections.
-  // Set once on first data load; subsequent reloads preserve user's choice.
-  bool _hasInitializedSections = false;
   bool _weightExpanded = true;
   bool _treatmentsExpanded = true;
   bool _pillsExpanded = true;
 
+  static const _kWeightExpanded = 'health_section_weight';
+  static const _kTreatmentsExpanded = 'health_section_treatments';
+  static const _kPillsExpanded = 'health_section_pills';
+
   @override
   void initState() {
     super.initState();
+    _loadSectionStates();
     _initScreen();
+  }
+
+  Future<void> _loadSectionStates() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _weightExpanded = prefs.getBool(_kWeightExpanded) ?? true;
+      _treatmentsExpanded = prefs.getBool(_kTreatmentsExpanded) ?? true;
+      _pillsExpanded = prefs.getBool(_kPillsExpanded) ?? true;
+    });
+  }
+
+  Future<void> _saveSectionState(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
   }
 
   /// Called by [MainPage] via GlobalKey to reload data when the tab becomes active.
@@ -115,15 +132,6 @@ class HealthPageState extends State<HealthPage> {
       _foodStatus = foodStatus;
       _moodStatus = moodStatus;
       _dismissedBadgeIds = dismissed.toSet();
-      // Default collapse state: only on first load so user toggles persist.
-      if (!_hasInitializedSections) {
-        _weightExpanded = profile.weightHistory.entries.length >= 2;
-        _treatmentsExpanded = TreatmentKind.values.any(
-          (k) => profile.treatmentHistory.lastOfKind(k) != null,
-        );
-        _pillsExpanded = profile.pillReminders.any((r) => r.isActive);
-        _hasInitializedSections = true;
-      }
     });
   }
 
@@ -526,8 +534,10 @@ class HealthPageState extends State<HealthPage> {
             // ── Вес ──────────────────────────────────────────────────────────
             CollapsibleSection(
               expanded: _weightExpanded,
-              onToggle: () =>
-                  setState(() => _weightExpanded = !_weightExpanded),
+              onToggle: () {
+                setState(() => _weightExpanded = !_weightExpanded);
+                _saveSectionState(_kWeightExpanded, _weightExpanded);
+              },
               titleContent: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -622,8 +632,10 @@ class HealthPageState extends State<HealthPage> {
             // ── Прививки и обработки ──────────────────────────────────────────
             CollapsibleSection(
               expanded: _treatmentsExpanded,
-              onToggle: () =>
-                  setState(() => _treatmentsExpanded = !_treatmentsExpanded),
+              onToggle: () {
+                setState(() => _treatmentsExpanded = !_treatmentsExpanded);
+                _saveSectionState(_kTreatmentsExpanded, _treatmentsExpanded);
+              },
               titleContent: Text(
                 'Прививки и обработки',
                 style: Theme.of(context).textTheme.titleLarge,
@@ -729,8 +741,10 @@ class HealthPageState extends State<HealthPage> {
             // ── Препараты ─────────────────────────────────────────────────────
             CollapsibleSection(
               expanded: _pillsExpanded,
-              onToggle: () =>
-                  setState(() => _pillsExpanded = !_pillsExpanded),
+              onToggle: () {
+                setState(() => _pillsExpanded = !_pillsExpanded);
+                _saveSectionState(_kPillsExpanded, _pillsExpanded);
+              },
               titleContent: Text(
                 'Препараты',
                 style: Theme.of(context).textTheme.titleLarge,

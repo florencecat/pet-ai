@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:pet_satellite/models/species.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PetBreed {
   final String id;
@@ -75,6 +78,33 @@ class PetBreedService {
       default:
         return [];
     }
+  }
+
+  static const _customKey = 'custom_breeds_';
+
+  static Future<List<PetBreed>> loadCustomBreeds(String speciesId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('$_customKey$speciesId') ?? [];
+    return list
+        .map((s) => PetBreed.fromJson(jsonDecode(s) as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<PetBreed> saveCustomBreed(
+    String speciesId,
+    String name,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_customKey$speciesId';
+    final list = prefs.getStringList(key) ?? [];
+    final breed = PetBreed(
+      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      speciesId: speciesId,
+    );
+    list.add(jsonEncode(breed.toJson()));
+    await prefs.setStringList(key, list);
+    return breed;
   }
 
   static List<PetBreed> popularBreedsBySpecies(PetSpecies species) {

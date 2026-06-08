@@ -4,12 +4,16 @@ class DraggableBottomSheet extends StatefulWidget {
   final Map<String, String> allItems;
   final String hintText;
   final ScrollController? scrollController;
+  final Future<String?> Function()? onAddCustomItem;
+  final String addCustomItemLabel;
 
   const DraggableBottomSheet({
     super.key,
     required this.allItems,
     required this.hintText,
     this.scrollController,
+    this.onAddCustomItem,
+    this.addCustomItemLabel = 'Добавить свой вариант',
   });
 
   @override
@@ -23,18 +27,18 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _filtered = widget.allItems;
+    _filtered = Map.of(widget.allItems);
     _searchCtrl.addListener(_filter);
   }
 
   void _filter() {
     final query = _searchCtrl.text.toLowerCase();
     setState(() {
-      _filtered =
-          widget.allItems.entries.where(
-                (e) => e.value.toLowerCase().contains(query),
-              )
-              as Map<String, String>;
+      _filtered = Map.fromEntries(
+        widget.allItems.entries.where(
+          (e) => e.value.toLowerCase().contains(query),
+        ),
+      );
     });
   }
 
@@ -75,6 +79,28 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
               ),
             ),
           ),
+          if (widget.onAddCustomItem != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.add),
+                label: Text(widget.addCustomItemLabel),
+                onPressed: () async {
+                  final result = await widget.onAddCustomItem!();
+                  if (result != null && context.mounted) {
+                    Navigator.pop(context, result);
+                  }
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Expanded(
             child: _filtered.isEmpty

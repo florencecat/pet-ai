@@ -590,6 +590,8 @@ class PetService {
     final sanitizedId = petId.replaceAll(RegExp(r'[^\w]'), '_');
     final avatarPath = '${directory.path}/avatar_$sanitizedId.png';
     final avatarFile = await File(tempPath).copy(avatarPath);
+    // Evict stale cached decode so the next render picks up the new file.
+    PaintingBinding.instance.imageCache.evict(FileImage(avatarFile));
     return avatarFile.path;
   }
 
