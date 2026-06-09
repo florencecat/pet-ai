@@ -12,6 +12,7 @@ import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/models/event.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 class EventsPage extends StatefulWidget {
   final DateTime? initialDate;

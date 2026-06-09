@@ -9,6 +9,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:provider/provider.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 class WeightSheet extends StatefulWidget {
   final Pet profile;

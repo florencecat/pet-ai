@@ -8,6 +8,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dar
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:pet_satellite/models/pet_profile.dart';
 
 class NoteSheet extends StatefulWidget {
   final Pet profile;

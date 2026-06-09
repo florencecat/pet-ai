@@ -7,6 +7,7 @@ import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 enum EventSheetMode { view, create, edit }
 

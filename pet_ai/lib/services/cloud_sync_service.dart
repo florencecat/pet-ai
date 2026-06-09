@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
+import 'package:pet_satellite/services/api_service.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/meal.dart';
@@ -13,7 +14,7 @@ import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
-
+import 'package:pet_satellite/models/pet_profile.dart';
 // ─── Status ───────────────────────────────────────────────────────────────────
 
 enum SyncStatus { idle, syncing, success, error }
@@ -45,7 +46,7 @@ class CloudSyncService extends ChangeNotifier {
   final PocketBaseService _pbService;
 
   CloudSyncService({required PocketBaseService pbService})
-      : _pbService = pbService;
+    : _pbService = pbService;
 
   /// Convenience accessor — avoids passing the instance through the widget tree.
   static CloudSyncService get instance => GetIt.instance<CloudSyncService>();
@@ -94,27 +95,15 @@ class CloudSyncService extends ChangeNotifier {
   /// - Uses the record's `id` field as the PocketBase record ID so that
   ///   retries / duplicate pushes are safe (409 → silently ignored).
   /// - Updates [status] and [lastSync] reactively via [notifyListeners].
-  void pushAsync(
-    String collection,
-    Map<String, dynamic> record, {
-    String? petId,
-  }) {
+  void pushAsync(String collection, PbEntity entity, String petId) {
     if (!isAuthenticated) return;
-
-    final String? localId = record['id'] as String?;
-    final body = <String, dynamic>{
-      if (localId != null && localId.isNotEmpty) 'id': localId,
-      'user_id': userId ?? '',
-      if (petId != null && petId.isNotEmpty) 'pet_id': petId,
-      'data': jsonEncode(record),
-    };
 
     _inFlight++;
     _setStatus(SyncStatus.syncing);
 
     _pb
         .collection(collection)
-        .create(body: body)
+        .create(body: entity.toPocketBase(petId))
         .then((_) {
           _inFlight--;
           if (_inFlight == 0) {
@@ -168,31 +157,31 @@ class CloudSyncService extends ChangeNotifier {
       // Events
       final events = await EventService().loadEvents(petId);
       for (final e in events) {
-        await push('events', e.toPocketBase());
+        await push('events', e.toPocketBase(petId));
       }
       // Weights
       for (final e in profile.weightHistory.entries) {
-        await push('weights', e.toJson());
+        await push('weights', e.toPocketBase(petId));
       }
       // Moods
       for (final e in profile.moodHistory.entries) {
-        await push('moods', e.toJson());
+        await push('moods', e.toPocketBase(petId));
       }
       // Meals
       for (final e in profile.foodHistory.entries) {
-        await push('meals', e.toJson());
+        await push('meals', e.toPocketBase(petId));
       }
       // Notes
       for (final e in profile.noteHistory.entries) {
-        await push('notes', e.toJson());
+        await push('notes', e.toPocketBase(petId));
       }
       // Treatments
       for (final e in profile.treatmentHistory.entries) {
-        await push('treatments', e.toJson());
+        await push('treatments', e.toPocketBase(petId));
       }
       // Pills
       for (final r in profile.pillReminders) {
-        await push('pills', r.toJson());
+        await push('pills', r.toPocketBase(petId));
       }
 
       _lastSync = DateTime.now();
@@ -212,11 +201,9 @@ class CloudSyncService extends ChangeNotifier {
     final uid = userId ?? '';
     try {
       for (final c in _collections) {
-        final result = await _pb.collection(c).getList(
-          page: 1,
-          perPage: 1,
-          filter: 'user_id = "$uid"',
-        );
+        final result = await _pb
+            .collection(c)
+            .getList(page: 1, perPage: 1, filter: 'user_id = "$uid"');
         if (result.totalItems > 0) return true;
       }
       return false;
@@ -329,7 +316,7 @@ class CloudSyncService extends ChangeNotifier {
           // (local file doesn't exist on a new device).
           final pet = Pet.fromJson({
             ...d,
-            'profileImage': null,   // can't restore a local file path
+            'profileImage': null, // can't restore a local file path
             'weightHistory': [],
             'moodHistory': [],
             'noteHistory': [],
@@ -357,7 +344,6 @@ class CloudSyncService extends ChangeNotifier {
       for (final petId in restoredIds) {
         await pullAll(petId);
       }
-
     } catch (e) {
       _lastError = _friendlyError(e);
       _setStatus(SyncStatus.error);
@@ -386,11 +372,9 @@ class CloudSyncService extends ChangeNotifier {
     int page = 1;
     const perPage = 200;
     while (true) {
-      final result = await _pb.collection(collection).getList(
-        page: page,
-        perPage: perPage,
-        filter: 'user_id = "$uid"',
-      );
+      final result = await _pb
+          .collection(collection)
+          .getList(page: page, perPage: perPage, filter: 'user_id = "$uid"');
       for (final r in result.items) {
         try {
           final raw = r.data['data'];
@@ -408,33 +392,15 @@ class CloudSyncService extends ChangeNotifier {
 
   /// Delete all records in every collection that belong to [uid].
   Future<void> _deleteRemoteForUser(String uid) async {
-    for (final c in _collections) {
-      try {
-        while (true) {
-          String filter;
-          if (c == 'pets') {
-            filter = 'user = "$uid"';
-          } else if (c == 'events') {
-            filter = 'pets.user ?= "$uid"';
-          } else {
-            filter = 'pet.user = "$uid"';
-          }
-
-          final result = await _pb.collection(c).getList(
-            page: 1,
-            perPage: 200,
-            filter: filter,
-          );
-          if (result.items.isEmpty) break;
-          await Future.wait(
-            result.items.map((item) => _pb.collection(c).delete(item.id)),
-          );
-          if (result.items.length < 200) break;
-        }
-      } catch (_) {
-        // Ignore per-collection failures; continue with the rest.
-      }
-    }
+    final petCollection = GetIt.instance<ApiService>().petsRoute;
+    final result = await _pb
+        .collection(petCollection)
+        .getList(page: 1, perPage: 200, filter: 'user = "$uid"');
+    if (result.items.isEmpty) return;
+    await Future.wait(
+      result.items.map((item) => _pb.collection(petCollection).delete(item.id)),
+    );
+    if (result.items.length < 200) return;
   }
 
   static String _friendlyError(Object e) {

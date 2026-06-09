@@ -17,6 +17,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 import '../../services/pet_profile_service.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

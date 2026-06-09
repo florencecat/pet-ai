@@ -9,6 +9,7 @@ import 'package:pet_satellite/services/http_client.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 part 'ai_service.g.dart';
 
 @HiveType(typeId: 0)

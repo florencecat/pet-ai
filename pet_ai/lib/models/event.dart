@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/note.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }
@@ -134,7 +135,7 @@ class EventCategories {
   }
 }
 
-class Event {
+class Event implements PbEntity {
   final String id;
   String name;
   EventCategory category;
@@ -345,7 +346,8 @@ class Event {
     if (sourceId != null) 'sourceId': sourceId,
   };
 
-  Map<String, dynamic> toPocketBase() => {
+  @override
+  Map<String, dynamic> toPocketBase(String ownerId) => {
     'id': id,
     'name': name,
     'category': category.id,

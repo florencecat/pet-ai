@@ -9,6 +9,7 @@ import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 // ─── Sheet: добавление + история всех обработок ──────────────────────────────
 

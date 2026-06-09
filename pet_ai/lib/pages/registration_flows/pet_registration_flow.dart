@@ -14,6 +14,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 // ─── Species display list ─────────────────────────────────────────────────────
 
@@ -237,8 +238,8 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     // Push pet identity to cloud so it can be restored on a new device.
     CloudSyncService.instance.pushAsync(
       'pets',
-      profile.toIdentityJson(),
-      petId: profile.id,
+      profile,
+      profile.id,
     );
 
     if (mounted) Navigator.pushReplacementNamed(context, '/');

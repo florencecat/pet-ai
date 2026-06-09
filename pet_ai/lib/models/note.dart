@@ -124,11 +124,11 @@ class NoteEntry implements BaseEntry {
   };
 
   @override
-  Map<String, dynamic> toPocketBase(String petId) => {
-    'pet': petId,
+  Map<String, dynamic> toPocketBase(String ownerId) => {
+    'pet': ownerId,
     'date': date.toIso8601String(),
     'note': note,
-    if (symptomId != null) 'symptomId': symptomId,
+    if (symptomId != null) 'symptom': symptomId,
   };
 }
 

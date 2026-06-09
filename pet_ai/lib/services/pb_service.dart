@@ -1,6 +1,10 @@
 import 'package:pocketbase/pocketbase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+interface class PbEntity {
+  Map<String, dynamic> toPocketBase(String petId) => {};
+}
+
 class PocketBaseService {
   final String basePath;
   final Uri _baseUri;

@@ -11,6 +11,7 @@ import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../../services/appearance_controller.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 class MoodSheet extends StatefulWidget {
   final Pet profile;

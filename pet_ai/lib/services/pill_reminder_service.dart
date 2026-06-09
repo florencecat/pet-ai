@@ -46,7 +46,7 @@ class PillReminderService {
     await PetService().saveProfile(profile);
 
     // Fire-and-forget cloud push.
-    CloudSyncService.instance.pushAsync('pills', saved.toJson(), petId: petId);
+    CloudSyncService.instance.pushAsync('pills', saved, petId);
 
     return saved;
   }

@@ -23,6 +23,7 @@ import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/weight_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 class HealthPage extends StatefulWidget {
   const HealthPage({super.key});

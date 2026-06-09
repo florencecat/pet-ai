@@ -59,8 +59,8 @@ class TreatmentService {
     // Fire-and-forget cloud push.
     CloudSyncService.instance.pushAsync(
       'treatments',
-      entry.toJson(),
-      petId: petId,
+      entry,
+      petId,
     );
 
     return entry;

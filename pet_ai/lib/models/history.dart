@@ -1,10 +1,11 @@
+import 'package:pet_satellite/services/pb_service.dart';
+
 enum HistoryPeriod { day, month, halfYear, year, all }
 
-abstract class BaseEntry {
+abstract class BaseEntry implements PbEntity {
   DateTime get date;
 
   Map<String, dynamic> toJson();
-  Map<String, dynamic> toPocketBase(String petId);
 }
 
 class History<T extends BaseEntry> {

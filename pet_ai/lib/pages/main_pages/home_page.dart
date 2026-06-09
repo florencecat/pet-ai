@@ -22,6 +22,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/file_upload_sheet.dart';
 import 'package:provider/provider.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;

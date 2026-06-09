@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 
 enum PillFrequencyType {
   daily,
@@ -62,7 +63,7 @@ class PillSchedule {
 
 // ─── PillReminder ─────────────────────────────────────────────────────────────
 
-class PillReminder {
+class PillReminder implements PbEntity {
   final String id;
   final String name;
   final String dose;             // e.g., "1 таблетка", "5 мл"
@@ -265,5 +266,16 @@ class PillReminder {
     'takenDates': takenDates,
     'takenSchedules': takenSchedules,
     'eventId': eventId,
+  };
+
+  Map<String, dynamic> toPocketBase(String ownerId) => {
+    "id": id,
+    "name": name,
+    "pet": ownerId,
+    "dose": dose,
+    "frequency": frequencyType.name,
+    "weekdays": weekdays.map((w) => w.toString()).join(', '),
+    "start": startDate.toIso8601String(),
+    "end": endDate?.toIso8601String()
   };
 }

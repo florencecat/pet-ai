@@ -1,3 +1,4 @@
+import 'package:pet_satellite/models/pet_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';

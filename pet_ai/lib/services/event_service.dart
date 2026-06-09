@@ -16,8 +16,7 @@ class EventService {
   // ─── Внутренние ───────────────────────────────────────────────────────────
 
   Future<List<Event>> _loadAll() async {
-    final data =
-        await SharedPreferencesAsync().getStringList(_globalKey) ?? [];
+    final data = await SharedPreferencesAsync().getStringList(_globalKey) ?? [];
     return data.map((e) => Event.fromJson(jsonDecode(e))).toList();
   }
 
@@ -47,9 +46,7 @@ class EventService {
   }
 
   /// Возвращает события всех питомцев, сгруппированные по petId
-  Future<Map<String, List<Event>>> loadAllEvents(
-      List<String> petIds,
-      ) async {
+  Future<Map<String, List<Event>>> loadAllEvents(List<String> petIds) async {
     final all = await _loadAll();
     final result = <String, List<Event>>{};
     for (final id in petIds) {
@@ -75,11 +72,9 @@ class EventService {
     }
 
     // Fire-and-forget cloud push.
-    CloudSyncService.instance.pushAsync(
-      'events',
-      event.toJson(),
-      petId: event.petIds.isNotEmpty ? event.petIds.first : null,
-    );
+    if (event.petIds.isNotEmpty) {
+      CloudSyncService.instance.pushAsync('events', event, event.petIds.first);
+    }
   }
 
   Future<void> saveEvent(Event event) async {
@@ -100,8 +95,7 @@ class EventService {
   /// Если событие связано с препаратом ([EventSource.pill]), синхронизирует
   /// статус с [PillReminder.takenDates] — чтобы отметка в календаре
   /// отражалась и на странице Здоровья, и наоборот.
-  Future<void> toggleCompleted(
-      String petId, Event event, DateTime day) async {
+  Future<void> toggleCompleted(String petId, Event event, DateTime day) async {
     event.toggleCompletedOn(day);
     await saveEvent(event);
 
@@ -119,7 +113,10 @@ class EventService {
   /// Вызывается из [PillReminderService] при отметке препарата принятым,
   /// чтобы синхронизировать событие в календаре.
   Future<void> setCompletedOn(
-      String eventId, DateTime day, bool completed) async {
+    String eventId,
+    DateTime day,
+    bool completed,
+  ) async {
     final all = await _loadAll();
     final idx = all.indexWhere((e) => e.id == eventId);
     if (idx < 0) return;
@@ -205,15 +202,13 @@ class EventService {
 
   /// Ближайшие события питомца, начиная с [from] (по умолчанию — сейчас).
   Future<List<Event>> upcomingEvents(
-      String petId, {
-        DateTime? from,
-        int limit = 10,
-      }) async {
+    String petId, {
+    DateTime? from,
+    int limit = 10,
+  }) async {
     final now = from ?? DateTime.now();
     final events = await loadEvents(petId);
-    final sorted = events
-        .where((e) => e.dateTime.isAfter(now))
-        .toList()
+    final sorted = events.where((e) => e.dateTime.isAfter(now)).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return sorted.take(limit).toList();
   }
@@ -227,13 +222,11 @@ class EventService {
 
   /// События питомца по категории.
   Future<List<Event>> eventsByCategory(
-      String petId,
-      EventCategory category,
-      ) async {
+    String petId,
+    EventCategory category,
+  ) async {
     final events = await loadEvents(petId);
-    return events
-        .where((e) => e.category.id == category.id)
-        .toList()
+    return events.where((e) => e.category.id == category.id).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
   }
 

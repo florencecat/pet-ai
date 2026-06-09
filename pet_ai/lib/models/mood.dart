@@ -121,8 +121,8 @@ class MoodEntry implements BaseEntry {
   };
 
   @override
-  Map<String, dynamic> toPocketBase(String petId) => {
-    'pet': petId,
+  Map<String, dynamic> toPocketBase(String ownerId) => {
+    'pet': ownerId,
     "date": date.toIso8601String(),
     "mood": mood.name,
     "day_part": dayPart.name,
