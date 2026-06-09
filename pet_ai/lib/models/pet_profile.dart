@@ -12,6 +12,8 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 
 class Pet implements PbEntity {
+  static const codec = _PetCodec();
+
   final String id;
   String name;
   PetSpecies species;
@@ -223,4 +225,55 @@ class Pet implements PbEntity {
     'vet_clinic': vetClinic,
     'chip_number': chipNumber,
   };
+}
+
+class _PetCodec extends PbCodec<Pet> {
+  const _PetCodec();
+
+  @override
+  Pet fromPocketBase(Map<String, dynamic> data) {
+    final speciesId = data['species'] as String? ?? '';
+    final species = BuiltInSpecies.byId(speciesId) ?? BuiltInSpecies.other;
+
+    final breedId = data['breed'] as String? ?? '';
+    final breed = breedId.isNotEmpty
+        ? PetBreed(id: breedId, name: '', speciesId: species.id)
+        : PetBreed.empty();
+
+    final gender = data['gender'] != null
+        ? Gender.values.firstWhere(
+            (g) => g.name == data['gender'],
+            orElse: () => Gender.none,
+          )
+        : Gender.none;
+
+    final castratedDate = data['castration_date'] != null
+        ? DateTime.tryParse(data['castration_date'].toString())
+        : null;
+
+    return Pet.deserialize(
+      id: data['id'] as String,
+      name: data['name'] as String? ?? '',
+      species: species,
+      breed: breed,
+      birthDate: null, // не хранится в toPocketBase
+      gender: gender,
+      castrated: data['castrated'] as bool? ?? false,
+      castratedDate: castratedDate,
+      coat: data['coat'] as String? ?? '',
+      notes: data['notes'] as String? ?? '',
+      allergies: data['allergies'] as String? ?? '',
+      chronicConditions: data['chronic_conditions'] as String? ?? '',
+      vetClinic: data['vet_clinic'] as String? ?? '',
+      chipNumber: data['chip_number'] as String? ?? '',
+      profileImage: null,
+      weightHistory: WeightHistory.empty(),
+      moodHistory: MoodHistory.empty(),
+      noteHistory: NoteHistory.empty(),
+      treatmentHistory: TreatmentHistory.empty(),
+      foodHistory: MealHistory.empty(),
+      pillReminders: [],
+      palette: ThemeColors.defaultProfilePalette,
+    );
+  }
 }

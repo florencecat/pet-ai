@@ -136,6 +136,8 @@ class EventCategories {
 }
 
 class Event implements PbEntity {
+  static const codec = _EventCodec();
+
   final String id;
   String name;
   EventCategory category;
@@ -402,4 +404,33 @@ class Event implements PbEntity {
       sourceId: json['sourceId'] as String?,
     );
   }
+}
+
+class _EventCodec extends PbCodec<Event> {
+  const _EventCodec();
+
+  @override
+  Event fromPocketBase(Map<String, dynamic> data) => Event.deserialize(
+    id: data['id'] as String,
+    name: data['name'] as String,
+    category: EventCategories.byId(data['category'] as String),
+    dateTime: DateTime.parse(data['datetime'] as String),
+    starred: data['starred'] as bool? ?? false,
+    completedDates: const {},
+    petIds: (data['pets'] as List<dynamic>?)?.cast<String>() ?? [],
+    repeat: RepeatInterval.values.firstWhere(
+      (r) => r.name == (data['repeat_interval'] as String?),
+      orElse: () => RepeatInterval.none,
+    ),
+    customDays:
+        (data['repeat_days'] as List<dynamic>?)?.cast<int>() ?? const [],
+    remindBeforeMinutes:
+        (data['remind_before_minutes'] as num?)?.toInt() ?? 0,
+    notify: data['notify'] as bool? ?? true,
+    source: EventSource.values.firstWhere(
+      (s) => s.name == (data['source'] as String?),
+      orElse: () => EventSource.manual,
+    ),
+    sourceId: null,
+  );
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 
 enum MealTime { morning, afternoon, evening, night }
 
@@ -32,6 +33,8 @@ extension MealTimeX on MealTime {
 }
 
 class MealEntry implements BaseEntry {
+  static const codec = _MealEntryCodec();
+
   @override
   final DateTime date;
   final MealTime mealTime;
@@ -73,6 +76,21 @@ class MealEntry implements BaseEntry {
     'score': appetiteScore,
     'grams': grams,
   };
+}
+
+class _MealEntryCodec extends PbCodec<MealEntry> {
+  const _MealEntryCodec();
+
+  @override
+  MealEntry fromPocketBase(Map<String, dynamic> data) => MealEntry(
+    date: DateTime.parse(data['date'] as String),
+    mealTime: MealTime.values.firstWhere(
+      (e) => e.name == data['day_part'],
+      orElse: () => MealTime.morning,
+    ),
+    appetiteScore: (data['score'] as num).toInt(),
+    grams: (data['grams'] as num).toInt(),
+  );
 }
 
 class MealHistory extends History<MealEntry> {

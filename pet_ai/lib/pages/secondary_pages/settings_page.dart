@@ -110,6 +110,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     if (confirmed == true) {
       await UserService().delete();
+      GetIt.instance<PocketBaseService>().pb.authStore.clear();
       if (mounted) setState(() => _user = null);
     }
   }
@@ -166,7 +167,8 @@ class _SettingsPageState extends State<SettingsPage> {
     if (confirmed != true) return;
 
     try {
-      await _sync.pullAll(petId);
+      await _sync.pullAll();
+      await _loadAll();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Данные загружены с сервера')),
@@ -357,13 +359,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       await PetService().setActiveProfile(p.id);
                       await ac.reloadProfile();
                       if (context.mounted) {
-                        Navigator.push(
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const PetProfilePage(),
                           ),
                         );
                       }
+                      await _loadAll();
                     },
                   );
                 }),

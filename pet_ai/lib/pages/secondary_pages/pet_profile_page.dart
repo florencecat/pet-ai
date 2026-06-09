@@ -243,7 +243,14 @@ class _PetProfilePageState extends State<PetProfilePage> {
     );
     if (confirmed != true || !mounted) return;
     await PetService().deleteProfile(_profile!.id);
-    if (mounted) Navigator.of(context).pushReplacementNamed('/registration');
+    final hasProfiles = await PetService().hasProfiles();
+    if (mounted) {
+      if (hasProfiles) {
+        Navigator.of(context).pop();
+      } else {
+        Navigator.of(context).pushReplacementNamed('/registration');
+      }
+    }
   }
 
   // ── Formatting helpers ────────────────────────────────────────────────────

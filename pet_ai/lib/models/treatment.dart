@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 
 /// Тип медицинского мероприятия
 enum TreatmentKind {
@@ -78,6 +79,8 @@ extension TreatmentKindX on TreatmentKind {
 }
 
 class TreatmentEntry implements BaseEntry {
+  static const codec = _TreatmentEntryCodec();
+
   @override
   final DateTime date;
   final TreatmentKind kind;
@@ -140,6 +143,22 @@ class TreatmentEntry implements BaseEntry {
     'next': nextDate.toIso8601String(),
     'remind_before_days': remindBeforeDays,
   };
+}
+
+class _TreatmentEntryCodec extends PbCodec<TreatmentEntry> {
+  const _TreatmentEntryCodec();
+
+  @override
+  TreatmentEntry fromPocketBase(Map<String, dynamic> data) => TreatmentEntry(
+    date: DateTime.parse(data['date'] as String),
+    kind: TreatmentKind.values.firstWhere(
+      (k) => k.name == data['kind'],
+      orElse: () => TreatmentKind.vaccine,
+    ),
+    name: data['name'] as String? ?? '',
+    nextDate: DateTime.parse(data['next'] as String),
+    remindBeforeDays: (data['remind_before_days'] as num?)?.toInt() ?? 7,
+  );
 }
 
 class TreatmentHistory extends History<TreatmentEntry> {

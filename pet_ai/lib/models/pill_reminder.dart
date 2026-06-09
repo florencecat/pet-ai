@@ -64,6 +64,8 @@ class PillSchedule {
 // ─── PillReminder ─────────────────────────────────────────────────────────────
 
 class PillReminder implements PbEntity {
+  static const codec = _PillReminderCodec();
+
   final String id;
   final String name;
   final String dose;             // e.g., "1 таблетка", "5 мл"
@@ -268,6 +270,7 @@ class PillReminder implements PbEntity {
     'eventId': eventId,
   };
 
+  @override
   Map<String, dynamic> toPocketBase(String ownerId) => {
     "id": id,
     "name": name,
@@ -278,4 +281,38 @@ class PillReminder implements PbEntity {
     "start": startDate.toIso8601String(),
     "end": endDate?.toIso8601String()
   };
+}
+
+class _PillReminderCodec extends PbCodec<PillReminder> {
+  const _PillReminderCodec();
+
+  @override
+  PillReminder fromPocketBase(Map<String, dynamic> data) {
+    final weekdayStr = data['weekdays'] as String? ?? '';
+    final weekdays = weekdayStr.isEmpty
+        ? <int>[]
+        : weekdayStr
+            .split(',')
+            .map((s) => int.tryParse(s.trim()))
+            .whereType<int>()
+            .toList();
+
+    return PillReminder(
+      id: data['id'] as String,
+      name: data['name'] as String,
+      dose: data['dose'] as String? ?? '',
+      frequencyType: PillFrequencyType.values.firstWhere(
+        (f) => f.name == data['frequency'],
+        orElse: () => PillFrequencyType.daily,
+      ),
+      weekdays: weekdays,
+      // schedules не хранятся в PocketBase — восстанавливаем дефолтное
+      schedules: const [PillSchedule(hour: 9, minute: 0)],
+      startDate: DateTime.parse(data['start'] as String),
+      endDate: data['end'] != null
+          ? DateTime.tryParse(data['end'] as String)
+          : null,
+      takenDates: const [],
+    );
+  }
 }

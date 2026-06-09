@@ -52,22 +52,14 @@ class UserService {
 
   // ── Remote auth ───────────────────────────────────────────────────────────
 
-  /// Registers a new account and requests an OTP for email verification.
-  ///
-  /// On success, the returned [AuthResult.otpId] must be passed to
-  /// [verifyOTP] to complete registration.
-  Future<AuthResult> register({
-    required String name,
-    required String email,
-    required String password,
-    required String passwordConfirm,
-  }) =>
-      GetIt.instance<AuthService>().register(
-        name: name,
-        email: email,
-        password: password,
-        passwordConfirm: passwordConfirm,
-      );
+  /// Unified sign-in / sign-up: creates account if [email] is new,
+  /// then sends an OTP. [AuthResult.isNewUser] indicates a fresh account.
+  Future<AuthResult> requestAccess(String email) =>
+      GetIt.instance<AuthService>().requestAccess(email);
+
+  /// Updates the display name of the currently authenticated user in PocketBase.
+  Future<void> updateName(String name) =>
+      GetIt.instance<AuthService>().updateName(name);
 
   /// Verifies the OTP code. On success, [AuthService.pb].authStore is
   /// populated with the session token and user record.
@@ -80,17 +72,4 @@ class UserService {
   /// Requests a new OTP (resend).
   Future<AuthResult> resendOTP(String email) =>
       GetIt.instance<AuthService>().resendOTP(email);
-
-  /// Signs in with [email] and [password].
-  ///
-  /// On success, [AuthService.pb].authStore holds the session and user record.
-  Future<AuthResult> login({
-    required String email,
-    required String password,
-  }) =>
-      GetIt.instance<AuthService>().login(email: email, password: password);
-
-  /// Sends a password-reset link to [email].
-  Future<AuthResult> requestPasswordReset(String email) =>
-      GetIt.instance<AuthService>().requestPasswordReset(email);
 }

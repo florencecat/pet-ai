@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 
 /// Время суток для записи настроения / питания.
 enum DayPart { morning, afternoon, evening }
@@ -87,6 +88,8 @@ extension PetMoodX on PetMood {
 }
 
 class MoodEntry implements BaseEntry {
+  static const codec = _MoodEntryCodec();
+
   @override
   final DateTime date;
   final PetMood mood;
@@ -127,6 +130,28 @@ class MoodEntry implements BaseEntry {
     "mood": mood.name,
     "day_part": dayPart.name,
   };
+}
+
+class _MoodEntryCodec extends PbCodec<MoodEntry> {
+  const _MoodEntryCodec();
+
+  @override
+  MoodEntry fromPocketBase(Map<String, dynamic> data) {
+    final date = DateTime.parse(data['date'] as String);
+    return MoodEntry(
+      date: date,
+      mood: PetMood.values.firstWhere(
+        (e) => e.name == data['mood'],
+        orElse: () => PetMood.calm,
+      ),
+      dayPart: data['day_part'] != null
+          ? DayPart.values.firstWhere(
+              (e) => e.name == data['day_part'],
+              orElse: () => DayPartX.fromHour(date.hour),
+            )
+          : DayPartX.fromHour(date.hour),
+    );
+  }
 }
 
 class MoodHistory extends History<MoodEntry> {

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/pb_service.dart';
@@ -8,18 +10,22 @@ class AuthResult {
   final int code;
   final String? otpId;
   final String? errorMessage;
+  /// True when the account was just created (OTP request is part of registration).
+  final bool isNewUser;
 
   const AuthResult._({
     required this.success,
     required this.code,
     this.otpId,
     this.errorMessage,
+    this.isNewUser = false,
   });
 
-  factory AuthResult.ok({String? otpId}) => AuthResult._(
+  factory AuthResult.ok({String? otpId, bool isNewUser = false}) => AuthResult._(
         success: true,
         code: 200,
         otpId: otpId,
+        isNewUser: isNewUser,
       );
 
   factory AuthResult.fail(int code, {String? errorMessage}) => AuthResult._(
@@ -39,28 +45,30 @@ class AuthService {
   RecordModel? get userRecord => pbService.pb.authStore.record;
   String get token => pbService.pb.authStore.token;
 
-  Future<AuthResult> register({
-    required String name,
-    required String email,
-    required String password,
-    required String passwordConfirm,
-  }) async {
+  /// Unified entry point for both sign-in and sign-up.
+  ///
+  /// Attempts to create an account for [email]. If the email is already
+  /// registered (409), falls through silently. In both cases an OTP is sent
+  /// and [AuthResult.isNewUser] reflects whether the account was just created.
+  ///
+  /// Callers should ask for a display name only when [AuthResult.isNewUser]
+  /// is true — after [verifyOTP] succeeds, via [updateName].
+  Future<AuthResult> requestAccess(String email) async {
+    final generated = _generatePassword();
+    bool isNew = false;
     try {
       await pbService.pb.collection(_usersCollection).create(body: {
-        'name': name,
+        'name': '',
         'email': email,
-        'password': password,
-        'passwordConfirm': passwordConfirm,
+        'password': generated,
+        'passwordConfirm': generated,
       });
+      isNew = true;
     } on ClientException catch (e) {
       if (e.statusCode == 400) {
         final mapped = _mapCreateError(e);
-        if (mapped.code == 409) {
-          // Email already registered (likely from a previous attempt).
-          // Fall through to OTP so the user can still verify their email.
-        } else {
-          return mapped;
-        }
+        if (mapped.code != 409) return mapped; // real validation error
+        // 409 → already registered, isNew stays false
       } else {
         return _networkError(e.statusCode);
       }
@@ -68,11 +76,26 @@ class AuthService {
       return _offlineError();
     }
 
-    return _requestOTP(email);
+    final otp = await _requestOTP(email);
+    if (!otp.success) return otp;
+    return AuthResult.ok(otpId: otp.otpId, isNewUser: isNew);
   }
 
-  /// Verifies the [code] against the [otpId] returned by [register] or
-  /// [resendOTP].
+  /// Updates the display name of the currently authenticated user.
+  Future<void> updateName(String name) async {
+    final record = pbService.pb.authStore.record;
+    if (record == null) return;
+    try {
+      await pbService.pb
+          .collection(_usersCollection)
+          .update(record.id, body: {'name': name});
+    } catch (_) {
+      // Non-fatal — will sync on next open.
+    }
+  }
+
+  /// Verifies the [code] against the [otpId] returned by [register],
+  /// [loginWithOTP], or [resendOTP].
   ///
   /// On success, [pb].authStore is populated — the user is now authenticated.
   Future<AuthResult> verifyOTP({
@@ -99,67 +122,16 @@ class AuthService {
     }
   }
 
-  /// Requests a new OTP for [email] (e.g. when the user taps "Отправить снова").
+  /// Requests a new OTP for [email].
   Future<AuthResult> resendOTP(String email) => _requestOTP(email);
-
-  /// Signs in an existing user with [email] and [password].
-  ///
-  /// On success, [pb].authStore is populated — callers read the profile from
-  /// [pb].authStore.record.
-  ///
-  /// Security: the same generic message is returned whether the email does not
-  /// exist or the password is wrong, to prevent account enumeration.
-  Future<AuthResult> login({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      await pbService.pb
-          .collection(_usersCollection)
-          .authWithPassword(email, password);
-      return AuthResult.ok();
-    } on ClientException catch (e) {
-      if (e.statusCode == 400 || e.statusCode == 401) {
-        return AuthResult.fail(
-          e.statusCode,
-          errorMessage: 'Неверный адрес или пароль.',
-        );
-      }
-      return _networkError(e.statusCode);
-    } catch (_) {
-      return _offlineError();
-    }
-  }
-
-  /// Sends a password-reset link to [email].
-  ///
-  /// PocketBase always returns success even if the email is not registered, so
-  /// callers can safely show a "check your inbox" message without leaking
-  /// whether the address exists in the system.
-  Future<AuthResult> requestPasswordReset(String email) async {
-    try {
-      await pbService.pb
-          .collection(_usersCollection)
-          .requestPasswordReset(email);
-      return AuthResult.ok();
-    } on ClientException catch (e) {
-      if (e.statusCode == 429) {
-        return AuthResult.fail(
-          429,
-          errorMessage: 'Слишком много запросов — повторите позже',
-        );
-      }
-      return _networkError(e.statusCode);
-    } catch (_) {
-      return _offlineError();
-    }
-  }
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
   Future<AuthResult> _requestOTP(String email) async {
     try {
-      final res = await pbService.pb.collection(_usersCollection).requestOTP(email);
+      final res = await pbService.pb
+          .collection(_usersCollection)
+          .requestOTP(email);
       return AuthResult.ok(otpId: res.otpId);
     } on ClientException catch (e) {
       if (e.statusCode == 429) {
@@ -174,8 +146,15 @@ class AuthService {
     }
   }
 
-  /// Maps a 400 response from the create endpoint to a typed [AuthResult].
-  /// Does not expose raw field names or server error codes to callers.
+  /// Generates a random 24-char password used internally during account
+  /// creation. The user never sees it — authentication is always via OTP.
+  static String _generatePassword() {
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rng = Random.secure();
+    return List.generate(24, (_) => chars[rng.nextInt(chars.length)]).join();
+  }
+
   AuthResult _mapCreateError(ClientException e) {
     final data = e.response['data'] as Map<String, dynamic>? ?? {};
 
@@ -183,16 +162,12 @@ class AuthService {
       final code =
           (data['email'] as Map<String, dynamic>?)?['code'] as String? ?? '';
       if (code == 'validation_not_unique') {
-        return AuthResult.fail(409); // handled by caller: fall through to OTP
+        return AuthResult.fail(409);
       }
       return AuthResult.fail(
         400,
         errorMessage: 'Некорректный адрес эл. почты',
       );
-    }
-
-    if (data.containsKey('password') || data.containsKey('passwordConfirm')) {
-      return AuthResult.fail(400, errorMessage: 'Пароль не соответствует требованиям сервера');
     }
 
     return AuthResult.fail(400);

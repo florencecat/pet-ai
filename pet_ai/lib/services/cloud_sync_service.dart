@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/services/api_service.dart';
@@ -15,33 +13,9 @@ import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
-// ─── Status ───────────────────────────────────────────────────────────────────
 
 enum SyncStatus { idle, syncing, success, error }
 
-// ─── Service ──────────────────────────────────────────────────────────────────
-
-/// Singleton cloud-sync service.
-///
-/// Registration in GetIt (call once at app start):
-/// ```dart
-/// GetIt.instance.registerSingleton<CloudSyncService>(
-///   CloudSyncService(pbService: GetIt.instance<PocketBaseService>()),
-/// );
-/// ```
-///
-/// Quick access from anywhere:
-/// ```dart
-/// CloudSyncService.instance.pushAsync('weights', entry.toJson(), petId: id);
-/// ```
-///
-/// PocketBase schema required for every collection:
-///   - `user_id`  (text, indexed)
-///   - `pet_id`   (text, indexed)
-///   - `data`     (json / text) — full serialised model
-///
-/// The local model ID is submitted as the PocketBase record ID to make
-/// pushes naturally idempotent (duplicate create → 400, silently ignored).
 class CloudSyncService extends ChangeNotifier {
   final PocketBaseService _pbService;
 
@@ -50,17 +24,6 @@ class CloudSyncService extends ChangeNotifier {
 
   /// Convenience accessor — avoids passing the instance through the widget tree.
   static CloudSyncService get instance => GetIt.instance<CloudSyncService>();
-
-  static const _collections = [
-    'pets',
-    'events',
-    'weights',
-    'moods',
-    'meals',
-    'notes',
-    'treatments',
-    'pills',
-  ];
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -200,13 +163,10 @@ class CloudSyncService extends ChangeNotifier {
     if (!isAuthenticated) return false;
     final uid = userId ?? '';
     try {
-      for (final c in _collections) {
-        final result = await _pb
-            .collection(c)
-            .getList(page: 1, perPage: 1, filter: 'user_id = "$uid"');
-        if (result.totalItems > 0) return true;
-      }
-      return false;
+      final result = await _pb
+          .collection('pets')
+          .getList(page: 1, perPage: 1, filter: 'user = "$uid"');
+      return result.totalItems > 0;
     } catch (_) {
       return false;
     }
@@ -214,61 +174,79 @@ class CloudSyncService extends ChangeNotifier {
 
   // ── Full pull ─────────────────────────────────────────────────────────────
 
+  Future<List<String>> fetchAllPets() async {
+    final pets = await _pb
+        .collection(GetIt.instance<ApiService>().petsRoute)
+        .getList(fields: 'id');
+    return pets.items.map((item) => item.data['id'] as String).toList();
+  }
+
+  Future<void> pullAll() async {
+    final petIds = await fetchAllPets();
+    if (petIds.isEmpty) {
+      final pets = await PetService().loadAllProfiles();
+      petIds.addAll(pets.map((p) => p.id));
+    }
+    for (final petId in petIds) {
+      await pullAllByPetId(petId);
+    }
+  }
+
   /// Download all remote data for the current user and **overwrite** the local
   /// data of [petId]. **Local data is replaced without recovery.**
-  Future<void> pullAll(String petId) async {
+  Future<void> pullAllByPetId(String petId) async {
     if (!isAuthenticated) return;
     _setStatus(SyncStatus.syncing);
 
     try {
-      final uid = userId!;
-      final profile = await PetService().loadProfile(petId);
-      if (profile == null) throw Exception('Профиль с id=$petId не найден');
+      Pet? profile = await PetService().loadProfile(petId);
+      if (profile == null) {
+        profile = await _fetchAs('pets', 'id = "$petId"', Pet.codec);
+        if (profile == null) {
+          _setStatus(SyncStatus.error);
+          return;
+        }
+        PetService().saveProfile(profile);
+      }
 
-      // ── Weights ──────────────────────────────────────────────────────────
-      final weightData = await _fetchAll('weights', uid);
+      final petFilter = 'pet = "$petId"';
+
       profile.weightHistory = WeightHistory(
-        entries: weightData.map(WeightEntry.fromJson).toList(),
+        entries: await _fetchAllAs('weights', petFilter, WeightEntry.codec),
       );
-
-      // ── Moods ─────────────────────────────────────────────────────────────
-      final moodData = await _fetchAll('moods', uid);
       profile.moodHistory = MoodHistory(
-        entries: moodData.map(MoodEntry.fromJson).toList(),
+        entries: await _fetchAllAs('moods', petFilter, MoodEntry.codec),
       );
-
-      // ── Meals ─────────────────────────────────────────────────────────────
-      final mealData = await _fetchAll('meals', uid);
       profile.foodHistory = MealHistory(
-        entries: mealData.map(MealEntry.fromJson).toList(),
+        entries: await _fetchAllAs('meals', petFilter, MealEntry.codec),
       );
-
-      // ── Notes ─────────────────────────────────────────────────────────────
-      final noteData = await _fetchAll('notes', uid);
       profile.noteHistory = NoteHistory(
-        entries: noteData.map(NoteEntry.fromJson).toList(),
+        entries: await _fetchAllAs('notes', petFilter, NoteEntry.codec),
       );
-
-      // ── Treatments ────────────────────────────────────────────────────────
-      final treatmentData = await _fetchAll('treatments', uid);
       profile.treatmentHistory = TreatmentHistory(
-        entries: treatmentData.map(TreatmentEntry.fromJson).toList(),
+        entries: await _fetchAllAs(
+          'treatments',
+          petFilter,
+          TreatmentEntry.codec,
+        ),
       );
-
-      // ── Pills ─────────────────────────────────────────────────────────────
-      final pillData = await _fetchAll('pills', uid);
-      profile.pillReminders = pillData.map(PillReminder.fromJson).toList();
+      profile.pillReminders = await _fetchAllAs(
+        'pills',
+        petFilter,
+        PillReminder.codec,
+      );
 
       await PetService().saveProfile(profile);
 
       // ── Events ────────────────────────────────────────────────────────────
-      // Use EventService's public API: clear existing, then create each.
-      final eventData = await _fetchAll('events', uid);
+      final events = await _fetchAllAs(
+        'events',
+        'pets ~ "$petId"',
+        Event.codec,
+      );
       await EventService().clearEvents(petId);
-      for (final d in eventData) {
+      for (final event in events) {
         try {
-          final event = Event.fromJson(d);
-          // Ensure the pet is associated even if the record came from elsewhere.
           if (!event.petIds.contains(petId)) event.petIds.add(petId);
           await EventService().createEvent(event);
         } catch (_) {}
@@ -276,6 +254,7 @@ class CloudSyncService extends ChangeNotifier {
 
       _lastSync = DateTime.now();
       _setStatus(SyncStatus.success);
+
     } catch (e) {
       _lastError = _friendlyError(e);
       _setStatus(SyncStatus.error);
@@ -288,7 +267,7 @@ class CloudSyncService extends ChangeNotifier {
   /// Полное восстановление на новом устройстве:
   /// 1. Получает все профили питомцев из коллекции `pets`.
   /// 2. Создаёт их локально (только если не существуют).
-  /// 3. Для каждого питомца вызывает [pullAll] чтобы восстановить историю.
+  /// 3. Для каждого питомца вызывает [pullAllByPetId] чтобы восстановить историю.
   ///
   /// Вызывается из онбординга создания питомца после успешной авторизации.
   /// Если питомцы восстановлены — активный профиль выставляется первому.
@@ -300,8 +279,8 @@ class CloudSyncService extends ChangeNotifier {
       final uid = userId!;
 
       // ── 1. Восстанавливаем профили питомцев ──────────────────────────────
-      final petData = await _fetchAll('pets', uid);
-      if (petData.isEmpty) {
+      final pets = await _fetchAllAs('pets', 'user = "$uid"', Pet.codec);
+      if (pets.isEmpty) {
         _setStatus(SyncStatus.idle);
         return;
       }
@@ -310,21 +289,8 @@ class CloudSyncService extends ChangeNotifier {
       final existingIds = existing.map((p) => p.id).toSet();
       final restoredIds = <String>[];
 
-      for (final d in petData) {
+      for (final pet in pets) {
         try {
-          // fromJson reconstructs the full model; profileImage path is ignored
-          // (local file doesn't exist on a new device).
-          final pet = Pet.fromJson({
-            ...d,
-            'profileImage': null, // can't restore a local file path
-            'weightHistory': [],
-            'moodHistory': [],
-            'noteHistory': [],
-            'treatmentHistory': [],
-            'foodHistory': [],
-            'pillReminders': [],
-          });
-
           if (!existingIds.contains(pet.id)) {
             await PetService().saveProfile(pet);
           }
@@ -337,12 +303,11 @@ class CloudSyncService extends ChangeNotifier {
         return;
       }
 
-      // Set the first restored pet as active.
       await PetService().setActiveProfile(restoredIds.first);
 
       // ── 2. Восстанавливаем историю для каждого питомца ───────────────────
       for (final petId in restoredIds) {
-        await pullAll(petId);
+        await pullAllByPetId(petId);
       }
     } catch (e) {
       _lastError = _friendlyError(e);
@@ -362,26 +327,39 @@ class CloudSyncService extends ChangeNotifier {
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
-  /// Fetch all records for [uid] from [collection], returning the decoded
-  /// `data` JSON payload of each record (the original serialised model).
-  Future<List<Map<String, dynamic>>> _fetchAll(
+  /// Fetch all records matching [filter] from [collection] and deserialize
+  /// each one via [codec].
+  Future<T?> _fetchAs<T extends PbEntity>(
     String collection,
-    String uid,
+    String filter,
+    PbCodec<T> codec,
   ) async {
-    final items = <Map<String, dynamic>>[];
+    int page = 1;
+    const perPage = 200;
+    final result = await _pb
+        .collection(collection)
+        .getList(page: page, perPage: perPage, filter: filter);
+    if (result.totalItems == 0) {
+      return null;
+    }
+    return codec.fromPocketBase(result.items.first.data);
+  }
+
+  Future<List<T>> _fetchAllAs<T extends PbEntity>(
+    String collection,
+    String filter,
+    PbCodec<T> codec,
+  ) async {
+    final items = <T>[];
     int page = 1;
     const perPage = 200;
     while (true) {
       final result = await _pb
           .collection(collection)
-          .getList(page: page, perPage: perPage, filter: 'user_id = "$uid"');
+          .getList(page: page, perPage: perPage, filter: filter);
       for (final r in result.items) {
         try {
-          final raw = r.data['data'];
-          final Map<String, dynamic> decoded = raw is String
-              ? jsonDecode(raw) as Map<String, dynamic>
-              : (raw as Map<String, dynamic>);
-          items.add(decoded);
+          items.add(codec.fromPocketBase(r.data));
         } catch (_) {}
       }
       if (result.items.length < perPage) break;

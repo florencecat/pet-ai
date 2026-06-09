@@ -185,6 +185,7 @@ class HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (_) => const SettingsPage()),
     );
+    await _initScreen();
   }
 
   void _showProfileSwitcher(BuildContext context) async {

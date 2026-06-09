@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 
@@ -96,6 +97,8 @@ class SymptomTags {
 // ─── Модель записи ────────────────────────────────────────────────────────────
 
 class NoteEntry implements BaseEntry {
+  static const codec = _NoteEntryCodec();
+
   @override
   final DateTime date;
   final String note;
@@ -130,6 +133,17 @@ class NoteEntry implements BaseEntry {
     'note': note,
     if (symptomId != null) 'symptom': symptomId,
   };
+}
+
+class _NoteEntryCodec extends PbCodec<NoteEntry> {
+  const _NoteEntryCodec();
+
+  @override
+  NoteEntry fromPocketBase(Map<String, dynamic> data) => NoteEntry(
+    date: DateTime.parse(data['date'] as String),
+    note: data['note'] as String,
+    symptomId: data['symptom'] as String?,
+  );
 }
 
 class NoteHistory extends History<NoteEntry> {

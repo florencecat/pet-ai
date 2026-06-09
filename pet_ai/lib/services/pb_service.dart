@@ -1,8 +1,14 @@
 import 'package:pocketbase/pocketbase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-interface class PbEntity {
-  Map<String, dynamic> toPocketBase(String petId) => {};
+abstract interface class PbEntity {
+  Map<String, dynamic> toPocketBase(String petId);
+}
+
+abstract class PbCodec<T extends PbEntity> {
+  const PbCodec();
+
+  T fromPocketBase(Map<String, dynamic> data);
 }
 
 class PocketBaseService {

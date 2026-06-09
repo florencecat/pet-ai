@@ -1,6 +1,9 @@
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 
 class WeightEntry implements BaseEntry {
+  static const codec = _WeightEntryCodec();
+
   @override
   final DateTime date;
   final double weight;
@@ -25,6 +28,16 @@ class WeightEntry implements BaseEntry {
     'date': date.toIso8601String(),
     'weight': weight,
   };
+}
+
+class _WeightEntryCodec extends PbCodec<WeightEntry> {
+  const _WeightEntryCodec();
+
+  @override
+  WeightEntry fromPocketBase(Map<String, dynamic> data) => WeightEntry(
+    date: DateTime.parse(data['date'] as String),
+    weight: (data['weight'] as num).toDouble(),
+  );
 }
 
 class WeightHistory extends History<WeightEntry> {

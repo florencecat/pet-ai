@@ -25,43 +25,43 @@ class DocumentCategory {
 
 class DocumentCategories {
   static const vaccination = DocumentCategory(
-    id: 'vaccination',
+    id: 'ycd1tnentnsk2vf',
     name: 'Вакцинация',
     icon: Icons.vaccines,
     colorValue: 0xFFD32F2F,
   );
   static const health = DocumentCategory(
-    id: 'health',
+    id: 'svvpm38x40po00h',
     name: 'Справка о здоровье',
     icon: Icons.medical_information,
     colorValue: 0xFF1E88E5,
   );
   static const insurance = DocumentCategory(
-    id: 'insurance',
+    id: 'wv9vybdjyj299p8',
     name: 'Страховка',
     icon: Icons.security,
     colorValue: 0xFF43A047,
   );
   static const pedigree = DocumentCategory(
-    id: 'pedigree',
+    id: '82b5ofl8jl7tkry',
     name: 'Родословная',
     icon: Icons.account_tree,
     colorValue: 0xFF7B1FA2,
   );
   static const passport = DocumentCategory(
-    id: 'passport',
+    id: 'zakg1iffmcmq3an',
     name: 'Паспорт питомца',
     icon: Icons.book,
     colorValue: 0xFFFF9800,
   );
   static const analysis = DocumentCategory(
-    id: 'analysis',
+    id: '5qdmgkc14nq2rld',
     name: 'Анализы',
     icon: Icons.science,
     colorValue: 0xFF00897B,
   );
   static const other = DocumentCategory(
-    id: 'other',
+    id: 'txmzwgjrgec38ru',
     name: 'Другое',
     icon: Icons.folder,
     colorValue: 0xFF607D8B,
