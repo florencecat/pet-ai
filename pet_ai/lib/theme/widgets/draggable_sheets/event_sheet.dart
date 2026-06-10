@@ -262,8 +262,7 @@ class _EventSheetState extends State<EventSheet> {
   Widget build(BuildContext context) {
     // For pill/treatment events opened in view mode, disable editing
     // (those records are managed via the Health page).
-    final isLinkedEvent = widget.event?.source == EventSource.pill ||
-        widget.event?.source == EventSource.treatment;
+    final editable = widget.event == null || widget.event!.manual;
 
     return DraggableSheet(
       centerTitle: true,
@@ -272,7 +271,7 @@ class _EventSheetState extends State<EventSheet> {
       initialSize: _mode.isView ? 0.65 : 0.85,
       minSize: 0.4,
       maxSize: 0.95,
-      actions: _buildActions(isLinkedEvent),
+      actions: _buildActions(editable),
       body: Form(
         key: _formKey,
         child: Column(
@@ -287,9 +286,9 @@ class _EventSheetState extends State<EventSheet> {
     );
   }
 
-  List<Widget> _buildActions(bool isLinkedEvent) {
+  List<Widget> _buildActions(bool editable) {
     if (EventSheetModeX(_mode).isView) {
-      if (isLinkedEvent) {
+      if (!editable) {
         // Linked events can only be deleted; editing must go through Health page
         return [
           IconButton(
