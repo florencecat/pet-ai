@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/secondary_pages/appearance_page.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
-import 'package:pet_satellite/pages/registration_flows/user_profile_page.dart';
+import 'package:pet_satellite/pages/secondary_pages/user_profile_page.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';

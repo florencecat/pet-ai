@@ -440,14 +440,14 @@ class HomePageState extends State<HomePage> {
                                           border: Border.all(
                                             color: context
                                                 .watch<AppearanceController>()
-                                                .primaryColor,
+                                                .petColor,
                                             width: 2.5,
                                           ),
                                           boxShadow: [
                                             BoxShadow(
                                               color: context
                                                   .watch<AppearanceController>()
-                                                  .primaryColor
+                                                  .petColor
                                                   .withAlpha(80),
                                               blurRadius: 10,
                                               spreadRadius: 1,
@@ -481,7 +481,7 @@ class HomePageState extends State<HomePage> {
                                           decoration: BoxDecoration(
                                             color: context
                                                 .watch<AppearanceController>()
-                                                .primaryColor,
+                                                .petColor,
                                             shape: BoxShape.circle,
                                             border: Border.all(
                                               color: Colors.white,
@@ -1126,7 +1126,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: GlassPlate(
                 color: isActive
-                    ? context.watch<AppearanceController>().primaryColor
+                    ? profile.palette.mainColor
                     : Colors.white,
                 child: ListTile(
                   leading: CircleAvatar(

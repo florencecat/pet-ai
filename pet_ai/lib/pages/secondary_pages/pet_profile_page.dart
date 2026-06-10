@@ -584,6 +584,8 @@ class _AvatarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final actualColor = profile.palette.mainColor != primaryColor ? profile.palette.mainColor : primaryColor;
+
     return Center(
       child: GestureDetector(
         onTap: onTap,
@@ -595,13 +597,13 @@ class _AvatarSection extends StatelessWidget {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: primaryColor, width: 3),
-                color: primaryColor.withAlpha(30),
+                border: Border.all(color: actualColor, width: 3),
+                color: actualColor.withAlpha(30),
               ),
               child: ClipOval(
                 child: profile.profileImage != null
                     ? Image.file(profile.profileImage!, fit: BoxFit.cover)
-                    : Icon(Icons.pets, size: 42, color: primaryColor),
+                    : Icon(Icons.pets, size: 42, color: actualColor),
               ),
             ),
             Positioned(
@@ -611,7 +613,7 @@ class _AvatarSection extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: primaryColor,
+                  color: actualColor,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                 ),
