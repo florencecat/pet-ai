@@ -321,15 +321,11 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
   }
 }
 
-// ─── Body for simple text sheets (no Provider subscription) ──────────────────
-// Receives [accent] as a value — safe to use inside DraggableScrollableSheet.
-
 class _TextSheetBody extends StatelessWidget {
   final TextEditingController ctrl;
   final String hint;
   final Color accent;
   final TextCapitalization capitalize;
-  final TextInputType keyboardType;
   final ValueChanged<String> onSave;
 
   const _TextSheetBody({
@@ -338,7 +334,6 @@ class _TextSheetBody extends StatelessWidget {
     required this.accent,
     required this.onSave,
     this.capitalize = TextCapitalization.sentences,
-    this.keyboardType = TextInputType.text,
   });
 
   @override
@@ -350,7 +345,6 @@ class _TextSheetBody extends StatelessWidget {
           controller: ctrl,
           autofocus: true,
           textCapitalization: capitalize,
-          keyboardType: keyboardType,
           decoration: baseInputDecoration(hint),
         ),
         const SizedBox(height: 16),

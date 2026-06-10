@@ -688,7 +688,7 @@ class CollapsibleSection extends StatelessWidget {
 
 class SettingsCard extends StatelessWidget {
   final List<Widget> children;
-  const SettingsCard({required this.children});
+  const SettingsCard({super.key, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -709,7 +709,7 @@ class SettingsRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool last;
 
-  const SettingsRow({
+  const SettingsRow({super.key,
     required this.icon,
     required this.label,
     this.subtitle,
