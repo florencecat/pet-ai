@@ -1,13 +1,13 @@
-import 'package:pet_satellite/models/pill_reminder.dart';
+import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/models/event.dart';
 
 class PillReminderService {
-  Future<PillReminder> add({
+  Future<Pill> add({
     required String petId,
-    required PillReminder reminder,
+    required Pill reminder,
   }) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return reminder;
@@ -56,7 +56,7 @@ class PillReminderService {
   /// local to the profile; a full sync can be added later).
   Future<void> update({
     required String petId,
-    required PillReminder updated,
+    required Pill updated,
   }) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
@@ -68,7 +68,7 @@ class PillReminderService {
 
   Future<void> delete({
     required String petId,
-    required PillReminder reminder,
+    required Pill reminder,
   }) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
@@ -148,7 +148,7 @@ class PillReminderService {
     if (idx < 0) return;
 
     final old = profile.pillReminders[idx];
-    final key = PillReminder.dateKey(date);
+    final key = Pill.dateKey(date);
 
     // Update takenSchedules: add all indices, or remove the whole day entry.
     final newTakenSchedules = Map<String, List<int>>.from(
@@ -195,7 +195,7 @@ class PillReminderService {
     if (idx < 0) return;
 
     final old = profile.pillReminders[idx];
-    final key = PillReminder.dateKey(date);
+    final key = Pill.dateKey(date);
 
     final newTakenSchedules = Map<String, List<int>>.from(
       old.takenSchedules.map((k, v) => MapEntry(k, List<int>.from(v))),

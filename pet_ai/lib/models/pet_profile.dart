@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/note.dart';
-import 'package:pet_satellite/models/pill_reminder.dart';
+import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/weight.dart';
@@ -34,7 +34,7 @@ class Pet implements PbEntity {
   NoteHistory noteHistory;
   TreatmentHistory treatmentHistory;
   MealHistory foodHistory;
-  List<PillReminder> pillReminders;
+  List<Pill> pillReminders;
   ColorPalette palette;
 
   Pet({
@@ -199,7 +199,7 @@ class Pet implements PbEntity {
           : MealHistory.empty(),
       pillReminders:
       (json['pillReminders'] as List<dynamic>?)
-          ?.map((e) => PillReminder.fromJson(e as Map<String, dynamic>))
+          ?.map((e) => Pill.fromJson(e as Map<String, dynamic>))
           .toList() ??
           [],
       palette: json['palette'] != null

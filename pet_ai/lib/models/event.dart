@@ -264,6 +264,11 @@ class Event implements PbEntity {
     }
   }
 
+  bool get fromNote => source == EventSource.note;
+  bool get fromTreatment => source == EventSource.treatment;
+  bool get fromPill => source == EventSource.pill;
+  bool get manual => source == EventSource.manual;
+
   /// Форматирует дату как ключ "yyyy-MM-dd"
   static String dateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

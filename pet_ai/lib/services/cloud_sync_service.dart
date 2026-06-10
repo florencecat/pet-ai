@@ -6,7 +6,7 @@ import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/note.dart';
-import 'package:pet_satellite/models/pill_reminder.dart';
+import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -233,7 +233,7 @@ class CloudSyncService extends ChangeNotifier {
       profile.pillReminders = await _fetchAllAs(
         'pills',
         petFilter,
-        PillReminder.codec,
+        Pill.codec,
       );
 
       await PetService().saveProfile(profile);

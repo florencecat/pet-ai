@@ -1,10 +1,93 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 
-enum PillFrequencyType {
-  daily,
-  weekdays,
+class PillKind {
+  final String id;
+  final String name;
+
+  const PillKind.empty() : id = '', name = '';
+  const PillKind({required this.id, required this.name});
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+  factory PillKind.fromJson(Map<String, dynamic> json) =>
+      PillKind(id: json['id'], name: json['name']);
+
+  static const capsule = PillKind(id: 'qyamefo3gztqwg1', name: 'Капсула');
+  static const pill = PillKind(id: 'c1855lfnv3bni66', name: 'Таблетка');
+  static const fluid = PillKind(id: 'rm4pf2ni3l99r4b', name: 'Жидкость');
+  static const localAction = PillKind(
+    id: 'lv3or9euunqavjq',
+    name: 'Препарат местного действия',
+  );
+  static const gel = PillKind(id: 'o21zqz6cfs3dcs4', name: 'Гель');
+  static const inhalation = PillKind(id: '2k0u98csxnvsh8o', name: 'Ингалятор');
+  static const injection = PillKind(id: 'unku1v40f48p4l4', name: 'Инъекция');
+  static const drops = PillKind(id: 'kepj0nk6qnccw77', name: 'Капли');
+  static const creme = PillKind(id: 'ie1sziw80vagg4q', name: 'Крем');
+  static const lotion = PillKind(id: '34lz4yydq52c0n0', name: 'Лосьон');
+  static const ointment = PillKind(id: '3nyf1vbu009dn6x', name: 'Мазь');
+  static const foam = PillKind(id: 'bf1o8009eycnzfr', name: 'Пенка');
+  static const plaster = PillKind(id: 'htv28sijgs6dagw', name: 'Пластырь');
+  static const powder = PillKind(id: 's2akauj574a7mrx', name: 'Порошок');
+  static const spray = PillKind(id: 'mon5i8j2s9xoho7', name: 'Спрей');
+
+  static List<PillKind> get all => [
+    capsule,
+    pill,
+    fluid,
+    localAction,
+    gel,
+    inhalation,
+    injection,
+    drops,
+    creme,
+    lotion,
+    ointment,
+    foam,
+    plaster,
+    powder,
+    spray,
+  ];
+
+  static PillKind byId(String id) {
+    switch (id) {
+      case 'qyamefo3gztqwg1':
+        return capsule;
+      case 'c1855lfnv3bni66':
+        return pill;
+      case 'rm4pf2ni3l99r4b':
+        return fluid;
+      case 'lv3or9euunqavjq':
+        return localAction;
+      case 'o21zqz6cfs3dcs4':
+        return gel;
+      case '2k0u98csxnvsh8o':
+        return inhalation;
+      case 'unku1v40f48p4l4':
+        return injection;
+      case 'kepj0nk6qnccw77':
+        return drops;
+      case 'ie1sziw80vagg4q':
+        return creme;
+      case '34lz4yydq52c0n0':
+        return lotion;
+      case '3nyf1vbu009dn6x':
+        return ointment;
+      case 'bf1o8009eycnzfr':
+        return foam;
+      case 'htv28sijgs6dagw':
+        return plaster;
+      case 's2akauj574a7mrx':
+        return powder;
+      case 'mon5i8j2s9xoho7':
+        return spray;
+      default:
+        return PillKind.empty();
+    }
+  }
 }
+
+enum PillFrequencyType { daily, weekdays }
 
 extension PillFrequencyTypeX on PillFrequencyType {
   String get label {
@@ -27,10 +110,14 @@ extension PillFrequencyTypeX on PillFrequencyType {
 }
 
 const _weekdayShort = {
-  1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс',
+  1: 'Пн',
+  2: 'Вт',
+  3: 'Ср',
+  4: 'Чт',
+  5: 'Пт',
+  6: 'Сб',
+  7: 'Вс',
 };
-
-// ─── Single intake time ───────────────────────────────────────────────────────
 
 class PillSchedule {
   final int hour;
@@ -48,10 +135,8 @@ class PillSchedule {
 
   Map<String, dynamic> toJson() => {'hour': hour, 'minute': minute};
 
-  factory PillSchedule.fromJson(Map<String, dynamic> json) => PillSchedule(
-    hour: json['hour'] as int,
-    minute: json['minute'] as int,
-  );
+  factory PillSchedule.fromJson(Map<String, dynamic> json) =>
+      PillSchedule(hour: json['hour'] as int, minute: json['minute'] as int);
 
   @override
   bool operator ==(Object other) =>
@@ -61,29 +146,31 @@ class PillSchedule {
   int get hashCode => Object.hash(hour, minute);
 }
 
-// ─── PillReminder ─────────────────────────────────────────────────────────────
-
-class PillReminder implements PbEntity {
+class Pill implements PbEntity {
   static const codec = _PillReminderCodec();
 
   final String id;
   final String name;
-  final String dose;             // e.g., "1 таблетка", "5 мл"
+  final PillKind? kind;
+  final String dose; // e.g., "1 таблетка", "5 мл"
   final PillFrequencyType frequencyType;
-  final List<int> weekdays;      // 1=Пн..7=Вс; only for frequencyType.weekdays
+  final List<int> weekdays; // 1=Пн..7=Вс; only for frequencyType.weekdays
   /// Ordered list of daily intake times. At least one entry is always present.
   final List<PillSchedule> schedules;
   final DateTime startDate;
   final DateTime? endDate;
+
   /// Legacy per-day taken flag (kept for backward compat reading old saves).
   final List<String> takenDates;
+
   /// Per-schedule taken state: dateKey → list of schedule indices that were taken.
   final Map<String, List<int>> takenSchedules;
-  final String? eventId;        // linked PetEvent for notifications
+  final String? eventId; // linked PetEvent for notifications
 
-  const PillReminder({
+  const Pill({
     required this.id,
     required this.name,
+    required this.kind,
     required this.dose,
     required this.frequencyType,
     required this.weekdays,
@@ -178,8 +265,9 @@ class PillReminder implements PbEntity {
 
   // ── copyWith ──────────────────────────────────────────────────────────────
 
-  PillReminder copyWith({
+  Pill copyWith({
     String? name,
+    PillKind? kind,
     String? dose,
     PillFrequencyType? frequencyType,
     List<int>? weekdays,
@@ -190,9 +278,10 @@ class PillReminder implements PbEntity {
     List<String>? takenDates,
     Map<String, List<int>>? takenSchedules,
     String? eventId,
-  }) => PillReminder(
+  }) => Pill(
     id: id,
     name: name ?? this.name,
+    kind: kind ?? this.kind,
     dose: dose ?? this.dose,
     frequencyType: frequencyType ?? this.frequencyType,
     weekdays: weekdays ?? this.weekdays,
@@ -211,7 +300,7 @@ class PillReminder implements PbEntity {
       '${day.month.toString().padLeft(2, '0')}-'
       '${day.day.toString().padLeft(2, '0')}';
 
-  factory PillReminder.fromJson(Map<String, dynamic> json) {
+  factory Pill.fromJson(Map<String, dynamic> json) {
     // Backward compat: if new 'schedules' key is absent, read old hour/minute
     final List<PillSchedule> schedules;
     if (json['schedules'] != null) {
@@ -227,9 +316,10 @@ class PillReminder implements PbEntity {
       ];
     }
 
-    return PillReminder(
+    return Pill(
       id: json['id'] as String,
       name: json['name'] as String,
+      kind: json['kind'] != null ? PillKind.byId(json['kind'] as String) : null,
       dose: json['dose'] as String? ?? '',
       frequencyType: PillFrequencyType.values.firstWhere(
         (f) => f.name == json['frequencyType'],
@@ -256,6 +346,7 @@ class PillReminder implements PbEntity {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'kind': kind?.id,
     'dose': dose,
     'frequencyType': frequencyType.name,
     'weekdays': weekdays,
@@ -274,32 +365,34 @@ class PillReminder implements PbEntity {
   Map<String, dynamic> toPocketBase(String ownerId) => {
     "id": id,
     "name": name,
+    'kind': kind?.id,
     "pet": ownerId,
     "dose": dose,
     "frequency": frequencyType.name,
     "weekdays": weekdays.map((w) => w.toString()).join(', '),
     "start": startDate.toIso8601String(),
-    "end": endDate?.toIso8601String()
+    "end": endDate?.toIso8601String(),
   };
 }
 
-class _PillReminderCodec extends PbCodec<PillReminder> {
+class _PillReminderCodec extends PbCodec<Pill> {
   const _PillReminderCodec();
 
   @override
-  PillReminder fromPocketBase(Map<String, dynamic> data) {
+  Pill fromPocketBase(Map<String, dynamic> data) {
     final weekdayStr = data['weekdays'] as String? ?? '';
     final weekdays = weekdayStr.isEmpty
         ? <int>[]
         : weekdayStr
-            .split(',')
-            .map((s) => int.tryParse(s.trim()))
-            .whereType<int>()
-            .toList();
+              .split(',')
+              .map((s) => int.tryParse(s.trim()))
+              .whereType<int>()
+              .toList();
 
-    return PillReminder(
+    return Pill(
       id: data['id'] as String,
       name: data['name'] as String,
+      kind: data['kind'] != null ? PillKind.byId(data['kind'] as String) : null,
       dose: data['dose'] as String? ?? '',
       frequencyType: PillFrequencyType.values.firstWhere(
         (f) => f.name == data['frequency'],

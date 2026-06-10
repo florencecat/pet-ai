@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/history.dart';
-import 'package:pet_satellite/models/pill_reminder.dart';
+import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/models/event.dart';
@@ -16,7 +16,7 @@ import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/mood_sheet.dart';
-import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_reminder_sheet.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
@@ -245,7 +245,7 @@ class HealthPageState extends State<HealthPage> {
     if (mounted) await _initScreen();
   }
 
-  void _openPillReminder(BuildContext context, PillReminder reminder) async {
+  void _openPillReminder(BuildContext context, Pill reminder) async {
     if (_profile == null) return;
     await showModalBottomSheet<bool>(
       context: context,
@@ -1268,7 +1268,7 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
 // ─── Тайл таблетки ───────────────────────────────────────────────────────────
 
 class _PillReminderTile extends StatefulWidget {
-  final PillReminder reminder;
+  final Pill reminder;
   final String petId;
   final VoidCallback onReload;
   final VoidCallback onTap;
@@ -1441,7 +1441,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
 }
 
 class _NextScheduledBadge extends StatelessWidget {
-  final PillReminder reminder;
+  final Pill reminder;
 
   const _NextScheduledBadge({required this.reminder});
 

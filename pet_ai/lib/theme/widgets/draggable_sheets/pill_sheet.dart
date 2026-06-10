@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_satellite/models/pill_reminder.dart';
+import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
@@ -17,6 +18,7 @@ import 'package:pet_satellite/models/pet_profile.dart';
 class _PillFormState {
   final TextEditingController nameCtrl;
   final TextEditingController doseCtrl;
+  PillKind? kind;
   PillFrequencyType frequency;
   Set<int> weekdays;
   List<TimeOfDay> schedules;
@@ -26,6 +28,7 @@ class _PillFormState {
 
   _PillFormState({
     String name = '',
+    this.kind,
     String dose = '',
     this.frequency = PillFrequencyType.daily,
     Set<int>? weekdays,
@@ -40,8 +43,9 @@ class _PillFormState {
        startDate = startDate ?? DateTime.now(),
        endDate = endDate ?? DateTime.now().add(const Duration(days: 30));
 
-  factory _PillFormState.fromReminder(PillReminder r) => _PillFormState(
+  factory _PillFormState.fromReminder(Pill r) => _PillFormState(
     name: r.name,
+    kind: r.kind,
     dose: r.dose,
     frequency: r.frequencyType,
     weekdays: Set.of(r.weekdays),
@@ -156,9 +160,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
             : a.minute.compareTo(b.minute),
       );
 
-    final reminder = PillReminder(
+    final reminder = Pill(
       id: generateId(),
       name: name,
+      kind: _form.kind,
       dose: _form.doseCtrl.text.trim(),
       frequencyType: _form.frequency,
       weekdays: _form.frequency == PillFrequencyType.weekdays
@@ -194,7 +199,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     }
   }
 
-  void _openDetail(PillReminder reminder) async {
+  void _openDetail(Pill reminder) async {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -396,9 +401,33 @@ class _PillForm extends StatelessWidget {
           textCapitalization: TextCapitalization.sentences,
         ),
         const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          dropdownColor: Colors.white,
+          initialValue: form.kind?.id,
+          style: Theme.of(context).textTheme.bodyMedium,
+          decoration: baseInputDecoration('Вид препарата'),
+          items: PillKind.all
+              .map(
+                (c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Text(
+                    c.name,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (id) {
+            if (id != null) {
+              form.kind = PillKind.byId(id);
+              onChanged();
+            }
+          },
+        ),
+        const SizedBox(height: 10),
         TextField(
           controller: form.doseCtrl,
-          decoration: baseInputDecoration('Доза (необязательно)'),
+          decoration: baseInputDecoration('Доза'),
           textCapitalization: TextCapitalization.sentences,
         ),
 
@@ -604,7 +633,7 @@ class _PillForm extends StatelessWidget {
 // ─── Compact list tile for reminder in create sheet ───────────────────────────
 
 class _ReminderListTile extends StatelessWidget {
-  final PillReminder reminder;
+  final Pill reminder;
   final Color accent;
   final VoidCallback onTap;
 
@@ -673,7 +702,7 @@ class _ReminderListTile extends StatelessWidget {
 
 class PillDetailSheet extends StatefulWidget {
   final Pet profile;
-  final PillReminder reminder;
+  final Pill reminder;
 
   const PillDetailSheet({
     super.key,
@@ -686,7 +715,7 @@ class PillDetailSheet extends StatefulWidget {
 }
 
 class _PillDetailSheetState extends State<PillDetailSheet> {
-  late PillReminder _reminder;
+  late Pill _reminder;
   bool _editing = false;
   bool _saving = false;
 
@@ -828,6 +857,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
 
     final updated = _reminder.copyWith(
       name: name,
+      kind: form.kind,
       dose: form.doseCtrl.text.trim(),
       frequencyType: form.frequency,
       weekdays: form.frequency == PillFrequencyType.weekdays
@@ -1010,6 +1040,18 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
           padding: 0,
           child: Column(
             children: [
+              if (_reminder.kind != null) ...[
+                _DetailRow(
+                  icon: FontAwesome.pills,
+                  iconColor: accent,
+                  label: _reminder.kind!.name,
+                ),
+                Divider(
+                  height: 1,
+                  indent: 46,
+                  color: ThemeColors.border.withAlpha(60),
+                ),
+              ],
               _DetailRow(
                 icon: Icons.repeat,
                 iconColor: accent,

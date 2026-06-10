@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'cloud_sync_service.dart';
 import 'notification_service.dart';
 import 'pet_profile_service.dart';
-import 'package:pet_satellite/models/pill_reminder.dart';
+import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/event.dart';
 
 class EventService {
@@ -93,7 +93,7 @@ class EventService {
 
   /// Переключает выполнение события для конкретного дня.
   /// Если событие связано с препаратом ([EventSource.pill]), синхронизирует
-  /// статус с [PillReminder.takenDates] — чтобы отметка в календаре
+  /// статус с [Pill.takenDates] — чтобы отметка в календаре
   /// отражалась и на странице Здоровья, и наоборот.
   Future<void> toggleCompleted(String petId, Event event, DateTime day) async {
     event.toggleCompletedOn(day);
@@ -129,7 +129,7 @@ class EventService {
     await _persistAll(all);
   }
 
-  /// Синхронизирует статус выполнения в [PillReminder.takenDates]
+  /// Синхронизирует статус выполнения в [Pill.takenDates]
   /// при переключении события из календаря / листа событий.
   Future<void> _syncToPillReminder({
     required String petId,
@@ -142,7 +142,7 @@ class EventService {
     final idx = profile.pillReminders.indexWhere((r) => r.id == reminderId);
     if (idx < 0) return;
     final old = profile.pillReminders[idx];
-    final key = PillReminder.dateKey(day);
+    final key = Pill.dateKey(day);
     final dates = List<String>.from(old.takenDates);
     if (completed && !dates.contains(key)) {
       dates.add(key);

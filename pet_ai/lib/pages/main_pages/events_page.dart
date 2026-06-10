@@ -78,7 +78,7 @@ class EventsPageState extends State<EventsPage> {
     Pet? activeProfile;
 
     for (final p in allProfiles) {
-      petColors[p.id] = p.palette.mainColor;
+      petColors[p.id] = p.palette.darkShade;
       petNames[p.id] = p.name.isEmpty ? 'Питомец' : p.name;
       if (p.id == activeId) activeProfile = p;
     }
@@ -134,6 +134,9 @@ class EventsPageState extends State<EventsPage> {
   Color _markerColor(Event event) {
     if (_showAllPets && event.petIds.isNotEmpty) {
       return _petColors[event.petIds.first] ?? event.category.color;
+    }
+    if (!event.manual) {
+      return context.watch<AppearanceController>().secondaryColor;
     }
     return event.category.color;
   }
