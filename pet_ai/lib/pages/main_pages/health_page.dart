@@ -1378,8 +1378,8 @@ class _PillReminderTileState extends State<_PillReminderTile> {
           child: Row(
             children: [
               SoftRoundedIcon(
-                icon: Icons.medication_outlined,
-                color: accent,
+                icon: widget.reminder.kind?.icon ?? Icons.medication_outlined,
+                color: widget.reminder.color != null ? Color(widget.reminder.color!) : accent,
                 size: 22,
               ),
               const SizedBox(width: 12),

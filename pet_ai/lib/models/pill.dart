@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/theme/font_awesome_icons.dart';
 
 class PillKind {
   final String id;
@@ -11,6 +12,44 @@ class PillKind {
   Map<String, dynamic> toJson() => {'id': id, 'name': name};
   factory PillKind.fromJson(Map<String, dynamic> json) =>
       PillKind(id: json['id'], name: json['name']);
+
+  /// Иконка-форма препарата (в стиле iOS: тип лекарства = форма иконки).
+  IconData get icon {
+    switch (id) {
+      case 'qyamefo3gztqwg1': // Капсула
+        return FontAwesome.capsules;
+      case 'c1855lfnv3bni66': // Таблетка
+        return FontAwesome.tablets;
+      case 'rm4pf2ni3l99r4b': // Жидкость
+        return FontAwesome.prescription_bottle;
+      case 'lv3or9euunqavjq': // Препарат местного действия
+        return FontAwesome.hand_holding_medical;
+      case 'o21zqz6cfs3dcs4': // Гель
+        return FontAwesome.pump_medical;
+      case '2k0u98csxnvsh8o': // Ингалятор
+        return FontAwesome.lungs;
+      case 'unku1v40f48p4l4': // Инъекция
+        return FontAwesome.syringe;
+      case 'kepj0nk6qnccw77': // Капли
+        return FontAwesome.tint;
+      case 'ie1sziw80vagg4q': // Крем
+        return FontAwesome.pump_soap;
+      case '34lz4yydq52c0n0': // Лосьон
+        return FontAwesome.hand_holding_water;
+      case '3nyf1vbu009dn6x': // Мазь
+        return FontAwesome.prescription_bottle_alt;
+      case 'bf1o8009eycnzfr': // Пенка
+        return FontAwesome.soap;
+      case 'htv28sijgs6dagw': // Пластырь
+        return FontAwesome.band_aid;
+      case 's2akauj574a7mrx': // Порошок
+        return FontAwesome.mortar_pestle;
+      case 'mon5i8j2s9xoho7': // Спрей
+        return FontAwesome.spray_can;
+      default:
+        return FontAwesome.pills;
+    }
+  }
 
   static const capsule = PillKind(id: 'qyamefo3gztqwg1', name: 'Капсула');
   static const pill = PillKind(id: 'c1855lfnv3bni66', name: 'Таблетка');
@@ -152,6 +191,9 @@ class Pill implements PbEntity {
   final String id;
   final String name;
   final PillKind? kind;
+
+  /// Цвет иконки (ARGB int). null → используется акцентный цвет приложения.
+  final int? color;
   final String dose; // e.g., "1 таблетка", "5 мл"
   final PillFrequencyType frequencyType;
   final List<int> weekdays; // 1=Пн..7=Вс; only for frequencyType.weekdays
@@ -171,6 +213,7 @@ class Pill implements PbEntity {
     required this.id,
     required this.name,
     required this.kind,
+    this.color,
     required this.dose,
     required this.frequencyType,
     required this.weekdays,
@@ -268,6 +311,8 @@ class Pill implements PbEntity {
   Pill copyWith({
     String? name,
     PillKind? kind,
+    int? color,
+    bool clearColor = false,
     String? dose,
     PillFrequencyType? frequencyType,
     List<int>? weekdays,
@@ -282,6 +327,7 @@ class Pill implements PbEntity {
     id: id,
     name: name ?? this.name,
     kind: kind ?? this.kind,
+    color: clearColor ? null : (color ?? this.color),
     dose: dose ?? this.dose,
     frequencyType: frequencyType ?? this.frequencyType,
     weekdays: weekdays ?? this.weekdays,
@@ -320,6 +366,7 @@ class Pill implements PbEntity {
       id: json['id'] as String,
       name: json['name'] as String,
       kind: json['kind'] != null ? PillKind.byId(json['kind'] as String) : null,
+      color: _parseColor(json['color']),
       dose: json['dose'] as String? ?? '',
       frequencyType: PillFrequencyType.values.firstWhere(
         (f) => f.name == json['frequencyType'],
@@ -343,10 +390,25 @@ class Pill implements PbEntity {
     return map.map((k, v) => MapEntry(k, (v as List<dynamic>).cast<int>()));
   }
 
+  /// Tolerant parse of a stored colour: accepts int, num, or hex/decimal string.
+  static int? _parseColor(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    if (raw is String) {
+      final s = raw.trim();
+      if (s.isEmpty) return null;
+      final hex = s.startsWith('#') ? s.substring(1) : s;
+      return int.tryParse(hex, radix: 16) ?? int.tryParse(s);
+    }
+    return null;
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
     'kind': kind?.id,
+    'color': color,
     'dose': dose,
     'frequencyType': frequencyType.name,
     'weekdays': weekdays,
@@ -366,6 +428,7 @@ class Pill implements PbEntity {
     "id": id,
     "name": name,
     'kind': kind?.id,
+    'color': color,
     "pet": ownerId,
     "dose": dose,
     "frequency": frequencyType.name,
@@ -392,7 +455,10 @@ class _PillReminderCodec extends PbCodec<Pill> {
     return Pill(
       id: data['id'] as String,
       name: data['name'] as String,
-      kind: data['kind'] != null ? PillKind.byId(data['kind'] as String) : null,
+      kind: data['kind'] != null && (data['kind'] as String).isNotEmpty
+          ? PillKind.byId(data['kind'] as String)
+          : null,
+      color: Pill._parseColor(data['color']),
       dose: data['dose'] as String? ?? '',
       frequencyType: PillFrequencyType.values.firstWhere(
         (f) => f.name == data['frequency'],

@@ -5,10 +5,10 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
-import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pill_icon.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -19,6 +19,7 @@ class _PillFormState {
   final TextEditingController nameCtrl;
   final TextEditingController doseCtrl;
   PillKind? kind;
+  int? color;
   PillFrequencyType frequency;
   Set<int> weekdays;
   List<TimeOfDay> schedules;
@@ -29,6 +30,7 @@ class _PillFormState {
   _PillFormState({
     String name = '',
     this.kind,
+    this.color,
     String dose = '',
     this.frequency = PillFrequencyType.daily,
     Set<int>? weekdays,
@@ -46,6 +48,7 @@ class _PillFormState {
   factory _PillFormState.fromReminder(Pill r) => _PillFormState(
     name: r.name,
     kind: r.kind,
+    color: r.color,
     dose: r.dose,
     frequency: r.frequencyType,
     weekdays: Set.of(r.weekdays),
@@ -164,6 +167,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       id: generateId(),
       name: name,
       kind: _form.kind,
+      color: _form.color,
       dose: _form.doseCtrl.text.trim(),
       frequencyType: _form.frequency,
       weekdays: _form.frequency == PillFrequencyType.weekdays
@@ -395,34 +399,29 @@ class _PillForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _IconPickerTile(
+          kind: form.kind,
+          color: form.color,
+          accent: accent,
+          onTap: () async {
+            final result = await showPillIconPicker(
+              context,
+              initialKind: form.kind,
+              initialColor: form.color,
+              accent: accent,
+            );
+            if (result != null) {
+              form.kind = result.kind;
+              form.color = result.color;
+              onChanged();
+            }
+          },
+        ),
+        const SizedBox(height: 10),
         TextField(
           controller: form.nameCtrl,
           decoration: baseInputDecoration('Название препарата'),
           textCapitalization: TextCapitalization.sentences,
-        ),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(
-          dropdownColor: Colors.white,
-          initialValue: form.kind?.id,
-          style: Theme.of(context).textTheme.bodyMedium,
-          decoration: baseInputDecoration('Вид препарата'),
-          items: PillKind.all
-              .map(
-                (c) => DropdownMenuItem(
-                  value: c.id,
-                  child: Text(
-                    c.name,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (id) {
-            if (id != null) {
-              form.kind = PillKind.byId(id);
-              onChanged();
-            }
-          },
         ),
         const SizedBox(height: 10),
         TextField(
@@ -630,6 +629,68 @@ class _PillForm extends StatelessWidget {
   }
 }
 
+// ─── Icon picker tile (opens iOS-style shape + colour picker) ─────────────────
+
+class _IconPickerTile extends StatelessWidget {
+  final PillKind? kind;
+  final int? color;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _IconPickerTile({
+    required this.kind,
+    required this.color,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasKind = kind != null && kind!.id.isNotEmpty;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: ThemeColors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            PillIcon(
+              kind: kind,
+              colorValue: color,
+              fallback: accent,
+              size: 44,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Иконка и вид',
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: ThemeColors.textPrimary.withAlpha(128),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasKind ? kind!.name : 'Выберите форму и цвет',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: ThemeColors.border, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Compact list tile for reminder in create sheet ───────────────────────────
 
 class _ReminderListTile extends StatelessWidget {
@@ -654,14 +715,11 @@ class _ReminderListTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: accent.withAlpha(20),
-                ),
-                child: Icon(Icons.medication_outlined, color: accent, size: 20),
+              PillIcon(
+                kind: reminder.kind,
+                colorValue: reminder.color,
+                fallback: accent,
+                size: 40,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -858,6 +916,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     final updated = _reminder.copyWith(
       name: name,
       kind: form.kind,
+      color: form.color,
       dose: form.doseCtrl.text.trim(),
       frequencyType: form.frequency,
       weekdays: form.frequency == PillFrequencyType.weekdays
@@ -1002,15 +1061,11 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
         Center(
           child: Column(
             children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: accent.withAlpha(20),
-                  border: Border.all(color: accent.withAlpha(60), width: 1.5),
-                ),
-                child: Icon(Icons.medication_outlined, color: accent, size: 34),
+              PillIcon(
+                kind: _reminder.kind,
+                colorValue: _reminder.color,
+                fallback: accent,
+                size: 72,
               ),
               const SizedBox(height: 12),
               Text(
@@ -1042,8 +1097,10 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
             children: [
               if (_reminder.kind != null) ...[
                 _DetailRow(
-                  icon: FontAwesome.pills,
-                  iconColor: accent,
+                  icon: _reminder.kind!.icon,
+                  iconColor: _reminder.color != null
+                      ? Color(_reminder.color!)
+                      : accent,
                   label: _reminder.kind!.name,
                 ),
                 Divider(

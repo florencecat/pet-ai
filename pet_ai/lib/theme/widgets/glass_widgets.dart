@@ -539,13 +539,15 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (widget.icon != null)
+              if (widget.icon != null) ...[
                 Icon(
                   widget.icon,
                   size: 14,
                   color: selected ? Colors.white : color,
                 ),
-              const SizedBox(width: 5),
+                const SizedBox(width: 5),
+              ],
+
               Text(
                 widget.label,
                 style:
