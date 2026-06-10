@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Микрофон используется для голосового ввода заметок о питомце.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Распознавание речи преобразует ваш голос в текст заметок.</string>
 </dict>
 </plist>

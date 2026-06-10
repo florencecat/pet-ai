@@ -40,16 +40,19 @@ class _NoteSheetState extends State<NoteSheet> {
   Future<void> _initSpeech() async {
     try {
       final available = await _speech.initialize(
-        onError: (_) => setState(() => _isListening = false),
+        onError: (_) {
+          if (mounted) setState(() => _isListening = false);
+        },
         onStatus: (status) {
-          if (status == 'done' || status == 'notListening') {
+          if (mounted && (status == 'done' || status == 'notListening')) {
             setState(() => _isListening = false);
           }
         },
       );
       if (mounted) setState(() => _speechAvailable = available);
     } catch (_) {
-      // speech_to_text may not be available on all devices
+      // Распознавание речи может быть недоступно — тихо отключаем кнопку.
+      if (mounted) setState(() => _speechAvailable = false);
     }
   }
 

@@ -61,6 +61,7 @@ class _AIChatPageState extends State<AIChatPage> {
           child: Builder(
             builder: (context) {
               return Scaffold(
+                resizeToAvoidBottomInset: false,
                 body: Container(
                   padding: EdgeInsets.fromLTRB(0, topPadding + 16, 0, 0),
                   decoration: context
@@ -197,48 +198,54 @@ class _ChatViewState extends State<_ChatView> {
     // healthCheck(); all live state is read from the watched instance here.
     final controller = context.watch<AIChatController>();
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
 
     final isEmpty = controller.messages.isEmpty;
 
     return Stack(
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: isEmpty
-                  ? Column(
-                      children: [
-                        const Spacer(),
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 4,
-                            right: 4,
-                            bottom: 185,
+        // Тап по области сообщений скрывает клавиатуру.
+        GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: isEmpty
+                    ? Column(
+                        children: [
+                          const Spacer(),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 4,
+                              right: 4,
+                              bottom: 185,
+                            ),
+                            child: _WelcomeState(petName: controller.petName),
                           ),
-                          child: _WelcomeState(petName: controller.petName),
+                        ],
+                      )
+                    : ListView.builder(
+                        reverse: true,
+                        clipBehavior: Clip.none,
+                        padding: const EdgeInsets.only(
+                          left: 4,
+                          right: 4,
+                          bottom: 185,
+                          top: 108,
                         ),
-                      ],
-                    )
-                  : ListView.builder(
-                      reverse: true,
-                      clipBehavior: Clip.none,
-                      padding: const EdgeInsets.only(
-                        left: 4,
-                        right: 4,
-                        bottom: 185,
-                        top: 108,
+                        itemCount: controller.messages.length,
+                        physics: const BouncingScrollPhysics(),
+                        itemBuilder: (context, index) {
+                          final msg = controller
+                              .messages[controller.messages.length - 1 - index];
+                          return _MessageBubble(msg: msg);
+                        },
                       ),
-                      itemCount: controller.messages.length,
-                      physics: const BouncingScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        final msg = controller
-                            .messages[controller.messages.length - 1 - index];
-                        return _MessageBubble(msg: msg);
-                      },
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
 
         const _GlobalEdgeBlur(),
@@ -303,11 +310,12 @@ class _ChatViewState extends State<_ChatView> {
           ),
         ),
 
-        // Input bar
         Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
-            padding: EdgeInsets.only(bottom: bottomPadding),
+            padding: EdgeInsets.only(
+              bottom: keyboardInset > 0 ? keyboardInset : bottomPadding,
+            ),
             child: _InputBar(),
           ),
         ),
@@ -531,7 +539,7 @@ class _InputBarState extends State<_InputBar> {
     final canSend = controller.text.isNotEmpty && !chat.isLoading;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
           Expanded(
@@ -540,6 +548,7 @@ class _InputBarState extends State<_InputBar> {
                 controller: controller,
                 maxLines: 3,
                 minLines: 1,
+                textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   hintText: 'Спросите о питомце...',
                   border: OutlineInputBorder(
