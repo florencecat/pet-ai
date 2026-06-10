@@ -50,6 +50,7 @@ class _PillStepperState extends State<PillStepper> {
   }
 
   void onTextChanged(String value) {
+    value = value.replaceAll(',', '.');
     final parsed = double.tryParse(value);
 
     if (parsed != null) {
@@ -87,7 +88,7 @@ class _PillStepperState extends State<PillStepper> {
                     decimal: true,
                   ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d?')),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+[.,]?\d?')),
                   ],
                   onChanged: onTextChanged,
                   style: Theme.of(
