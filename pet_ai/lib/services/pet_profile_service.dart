@@ -393,18 +393,22 @@ class PetService {
 
     if (pickedFile == null) return null;
 
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: pickedFile.path,
-      compressQuality: 90,
-      compressFormat: ImageCompressFormat.jpg,
-      maxWidth: 256,
-      maxHeight: 256,
-      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-    );
+    if (!Platform.isWindows) {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        compressQuality: 90,
+        compressFormat: ImageCompressFormat.jpg,
+        maxWidth: 256,
+        maxHeight: 256,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      );
 
-    if (cropped == null) return null;
+      if (cropped == null) return null;
 
-    return await _saveAvatarToAppDir(petId, cropped.path);
+      return await _saveAvatarToAppDir(petId, cropped.path);
+    } else {
+      return await _saveAvatarToAppDir(petId, pickedFile.path);
+    }
   }
 
   Future<String> lastMoodString() async {

@@ -13,6 +13,7 @@ import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
+import 'package:http/http.dart' as http;
 
 enum SyncStatus { idle, syncing, success, error }
 
@@ -114,7 +115,11 @@ class CloudSyncService extends ChangeNotifier {
 
       final pets = await PetService().loadAllProfiles();
       for (final p in pets) {
-        await push('pets', p.toPocketBase(uid));
+        List<http.MultipartFile> files = [];
+        if (p.profileImage != null) {
+          files.add(await http.MultipartFile.fromPath('profile_image', p.profileImage!.path));
+        }
+        _pb.collection('pets').create(body: p.toPocketBase(uid), files: files);
       }
 
       // Events
