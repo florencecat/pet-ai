@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/file_storage_service.dart';
@@ -142,10 +141,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
-        _dateController.text = DateFormat(
-          'd MMMM yyyy',
-          'ru_RU',
-        ).format(picked);
+        _dateController.text = formatSmartDate(picked, pattern: 'd MMMM yyyy', locale: 'ru_RU');
       });
     }
   }
