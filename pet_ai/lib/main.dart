@@ -158,7 +158,7 @@ class _MainPageState extends State<MainPage> {
     final profile = await PetService().loadActiveProfile();
     if (profile == null) return;
     final events = await EventService().loadEvents(profile.id);
-    final badges = HealthAnalyzer.analyze(profile, events);
+    final badges = await HealthAnalyzer.analyze(profile, events);
     final score = HealthAnalyzer.score(badges);
     if (mounted) setState(() => _healthScoreColor = score.palette.mainColor);
   }

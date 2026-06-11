@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/weight.dart';
@@ -46,6 +47,8 @@ class HealthPageState extends State<HealthPage> {
   /// Ids of health badges the user has dismissed.
   Set<String> _dismissedBadgeIds = {};
 
+  List<HealthBadge> _healthBadges = [];
+
   // Period for the inline weight chart
   HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
 
@@ -82,20 +85,10 @@ class HealthPageState extends State<HealthPage> {
   /// Called by [MainPage] via GlobalKey to reload data when the tab becomes active.
   void refresh() => _initScreen();
 
-  String _dismissedKey(String petId) => 'dismissed_health_badges_$petId';
-
-  Future<void> _saveDismissed(String petId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _dismissedKey(petId),
-      _dismissedBadgeIds.toList(),
-    );
-  }
-
   Future<void> _dismissBadge(String id) async {
     if (_profile == null) return;
     setState(() => _dismissedBadgeIds.add(id));
-    await _saveDismissed(_profile!.id);
+    await HealthAnalyzer.saveDismissed(_dismissedBadgeIds.toList(), _profile!.id);
   }
 
   Future<void> _initScreen() async {
@@ -121,8 +114,8 @@ class HealthPageState extends State<HealthPage> {
     final foodStatus = await PetService().lastFoodString();
     final moodStatus = await PetService().lastMoodString();
     final events = await EventService().loadEvents(profile.id);
-    final prefs = await SharedPreferences.getInstance();
-    final dismissed = prefs.getStringList(_dismissedKey(profile.id)) ?? [];
+    final dismissedBadgeIds = await HealthAnalyzer.loadDismissed(_profile!.id);
+    final healthBadges = await HealthAnalyzer.analyze(_profile!, events);
 
     if (!mounted) return;
     setState(() {
@@ -132,7 +125,8 @@ class HealthPageState extends State<HealthPage> {
       _weightDynamics = weightDynamics;
       _foodStatus = foodStatus;
       _moodStatus = moodStatus;
-      _dismissedBadgeIds = dismissed.toSet();
+      _dismissedBadgeIds = dismissedBadgeIds.toSet();
+      _healthBadges = healthBadges;
     });
   }
 
@@ -401,13 +395,11 @@ class HealthPageState extends State<HealthPage> {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
-    List<HealthBadge>? healthBadges;
     ({String caption, String label, ColorPalette palette, IconData icon})?
     healthScore;
 
     if (_profile != null && !_isLoadingEvents) {
-      healthBadges = HealthAnalyzer.analyze(_profile!, _events);
-      healthScore = HealthAnalyzer.score(healthBadges);
+      healthScore = HealthAnalyzer.score(_healthBadges);
     }
 
     // Nearest time-bound health event (treatment nextDate or health category event)
@@ -462,8 +454,8 @@ class HealthPageState extends State<HealthPage> {
                 if (healthScore != null)
                   _HealthScoreBadge(
                     score: healthScore,
-                    onTap: healthBadges != null
-                        ? () => _openRecommendations(context, healthBadges!)
+                    onTap: _healthBadges.isNotEmpty
+                        ? () => _openRecommendations(context, _healthBadges)
                         : null,
                   ),
               ],
@@ -512,10 +504,8 @@ class HealthPageState extends State<HealthPage> {
                         _profile != null &&
                             _profile!.moodHistory.lastEntry != null
                         ? Text(
-                            formatSmartDate(
-                              _profile!.moodHistory.lastEntry!.date,
-                              pattern: 'd MMMM',
-                            ),
+                            '${formatSmartDate(_profile!.moodHistory.lastEntry!.date, pattern: 'd MMMM')}'
+                            ' · ${_profile!.moodHistory.lastEntry!.dayPart.label}',
                             style: Theme.of(context).textTheme.bodySmall!,
                           )
                         : null,

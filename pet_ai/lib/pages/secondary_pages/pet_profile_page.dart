@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
@@ -212,10 +213,56 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _editAvatar() async {
-    final path = await PetService().pickProfileImage(_profile!.id);
+    final source = await _pickImageSource();
+    if (source == null || !mounted) return;
+
+    final path = await PetService().pickProfileImage(
+      _profile!.id,
+      source: source,
+    );
     if (path != null && mounted) {
       setState(() => _profile!.profileImage = File(path));
     }
+  }
+
+  /// Нижний лист с выбором источника фото: камера или галерея.
+  Future<ImageSource?> _pickImageSource() {
+    final accent = context.read<AppearanceController>().primaryColor;
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ThemeColors.border.withAlpha(120),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(Icons.photo_camera_outlined, color: accent),
+              title: const Text('Сделать фото'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library_outlined, color: accent),
+              title: const Text('Выбрать из галереи'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _deleteProfile() async {

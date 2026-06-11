@@ -49,5 +49,9 @@
 	<string>Микрофон используется для голосового ввода заметок о питомце.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Распознавание речи преобразует ваш голос в текст заметок.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна, чтобы сделать фото профиля питомца.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Доступ к галерее нужен, чтобы выбрать фото профиля питомца.</string>
 </dict>
 </plist>

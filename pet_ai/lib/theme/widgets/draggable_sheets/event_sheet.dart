@@ -67,6 +67,8 @@ class _EventSheetState extends State<EventSheet> {
   RepeatInterval _selectedRepeat = RepeatInterval.none;
   List<int> _customDays = [];
 
+  bool _allDay = false;
+
   RemindBeforeVariant _remindBeforeVariant = RemindBeforeVariant.days;
   int _remindBeforeValue = 0;
 
@@ -89,6 +91,7 @@ class _EventSheetState extends State<EventSheet> {
       _selectedRepeat = widget.event!.repeat;
       _isRepeating = _selectedRepeat != RepeatInterval.none;
       _customDays = List.of(widget.event!.customDays);
+      _allDay = widget.event!.allDay;
       _remindBeforeValue = widget.event!.remindBeforeValue;
       _remind = widget.event!.remind;
     }
@@ -201,7 +204,7 @@ class _EventSheetState extends State<EventSheet> {
     final hasError =
         !_formKey.currentState!.validate() ||
         _selectedDate == null ||
-        _selectedTime == null ||
+        (!_allDay && _selectedTime == null) ||
         _selectedCategory == null;
     return !hasError;
   }
@@ -211,12 +214,13 @@ class _EventSheetState extends State<EventSheet> {
 
     final name = _nameController.text;
     final category = _selectedCategory!;
+    // Для события на весь день время не задаётся — фиксируем 00:00.
     final dateTime = DateTime(
       _selectedDate!.year,
       _selectedDate!.month,
       _selectedDate!.day,
-      _selectedTime!.hour,
-      _selectedTime!.minute,
+      _allDay ? 0 : _selectedTime!.hour,
+      _allDay ? 0 : _selectedTime!.minute,
     );
     final repeat = _isRepeating ? _selectedRepeat : RepeatInterval.none;
     final customDays = repeat == RepeatInterval.custom ? _customDays : <int>[];
@@ -231,6 +235,7 @@ class _EventSheetState extends State<EventSheet> {
           dateTime: dateTime,
           repeat: repeat,
           customDays: customDays,
+          allDay: _allDay,
           remindBeforeVariant: _remindBeforeVariant,
           remindBeforeValue: _remindBeforeValue,
           remind: _remind,
@@ -250,6 +255,7 @@ class _EventSheetState extends State<EventSheet> {
         _remindBeforeValue,
         petIds,
         remind: _remind,
+        allDay: _allDay,
       );
       _editEvent(context, event);
     }
@@ -332,8 +338,9 @@ class _EventSheetState extends State<EventSheet> {
         color: context.watch<AppearanceController>().primaryColor,
         onPressed: () {
           setState(() {
-            if (widget.event != null)
+            if (widget.event != null) {
               widget.event!.starred = !widget.event!.starred;
+            }
           });
         },
       ),
@@ -409,7 +416,9 @@ class _EventSheetState extends State<EventSheet> {
             _InfoRow(
               icon: Icons.calendar_today_outlined,
               iconColor: accent,
-              label: formatSmartDateTime(event.dateTime),
+              label: event.allDay
+                  ? '${formatSmartDate(event.dateTime)} · Весь день'
+                  : formatSmartDateTime(event.dateTime),
             ),
             if (event.repeat != RepeatInterval.none) ...[
               const _RowDivider(),
@@ -556,39 +565,64 @@ class _EventSheetState extends State<EventSheet> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: GlassCard(
-              useShadow: false,
-              callback: () => _selectTime(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 8,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 18,
-                      color: _selectedTime == null
-                          ? ThemeColors.dangerZone
-                          : context.watch<AppearanceController>().primaryColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _selectedTime == null
-                          ? 'Время'
-                          : _selectedTime!.format(context),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
+          // Время скрывается, когда событие на весь день.
+          if (!_allDay) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: GlassCard(
+                useShadow: false,
+                callback: () => _selectTime(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 18,
+                        color: _selectedTime == null
+                            ? ThemeColors.dangerZone
+                            : context
+                                  .watch<AppearanceController>()
+                                  .primaryColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _selectedTime == null
+                            ? 'Время'
+                            : _selectedTime!.format(context),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
+      ),
+
+      const SizedBox(height: 8),
+
+      GlassPlate(
+        useShadow: false,
+        child: SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          title: Text(
+            'Весь день',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          subtitle: Text(
+            'Без точного времени',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          value: _allDay,
+          activeThumbColor: context.watch<AppearanceController>().primaryColor,
+          onChanged: (val) => setState(() => _allDay = val),
+        ),
       ),
 
       const SizedBox(height: 8),

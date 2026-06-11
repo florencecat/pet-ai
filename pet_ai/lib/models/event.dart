@@ -195,6 +195,9 @@ class Event implements PbEntity {
   RepeatInterval repeat;
   List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
 
+  /// Событие на весь день — время не указывается (хранится 00:00).
+  bool allDay;
+
   RemindBeforeVariant remindBeforeVariant;
   int remindBeforeValue;
 
@@ -211,6 +214,7 @@ class Event implements PbEntity {
     required this.dateTime,
     this.repeat = RepeatInterval.none,
     this.customDays = const [],
+    this.allDay = false,
     this.remindBeforeVariant = RemindBeforeVariant.days,
     this.remindBeforeValue = 0,
     this.remind = true,
@@ -234,6 +238,7 @@ class Event implements PbEntity {
     required this.customDays,
     required this.remindBeforeVariant,
     required this.remindBeforeValue,
+    this.allDay = false,
     this.remind = true,
     this.source = EventSource.manual,
     this.sourceId,
@@ -250,6 +255,7 @@ class Event implements PbEntity {
        petIds = [],
        repeat = RepeatInterval.none,
        customDays = const [],
+       allDay = false,
        remindBeforeVariant = RemindBeforeVariant.days,
        remindBeforeValue = 0,
        remind = false,
@@ -266,6 +272,7 @@ class Event implements PbEntity {
       petIds = [],
       repeat = RepeatInterval.none,
       customDays = const [],
+      allDay = false,
       remindBeforeVariant = RemindBeforeVariant.days,
       remindBeforeValue = 0,
       remind = true,
@@ -348,15 +355,17 @@ class Event implements PbEntity {
     int? remindBeforeMinutes,
     List<String>? petIds, {
     bool? remind,
+    bool? allDay,
   }) {
     this.name = name ?? this.name;
     this.category = category ?? this.category;
     this.dateTime = dateTime ?? this.dateTime;
     if (remind != null) this.remind = remind;
+    if (allDay != null) this.allDay = allDay;
     this.repeat = repeat ?? this.repeat;
     this.customDays = customDays ?? this.customDays;
     this.remindBeforeVariant = remindBeforeVariant ?? this.remindBeforeVariant;
-    this.remindBeforeValue = remindBeforeMinutes ?? this.remindBeforeValue;
+    remindBeforeValue = remindBeforeMinutes ?? remindBeforeValue;
     if (petIds != null) this.petIds = petIds;
   }
 
@@ -392,6 +401,7 @@ class Event implements PbEntity {
     'petIds': petIds,
     'repeat': repeat.index,
     'customDays': customDays,
+    'allDay': allDay,
     'remindBeforeVariant': remindBeforeVariant.name,
     'remindBeforeMinutes': remindBeforeValue,
     'remind': remind,
@@ -409,6 +419,7 @@ class Event implements PbEntity {
     'pets': petIds,
     'repeat_interval': repeat.name,
     if (customDays.isNotEmpty) 'repeat_days': customDays,
+    'all_day': allDay,
     'remindBeforeVariant': remindBeforeVariant.name,
     'remind_before_minutes': remindBeforeValue,
     'remind': remind,
@@ -455,6 +466,7 @@ class Event implements PbEntity {
               ?.map((e) => e as int)
               .toList() ??
           const [],
+      allDay: json['allDay'] as bool? ?? false,
       remindBeforeVariant: remindBeforeVariant,
       remindBeforeValue: json['remindBeforeMinutes'] as int? ?? 0,
       remind: json['remind'] as bool? ?? true,
@@ -482,6 +494,7 @@ class _EventCodec extends PbCodec<Event> {
     ),
     customDays:
         (data['repeat_days'] as List<dynamic>?)?.cast<int>() ?? const [],
+    allDay: data['all_day'] as bool? ?? false,
     remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
           (s) => s.name == (data['remindBeforeVariant'] as String?),
       orElse: () => RemindBeforeVariant.days,

@@ -823,7 +823,9 @@ class _EventTileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final overdue = event.isOverdue;
-    final time = DateFormat('HH:mm').format(event.dateTime);
+    final time = event.allDay
+        ? 'Весь\nдень'
+        : DateFormat('HH:mm').format(event.dateTime);
 
     return GlassPlate(
       color: Colors.white,
@@ -1092,7 +1094,9 @@ class _SearchResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = context.watch<AppearanceController>();
     final dateLabel = formatSmartDate(event.dateTime, pattern: 'd MMMM yyyy');
-    final timeLabel = DateFormat('HH:mm').format(event.dateTime);
+    final timeLabel = event.allDay
+        ? 'Весь день'
+        : DateFormat('HH:mm').format(event.dateTime);
     final overdue = event.isOverdue;
 
     return GlassPlate(

@@ -158,6 +158,29 @@ class MoodHistory extends History<MoodEntry> {
   MoodHistory({required super.entries});
   MoodHistory.empty() : super.empty();
 
+  /// Последняя запись настроения: сортировка сначала по календарной дате,
+  /// затем по времени суток (утро → день → вечер), затем по точному времени.
+  /// Так в виджете здоровья показывается актуальное «дата + время суток».
+  @override
+  MoodEntry? get lastEntry {
+    if (entries.isEmpty) return null;
+    return entries.reduce((a, b) => _compare(a, b) >= 0 ? a : b);
+  }
+
+  /// Возвращает записи, отсортированные по (дата, время суток, время).
+  List<MoodEntry> get sortedByDateAndPart =>
+      [...entries]..sort(_compare);
+
+  static int _compare(MoodEntry a, MoodEntry b) {
+    final ad = DateTime(a.date.year, a.date.month, a.date.day);
+    final bd = DateTime(b.date.year, b.date.month, b.date.day);
+    final byDay = ad.compareTo(bd);
+    if (byDay != 0) return byDay;
+    final byPart = a.dayPart.index.compareTo(b.dayPart.index);
+    if (byPart != 0) return byPart;
+    return a.date.compareTo(b.date);
+  }
+
   bool hasTodayEntry() {
     final now = DateTime.now();
     return entries.any((e) =>

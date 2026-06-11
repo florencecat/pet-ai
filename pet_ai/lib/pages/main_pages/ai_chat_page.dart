@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -82,11 +83,15 @@ class _OfflineDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Colors.grey;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        boxShadow: [BoxShadow(color: color.withAlpha(128))],
+    return SizedBox(
+      width: 8,
+      height: 8,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          boxShadow: [BoxShadow(color: color.withAlpha(128), blurRadius: 4)],
+        ),
       ),
     );
   }
@@ -168,7 +173,8 @@ class _ChatView extends StatefulWidget {
 
 class _ChatViewState extends State<_ChatView> {
   late final AIChatController _controller;
-  late final Future<bool> _future;
+  late Future<bool> _future;
+  Timer? _healthTimer;
 
   @override
   void initState() {
@@ -178,6 +184,16 @@ class _ChatViewState extends State<_ChatView> {
     // деактивации InheritedElement и, как следствие, краш Scaffold layout.
     _controller = context.read<AIChatController>();
     _future = _controller.healthCheck();
+    // Периодически перепроверяем доступность бота, чтобы статус был реальным.
+    _healthTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() => _future = _controller.healthCheck());
+    });
+  }
+
+  @override
+  void dispose() {
+    _healthTimer?.cancel();
+    super.dispose();
   }
 
   void _openHistorySheet(BuildContext context, AIChatController controller) {
@@ -269,35 +285,49 @@ class _ChatViewState extends State<_ChatView> {
                   'Помощник по уходу',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                subtitle: FutureBuilder(
+                subtitle: FutureBuilder<bool>(
                   future: _future,
                   builder: (context, snapshot) {
-                    return Row(
-                      spacing: 6,
-                      children: [
-                        if (!snapshot.hasData) ...[
-                          _OnlineDot(color: ThemeColors.aiChatOnlineColor),
-                          Text(
-                            'на связи',
-                            style: Theme.of(context).textTheme.bodyMedium!
-                                .copyWith(color: ThemeColors.aiChatOnlineColor),
-                          ),
-                        ] else if (snapshot.data!) ...[
-                          _OnlineDot(color: ThemeColors.aiChatOnlineColor),
-                          Text(
-                            'на связи',
-                            style: Theme.of(context).textTheme.bodyMedium!
-                                .copyWith(color: ThemeColors.aiChatOnlineColor),
-                          ),
-                        ] else ...[
+                    // Состояние проверки — пока первый запрос не завершился.
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return Row(
+                        spacing: 6,
+                        children: [
                           _OfflineDot(),
                           Text(
-                            'оффлайн',
+                            'проверка связи…',
                             style: Theme.of(context).textTheme.bodyMedium!
                                 .copyWith(color: Colors.grey),
                           ),
                         ],
-                      ],
+                      );
+                    }
+
+                    final online = snapshot.data == true;
+                    return Row(
+                      spacing: 6,
+                      children: online
+                          ? [
+                              _OnlineDot(
+                                color: ThemeColors.aiChatOnlineColor,
+                              ),
+                              Text(
+                                'на связи',
+                                style: Theme.of(context).textTheme.bodyMedium!
+                                    .copyWith(
+                                      color: ThemeColors.aiChatOnlineColor,
+                                    ),
+                              ),
+                            ]
+                          : [
+                              _OfflineDot(),
+                              Text(
+                                'оффлайн',
+                                style: Theme.of(context).textTheme.bodyMedium!
+                                    .copyWith(color: Colors.grey),
+                              ),
+                            ],
                     );
                   },
                 ),

@@ -249,16 +249,25 @@ class AIChatController extends ChangeNotifier {
     }
   }
 
+  /// Проверяет доступность ИИ-бэкенда (`<aiUrl>/health`).
+  /// Любая ошибка сети/таймаут трактуется как «оффлайн» — метод не бросает
+  /// исключений, чтобы статус всегда отражал реальную доступность.
   Future<bool> healthCheck() async {
-    final response = await _httpClient.get(
-      _healthRoute,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    );
+    try {
+      final response = await _httpClient
+          .get(
+            _healthRoute,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 6));
 
-    return response.statusCode == 200;
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<void> clearMessageHistory() async {

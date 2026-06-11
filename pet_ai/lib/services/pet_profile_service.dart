@@ -379,7 +379,10 @@ class PetService {
     return avatarFile.path;
   }
 
-  Future<String?> pickProfileImage(String petId) async {
+  Future<String?> pickProfileImage(
+    String petId, {
+    ImageSource source = ImageSource.gallery,
+  }) async {
     if (kIsWeb) {
       throw UnimplementedError("pickProfileImage() is not supported on web");
     }
@@ -387,7 +390,7 @@ class PetService {
     final picker = ImagePicker();
 
     final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 90,
     );
 

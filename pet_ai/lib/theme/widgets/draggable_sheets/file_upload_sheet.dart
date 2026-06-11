@@ -75,7 +75,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _SourcePickerSheet(
+      builder: (_) => SourcePickerSheet(
         onPickFile: _pickFromFiles,
         onTakePhoto: _takePhoto,
       ),
@@ -615,11 +615,11 @@ class _ImagePreviewDialog extends StatelessWidget {
 
 // ─── Выбор источника файла ───────────────────────────────────────────────────
 
-class _SourcePickerSheet extends StatelessWidget {
+class SourcePickerSheet extends StatelessWidget {
   final VoidCallback onPickFile;
   final VoidCallback onTakePhoto;
 
-  const _SourcePickerSheet({
+  const SourcePickerSheet({
     required this.onPickFile,
     required this.onTakePhoto,
   });

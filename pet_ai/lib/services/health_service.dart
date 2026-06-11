@@ -4,15 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/treatment.dart';
-import 'package:pet_satellite/services/appearance_controller.dart';
-import 'package:pet_satellite/services/event_service.dart';
-import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
-import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
-import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/models/event.dart';
-import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class WeightInputFormatter extends TextInputFormatter {
   final RegExp regex = RegExp(r'^\d+(\.\d?)?$');
@@ -87,10 +82,33 @@ class HealthBadge {
 
 /// Анализатор: на основе данных профиля + событий формирует список бейджей.
 class HealthAnalyzer {
-  static List<HealthBadge> analyze(Pet profile, List<Event> events) {
+
+  static String _dismissedKey(String petId) => 'dismissed_health_badges_$petId';
+
+  static Future<void> saveDismissed(List<String> dismissedBadgeIds, String petId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _dismissedKey(petId),
+      dismissedBadgeIds.toList(),
+    );
+  }
+
+  static Future<List<String>> loadDismissed(String petId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_dismissedKey(petId)) ?? [];
+  }
+
+  static Future<List<HealthBadge>> analyze(Pet profile, List<Event> events) async {
     final badges = <HealthBadge>[];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+
+    final dismissedBadgeIds = await loadDismissed(profile.id);
+    void addBadge(HealthBadge badge) {
+      if (!dismissedBadgeIds.contains(badge.id)) {
+        badges.add(badge);
+      }
+    }
 
     // ── Просроченные мероприятия (treatments) ────────────────────────────
     final overdueTreatments = <TreatmentEntry>[];
@@ -106,7 +124,7 @@ class HealthAnalyzer {
     }
 
     for (final t in overdueTreatments) {
-      badges.add(
+      addBadge(
         HealthBadge(
           title: 'Просрочено: ${t.displayName}',
           subtitle: 'Должно было быть ${formatSmartDate(t.nextDate)}',
@@ -121,7 +139,7 @@ class HealthAnalyzer {
         t.nextDate.month,
         t.nextDate.day,
       ).difference(today).inDays;
-      badges.add(
+      addBadge(
         HealthBadge(
           title: 'Скоро: ${t.displayName}',
           subtitle: daysLeft == 0
@@ -141,7 +159,7 @@ class HealthAnalyzer {
       if (kind == TreatmentKind.vaccine) continue;
       final last = profile.treatmentHistory.lastOfKind(kind);
       if (last == null) {
-        badges.add(
+        addBadge(
           HealthBadge(
             id: 'treatment_remind_${kind.name}',
             title: kind.label,
@@ -170,7 +188,7 @@ class HealthAnalyzer {
       final tag = SymptomTags.byId(entry.key);
       if (tag == null) continue;
       final times = entry.value;
-      badges.add(
+      addBadge(
         HealthBadge(
           title: 'Симптом: ${tag.label}',
           subtitle:
@@ -185,7 +203,7 @@ class HealthAnalyzer {
     // ── Вес ──────────────────────────────────────────────────────────────
     final lastWeight = profile.weightHistory.lastEntry;
     if (lastWeight == null) {
-      badges.add(
+      addBadge(
         const HealthBadge(
           title: 'Зафиксируйте вес',
           subtitle: 'Помогает отслеживать динамику здоровья',
@@ -204,7 +222,7 @@ class HealthAnalyzer {
           )
           .inDays;
       if (daysSince >= 30) {
-        badges.add(
+        addBadge(
           HealthBadge(
             title: 'Пора обновить вес',
             subtitle:
@@ -223,7 +241,7 @@ class HealthAnalyzer {
       final subtitle = lastMood == null
           ? 'Отметьте, как себя чувствует питомец'
           : 'Последняя запись: ${formatSmartDate(lastMood.date)}';
-      badges.add(
+      addBadge(
         HealthBadge(
           title: 'Зафиксируйте настроение',
           subtitle: subtitle,
@@ -242,7 +260,7 @@ class HealthAnalyzer {
       final oldest = recent[2].weight;
       if (newest < oldest) {
         final diff = (oldest - newest);
-        badges.add(
+        addBadge(
           HealthBadge(
             title: 'Снижение веса',
             subtitle:
@@ -273,7 +291,7 @@ class HealthAnalyzer {
             recentFood.length;
         if (avgScore < 3.0) {
           final avgStr = avgScore.toStringAsFixed(1);
-          badges.add(
+          addBadge(
             HealthBadge(
               title: 'Плохой аппетит',
               subtitle:
@@ -291,7 +309,7 @@ class HealthAnalyzer {
         .where((e) => e.category.id == 'vaccination' && e.isOverdue)
         .toList();
     for (final v in overdueVaccinations) {
-      badges.add(
+      addBadge(
         HealthBadge(
           title: '⚠ Просрочена прививка',
           subtitle:
@@ -307,7 +325,7 @@ class HealthAnalyzer {
         .where((e) => e.isOverdue && e.category.id != 'vaccination')
         .toList();
     if (overdueEvents.isNotEmpty) {
-      badges.add(
+      addBadge(
         HealthBadge(
           title: 'Просроченные события: ${overdueEvents.length}',
           subtitle: overdueEvents.first.name,
@@ -327,7 +345,7 @@ class HealthAnalyzer {
         today.year, today.month, today.day, pill.hour, pill.minute,
       );
       if (now.isAfter(scheduled) && !pill.isTakenOnDay(now)) {
-        badges.add(HealthBadge(
+        addBadge(HealthBadge(
           title: 'Пропущен приём: ${pill.name}',
           subtitle: pill.dose.isNotEmpty
               ? '${pill.dose} · ${pill.timeLabel}'
@@ -340,7 +358,7 @@ class HealthAnalyzer {
 
     // ── Если нечего показать — общий "всё хорошо" ──────────────────────
     if (badges.isEmpty) {
-      badges.add(
+      addBadge(
         const HealthBadge(
           title: 'Всё в порядке',
           subtitle: 'Записи актуальны, ближайших мероприятий нет',
@@ -456,126 +474,6 @@ class HealthBadgeTile extends StatelessWidget {
                 )
               : null,
         ),
-      ),
-    );
-  }
-}
-
-/// Шит «Здоровье» — реальный анализ + быстрые действия.
-class HealthSummaryModal extends StatefulWidget {
-  const HealthSummaryModal({super.key});
-
-  @override
-  State<HealthSummaryModal> createState() => _HealthSummaryModalState();
-}
-
-class _HealthSummaryModalState extends State<HealthSummaryModal> {
-  Pet? _profile;
-  List<Event> _events = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final profile = await PetService().loadActiveProfile();
-    if (profile == null) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
-    final events = await EventService().loadEvents(profile.id);
-    if (!mounted) return;
-    setState(() {
-      _profile = profile;
-      _events = events;
-      _loading = false;
-    });
-  }
-
-  Future<void> _openTreatments() async {
-    if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => TreatmentSheet(profile: _profile!),
-    );
-    if (updated == true) await _load();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return const DraggableSheet(
-        title: 'Здоровье',
-        body: SizedBox(
-          height: 200,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
-    if (_profile == null) {
-      return const DraggableSheet(
-        title: 'Здоровье',
-        body: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('Профиль не найден'),
-        ),
-      );
-    }
-
-    final badges = HealthAnalyzer.analyze(_profile!, _events);
-
-    return DraggableSheet(
-      title: 'Здоровье',
-      centerTitle: true,
-      onBack: () => Navigator.of(context).pop(),
-      initialSize: 0.75,
-      minSize: 0.4,
-      maxSize: 1.0,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Быстрое действие — добавить прививку/обработку
-          GlassCard(
-            color: context.watch<AppearanceController>().primaryColor,
-            callback: _openTreatments,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.vaccines, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Прививки и обработки',
-                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 4),
-            child: Text(
-              'Рекомендации',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-
-          ...badges.map((b) => HealthBadgeTile(badge: b)),
-        ],
       ),
     );
   }
