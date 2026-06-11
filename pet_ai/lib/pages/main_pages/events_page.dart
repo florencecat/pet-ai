@@ -183,7 +183,7 @@ class EventsPageState extends State<EventsPage> {
   }
 
   void _openCreateSheet() async {
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -192,11 +192,11 @@ class EventsPageState extends State<EventsPage> {
       builder: (_) =>
           EventSheet.create(dateTime: _selectedDay ?? DateTime.now()),
     );
-    if (updated == true) _refresh();
+    _refresh();
   }
 
   void _openViewSheet(Event event) async {
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -204,7 +204,7 @@ class EventsPageState extends State<EventsPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => EventSheet(event: event, completionDate: _selectedDay),
     );
-    if (updated == true) _refresh();
+    _refresh();
   }
 
   Future<void> _deleteEvent(Event event) async {
@@ -393,10 +393,7 @@ class EventsPageState extends State<EventsPage> {
                     ),
                     eventLoader: (day) => _events.where((e) {
                       if (!e.occursOn(day)) return false;
-                      // Pills create repeating events — shown on health page,
-                      // no need for calendar dots for each occurrence.
                       if (e.source == EventSource.pill) return false;
-                      // Completed events should not show as dots.
                       if (e.isCompletedOn(day)) return false;
                       return true;
                     }).toList(),

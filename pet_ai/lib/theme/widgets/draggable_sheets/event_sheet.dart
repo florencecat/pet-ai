@@ -63,14 +63,14 @@ class _EventSheetState extends State<EventSheet> {
   EventCategory? _selectedCategory;
   EventSheetMode _mode = EventSheetMode.view;
 
-  /// Set to true when the user toggles completion so the parent screen refreshes.
-  bool _hasChanges = false;
-
   bool _isRepeating = false;
   RepeatInterval _selectedRepeat = RepeatInterval.none;
   List<int> _customDays = [];
-  int _remindBeforeMinutes = 0;
-  bool _notify = true;
+
+  RemindBeforeVariant _remindBeforeVariant = RemindBeforeVariant.days;
+  int _remindBeforeValue = 0;
+
+  bool _remind = true;
 
   List<Pet> _allProfiles = [];
   List<String> _selectedPetIds = [];
@@ -89,8 +89,8 @@ class _EventSheetState extends State<EventSheet> {
       _selectedRepeat = widget.event!.repeat;
       _isRepeating = _selectedRepeat != RepeatInterval.none;
       _customDays = List.of(widget.event!.customDays);
-      _remindBeforeMinutes = widget.event!.remindBeforeMinutes;
-      _notify = widget.event!.notify;
+      _remindBeforeValue = widget.event!.remindBeforeValue;
+      _remind = widget.event!.remind;
     }
     _mode = widget.mode;
     _loadProfiles();
@@ -149,14 +149,18 @@ class _EventSheetState extends State<EventSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Удалить событие?'),
-        content: const Text('Событие будет удалено без возможности восстановления.'),
+        content: const Text(
+          'Событие будет удалено без возможности восстановления.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Отмена'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -183,9 +187,7 @@ class _EventSheetState extends State<EventSheet> {
     final petId = event.petIds.isNotEmpty ? event.petIds.first : '';
     final date = widget.completionDate ?? event.dateTime;
     await EventService().toggleCompleted(petId, event, date);
-    setState(() {
-      _hasChanges = true;
-    });
+    setState(() { });
   }
 
   bool get _isCompletedForDate {
@@ -229,16 +231,26 @@ class _EventSheetState extends State<EventSheet> {
           dateTime: dateTime,
           repeat: repeat,
           customDays: customDays,
-          remindBeforeMinutes: _remindBeforeMinutes,
-          notify: _notify,
+          remindBeforeVariant: _remindBeforeVariant,
+          remindBeforeValue: _remindBeforeValue,
+          remind: _remind,
           petIds: petIds,
         ),
       );
     }
     if (EventSheetModeX(_mode).isEdit) {
       final event = widget.event!;
-      event.assign(name, category, dateTime, repeat, customDays,
-          _remindBeforeMinutes, petIds, notify: _notify);
+      event.assign(
+        name,
+        category,
+        dateTime,
+        repeat,
+        customDays,
+        _remindBeforeVariant,
+        _remindBeforeValue,
+        petIds,
+        remind: _remind,
+      );
       _editEvent(context, event);
     }
   }
@@ -267,7 +279,7 @@ class _EventSheetState extends State<EventSheet> {
     return DraggableSheet(
       centerTitle: true,
       title: _mode.label,
-      onBack: () => Navigator.of(context).pop(_hasChanges),
+      onBack: () => Navigator.of(context).pop(),
       initialSize: _mode.isView ? 0.65 : 0.85,
       minSize: 0.4,
       maxSize: 0.95,
@@ -320,7 +332,8 @@ class _EventSheetState extends State<EventSheet> {
         color: context.watch<AppearanceController>().primaryColor,
         onPressed: () {
           setState(() {
-            if (widget.event != null) widget.event!.starred = !widget.event!.starred;
+            if (widget.event != null)
+              widget.event!.starred = !widget.event!.starred;
           });
         },
       ),
@@ -367,9 +380,7 @@ class _EventSheetState extends State<EventSheet> {
               style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                 fontWeight: FontWeight.w700,
                 decoration: isCompleted ? TextDecoration.lineThrough : null,
-                color: isCompleted
-                    ? ThemeColors.border
-                    : null,
+                color: isCompleted ? ThemeColors.border : null,
               ),
             ),
 
@@ -406,20 +417,21 @@ class _EventSheetState extends State<EventSheet> {
                 icon: Icons.repeat,
                 iconColor: accent,
                 label: _getRepeatText(event.repeat),
-                sublabel: event.repeat == RepeatInterval.custom &&
+                sublabel:
+                    event.repeat == RepeatInterval.custom &&
                         event.customDays.isNotEmpty
                     ? event.customDays
-                        .map((d) => WeekDays.labels[d] ?? '')
-                        .join(', ')
+                          .map((d) => WeekDays.labels[d] ?? '')
+                          .join(', ')
                     : null,
               ),
             ],
-            if (event.remindBeforeMinutes > 0) ...[
+            if (event.remindBeforeValue > 0) ...[
               const _RowDivider(),
               _InfoRow(
                 icon: Icons.notifications_outlined,
                 iconColor: accent,
-                label: 'Напоминание за ${event.remindBeforeMinutes} мин',
+                label: 'Напоминание за ${event.remindBeforeValue} мин',
               ),
             ],
             if (event.petIds.isNotEmpty && _profilesLoaded) ...[
@@ -443,7 +455,7 @@ class _EventSheetState extends State<EventSheet> {
           accent: accent,
           onTap: _toggleCompleted,
         ),
-      ]
+      ],
     ];
   }
 
@@ -452,6 +464,7 @@ class _EventSheetState extends State<EventSheet> {
   List<Widget> _buildEditableContent() {
     return [
       GlassPlate(
+        useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: TextFormField(
@@ -461,7 +474,8 @@ class _EventSheetState extends State<EventSheet> {
               border: InputBorder.none,
             ),
             style: Theme.of(context).textTheme.bodyMedium,
-            validator: (v) => v == null || v.isEmpty ? 'Введите название' : null,
+            validator: (v) =>
+                v == null || v.isEmpty ? 'Введите название' : null,
           ),
         ),
       ),
@@ -469,10 +483,12 @@ class _EventSheetState extends State<EventSheet> {
       const SizedBox(height: 8),
 
       GlassPlate(
+        useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: DropdownButtonFormField<String>(
-            validator: (v) => v == null || v.isEmpty ? 'Выберите категорию' : null,
+            validator: (v) =>
+                v == null || v.isEmpty ? 'Выберите категорию' : null,
             decoration: const InputDecoration(
               labelText: 'Категория',
               border: InputBorder.none,
@@ -489,7 +505,10 @@ class _EventSheetState extends State<EventSheet> {
                       children: [
                         Icon(c.icon, color: c.color),
                         const SizedBox(width: 8),
-                        Text(c.name, style: Theme.of(context).textTheme.bodyMedium),
+                        Text(
+                          c.name,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ],
                     ),
                   ),
@@ -508,9 +527,13 @@ class _EventSheetState extends State<EventSheet> {
         children: [
           Expanded(
             child: GlassCard(
+              useShadow: false,
               callback: () => _selectDate(context),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -536,9 +559,13 @@ class _EventSheetState extends State<EventSheet> {
           const SizedBox(width: 8),
           Expanded(
             child: GlassCard(
+              useShadow: false,
               callback: () => _selectTime(context),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -567,11 +594,55 @@ class _EventSheetState extends State<EventSheet> {
       const SizedBox(height: 8),
 
       GlassPlate(
+        useShadow: false,
         child: SwitchListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          title: Text('Повторять', style: Theme.of(context).textTheme.bodyLarge),
-          subtitle: Text('Сделать событие регулярным',
-              style: Theme.of(context).textTheme.bodySmall),
+          title: Text(
+            'Напоминать',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          subtitle: Text(
+            'Отслеживать статус выполнения и отправлять push-уведомление',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          value: _remind,
+          activeThumbColor: context.watch<AppearanceController>().primaryColor,
+          onChanged: (val) => setState(() => _remind = val),
+        ),
+      ),
+
+      AnimatedSwitcher(
+        duration: const Duration(milliseconds: 120),
+        transitionBuilder: (child, animation) =>
+            SizeTransition(sizeFactor: animation, child: child),
+        child: _remind
+            ? Column(children: _buildRemindOptions())
+            : const SizedBox.shrink(),
+      ),
+
+      if (_profilesLoaded && _allProfiles.length > 1) ...[
+        const SizedBox(height: 8),
+        _buildPetSelector(),
+      ],
+    ];
+  }
+
+  List<Widget> _buildRemindOptions() {
+    return [
+      const SizedBox(height: 8),
+
+      GlassPlate(
+        useShadow: false,
+        child: SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          title: Text(
+            'Повторять',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          subtitle: Text(
+            'Сделать событие регулярным',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           value: _isRepeating,
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
           onChanged: (val) {
@@ -586,7 +657,7 @@ class _EventSheetState extends State<EventSheet> {
       ),
 
       AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 120),
         transitionBuilder: (child, animation) =>
             SizeTransition(sizeFactor: animation, child: child),
         child: _isRepeating ? _buildRepeatOptions() : const SizedBox.shrink(),
@@ -595,6 +666,7 @@ class _EventSheetState extends State<EventSheet> {
       const SizedBox(height: 8),
 
       GlassPlate(
+        useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
@@ -605,61 +677,84 @@ class _EventSheetState extends State<EventSheet> {
                 color: context.watch<AppearanceController>().primaryColor,
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text('Напомнить за (мин):',
-                    style: Theme.of(context).textTheme.bodyLarge),
+              Text(
+                'Напомнить за',
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
+              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.remove_circle_outline),
                 color: context.watch<AppearanceController>().primaryColor,
-                onPressed: _remindBeforeMinutes > 0
-                    ? () => setState(() => _remindBeforeMinutes -= 5)
+                onPressed: _remindBeforeValue > 0
+                    ? () => setState(
+                        () => _remindBeforeValue -=
+                            _remindBeforeVariant == RemindBeforeVariant.minutes
+                            ? 5
+                            : 1,
+                      )
                     : null,
               ),
               SizedBox(
-                width: 40,
+                width: 25,
                 child: Text(
-                  '$_remindBeforeMinutes',
+                  '$_remindBeforeValue',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge!
-                      .copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline),
                 color: context.watch<AppearanceController>().primaryColor,
-                onPressed: _remindBeforeMinutes < 120
-                    ? () => setState(() => _remindBeforeMinutes += 5)
+                onPressed: _remindBeforeValue < 120
+                    ? () => setState(
+                        () => _remindBeforeValue +=
+                            _remindBeforeVariant == RemindBeforeVariant.minutes
+                            ? 5
+                            : 1,
+                      )
                     : null,
+              ),
+              const SizedBox(width: 8),
+              PopupMenuButton<RemindBeforeVariant>(
+                initialValue: RemindBeforeVariant.minutes,
+                itemBuilder: (_) => RemindBeforeVariant.values
+                    .map((v) => PopupMenuItem(value: v, child: Text(v.label)))
+                    .toList(),
+                onSelected: (v) => setState(() {
+                  if (v != _remindBeforeVariant) {
+                    _remindBeforeValue = 0;
+                  }
+                  _remindBeforeVariant = v;
+                }),
+                enableFeedback: true,
+                child: Row(
+                  children: [
+                    Text(
+                      _remindBeforeVariant.declension(_remindBeforeValue),
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    Icon(
+                      Icons.expand_more,
+                      size: 24,
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
       ),
-
-      const SizedBox(height: 8),
-
-      GlassPlate(
-        child: SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          title: Text('Уведомления', style: Theme.of(context).textTheme.bodyLarge),
-          subtitle: Text('Отправлять push-уведомление',
-              style: Theme.of(context).textTheme.bodySmall),
-          value: _notify,
-          activeThumbColor: context.watch<AppearanceController>().primaryColor,
-          onChanged: (val) => setState(() => _notify = val),
-        ),
-      ),
-
-      if (_profilesLoaded && _allProfiles.length > 1) ...[
-        const SizedBox(height: 8),
-        _buildPetSelector(),
-      ],
     ];
   }
 
   Widget _buildPetSelector() {
     return GlassPlate(
+      useShadow: false,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -672,18 +767,13 @@ class _EventSheetState extends State<EventSheet> {
               runSpacing: 6,
               children: _allProfiles.map((p) {
                 final selected = _selectedPetIds.contains(p.id);
-                return FilterChip(
-                  label: Text(p.name.isEmpty ? 'Без имени' : p.name),
+                return SoftGlassBadge(
+                  label: p.name.isEmpty ? 'Без имени' : p.name,
+                  color: p.palette.mainColor,
+                  size: 12,
                   selected: selected,
-                  selectedColor: p.palette.mainColor.withAlpha(180),
-                  backgroundColor: Colors.white.withAlpha(150),
-                  labelStyle: TextStyle(
-                    fontSize: 13,
-                    color: selected ? Colors.white : ThemeColors.textPrimary,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                  checkmarkColor: Colors.white,
-                  onSelected: (val) {
+                  icon: selected ? Icons.check_rounded : null,
+                  onChanged: (val) {
                     setState(() {
                       if (val) {
                         _selectedPetIds.add(p.id);
@@ -703,36 +793,47 @@ class _EventSheetState extends State<EventSheet> {
 
   Widget _buildRepeatOptions() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       key: const ValueKey('repeat_options'),
       children: [
         const SizedBox(height: 8),
         GlassPlate(
+          useShadow: false,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Интервал повторения',
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  'Интервал повторения',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
                 const SizedBox(height: 8),
                 Wrap(
-                  spacing: 8,
                   children: RepeatInterval.values
                       .where((e) => e != RepeatInterval.none)
                       .map((interval) {
-                    final selected = _selectedRepeat == interval;
-                    return ChoiceChip(
-                      label: Text(_getRepeatText(interval)),
-                      selected: selected,
-                      selectedColor:
-                          context.watch<AppearanceController>().primaryColor,
-                      labelStyle: TextStyle(
-                        color: selected ? Colors.white : ThemeColors.textPrimary,
-                      ),
-                      onSelected: (_) =>
-                          setState(() => _selectedRepeat = interval),
-                    );
-                  }).toList(),
+                        final selected = _selectedRepeat == interval;
+
+                        return Padding(
+                          padding: EdgeInsetsGeometry.all(4),
+                          child: SoftGlassBadge(
+                            label: _getRepeatText(interval),
+                            size: 12,
+                            selected: selected,
+                            color: selected
+                                ? context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                : context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor,
+                            onChanged: (_) =>
+                                setState(() => _selectedRepeat = interval),
+                          ),
+                        );
+                      })
+                      .toList(),
                 ),
               ],
             ),
@@ -741,13 +842,16 @@ class _EventSheetState extends State<EventSheet> {
         if (_selectedRepeat == RepeatInterval.custom) ...[
           const SizedBox(height: 8),
           GlassPlate(
+            useShadow: false,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Дни недели',
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'Дни недели',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -770,7 +874,10 @@ class _EventSheetState extends State<EventSheet> {
                               ? context
                                     .watch<AppearanceController>()
                                     .primaryColor
-                              : Colors.white.withAlpha(200),
+                              : context
+                                    .watch<AppearanceController>()
+                                    .primaryColor
+                                    .withAlpha(48),
                           child: Text(
                             WeekDays.labels[day]!,
                             style: TextStyle(
@@ -836,9 +943,21 @@ class _SourceTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, icon, color) = switch (source) {
-      EventSource.pill => ('Препарат', Icons.medication_outlined, const Color(0xFF5C6BC0)),
-      EventSource.treatment => ('Прививка / обработка', Icons.vaccines_outlined, const Color(0xFF00897B)),
-      EventSource.note => ('Из заметки', Icons.note_outlined, ThemeColors.border),
+      EventSource.pill => (
+        'Препарат',
+        Icons.medication_outlined,
+        const Color(0xFF5C6BC0),
+      ),
+      EventSource.treatment => (
+        'Прививка / обработка',
+        Icons.vaccines_outlined,
+        const Color(0xFF00897B),
+      ),
+      EventSource.note => (
+        'Из заметки',
+        Icons.note_outlined,
+        ThemeColors.border,
+      ),
       _ => ('', Icons.circle, ThemeColors.border),
     };
 
@@ -898,9 +1017,9 @@ class _InfoRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     sublabel!,
-                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                      color: ThemeColors.border,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall!.copyWith(color: ThemeColors.border),
                   ),
                 ],
               ],
@@ -967,8 +1086,12 @@ class _RowDivider extends StatelessWidget {
   const _RowDivider();
 
   @override
-  Widget build(BuildContext context) =>
-      Divider(height: 1, indent: 46, endIndent: 0, color: ThemeColors.border.withAlpha(60));
+  Widget build(BuildContext context) => Divider(
+    height: 1,
+    indent: 46,
+    endIndent: 0,
+    color: ThemeColors.border.withAlpha(60),
+  );
 }
 
 class _CompletionButton extends StatelessWidget {
@@ -1017,7 +1140,9 @@ class _CompletionButton extends StatelessWidget {
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   child: Icon(
-                    isCompleted ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    isCompleted
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
                     key: ValueKey(isCompleted),
                     color: isCompleted ? Colors.white : accent,
                     size: 22,

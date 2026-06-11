@@ -148,6 +148,7 @@ class GlassCard extends StatelessWidget {
   final double padding;
   final List<Color>? gradientColors;
   final bool transparent;
+  final bool useShadow;
 
   const GlassCard({
     super.key,
@@ -157,6 +158,7 @@ class GlassCard extends StatelessWidget {
     this.padding = 8,
     this.transparent = false,
     this.gradientColors,
+    this.useShadow = true,
   });
 
   @override
@@ -166,6 +168,7 @@ class GlassCard extends StatelessWidget {
       color: color,
       transparent: transparent,
       gradientColors: gradientColors,
+      useShadow: useShadow,
       child: InkWell(
         onTap: () {
           HapticFeedback.mediumImpact();
@@ -468,6 +471,7 @@ class SoftGlassBadge extends StatefulWidget {
   final TextStyle? labelStyle;
   final bool selected;
   final ValueChanged<bool>? onChanged;
+  final double size;
 
   const SoftGlassBadge({
     super.key,
@@ -477,6 +481,7 @@ class SoftGlassBadge extends StatefulWidget {
     this.labelStyle,
     this.selected = false,
     this.onChanged,
+    this.size = 10,
   });
 
   @override
@@ -542,7 +547,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
               if (widget.icon != null) ...[
                 Icon(
                   widget.icon,
-                  size: 14,
+                  size: widget.size * 1.4,
                   color: selected ? Colors.white : color,
                 ),
                 const SizedBox(width: 5),
@@ -553,7 +558,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
                 style:
                     widget.labelStyle ??
                     TextStyle(
-                      fontSize: 10,
+                      fontSize: widget.size,
                       fontWeight: FontWeight.w600,
                       color: selected ? Colors.white : color,
                     ),

@@ -317,11 +317,11 @@ class HealthPageState extends State<HealthPage> {
         severity = HealthBadgeSeverity.warning;
         subtitle = daysLeft == 0
             ? 'Сегодня'
-            : 'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')}';
+            : 'Через $daysLeft ${dayDeclension(daysLeft)}';
       } else {
         severity = HealthBadgeSeverity.info;
         subtitle =
-            'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')} · '
+            'Через $daysLeft ${dayDeclension(daysLeft)} · '
             '${DateFormat('dd.MM.yyyy').format(t.nextDate)}';
       }
 
@@ -356,11 +356,11 @@ class HealthPageState extends State<HealthPage> {
         severity = HealthBadgeSeverity.warning;
         subtitle = daysLeft == 0
             ? 'Сегодня'
-            : 'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')}';
+            : 'Через $daysLeft ${dayDeclension(daysLeft)}';
       } else {
         severity = HealthBadgeSeverity.info;
         subtitle =
-            'Через $daysLeft ${declension(daysLeft, 'день', 'дня', 'дней')} · '
+            'Через $daysLeft ${dayDeclension(daysLeft)} · '
             '${DateFormat('dd.MM.yyyy').format(e.dateTime)}';
       }
 

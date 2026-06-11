@@ -32,7 +32,7 @@ class PillReminderService {
       customDays: reminder.frequencyType == PillFrequencyType.weekdays
           ? reminder.weekdays
           : [],
-      remindBeforeMinutes: 0,
+      remindBeforeValue: 0,
       petIds: [petId],
       // Связываем событие с напоминанием для двусторонней синхронизации статуса
       source: EventSource.pill,

@@ -90,12 +90,12 @@ class NotificationService {
   }
 
   Future<void> scheduleEventNotification(model.Event event) async {
-    if (!event.notify) return;
+    if (!event.remind) return;
     final id = event.id.hashCode;
 
     // Вычисляем время напоминания (с учетом отсрочки)
     final scheduledTime = event.dateTime.subtract(
-      Duration(minutes: event.remindBeforeMinutes),
+      event.remindBeforeVariant.duration(event.remindBeforeValue),
     );
 
     if (scheduledTime.isBefore(DateTime.now()) &&
@@ -108,7 +108,7 @@ class NotificationService {
     if (event.repeat == model.RepeatInterval.daily) {
       matchComponents = DateTimeComponents.time;
     } else if (event.repeat == model.RepeatInterval.weekly ||
-               event.repeat == model.RepeatInterval.custom) {
+        event.repeat == model.RepeatInterval.custom) {
       matchComponents = DateTimeComponents.dayOfWeekAndTime;
     } else if (event.repeat == model.RepeatInterval.monthly) {
       matchComponents = DateTimeComponents.dayOfMonthAndTime;
@@ -120,8 +120,11 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       actions: [
-        AndroidNotificationAction('complete', 'Выполнено ✓',
-          cancelNotification: true),
+        AndroidNotificationAction(
+          'complete',
+          'Выполнено ✓',
+          cancelNotification: true,
+        ),
         AndroidNotificationAction('dismiss', 'Отложить'),
       ],
     );
@@ -131,8 +134,8 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    final body = event.remindBeforeMinutes > 0
-        ? "${event.name} (через ${event.remindBeforeMinutes} мин)"
+    final body = event.remindBeforeValue > 0
+        ? "${event.name} (через ${event.remindBeforeValue} ${event.remindBeforeVariant.declension(event.remindBeforeValue)})"
         : event.name;
 
     if (event.repeat == model.RepeatInterval.custom &&

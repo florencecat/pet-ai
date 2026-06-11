@@ -37,7 +37,7 @@ class TreatmentService {
       name: eventName,
       category: EventCategories.vaccination,
       dateTime: eventDateTime,
-      remindBeforeMinutes: remindBeforeDays * 24 * 60,
+      remindBeforeValue: remindBeforeDays * 24 * 60,
       petIds: [petId],
       source: EventSource.treatment,
     );

@@ -152,6 +152,10 @@ String formatSmartDateTime(DateTime d) {
       : '${DateFormat('dd.MM.yyyy').format(d)} – $timePart';
 }
 
+String minuteDeclension(int number) => declension(number, 'минута', 'минуты', 'минут');
+String hourDeclension(int number) => declension(number, 'час', 'часа', 'часов');
+String dayDeclension(int number) => declension(number, 'день', 'дня', 'дней');
+
 String declension(
   int number,
   String nominative,

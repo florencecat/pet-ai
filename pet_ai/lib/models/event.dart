@@ -5,6 +5,43 @@ import 'package:pet_satellite/theme/app_colors.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }
 
+enum RemindBeforeVariant { days, hours, minutes }
+
+extension RemindBeforeVariantX on RemindBeforeVariant {
+  String get label {
+    switch (this) {
+      case RemindBeforeVariant.days:
+        return 'дней';
+      case RemindBeforeVariant.hours:
+        return 'часов';
+      case RemindBeforeVariant.minutes:
+        return 'минут';
+    }
+  }
+
+  String declension(int count) {
+    switch (this) {
+      case RemindBeforeVariant.days:
+        return dayDeclension(count);
+      case RemindBeforeVariant.hours:
+        return hourDeclension(count);
+      case RemindBeforeVariant.minutes:
+        return minuteDeclension(count);
+    }
+  }
+
+  Duration duration(int count) {
+    switch (this) {
+      case RemindBeforeVariant.days:
+        return Duration(days: count);
+      case RemindBeforeVariant.hours:
+        return Duration(hours: count);
+      case RemindBeforeVariant.minutes:
+        return Duration(minutes: count);
+    }
+  }
+}
+
 /// Источник создания события.
 /// Позволяет связать событие с породившим его объектом (препарат, вакцина, заметка)
 /// и применить контекстно-корректное поведение (синхронизация статуса, UI).
@@ -142,7 +179,9 @@ class Event implements PbEntity {
   String name;
   EventCategory category;
   DateTime dateTime;
+
   bool starred;
+  bool remind;
 
   /// Даты выполнения в формате "yyyy-MM-dd" — отдельно для каждого вхождения
   Set<String> completedDates;
@@ -155,10 +194,9 @@ class Event implements PbEntity {
 
   RepeatInterval repeat;
   List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
-  int remindBeforeMinutes;
 
-  /// When false, no push notifications are scheduled for this event.
-  bool notify;
+  RemindBeforeVariant remindBeforeVariant;
+  int remindBeforeValue;
 
   /// Откуда создано событие (вручную, препарат, вакцина, заметка).
   final EventSource source;
@@ -173,8 +211,9 @@ class Event implements PbEntity {
     required this.dateTime,
     this.repeat = RepeatInterval.none,
     this.customDays = const [],
-    this.remindBeforeMinutes = 0,
-    this.notify = true,
+    this.remindBeforeVariant = RemindBeforeVariant.days,
+    this.remindBeforeValue = 0,
+    this.remind = true,
     List<String>? petIds,
     this.source = EventSource.manual,
     this.sourceId,
@@ -193,8 +232,9 @@ class Event implements PbEntity {
     required this.petIds,
     required this.repeat,
     required this.customDays,
-    required this.remindBeforeMinutes,
-    this.notify = true,
+    required this.remindBeforeVariant,
+    required this.remindBeforeValue,
+    this.remind = true,
     this.source = EventSource.manual,
     this.sourceId,
   });
@@ -210,8 +250,9 @@ class Event implements PbEntity {
        petIds = [],
        repeat = RepeatInterval.none,
        customDays = const [],
-       remindBeforeMinutes = 0,
-       notify = false,
+       remindBeforeVariant = RemindBeforeVariant.days,
+       remindBeforeValue = 0,
+       remind = false,
        source = EventSource.note,
        sourceId = null;
 
@@ -225,12 +266,13 @@ class Event implements PbEntity {
       petIds = [],
       repeat = RepeatInterval.none,
       customDays = const [],
-      remindBeforeMinutes = 0,
-      notify = true,
+      remindBeforeVariant = RemindBeforeVariant.days,
+      remindBeforeValue = 0,
+      remind = true,
       source = EventSource.manual,
       sourceId = null;
 
-  bool get completable => source != EventSource.note;
+  bool get completable => remind && source != EventSource.note;
 
   String get categoryCaption {
     switch (source) {
@@ -289,6 +331,7 @@ class Event implements PbEntity {
   /// Просрочено: не повторяется, дата в прошлом, не выполнено на эту дату
   bool get isOverdue {
     if (repeat != RepeatInterval.none) return false;
+    if (!remind) return false;
     final eventDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
     final today = DateTime.now();
     final todayDay = DateTime(today.year, today.month, today.day);
@@ -301,17 +344,19 @@ class Event implements PbEntity {
     DateTime? dateTime,
     RepeatInterval? repeat,
     List<int>? customDays,
+    RemindBeforeVariant? remindBeforeVariant,
     int? remindBeforeMinutes,
     List<String>? petIds, {
-    bool? notify,
+    bool? remind,
   }) {
     this.name = name ?? this.name;
     this.category = category ?? this.category;
     this.dateTime = dateTime ?? this.dateTime;
-    if (notify != null) this.notify = notify;
+    if (remind != null) this.remind = remind;
     this.repeat = repeat ?? this.repeat;
     this.customDays = customDays ?? this.customDays;
-    this.remindBeforeMinutes = remindBeforeMinutes ?? this.remindBeforeMinutes;
+    this.remindBeforeVariant = remindBeforeVariant ?? this.remindBeforeVariant;
+    this.remindBeforeValue = remindBeforeMinutes ?? this.remindBeforeValue;
     if (petIds != null) this.petIds = petIds;
   }
 
@@ -347,8 +392,9 @@ class Event implements PbEntity {
     'petIds': petIds,
     'repeat': repeat.index,
     'customDays': customDays,
-    'remindBeforeMinutes': remindBeforeMinutes,
-    'notify': notify,
+    'remindBeforeVariant': remindBeforeVariant.name,
+    'remindBeforeMinutes': remindBeforeValue,
+    'remind': remind,
     'source': source.name,
     if (sourceId != null) 'sourceId': sourceId,
   };
@@ -363,8 +409,9 @@ class Event implements PbEntity {
     'pets': petIds,
     'repeat_interval': repeat.name,
     if (customDays.isNotEmpty) 'repeat_days': customDays,
-    'remind_before_minutes': remindBeforeMinutes,
-    'notify': notify,
+    'remindBeforeVariant': remindBeforeVariant.name,
+    'remind_before_minutes': remindBeforeValue,
+    'remind': remind,
     'source': source.name,
   };
 
@@ -389,6 +436,11 @@ class Event implements PbEntity {
       orElse: () => EventSource.manual,
     );
 
+    final remindBeforeVariant = RemindBeforeVariant.values.firstWhere(
+      (s) => s.name == (json['remindBeforeVariant'] as String?),
+      orElse: () => RemindBeforeVariant.days,
+    );
+
     return Event.deserialize(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -403,8 +455,9 @@ class Event implements PbEntity {
               ?.map((e) => e as int)
               .toList() ??
           const [],
-      remindBeforeMinutes: json['remindBeforeMinutes'] as int? ?? 0,
-      notify: json['notify'] as bool? ?? true,
+      remindBeforeVariant: remindBeforeVariant,
+      remindBeforeValue: json['remindBeforeMinutes'] as int? ?? 0,
+      remind: json['remind'] as bool? ?? true,
       source: source,
       sourceId: json['sourceId'] as String?,
     );
@@ -429,9 +482,13 @@ class _EventCodec extends PbCodec<Event> {
     ),
     customDays:
         (data['repeat_days'] as List<dynamic>?)?.cast<int>() ?? const [],
-    remindBeforeMinutes:
+    remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
+          (s) => s.name == (data['remindBeforeVariant'] as String?),
+      orElse: () => RemindBeforeVariant.days,
+    ),
+    remindBeforeValue:
         (data['remind_before_minutes'] as num?)?.toInt() ?? 0,
-    notify: data['notify'] as bool? ?? true,
+    remind: data['remind'] as bool? ?? true,
     source: EventSource.values.firstWhere(
       (s) => s.name == (data['source'] as String?),
       orElse: () => EventSource.manual,

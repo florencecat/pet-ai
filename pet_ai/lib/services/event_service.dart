@@ -62,7 +62,7 @@ class EventService {
     all.add(event);
     await _persistAll(all);
 
-    if (event.notify && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (event.remind && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       try {
         await NotificationService().ensurePermission();
         await NotificationService().scheduleEventNotification(event);
