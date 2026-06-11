@@ -212,6 +212,7 @@ class Pet implements PbEntity {
   Map<String, dynamic> toPocketBase(String ownerId) => {
     'id': id,
     'name': name,
+    'birthdate': birthDate?.toIso8601String(),
     'user': ownerId,
     'species': species.id,
     'breed': breed.id,
@@ -237,7 +238,7 @@ class _PetCodec extends PbCodec<Pet> {
 
     final breedId = data['breed'] as String? ?? '';
     final breed = breedId.isNotEmpty
-        ? PetBreed(id: breedId, name: '', speciesId: species.id)
+        ? PetBreedService.breedById(species, breedId)
         : PetBreed.empty();
 
     final gender = data['gender'] != null
@@ -251,12 +252,16 @@ class _PetCodec extends PbCodec<Pet> {
         ? DateTime.tryParse(data['castration_date'].toString())
         : null;
 
+    final birthDate = data['birthdate'] != null
+        ? DateTime.tryParse(data['birthdate'].toString())
+        : null;
+
     return Pet.deserialize(
       id: data['id'] as String,
       name: data['name'] as String? ?? '',
       species: species,
       breed: breed,
-      birthDate: null, // не хранится в toPocketBase
+      birthDate: birthDate, // не хранится в toPocketBase
       gender: gender,
       castrated: data['castrated'] as bool? ?? false,
       castratedDate: castratedDate,
