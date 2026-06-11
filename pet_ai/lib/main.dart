@@ -17,6 +17,7 @@ import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
+import 'package:pet_satellite/services/crash_reporting_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/health_service.dart';
 import 'package:pet_satellite/services/notification_service.dart';
@@ -59,6 +60,12 @@ void main() async {
   GetIt.instance.registerSingleton<CloudSyncService>(
     CloudSyncService(pbService: GetIt.instance<PocketBaseService>()),
   );
+  // Crash/error reporting — устанавливает глобальные обработчики ошибок и
+  // отправляет их в PocketBase (если включено в настройках).
+  GetIt.instance.registerSingleton<CrashReportingService>(
+    CrashReportingService(pbService: GetIt.instance<PocketBaseService>()),
+  );
+  await GetIt.instance<CrashReportingService>().init();
 
   runApp(const PetHealthApp());
 }

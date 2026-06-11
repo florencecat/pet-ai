@@ -9,6 +9,7 @@ import 'package:pet_satellite/pages/secondary_pages/user_profile_page.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
+import 'package:pet_satellite/services/crash_reporting_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pb_service.dart';
@@ -35,18 +36,22 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _remindersEnabled = true;
 
   late final CloudSyncService _sync;
+  late final CrashReportingService _crash;
 
   @override
   void initState() {
     super.initState();
     _sync = CloudSyncService.instance;
     _sync.addListener(_onSyncChanged);
+    _crash = CrashReportingService.instance;
+    _crash.addListener(_onSyncChanged);
     _loadAll();
   }
 
   @override
   void dispose() {
     _sync.removeListener(_onSyncChanged);
+    _crash.removeListener(_onSyncChanged);
     super.dispose();
   }
 
@@ -489,6 +494,26 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: 'Биометрия при входе',
                 onTap: null,
                 iconColor: ac.primaryColor,
+              ),
+              _Divider(),
+              SettingsRow(
+                icon: Icons.bug_report_outlined,
+                label: 'Отправлять отчёты об ошибках',
+                subtitle: 'Помогает быстрее исправлять сбои',
+                iconColor: ac.primaryColor,
+                trailing: Switch(
+                  inactiveThumbColor: ac.primaryColor,
+                  trackOutlineColor:
+                      WidgetStateProperty.resolveWith<Color?>((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.transparent;
+                    }
+                    return ac.primaryColor;
+                  }),
+                  value: _crash.enabled,
+                  activeThumbColor: ac.primaryColor,
+                  onChanged: (v) => _crash.setEnabled(v),
+                ),
                 last: true,
               ),
             ],
