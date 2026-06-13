@@ -6,9 +6,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -254,11 +256,7 @@ class PetService {
           ? profile.weightHistory.entries.last
           : null;
       if (last != null) {
-        CloudSyncService.instance.pushAsync(
-          'weights',
-          last,
-          petId,
-        );
+        CloudSyncService.instance.pushAsync('weights', last, petId);
       }
     }
   }
@@ -269,11 +267,7 @@ class PetService {
       profile.moodHistory.add(entry);
       await saveProfile(profile);
       // Fire-and-forget cloud push.
-      CloudSyncService.instance.pushAsync(
-        'moods',
-        entry,
-        petId,
-      );
+      CloudSyncService.instance.pushAsync('moods', entry, petId);
     }
   }
 
@@ -283,11 +277,7 @@ class PetService {
       profile.foodHistory.add(entry);
       await saveProfile(profile);
       // Fire-and-forget cloud push.
-      CloudSyncService.instance.pushAsync(
-        'meals',
-        entry,
-        petId,
-      );
+      CloudSyncService.instance.pushAsync('meals', entry, petId);
     }
   }
 
@@ -325,11 +315,7 @@ class PetService {
           ? profile.noteHistory.entries.last
           : null;
       if (last != null) {
-        CloudSyncService.instance.pushAsync(
-          'notes',
-          last,
-          petId,
-        );
+        CloudSyncService.instance.pushAsync('notes', last, petId);
       }
     }
   }
@@ -389,10 +375,7 @@ class PetService {
 
     final picker = ImagePicker();
 
-    final pickedFile = await picker.pickImage(
-      source: source,
-      imageQuality: 90,
-    );
+    final pickedFile = await picker.pickImage(source: source, imageQuality: 90);
 
     if (pickedFile == null) return null;
 
@@ -456,6 +439,121 @@ class PetService {
       profile.weightHistory = WeightHistory(entries: entries);
       await saveProfile(profile);
     }
+  }
+
+  Widget buildProfileAvatar(
+    BuildContext context,
+    Pet? pet, {
+    bool? withSwitcher,
+    bool? multipleProfiles,
+    double size = 38,
+  }) {
+    final petColor =
+        pet?.palette.mainColor ??
+        context.watch<AppearanceController>().primaryColor;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: EdgeInsets.all(size * 0.01),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: petColor, width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: petColor.withAlpha(80),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: CircleAvatar(
+            radius: size * 0.9,
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
+            child: pet?.profileImage == null
+                ? Icon(Icons.pets, size: size, color: petColor)
+                : CircleAvatar(
+                    radius: size,
+                    backgroundImage: FileImage(pet!.profileImage!),
+                  ),
+          ),
+        ),
+        if (withSwitcher == true)
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: context.watch<AppearanceController>().petColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Icon(
+                multipleProfiles == true
+                    ? Icons.expand_more_rounded
+                    : Icons.add,
+                size: 14,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget buildProfileDescription(
+    BuildContext context,
+    Pet? pet, {
+    Widget? leading,
+    Widget? trailing,
+    TextStyle? titleTheme,
+    TextStyle? subTitleTheme,
+  }) {
+    String description = pet?.breed.name ?? '';
+    if (description.isEmpty) {
+      description = pet?.species.name ?? 'Спутник';
+    }
+    if (pet?.birthDate != null) {
+      final duration = pet!.birthDate!.difference(DateTime.now());
+      description = '$description · ${formatPetAge(duration)}';
+    }
+
+    return ListTile(
+      leading: leading,
+      trailing: trailing,
+      title: Row(
+        spacing: 6,
+        children: [
+          Text(
+            pet == null || pet.name.isEmpty ? 'Без имени' : pet.name,
+            style: titleTheme ?? Theme.of(context).textTheme.titleLarge,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (pet != null && pet.gender.icon != null)
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: pet.gender.color,
+              ),
+              child: Padding(
+                padding: EdgeInsetsGeometry.all(2),
+                child: Icon(
+                  pet.gender.icon,
+                  size: 18,
+                  color: context.watch<AppearanceController>().secondaryColor,
+                ),
+              ),
+            ),
+        ],
+      ),
+      subtitle: Text(
+        description.isEmpty ? 'Порода и возраст' : description,
+        style: subTitleTheme ?? Theme.of(context).textTheme.bodySmall,
+      ),
+    );
   }
 }
 

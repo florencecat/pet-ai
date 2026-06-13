@@ -36,7 +36,7 @@ class GlassPlate extends StatelessWidget {
   Widget build(BuildContext context) {
     const borderRadius = BorderRadius.all(Radius.circular(24));
     final borderColor = transparent ? color.withAlpha(180) : color;
-    final fillColor = transparent ? color.withAlpha(220) : color;
+    final fillColor = transparent ? color.withAlpha(172) : color;
 
     final content = ClipRRect(
       borderRadius: borderRadius,

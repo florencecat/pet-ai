@@ -112,18 +112,6 @@ class HomePageState extends State<HomePage> {
     return 'Доброй ночи';
   }
 
-  String _profileDescription() {
-    String description = _profile?.breed.name ?? '';
-    if (description.isEmpty) {
-      description = _profile?.species.name ?? 'Спутник';
-    }
-    if (_profile != null && _profile!.birthDate != null) {
-      final duration = _profile!.birthDate!.difference(DateTime.now());
-      return '$description · ${formatPetAge(duration)}';
-    }
-    return description;
-  }
-
   void _openEventSheet(BuildContext context, Event event) async {
     final updated = await showModalBottomSheet<bool>(
       context: context,
@@ -350,7 +338,6 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final description = _profileDescription();
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
@@ -433,74 +420,11 @@ class HomePageState extends State<HomePage> {
                                       borderRadius: 33,
                                     ),
                                   )
-                                : Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(3),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: context
-                                                .watch<AppearanceController>()
-                                                .petColor,
-                                            width: 2.5,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: context
-                                                  .watch<AppearanceController>()
-                                                  .petColor
-                                                  .withAlpha(80),
-                                              blurRadius: 10,
-                                              spreadRadius: 1,
-                                            ),
-                                          ],
-                                        ),
-                                        child: CircleAvatar(
-                                          radius: 30,
-                                          backgroundColor: Colors.white
-                                              .withValues(alpha: 0.3),
-                                          child: _profile?.profileImage == null
-                                              ? const Icon(
-                                                  Icons.pets,
-                                                  size: 38,
-                                                  color: Colors.white,
-                                                )
-                                              : CircleAvatar(
-                                                  radius: 38,
-                                                  backgroundImage: FileImage(
-                                                    _profile!.profileImage!,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: Container(
-                                          width: 22,
-                                          height: 22,
-                                          decoration: BoxDecoration(
-                                            color: context
-                                                .watch<AppearanceController>()
-                                                .petColor,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.white,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            _multipleProfiles == true
-                                                ? Icons.expand_more_rounded
-                                                : Icons.add,
-                                            size: 14,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                : PetService().buildProfileAvatar(
+                                    context,
+                                    _profile,
+                                    withSwitcher: true,
+                                    multipleProfiles: _multipleProfiles,
                                   ),
                           ),
                         ),
@@ -523,48 +447,9 @@ class HomePageState extends State<HomePage> {
                                     ],
                                   ),
                                 )
-                              : ListTile(
-                                  title: Row(
-                                    spacing: 6,
-                                    children: [
-                                      Text(
-                                        _profile == null ||
-                                                _profile!.name.isEmpty
-                                            ? 'Без имени'
-                                            : _profile!.name,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleLarge,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (_profile != null &&
-                                          _profile!.gender.icon != null)
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: _profile!.gender.color,
-                                          ),
-                                          child: Padding(
-                                            padding: EdgeInsetsGeometry.all(2),
-                                            child: Icon(
-                                              _profile!.gender.icon,
-                                              size: 18,
-                                              color: context
-                                                  .watch<AppearanceController>()
-                                                  .secondaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  subtitle: Text(
-                                    description.isEmpty
-                                        ? 'Порода и возраст'
-                                        : description,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
+                              : PetService().buildProfileDescription(
+                                  context,
+                                  _profile,
                                 ),
                         ),
                       ],
@@ -1129,66 +1014,41 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: GlassPlate(
-                color: isActive
-                    ? profile.palette.mainColor
-                    : Colors.white,
+                transparent: true,
+                color: isActive ? profile.palette.mainColor : Colors.white,
                 child: Pressable(
                   haptic: HapticStrength.selection,
                   onTap: isActive
                       ? () => Navigator.pop(context)
                       : () => Navigator.pop(context, profile.id),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      radius: 22,
-                      backgroundColor: isActive
-                          ? Colors.white.withAlpha(77)
-                          : context
-                                .watch<AppearanceController>()
-                                .primaryColor
-                                .withAlpha(38),
-                      backgroundImage: profile.profileImage != null
-                          ? FileImage(profile.profileImage!)
-                          : null,
-                      child: profile.profileImage == null
-                          ? Icon(
-                              Icons.pets,
-                              size: 20,
-                              color: isActive
-                                  ? Colors.white
-                                  : context
-                                        .watch<AppearanceController>()
-                                        .primaryColor,
-                            )
-                          : null,
-                    ),
-                    title: Text(
-                      profile.name.isEmpty ? 'Без имени' : profile.name,
-                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        color: isActive
-                            ? Colors.white
-                            : context
-                                  .watch<AppearanceController>()
-                                  .secondaryColor,
-                        fontWeight:
-                            isActive ? FontWeight.w700 : FontWeight.w400,
-                      ),
-                    ),
-                    subtitle: Text(
-                      profile.breed.isEmpty
-                          ? profile.species.name
-                          : profile.breed.name,
-                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                        color: isActive
-                            ? Colors.white.withAlpha(204)
-                            : context
-                                  .watch<AppearanceController>()
-                                  .secondaryColor
-                                  .withAlpha(153),
-                      ),
+                  child: PetService().buildProfileDescription(
+                    context,
+                    profile,
+                    leading: PetService().buildProfileAvatar(
+                      context,
+                      profile,
+                      size: 22,
                     ),
                     trailing: isActive
                         ? const Icon(Icons.check_circle, color: Colors.white)
                         : null,
+                    titleTheme: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      color: isActive
+                          ? Colors.white
+                          : context
+                                .watch<AppearanceController>()
+                                .secondaryColor,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                    subTitleTheme: Theme.of(context).textTheme.bodySmall!
+                        .copyWith(
+                          color: isActive
+                              ? Colors.white.withAlpha(204)
+                              : context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                                    .withAlpha(153),
+                        ),
                   ),
                 ),
               ),
