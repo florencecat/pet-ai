@@ -9,6 +9,7 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
@@ -384,7 +385,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
         // ── Palette ─────────────────────────────────────────────────────────
         _PaletteSection(
           current: p.palette,
-          onChanged: (palette) => setState(() { p.palette = palette; _paletteChanged = true;}),
+          onChanged: (palette) => setState(() {
+            p.palette = palette;
+            _paletteChanged = true;
+          }),
           primaryColor: ac.primaryColor,
           paletteChanged: _paletteChanged,
         ),
@@ -397,34 +401,50 @@ class _PetProfilePageState extends State<PetProfilePage> {
         _SectionCard(
           children: [
             _InfoRow(
+              icon: FontAwesome.tag,
               label: 'Кличка',
               value: p.name.isEmpty ? 'Не указана' : p.name,
               onTap: _editName,
             ),
-            _InfoRow(label: 'Вид', value: _speciesLabel(), onTap: _editSpecies),
             _InfoRow(
+              icon: FontAwesome.paw,
+              label: 'Вид',
+              value: _speciesLabel(),
+              onTap: _editSpecies,
+            ),
+            _InfoRow(
+              icon: FontAwesome.dna,
               label: 'Порода',
               value: p.breed.name.isEmpty ? 'Не указана' : p.breed.name,
               onTap: _editBreed,
             ),
             _InfoRow(
+              icon: FontAwesome.palette,
               label: 'Окрас',
               value: p.coat.isEmpty ? 'Не указан' : p.coat,
               onTap: _editCoat,
             ),
             _InfoRow(
+              icon: FontAwesome.scroll,
               label: 'Биография',
               value: p.notes.isEmpty ? 'Не указана' : p.notes,
               multiline: true,
               onTap: _editBio,
             ),
             _InfoRow(
+              icon: FontAwesome.birthday_cake,
               label: 'Дата рождения',
               value: _formatDate(p.birthDate),
               onTap: _editBirthDate,
             ),
-            _InfoRow(label: 'Пол', value: p.gender.label, onTap: _editGender),
             _InfoRow(
+              icon: FontAwesome.venus_mars,
+              label: 'Пол',
+              value: p.gender.label,
+              onTap: _editGender,
+            ),
+            _InfoRow(
+              icon: FontAwesome.cut,
               label: 'Стерилизация',
               value: _castrationLabel(),
               onTap: _editCastration,
@@ -441,11 +461,13 @@ class _PetProfilePageState extends State<PetProfilePage> {
         _SectionCard(
           children: [
             _InfoRow(
+              icon: FontAwesome.allergies,
               label: 'Аллергии',
               value: p.allergies.isEmpty ? 'Не указаны' : p.allergies,
               onTap: _editAllergies,
             ),
             _InfoRow(
+              icon: FontAwesome.notes_medical,
               label: 'Хронические заболевания',
               value: p.chronicConditions.isEmpty
                   ? 'Не указаны'
@@ -454,6 +476,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
               onTap: _editChronicConditions,
             ),
             _InfoRow(
+              icon: FontAwesome.stethoscope,
               label: 'Ветеринар',
               value: p.vetClinic.isEmpty ? 'Не указан' : p.vetClinic,
               onTap: _editVetClinic,
@@ -470,12 +493,14 @@ class _PetProfilePageState extends State<PetProfilePage> {
         _SectionCard(
           children: [
             _InfoRow(
+              icon: FontAwesome.microchip,
               label: 'Чип / клеймо',
               value: p.chipNumber.isEmpty ? 'Не указан' : p.chipNumber,
               onTap: _editChipNumber,
             ),
             // Entry point — vet passport upload (not yet implemented)
             _InfoRow(
+              icon: FontAwesome.book_medical,
               label: 'Ветпаспорт',
               value: 'Скоро',
               onTap: null,
@@ -540,6 +565,7 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
+  final IconData? icon;
   final String label;
   final String value;
   final bool multiline;
@@ -547,6 +573,7 @@ class _InfoRow extends StatelessWidget {
   final VoidCallback? onTap;
 
   const _InfoRow({
+    this.icon,
     required this.label,
     required this.value,
     this.multiline = false,
@@ -575,10 +602,11 @@ class _InfoRow extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
-              crossAxisAlignment: multiline
-                  ? CrossAxisAlignment.start
-                  : CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              spacing: 14,
               children: [
+                if (icon != null)
+                  Icon(icon, size: 14, color: ac.primaryColor.withAlpha(128)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -640,7 +668,9 @@ class _AvatarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actualColor = profile.palette.mainColor != primaryColor ? profile.palette.mainColor : primaryColor;
+    final actualColor = profile.palette.mainColor != primaryColor
+        ? profile.palette.mainColor
+        : primaryColor;
 
     return Center(
       child: Pressable(
@@ -766,7 +796,8 @@ class _PaletteSection extends StatelessWidget {
             },
           ),
         ),
-        if (paletteChanged && !context.watch<AppearanceController>().usePetColor)
+        if (paletteChanged &&
+            !context.watch<AppearanceController>().usePetColor)
           SoftGlassPlate(
             color: context.watch<AppearanceController>().primaryColor.withAlpha(
               30,
