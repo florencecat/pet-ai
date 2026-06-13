@@ -8,6 +8,7 @@ import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
 
 import '../../../services/appearance_controller.dart';
@@ -258,7 +259,9 @@ class _MoodSheetState extends State<MoodSheet> {
                     children: DayPart.values.map((mt) {
                       final selected = selectedDayPart == mt;
                       return Expanded(
-                        child: GestureDetector(
+                        child: Pressable(
+                          haptic: HapticStrength.selection,
+                          scale: 0.93,
                           onTap: () => setState(() => selectedDayPart = mt),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
@@ -325,7 +328,9 @@ class _MoodSheetState extends State<MoodSheet> {
                     children: PetMood.values.map((mood) {
                       final isSelected = selectedMood == mood;
 
-                      return GestureDetector(
+                      return Pressable(
+                        haptic: HapticStrength.selection,
+                        scale: 0.9,
                         onTap: () {
                           setState(() {
                             selectedMood = mood;
@@ -390,7 +395,12 @@ class _MoodSheetState extends State<MoodSheet> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: change ? save : null,
+              onPressed: change
+                  ? () {
+                      triggerHaptic(HapticStrength.medium);
+                      save();
+                    }
+                  : null,
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Добавить'),
               style: FilledButton.styleFrom(

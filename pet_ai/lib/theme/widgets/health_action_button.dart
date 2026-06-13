@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pet_satellite/services/appearance_controller.dart';
-import 'package:provider/provider.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 
 class HomeActionButton extends StatelessWidget {
   final IconData icon;
@@ -18,13 +17,13 @@ class HomeActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
 
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        hoverColor: context.watch<AppearanceController>().secondaryColor,
+    return Pressable(
+      onTap: onPressed,
+      haptic: HapticStrength.light,
+      scale: 0.94,
+      child: Material(
+        color: color,
         borderRadius: BorderRadius.circular(16),
-        onTap: onPressed,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Column(

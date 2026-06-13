@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
 
 class FloatingNavigationBar extends StatelessWidget {
@@ -70,8 +71,10 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      haptic: HapticStrength.selection,
+      scale: 0.92,
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,

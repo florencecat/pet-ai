@@ -8,6 +8,7 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
@@ -249,7 +250,10 @@ class EventsPageState extends State<EventsPage> {
       floatingActionButton: Padding(
         padding: EdgeInsetsGeometry.only(bottom: bottomPadding),
         child: FloatingActionButton(
-          onPressed: _openCreateSheet,
+          onPressed: () {
+            triggerHaptic(HapticStrength.medium);
+            _openCreateSheet();
+          },
           backgroundColor: primaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -553,10 +557,13 @@ class _PetSelectorChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      haptic: HapticStrength.selection,
+      scale: 0.94,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? color.withAlpha(200) : Colors.transparent,
@@ -569,17 +576,19 @@ class _PetSelectorChip extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              label,
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 220),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: selected ? Colors.white : color.withAlpha(200),
               ),
+              child: Text(label),
             ),
             if (hasEvents) ...[
               const SizedBox(width: 6),
-              Container(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
@@ -764,8 +773,12 @@ class _ActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // delete-кнопке даём более сильный отклик — деструктивное действие
+    final isDelete = color == ThemeColors.dangerZone;
+    return Pressable(
       onTap: onTap,
+      haptic: isDelete ? HapticStrength.heavy : HapticStrength.medium,
+      scale: 0.9,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,

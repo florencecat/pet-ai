@@ -16,6 +16,7 @@ import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
 import '../../services/pet_profile_service.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -849,9 +850,9 @@ class _UserAccountCard extends StatelessWidget {
 
     return GlassPlate(
       padding: 0,
-      child: InkWell(
+      child: Pressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        haptic: HapticStrength.light,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -998,8 +999,9 @@ class _PetRow extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        InkWell(
+        Pressable(
           onTap: onTap,
+          haptic: HapticStrength.light,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(

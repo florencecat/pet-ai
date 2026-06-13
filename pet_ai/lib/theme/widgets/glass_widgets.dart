@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
 
 /// Имитация liquid-glass карточки без BackdropFilter.
@@ -169,11 +169,9 @@ class GlassCard extends StatelessWidget {
       transparent: transparent,
       gradientColors: gradientColors,
       useShadow: useShadow,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          if (callback != null) callback!.call();
-        },
+      child: Pressable(
+        onTap: callback == null ? null : () => callback!(),
+        haptic: HapticStrength.light,
         child: child,
       ),
     );
@@ -223,15 +221,15 @@ class GlassEventCard extends StatelessWidget {
       child: GlassPlate(
         transparent: false,
         color: cardColor,
-        child: InkWell(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            if (callback != null) callback!.call();
-          },
+        child: Pressable(
+          onTap: callback == null ? null : () => callback!(),
+          haptic: HapticStrength.light,
           child: ListTile(
             leading: onCompletedChanged != null
-                ? GestureDetector(
+                ? Pressable(
                     onTap: () => onCompletedChanged!(!_isCompleted),
+                    haptic: HapticStrength.selection,
+                    scale: 0.9,
                     child: Icon(
                       _isCompleted
                           ? Icons.check_circle
@@ -326,27 +324,30 @@ class GlassSettingsCard extends StatelessWidget {
       padding: EdgeInsetsGeometry.only(bottom: 8),
       child: GlassPlate(
         color: color,
-        child: ListTile(
-          leading: Icon(leadingIcon, color: textColor),
-          title: Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge!.copyWith(inherit: true, color: textColor),
-          ),
-          subtitle: subtitle != null
-              ? Text(
-                  subtitle!,
-                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    inherit: true,
-                    color: textColor,
-                  ),
-                )
-              : null,
-          trailing: trailingIcon != null
-              ? Icon(trailingIcon!, color: textColor)
-              : null,
+        child: Pressable(
           onTap: callback,
+          haptic: HapticStrength.light,
+          child: ListTile(
+            leading: Icon(leadingIcon, color: textColor),
+            title: Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(inherit: true, color: textColor),
+            ),
+            subtitle: subtitle != null
+                ? Text(
+                    subtitle!,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      inherit: true,
+                      color: textColor,
+                    ),
+                  )
+                : null,
+            trailing: trailingIcon != null
+                ? Icon(trailingIcon!, color: textColor)
+                : null,
+          ),
         ),
       ),
     );
@@ -430,20 +431,23 @@ class GlassListTile extends StatelessWidget {
     }
 
     return GlassPlate(
-      child: ListTile(
+      child: Pressable(
         onTap: callback,
-        leading: tileIcon,
-        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-        subtitle: Column(
-          spacing: 6,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (subtitle != null)
-              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
-            ?bottomBadge,
-          ],
+        haptic: HapticStrength.light,
+        child: ListTile(
+          leading: tileIcon,
+          title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          subtitle: Column(
+            spacing: 6,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (subtitle != null)
+                Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+              ?bottomBadge,
+            ],
+          ),
+          trailing: trailing,
         ),
-        trailing: trailing,
       ),
     );
   }
@@ -459,7 +463,11 @@ class DeleteIconButton extends StatelessWidget {
     return IconButton(
       icon: const Icon(Icons.delete_outline, size: 20),
       color: ThemeColors.dangerZone.withAlpha(180),
-      onPressed: callback,
+      onPressed: () {
+        // heavy haptic — это деструктивное действие, привлекаем внимание
+        triggerHaptic(HapticStrength.heavy);
+        callback();
+      },
     );
   }
 }
@@ -510,6 +518,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
 
   Future<void> _onTap() async {
     if (widget.onChanged != null) {
+      triggerHaptic(HapticStrength.selection);
       await _controller.forward();
       await _controller.reverse();
       widget.onChanged!(!widget.selected);
@@ -648,7 +657,10 @@ class CollapsibleSection extends StatelessWidget {
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: onToggle,
+                onTap: () {
+                  triggerHaptic(HapticStrength.selection);
+                  onToggle();
+                },
                 behavior: HitTestBehavior.opaque,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -732,7 +744,12 @@ class SettingsRow extends StatelessWidget {
     final effectiveIconColor = iconColor ?? ac.primaryColor;
 
     return InkWell(
-      onTap: onTap,
+      onTap: onTap == null
+          ? null
+          : () {
+              triggerHaptic(HapticStrength.light);
+              onTap!();
+            },
       borderRadius: last
           ? const BorderRadius.vertical(bottom: Radius.circular(20))
           : BorderRadius.zero,

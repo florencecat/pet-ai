@@ -11,6 +11,7 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -345,7 +346,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
                     ),
                   )
                 : TextButton(
-                    onPressed: _saveProfile,
+                    onPressed: () {
+                      triggerHaptic(HapticStrength.medium);
+                      _saveProfile();
+                    },
                     child: Text(
                       'Сохранить',
                       style: TextStyle(
@@ -559,7 +563,12 @@ class _InfoRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         InkWell(
-          onTap: onTap,
+          onTap: onTap == null
+              ? null
+              : () {
+                  triggerHaptic(HapticStrength.light);
+                  onTap!();
+                },
           borderRadius: last
               ? const BorderRadius.vertical(bottom: Radius.circular(20))
               : BorderRadius.zero,
@@ -634,8 +643,10 @@ class _AvatarSection extends StatelessWidget {
     final actualColor = profile.palette.mainColor != primaryColor ? profile.palette.mainColor : primaryColor;
 
     return Center(
-      child: GestureDetector(
+      child: Pressable(
         onTap: onTap,
+        haptic: HapticStrength.selection,
+        scale: 0.94,
         child: Stack(
           clipBehavior: Clip.none,
           children: [

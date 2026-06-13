@@ -14,6 +14,7 @@ import 'package:pet_satellite/theme/widgets/skeleton.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/services/health_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -418,7 +419,9 @@ class HomePageState extends State<HomePage> {
                       children: [
                         Expanded(
                           flex: 1,
-                          child: GestureDetector(
+                          child: Pressable(
+                            haptic: HapticStrength.selection,
+                            scale: 0.92,
                             onTap: _isLoadingProfile
                                 ? null
                                 : () => _showProfileSwitcher(context),
@@ -989,10 +992,11 @@ class _PetTimeline extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: GestureDetector(
+              child: Pressable(
                 onTap: item.event != null || item.isBirthday
                     ? () => onEventTap(item)
                     : null,
+                haptic: HapticStrength.light,
                 child: GlassPlate(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -1128,60 +1132,64 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                 color: isActive
                     ? profile.palette.mainColor
                     : Colors.white,
-                child: ListTile(
-                  leading: CircleAvatar(
-                    radius: 22,
-                    backgroundColor: isActive
-                        ? Colors.white.withAlpha(77)
-                        : context
-                              .watch<AppearanceController>()
-                              .primaryColor
-                              .withAlpha(38),
-                    backgroundImage: profile.profileImage != null
-                        ? FileImage(profile.profileImage!)
-                        : null,
-                    child: profile.profileImage == null
-                        ? Icon(
-                            Icons.pets,
-                            size: 20,
-                            color: isActive
-                                ? Colors.white
-                                : context
-                                      .watch<AppearanceController>()
-                                      .primaryColor,
-                          )
-                        : null,
-                  ),
-                  title: Text(
-                    profile.name.isEmpty ? 'Без имени' : profile.name,
-                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      color: isActive
-                          ? Colors.white
-                          : context
-                                .watch<AppearanceController>()
-                                .secondaryColor,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                    ),
-                  ),
-                  subtitle: Text(
-                    profile.breed.isEmpty
-                        ? profile.species.name
-                        : profile.breed.name,
-                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                      color: isActive
-                          ? Colors.white.withAlpha(204)
-                          : context
-                                .watch<AppearanceController>()
-                                .secondaryColor
-                                .withAlpha(153),
-                    ),
-                  ),
-                  trailing: isActive
-                      ? const Icon(Icons.check_circle, color: Colors.white)
-                      : null,
+                child: Pressable(
+                  haptic: HapticStrength.selection,
                   onTap: isActive
                       ? () => Navigator.pop(context)
                       : () => Navigator.pop(context, profile.id),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: isActive
+                          ? Colors.white.withAlpha(77)
+                          : context
+                                .watch<AppearanceController>()
+                                .primaryColor
+                                .withAlpha(38),
+                      backgroundImage: profile.profileImage != null
+                          ? FileImage(profile.profileImage!)
+                          : null,
+                      child: profile.profileImage == null
+                          ? Icon(
+                              Icons.pets,
+                              size: 20,
+                              color: isActive
+                                  ? Colors.white
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .primaryColor,
+                            )
+                          : null,
+                    ),
+                    title: Text(
+                      profile.name.isEmpty ? 'Без имени' : profile.name,
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        color: isActive
+                            ? Colors.white
+                            : context
+                                  .watch<AppearanceController>()
+                                  .secondaryColor,
+                        fontWeight:
+                            isActive ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                    subtitle: Text(
+                      profile.breed.isEmpty
+                          ? profile.species.name
+                          : profile.breed.name,
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                        color: isActive
+                            ? Colors.white.withAlpha(204)
+                            : context
+                                  .watch<AppearanceController>()
+                                  .secondaryColor
+                                  .withAlpha(153),
+                      ),
+                    ),
+                    trailing: isActive
+                        ? const Icon(Icons.check_circle, color: Colors.white)
+                        : null,
+                  ),
                 ),
               ),
             );
