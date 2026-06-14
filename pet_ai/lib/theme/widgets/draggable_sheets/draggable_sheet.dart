@@ -57,39 +57,49 @@ class DraggableSheet extends StatelessWidget {
         color: surfaceColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      // SingleChildScrollView → Column(min) is the canonical Flutter pattern
-      // for bottom-sheet content that may exceed the visible area.
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Drag handle ───────────────────────────────────────────────
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(top: 12, bottom: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade400,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Drag handle ───────────────────────────────────────────────
+          // Kept OUTSIDE the scroll view: showModalBottomSheet's enableDrag
+          // detects vertical drags on the sheet surface, but a wrapping
+          // SingleChildScrollView consumes them — so a drag on the handle
+          // or header wouldn't dismiss the sheet (this was the iOS bug
+          // where the sheet body scrolled bouncily instead of stretching
+          // the sheet down).
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade400,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
+          ),
 
-            // ── Header ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: _buildHeader(primaryColor, titleStyle),
-            ),
+          // ── Header ────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: _buildHeader(primaryColor, titleStyle),
+          ),
 
-            // ── Body ──────────────────────────────────────────────────────
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, keyboardInset + 24),
-              child: body,
+          // ── Body ──────────────────────────────────────────────────────
+          // Flexible so the column hugs its content when small (sheet keeps
+          // wrapping to body height) but caps at the available height when
+          // the body overflows (then the body scrolls).
+          Flexible(
+            fit: FlexFit.loose,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, keyboardInset + 24),
+                child: body,
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

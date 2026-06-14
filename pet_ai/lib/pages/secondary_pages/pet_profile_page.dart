@@ -30,6 +30,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
   bool _loading = true;
   bool _saving = false;
   bool _paletteChanged = false;
+  // Bumped on each avatar pick so the Image widget re-resolves its FileImage.
+  // The avatar path is deterministic (avatar_<id>.png), so FileImage equality
+  // by path prevents re-resolution after the file is overwritten.
+  int _avatarVersion = 0;
 
   @override
   void initState() {
@@ -223,7 +227,10 @@ class _PetProfilePageState extends State<PetProfilePage> {
       source: source,
     );
     if (path != null && mounted) {
-      setState(() => _profile!.profileImage = File(path));
+      setState(() {
+        _profile!.profileImage = File(path);
+        _avatarVersion++;
+      });
     }
   }
 
@@ -378,6 +385,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
           profile: p,
           onTap: _editAvatar,
           primaryColor: ac.primaryColor,
+          avatarVersion: _avatarVersion,
         ),
 
         const SizedBox(height: 20),
@@ -659,11 +667,13 @@ class _AvatarSection extends StatelessWidget {
   final Pet profile;
   final VoidCallback onTap;
   final Color primaryColor;
+  final int avatarVersion;
 
   const _AvatarSection({
     required this.profile,
     required this.onTap,
     required this.primaryColor,
+    required this.avatarVersion,
   });
 
   @override
@@ -690,7 +700,11 @@ class _AvatarSection extends StatelessWidget {
               ),
               child: ClipOval(
                 child: profile.profileImage != null
-                    ? Image.file(profile.profileImage!, fit: BoxFit.cover)
+                    ? Image.file(
+                        profile.profileImage!,
+                        key: ValueKey(avatarVersion),
+                        fit: BoxFit.cover,
+                      )
                     : Icon(Icons.pets, size: 42, color: actualColor),
               ),
             ),

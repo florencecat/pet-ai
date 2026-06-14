@@ -690,7 +690,7 @@ class HealthPageState extends State<HealthPage> {
                   ? TextButton.icon(
                       iconAlignment: IconAlignment.end,
                       label: Text(
-                        'Добавить',
+                        'Список',
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       icon: Icon(
@@ -797,7 +797,7 @@ class HealthPageState extends State<HealthPage> {
                   ? TextButton.icon(
                       iconAlignment: IconAlignment.end,
                       label: Text(
-                        'Добавить',
+                        'Список',
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       icon: Icon(

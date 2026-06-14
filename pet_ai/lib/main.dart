@@ -223,9 +223,13 @@ class _MainPageState extends State<MainPage> {
             currentIndex: _selectedIndex.index,
             healthScoreColor: _healthScoreColor,
             onTap: (index) {
+              final isSameTab = _selectedIndex.index == index;
               setState(() {
                 _selectedIndex = NavigationTab.values[index];
               });
+              // Re-tapping the active tab should not trigger a reload —
+              // it surfaced skeleton states for no reason.
+              if (isSameTab) return;
               if (index == NavigationTab.home.index) {
                 _homeKey.currentState?.refresh();
               }
