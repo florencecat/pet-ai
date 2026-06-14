@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/mood.dart';
@@ -27,7 +30,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
 class HealthPage extends StatefulWidget {
-  const HealthPage({super.key});
+  final VoidCallback? onHealthChanged;
+  const HealthPage({super.key, this.onHealthChanged});
 
   @override
   State<HealthPage> createState() => HealthPageState();
@@ -87,8 +91,44 @@ class HealthPageState extends State<HealthPage> {
 
   Future<void> _dismissBadge(String id) async {
     if (_profile == null) return;
-    setState(() => _dismissedBadgeIds.add(id));
-    await HealthAnalyzer.saveDismissed(_dismissedBadgeIds.toList(), _profile!.id);
+    final wasOk = _isOkScore(_healthBadges);
+    _dismissedBadgeIds.add(id);
+    await HealthAnalyzer.saveDismissed(
+      _dismissedBadgeIds.toList(),
+      _profile!.id,
+    );
+    // Re-analyze so the "Всё в порядке" badge appears automatically when
+    // nothing else remains.
+    final newBadges = await HealthAnalyzer.analyze(_profile!, _events);
+    if (!mounted) return;
+    setState(() => _healthBadges = newBadges);
+    widget.onHealthChanged?.call();
+    if (!wasOk && _isOkScore(newBadges)) {
+      _playCelebration();
+    }
+  }
+
+  bool _isOkScore(List<HealthBadge> badges) {
+    final danger = badges
+        .where((b) => b.severity == HealthBadgeSeverity.danger)
+        .length;
+    final warning = badges
+        .where((b) => b.severity == HealthBadgeSeverity.warning)
+        .length;
+    return danger == 0 && warning < 3;
+  }
+
+  void _playCelebration() {
+    HapticFeedback.mediumImpact();
+    final overlay = Overlay.of(context, rootOverlay: true);
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _HealthCelebrationOverlay(
+        color: ThemeColors.ok.mainColor,
+        onDone: () => entry.remove(),
+      ),
+    );
+    overlay.insert(entry);
   }
 
   Future<void> _initScreen() async {
@@ -298,7 +338,19 @@ class HealthPageState extends State<HealthPage> {
         >[];
 
     // ── TreatmentEntry ─────────────────────────────────────────────────────
+    // Только последняя запись по каждому (kind, name): свежая запись
+    // означает, что более ранняя обработка уже выполнена.
+    final latestByKey = <String, TreatmentEntry>{};
     for (final t in _profile!.treatmentHistory.entries) {
+      final key = t.kind == TreatmentKind.vaccine
+          ? 'vaccine:${t.name}'
+          : t.kind.name;
+      final existing = latestByKey[key];
+      if (existing == null || t.date.isAfter(existing.date)) {
+        latestByKey[key] = t;
+      }
+    }
+    for (final t in latestByKey.values) {
       final next = DateTime(t.nextDate.year, t.nextDate.month, t.nextDate.day);
       final daysLeft = next.difference(today).inDays;
       final HealthBadgeSeverity severity;
@@ -1239,18 +1291,46 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
       minSize: 0.4,
       maxSize: 1.0,
       onBack: () => Navigator.of(context).pop(),
-      body: Column(
-        children: _badges
-            .map(
-              (b) => HealthBadgeTile(
-                badge: b,
-                onDismiss: (b.id != null && widget.onDismiss != null)
-                    ? () => _dismiss(b)
-                    : null,
+      body: _badges.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.favorite,
+                    size: 64,
+                    color: ThemeColors.ok.mainColor.withAlpha(180),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Всё в порядке',
+                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: ThemeColors.ok.mainColor,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Рекомендаций больше нет',
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: ThemeColors.textPrimary.withAlpha(160),
+                    ),
+                  ),
+                ],
               ),
             )
-            .toList(),
-      ),
+          : Column(
+              children: _badges
+                  .map(
+                    (b) => HealthBadgeTile(
+                      badge: b,
+                      onDismiss: (b.id != null && widget.onDismiss != null)
+                          ? () => _dismiss(b)
+                          : null,
+                    ),
+                  )
+                  .toList(),
+            ),
     );
   }
 }
@@ -1311,6 +1391,16 @@ class _PillReminderTileState extends State<_PillReminderTile> {
   ({Color color, String label, IconData icon})? _todayStatus() {
     final now = DateTime.now();
     if (!widget.reminder.isScheduledForDay(now)) return null;
+
+    // «По требованию»: никогда не «пропущено» — пользователь сам решает, когда дать.
+    if (widget.reminder.frequencyType == PillFrequencyType.onDemand) {
+      final taken = widget.reminder.isTakenOnDay(now);
+      return (
+        color: taken ? ThemeColors.ok.mainColor : ThemeColors.info.mainColor,
+        label: taken ? 'Принято сегодня' : 'По требованию',
+        icon: taken ? Icons.check_circle_outline : Icons.alarm_on_outlined,
+      );
+    }
 
     final total = widget.reminder.schedules.length;
     final count = widget.reminder.countTakenOnDay(now);
@@ -1446,6 +1536,193 @@ class _NextScheduledBadge extends StatelessWidget {
       icon: Icons.schedule,
       label: label,
       selected: false,
+    );
+  }
+}
+
+// ─── Celebration overlay when all recommendations are resolved ───────────────
+
+class _HealthCelebrationOverlay extends StatefulWidget {
+  final Color color;
+  final VoidCallback onDone;
+
+  const _HealthCelebrationOverlay({required this.color, required this.onDone});
+
+  @override
+  State<_HealthCelebrationOverlay> createState() =>
+      _HealthCelebrationOverlayState();
+}
+
+class _CelebrationParticle {
+  final double startX; // 0..1 fraction of width
+  final double driftX; // horizontal drift, in pixels
+  final double rise;   // upward travel, in pixels
+  final double size;
+  final double delay;  // 0..1 of total duration
+  final IconData icon;
+  final double rotation;
+
+  _CelebrationParticle({
+    required this.startX,
+    required this.driftX,
+    required this.rise,
+    required this.size,
+    required this.delay,
+    required this.icon,
+    required this.rotation,
+  });
+}
+
+class _HealthCelebrationOverlayState extends State<_HealthCelebrationOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final List<_CelebrationParticle> _particles;
+  static const _icons = [
+    Icons.favorite,
+    Icons.favorite_border,
+    Icons.star_rounded,
+    Icons.auto_awesome,
+    Icons.check_circle,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final rng = math.Random();
+    _particles = List.generate(18, (_) {
+      return _CelebrationParticle(
+        startX: 0.15 + rng.nextDouble() * 0.7,
+        driftX: (rng.nextDouble() - 0.5) * 120,
+        rise: 220 + rng.nextDouble() * 220,
+        size: 18 + rng.nextDouble() * 22,
+        delay: rng.nextDouble() * 0.35,
+        icon: _icons[rng.nextInt(_icons.length)],
+        rotation: (rng.nextDouble() - 0.5) * 1.2,
+      );
+    });
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) widget.onDone();
+      });
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final startY = size.height * 0.62;
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          return Stack(
+            children: [
+              // Soft radial flash behind the score badge.
+              Positioned.fill(
+                child: Opacity(
+                  opacity: (1 - _ctrl.value).clamp(0.0, 1.0) * 0.35,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment(0, -0.4),
+                        radius: 0.6 + _ctrl.value * 0.4,
+                        colors: [
+                          widget.color.withAlpha(120),
+                          widget.color.withAlpha(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              ..._particles.map((p) {
+                final localT = ((_ctrl.value - p.delay) / (1 - p.delay))
+                    .clamp(0.0, 1.0);
+                final eased = Curves.easeOut.transform(localT);
+                final x = size.width * p.startX + p.driftX * eased;
+                final y = startY - p.rise * eased;
+                final scale = localT < 0.15
+                    ? localT / 0.15
+                    : 1.0 - (localT - 0.6).clamp(0.0, 0.4) * 1.5;
+                final opacity = (1.0 - eased).clamp(0.0, 1.0);
+                return Positioned(
+                  left: x - p.size / 2,
+                  top: y - p.size / 2,
+                  child: Opacity(
+                    opacity: opacity,
+                    child: Transform.rotate(
+                      angle: p.rotation * eased,
+                      child: Transform.scale(
+                        scale: scale.clamp(0.0, 1.2),
+                        child: Icon(
+                          p.icon,
+                          color: widget.color,
+                          size: p.size,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              // Center "Всё в порядке" label that pops in and fades.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: size.height * 0.4,
+                child: Center(
+                  child: Opacity(
+                    opacity: (_ctrl.value < 0.7
+                            ? (_ctrl.value / 0.2).clamp(0.0, 1.0)
+                            : (1 - (_ctrl.value - 0.7) / 0.3))
+                        .clamp(0.0, 1.0),
+                    child: Transform.scale(
+                      scale: 0.7 + Curves.easeOutBack
+                              .transform(_ctrl.value.clamp(0.0, 1.0)) *
+                          0.4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: widget.color.withAlpha(40),
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                            color: widget.color.withAlpha(120),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.favorite,
+                                color: widget.color, size: 22),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Всё в порядке',
+                              style: TextStyle(
+                                color: widget.color,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

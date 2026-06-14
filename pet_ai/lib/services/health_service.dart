@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/note.dart';
+import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
@@ -111,9 +112,21 @@ class HealthAnalyzer {
     }
 
     // ── Просроченные мероприятия (treatments) ────────────────────────────
+    // Берём только последнюю запись по каждому (kind, name) — если пользователь
+    // добавил более свежую запись, старая считается обработанной этим фактом.
     final overdueTreatments = <TreatmentEntry>[];
     final upcomingTreatments = <TreatmentEntry>[];
+    final latestByKey = <String, TreatmentEntry>{};
     for (final t in profile.treatmentHistory.entries) {
+      final key = t.kind == TreatmentKind.vaccine
+          ? 'vaccine:${t.name}'
+          : t.kind.name;
+      final existing = latestByKey[key];
+      if (existing == null || t.date.isAfter(existing.date)) {
+        latestByKey[key] = t;
+      }
+    }
+    for (final t in latestByKey.values) {
       final next = DateTime(t.nextDate.year, t.nextDate.month, t.nextDate.day);
       final diff = next.difference(today).inDays;
       if (diff < 0) {
@@ -338,8 +351,11 @@ class HealthAnalyzer {
     // ── Пропущенные таблетки ─────────────────────────────────────────────
     // Считаем только если сегодня по расписанию И время уже прошло И не принято.
     // Предстоящие приёмы не влияют на оценку здоровья.
+    // Препараты «по требованию» нельзя пропустить — они не имеют фиксированного
+    // времени и отмечаются вручную в момент приёма.
     for (final pill in profile.pillReminders) {
       if (!pill.isActive) continue;
+      if (pill.frequencyType == PillFrequencyType.onDemand) continue;
       if (!pill.isScheduledForDay(now)) continue;
       final scheduled = DateTime(
         today.year, today.month, today.day, pill.hour, pill.minute,

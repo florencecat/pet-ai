@@ -126,7 +126,7 @@ class PillKind {
   }
 }
 
-enum PillFrequencyType { daily, weekdays }
+enum PillFrequencyType { daily, weekdays, onDemand }
 
 extension PillFrequencyTypeX on PillFrequencyType {
   String get label {
@@ -135,6 +135,8 @@ extension PillFrequencyTypeX on PillFrequencyType {
         return 'Ежедневно';
       case PillFrequencyType.weekdays:
         return 'По дням недели';
+      case PillFrequencyType.onDemand:
+        return 'По требованию';
     }
   }
 
@@ -144,6 +146,8 @@ extension PillFrequencyTypeX on PillFrequencyType {
         return Icons.repeat;
       case PillFrequencyType.weekdays:
         return Icons.calendar_view_week;
+      case PillFrequencyType.onDemand:
+        return Icons.alarm_on_outlined;
     }
   }
 }
@@ -253,6 +257,9 @@ class Pill implements PbEntity {
         return true;
       case PillFrequencyType.weekdays:
         return weekdays.contains(d.weekday);
+      case PillFrequencyType.onDemand:
+        // По требованию — всегда доступно для отметки, пока курс активен.
+        return true;
     }
   }
 
@@ -303,6 +310,8 @@ class Pill implements PbEntity {
         if (weekdays.isEmpty) return 'По дням недели';
         final sorted = List.of(weekdays)..sort();
         return sorted.map((d) => _weekdayShort[d] ?? '').join(', ');
+      case PillFrequencyType.onDemand:
+        return 'По требованию';
     }
   }
 

@@ -147,7 +147,8 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       );
       return;
     }
-    if (_form.schedules.isEmpty) {
+    if (_form.frequency != PillFrequencyType.onDemand &&
+        _form.schedules.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Добавьте хотя бы одно время приёма')),
       );
@@ -466,6 +467,9 @@ class _PillForm extends StatelessWidget {
         ],
 
         // ── Times ────────────────────────────────────────────────────────
+        // Для «по требованию» нет фиксированного времени приёма — пользователь
+        // отмечает каждый приём вручную.
+        if (form.frequency != PillFrequencyType.onDemand) ...[
         const SizedBox(height: 12),
         Text('Время приёма', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 6),
@@ -556,6 +560,7 @@ class _PillForm extends StatelessWidget {
             ),
           ],
         ),
+        ],
 
         const SizedBox(height: 12),
         Row(
@@ -793,6 +798,25 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
   }
 
   // ── View mode actions ────────────────────────────────────────────────────
+
+  Future<void> _toggleOnDemandTaken() async {
+    final today = DateTime.now();
+    final taken = _reminder.isTakenOnDay(today);
+    if (taken) {
+      await PillReminderService().markUntaken(
+        petId: widget.profile.id,
+        reminderId: _reminder.id,
+        date: today,
+      );
+    } else {
+      await PillReminderService().markTaken(
+        petId: widget.profile.id,
+        reminderId: _reminder.id,
+        date: today,
+      );
+    }
+    await _reloadReminder();
+  }
 
   Future<void> _toggleSchedule(int scheduleIndex) async {
     final today = DateTime.now();
@@ -1052,7 +1076,9 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
   Widget _buildViewBody(Color accent) {
     final today = DateTime.now();
     final scheduledToday = _reminder.isScheduledForDay(today);
-    final missedDays = _missedDays(30);
+    final isOnDemand = _reminder.frequencyType == PillFrequencyType.onDemand;
+    // «По требованию» нельзя пропустить — раздел пропусков не показываем.
+    final missedDays = isOnDemand ? <DateTime>[] : _missedDays(30);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1119,27 +1145,28 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                 indent: 46,
                 color: ThemeColors.border.withAlpha(60),
               ),
-              // Show each time as a separate row
-              ..._reminder.schedules.asMap().entries.map((entry) {
-                final i = entry.key;
-                final s = entry.value;
-                final isLast = i == _reminder.schedules.length - 1;
-                return Column(
-                  children: [
-                    _DetailRow(
-                      icon: Icons.access_time,
-                      iconColor: accent,
-                      label: s.label,
-                    ),
-                    if (!isLast)
-                      Divider(
-                        height: 1,
-                        indent: 46,
-                        color: ThemeColors.border.withAlpha(60),
+              // Show each time as a separate row (skip for on-demand — no schedule).
+              if (!isOnDemand)
+                ..._reminder.schedules.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final s = entry.value;
+                  final isLast = i == _reminder.schedules.length - 1;
+                  return Column(
+                    children: [
+                      _DetailRow(
+                        icon: Icons.access_time,
+                        iconColor: accent,
+                        label: s.label,
                       ),
-                  ],
-                );
-              }),
+                      if (!isLast)
+                        Divider(
+                          height: 1,
+                          indent: 46,
+                          color: ThemeColors.border.withAlpha(60),
+                        ),
+                    ],
+                  );
+                }),
               Divider(
                 height: 1,
                 indent: 46,
@@ -1163,21 +1190,33 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
         if (scheduledToday) ...[
           Text('Сегодня', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          // One toggle per schedule — each is toggled independently.
-          ..._reminder.schedules.asMap().entries.map((entry) {
-            final i = entry.key;
-            final s = entry.value;
-            final taken = _reminder.isScheduleTakenOnDay(today, i);
-            return Padding(
+          if (isOnDemand)
+            // Один общий тогл «Принято сегодня» вместо расписания.
+            Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _TodayToggle(
-                isTaken: taken,
-                time: s.label,
+                isTaken: _reminder.isTakenOnDay(today),
+                time: 'По требованию',
                 accent: accent,
-                onTap: () => _toggleSchedule(i),
+                onTap: _toggleOnDemandTaken,
               ),
-            );
-          }),
+            )
+          else
+            // One toggle per schedule — each is toggled independently.
+            ..._reminder.schedules.asMap().entries.map((entry) {
+              final i = entry.key;
+              final s = entry.value;
+              final taken = _reminder.isScheduleTakenOnDay(today, i);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _TodayToggle(
+                  isTaken: taken,
+                  time: s.label,
+                  accent: accent,
+                  onTap: () => _toggleSchedule(i),
+                ),
+              );
+            }),
           const SizedBox(height: 4),
         ],
 

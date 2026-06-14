@@ -185,7 +185,7 @@ class _MainPageState extends State<MainPage> {
           context.read<AppearanceController>().reloadProfile();
         },
       ),
-      HealthPage(key: _healthKey),
+      HealthPage(key: _healthKey, onHealthChanged: _refreshHealthScore),
       const AIChatPage(),
       EventsPage(key: _eventsKey, initialDate: _calendarInitialDate),
     ];

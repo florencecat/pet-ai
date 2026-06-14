@@ -12,36 +12,41 @@ class PillReminderService {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return reminder;
 
-    final eventDateTime = DateTime(
-      reminder.startDate.year,
-      reminder.startDate.month,
-      reminder.startDate.day,
-      reminder.hour,
-      reminder.minute,
-    );
+    // Препараты «по требованию» не имеют фиксированного расписания, поэтому
+    // календарное событие для них не создаём.
+    Pill saved = reminder;
+    if (reminder.frequencyType != PillFrequencyType.onDemand) {
+      final eventDateTime = DateTime(
+        reminder.startDate.year,
+        reminder.startDate.month,
+        reminder.startDate.day,
+        reminder.hour,
+        reminder.minute,
+      );
 
-    final repeat = reminder.frequencyType == PillFrequencyType.daily
-        ? RepeatInterval.daily
-        : RepeatInterval.custom;
+      final repeat = reminder.frequencyType == PillFrequencyType.daily
+          ? RepeatInterval.daily
+          : RepeatInterval.custom;
 
-    final event = Event(
-      name: reminder.name,
-      category: EventCategories.health,
-      dateTime: eventDateTime,
-      repeat: repeat,
-      customDays: reminder.frequencyType == PillFrequencyType.weekdays
-          ? reminder.weekdays
-          : [],
-      remindBeforeValue: 0,
-      petIds: [petId],
-      // Связываем событие с напоминанием для двусторонней синхронизации статуса
-      source: EventSource.pill,
-      sourceId: reminder.id,
-    );
+      final event = Event(
+        name: reminder.name,
+        category: EventCategories.health,
+        dateTime: eventDateTime,
+        repeat: repeat,
+        customDays: reminder.frequencyType == PillFrequencyType.weekdays
+            ? reminder.weekdays
+            : [],
+        remindBeforeValue: 0,
+        petIds: [petId],
+        // Связываем событие с напоминанием для двусторонней синхронизации статуса
+        source: EventSource.pill,
+        sourceId: reminder.id,
+      );
 
-    await EventService().createEvent(event);
+      await EventService().createEvent(event);
+      saved = reminder.copyWith(eventId: event.id);
+    }
 
-    final saved = reminder.copyWith(eventId: event.id);
     profile.pillReminders.add(saved);
     await PetService().saveProfile(profile);
 
