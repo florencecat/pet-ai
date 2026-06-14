@@ -129,6 +129,7 @@ class _MainPageState extends State<MainPage> {
   void _onOpenCalendar() {
     setState(() {
       _selectedIndex = NavigationTab.calendar;
+      _eventsKey.currentState?.refresh();
     });
   }
 
