@@ -91,21 +91,11 @@ class HealthPageState extends State<HealthPage> {
 
   Future<void> _dismissBadge(String id) async {
     if (_profile == null) return;
-    final wasOk = _isOkScore(_healthBadges);
     _dismissedBadgeIds.add(id);
     await HealthAnalyzer.saveDismissed(
       _dismissedBadgeIds.toList(),
       _profile!.id,
     );
-    // Re-analyze so the "Всё в порядке" badge appears automatically when
-    // nothing else remains.
-    final newBadges = await HealthAnalyzer.analyze(_profile!, _events);
-    if (!mounted) return;
-    setState(() => _healthBadges = newBadges);
-    widget.onHealthChanged?.call();
-    if (!wasOk && _isOkScore(newBadges)) {
-      _playCelebration();
-    }
   }
 
   bool _isOkScore(List<HealthBadge> badges) {
@@ -292,11 +282,12 @@ class HealthPageState extends State<HealthPage> {
     if (mounted) await _initScreen();
   }
 
-  void _openRecommendations(BuildContext context, List<HealthBadge> badges) {
+  void _openRecommendations(BuildContext context, List<HealthBadge> badges) async {
     final visible = badges
         .where((b) => b.id == null || !_dismissedBadgeIds.contains(b.id))
         .toList();
-    showModalBottomSheet<void>(
+    final wasOk = _isOkScore(_healthBadges);
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -307,6 +298,16 @@ class HealthPageState extends State<HealthPage> {
         onDismiss: _profile != null ? _dismissBadge : null,
       ),
     );
+    if (!mounted || _profile == null) return;
+    // Re-analyze after the sheet has closed so the status transition and its
+    // celebration overlay don't render on top of the sheet's scrim.
+    final newBadges = await HealthAnalyzer.analyze(_profile!, _events);
+    if (!mounted) return;
+    setState(() => _healthBadges = newBadges);
+    widget.onHealthChanged?.call();
+    if (!wasOk && _isOkScore(newBadges)) {
+      _playCelebration();
+    }
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
