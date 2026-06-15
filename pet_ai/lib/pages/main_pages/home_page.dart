@@ -11,6 +11,7 @@ import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/skeleton.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/birthday_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
@@ -122,6 +123,18 @@ class HomePageState extends State<HomePage> {
       builder: (_) => EventSheet(event: event),
     );
     if (updated == true) await _initScreen();
+  }
+
+  void _openBirthdaySheet(BuildContext context) {
+    if (_profile?.birthDate == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BirthdaySheet(profile: _profile!),
+    );
   }
 
   void _openNotes(BuildContext context) async {
@@ -613,7 +626,9 @@ class HomePageState extends State<HomePage> {
                 upcomingItems: _buildUpcomingItems(),
                 historyItems: _buildHistoryItems(),
                 onEventTap: (item) {
-                  if (item.event != null) {
+                  if (item.isBirthday) {
+                    _openBirthdaySheet(context);
+                  } else if (item.event != null) {
                     _openEventSheet(context, item.event!);
                   }
                 },
