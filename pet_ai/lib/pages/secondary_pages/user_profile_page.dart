@@ -4,6 +4,7 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
@@ -294,27 +295,12 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
   }
 
   Future<void> _confirmDelete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Удалить профиль?'),
-        content: const Text(
-            'Данные вашего аккаунта будут удалены с устройства.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: ThemeColors.dangerZone),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить профиль?',
+      message: 'Данные вашего аккаунта будут удалены с устройства.',
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await UserService().delete();
       if (mounted) Navigator.pop(context, null);
     }

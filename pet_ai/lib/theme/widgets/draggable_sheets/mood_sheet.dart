@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/widgets/chart_placeholder.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/mood.dart';
@@ -84,24 +85,8 @@ class _MoodSheetState extends State<MoodSheet> {
   }
 
   Future<void> _deleteEntry(MoodEntry entry) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Удалить запись?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ThemeColors.dangerZone),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    final confirmed = await confirmDelete(context, title: 'Удалить запись?');
+    if (!confirmed) return;
     await PetService().deleteMoodEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => history.deleteEntry(entry.date));
   }

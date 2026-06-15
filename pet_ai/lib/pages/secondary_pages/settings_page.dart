@@ -15,6 +15,7 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
@@ -35,6 +36,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // Notification stubs
   bool _remindersEnabled = true;
+
+  // Подтверждение удаления (загружается асинхронно из SharedPreferences).
+  bool _confirmDeleteEnabled = true;
 
   late final CloudSyncService _sync;
   late final CrashReportingService _crash;
@@ -61,11 +65,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadAll() async {
     final profiles = await PetService().loadAllProfiles();
     final user = await UserService().load();
+    final confirmDeleteEnabled = await isDeleteConfirmationEnabled();
     if (mounted) {
       setState(() {
         _profiles = profiles;
         _loadingProfiles = false;
         _user = user;
+        _confirmDeleteEnabled = confirmDeleteEnabled;
       });
     }
   }
@@ -92,29 +98,12 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _deleteUserProfile() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Удалить профиль?'),
-        content: const Text(
-          'Данные вашего аккаунта будут удалены с устройства.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить профиль?',
+      message: 'Данные вашего аккаунта будут удалены с устройства.',
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await UserService().delete();
       GetIt.instance<PocketBaseService>().pb.authStore.clear();
       if (mounted) setState(() => _user = null);
@@ -495,6 +484,29 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: 'Биометрия при входе',
                 onTap: null,
                 iconColor: ac.primaryColor,
+              ),
+              _Divider(),
+              SettingsRow(
+                icon: Icons.delete_sweep_outlined,
+                label: 'Подтверждать удаление',
+                subtitle: 'Спрашивать перед удалением записей',
+                iconColor: ac.primaryColor,
+                trailing: Switch(
+                  inactiveThumbColor: ac.primaryColor,
+                  trackOutlineColor:
+                      WidgetStateProperty.resolveWith<Color?>((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.transparent;
+                    }
+                    return ac.primaryColor;
+                  }),
+                  value: _confirmDeleteEnabled,
+                  activeThumbColor: ac.primaryColor,
+                  onChanged: (v) async {
+                    await setDeleteConfirmationEnabled(v);
+                    if (mounted) setState(() => _confirmDeleteEnabled = v);
+                  },
+                ),
               ),
               _Divider(),
               SettingsRow(

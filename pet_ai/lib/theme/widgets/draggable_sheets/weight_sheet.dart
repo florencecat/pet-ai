@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pill_stepper.dart';
@@ -48,26 +49,8 @@ class _WeightSheetState extends State<WeightSheet> {
   }
 
   Future<void> _deleteEntry(WeightEntry entry) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Удалить запись?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    final confirmed = await confirmDelete(context, title: 'Удалить запись?');
+    if (!confirmed) return;
     await PetService().deleteWeightEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => _history.deleteEntry(entry.date));
   }

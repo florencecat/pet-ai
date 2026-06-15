@@ -5,6 +5,7 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/file_storage_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
@@ -45,29 +46,12 @@ class _FilesHistorySheetState extends State<FilesHistorySheet> {
   }
 
   Future<void> _delete(PetDocument doc) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Удалить документ?'),
-        content: Text(
-          '«${doc.name}» будет удалён без возможности восстановления.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить документ?',
+      message: '«${doc.name}» будет удалён без возможности восстановления.',
     );
-    if (confirmed != true || _petId == null) return;
+    if (!confirmed || _petId == null) return;
     await FileStorageService().deleteDocument(_petId!, doc);
     await _load();
   }

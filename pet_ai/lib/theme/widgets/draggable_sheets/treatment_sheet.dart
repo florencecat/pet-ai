@@ -6,6 +6,7 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/treatment_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
@@ -500,26 +501,12 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
   }
 
   Future<void> _delete(TreatmentEntry entry) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Удалить запись?'),
-        content: const Text('Запись и связанное напоминание будут удалены.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: ThemeColors.dangerZone),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить запись?',
+      message: 'Запись и связанное напоминание будут удалены.',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await TreatmentService().deleteTreatment(widget.profile.id, entry);
     widget.onDeleted(entry);
     if (mounted) {

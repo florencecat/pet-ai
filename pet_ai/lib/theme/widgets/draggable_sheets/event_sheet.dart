@@ -4,6 +4,7 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
@@ -148,29 +149,12 @@ class _EventSheetState extends State<EventSheet> {
   }
 
   Future<void> _deleteEvent(BuildContext context, Event event) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить событие?'),
-        content: const Text(
-          'Событие будет удалено без возможности восстановления.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить событие?',
+      message: 'Событие будет удалено без возможности восстановления.',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await EventService().deleteEvent(event);
     if (context.mounted) Navigator.of(context).pop(true);
   }

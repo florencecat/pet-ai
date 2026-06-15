@@ -11,6 +11,7 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
@@ -275,29 +276,13 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _deleteProfile() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Удалить профиль ${_profile!.name}?'),
-        content: const Text(
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить профиль ${_profile!.name}?',
+      message:
           'Все данные питомца будут удалены без возможности восстановления.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await PetService().deleteProfile(_profile!.id);
     final hasProfiles = await PetService().hasProfiles();
     if (mounted) {
