@@ -224,8 +224,8 @@ class HomePageState extends State<HomePage> {
               date: e.dateTime,
               title: e.name,
               subtitle: e.category.name,
-              icon: e.category.icon,
-              color: e.category.color,
+              icon: e.style.icon,
+              color: e.style.color,
               event: e,
             ),
           );
@@ -254,8 +254,8 @@ class HomePageState extends State<HomePage> {
                   ),
                   title: e.name,
                   subtitle: '${e.category.name} · повторяется',
-                  icon: e.category.icon,
-                  color: e.category.color,
+                  icon: e.style.icon,
+                  color: e.style.color,
                   event: e,
                 ),
               );
@@ -1014,7 +1014,6 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: GlassPlate(
-                transparent: true,
                 color: isActive ? profile.palette.mainColor : Colors.white,
                 child: Pressable(
                   haptic: HapticStrength.selection,

@@ -191,10 +191,10 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
 
   Future<void> _pickPhoto(ImageSource source) async {
     try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(source: source, imageQuality: 90);
-      if (picked != null && mounted) {
-        setState(() => _photo = File(picked.path));
+      // Единый механизм выбора + кадрирования (как в редактировании профиля).
+      final file = await PetService().pickAndCropImage(source: source);
+      if (file != null && mounted) {
+        setState(() => _photo = file);
       }
     } catch (_) {}
   }
@@ -232,6 +232,17 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
       castrated: _castrated,
       profileImage: _photo,
     );
+
+    // Переносим выбранное фото в постоянный каталог приложения (id уже есть).
+    if (_photo != null) {
+      try {
+        final path = await PetService().saveAvatar(profile.id, _photo!.path);
+        profile.profileImage = File(path);
+      } catch (_) {
+        // Если не удалось — оставляем временный путь (не критично).
+      }
+    }
+
     await PetService().saveProfile(profile);
     await PetService().setActiveProfile(profile.id);
 

@@ -409,10 +409,11 @@ class EventsPageState extends State<EventsPage> {
                         _selectedDay = selectedDay;
                         _focusedDay = focusedDay;
                       });
-                      await _loadEvents();
+                      refresh();
                     },
                     onPageChanged: (focusedDay) {
                       setState(() => _focusedDay = focusedDay);
+                      refresh();
                     },
                     onFormatChanged: (format) {
                       setState(() => _format = format);
@@ -826,7 +827,6 @@ class _EventTileCard extends StatelessWidget {
 
     return GlassPlate(
       color: Colors.white,
-      transparent: false,
       padding: 0,
       child: InkWell(
         onTap: () {
@@ -870,8 +870,8 @@ class _EventTileCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SoftRoundedIcon(
-                        icon: event.category.icon,
-                        color: event.categoryColor,
+                        icon: event.style.icon,
+                        color: event.style.color,
                         size: 24,
                       ),
                       const SizedBox(width: 12),
@@ -1106,8 +1106,8 @@ class _SearchResultTile extends StatelessWidget {
           child: Row(
             children: [
               SoftRoundedIcon(
-                icon: event.category.icon,
-                color: event.categoryColor,
+                icon: event.style.icon,
+                color: event.style.color,
                 size: 20,
               ),
               const SizedBox(width: 12),

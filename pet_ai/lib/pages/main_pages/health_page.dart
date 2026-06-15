@@ -416,7 +416,7 @@ class HealthPageState extends State<HealthPage> {
         subtitle: subtitle,
         date: eventDay,
         severity: severity,
-        icon: e.category.icon,
+        icon: e.style.icon,
       ));
     }
 
@@ -650,7 +650,7 @@ class HealthPageState extends State<HealthPage> {
                 children: [
                   const SizedBox(height: 8),
                   GlassPlate(
-                    child: Column(
+                    child: Padding(padding: EdgeInsetsGeometry.all(6), child: Column(
                       children: [
                         WeightChart(entries: weightEntries, height: 180),
                         if (_profile != null &&
@@ -667,6 +667,7 @@ class HealthPageState extends State<HealthPage> {
                       ],
                     ),
                   ),
+                  )
                 ],
               ),
             ),
@@ -1050,11 +1051,12 @@ class _HealthActionButton extends StatelessWidget {
 
     return Expanded(
       child: GlassCard(
+        transparent: true,
         padding: 16,
         callback: callback,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [softIcon]),
             const SizedBox(height: 8),

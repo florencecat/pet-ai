@@ -9,6 +9,7 @@ import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/treatment_icon.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -30,6 +31,7 @@ class TreatmentSheet extends StatefulWidget {
 
 class _TreatmentSheetState extends State<TreatmentSheet> {
   TreatmentKind _kind = TreatmentKind.rabies;
+  int? _color;
   final _nameCtrl = TextEditingController();
   DateTime _date = DateTime.now();
   late DateTime _nextDate;
@@ -49,11 +51,23 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
     super.dispose();
   }
 
-  void _setKind(TreatmentKind k) {
-    setState(() {
-      _kind = k;
-      _nextDate = _date.add(k.defaultInterval);
-    });
+  Future<void> _openIconPicker() async {
+    final accent = context.read<AppearanceController>().primaryColor;
+    final result = await showTreatmentIconPicker(
+      context,
+      initialKind: _kind,
+      initialColor: _color,
+      accent: accent,
+    );
+    if (result != null) {
+      setState(() {
+        _color = result.color;
+        if (result.kind != _kind) {
+          _kind = result.kind;
+          _nextDate = _date.add(_kind.defaultInterval);
+        }
+      });
+    }
   }
 
   Future<void> _pickDate({required bool isNext}) async {
@@ -101,6 +115,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
       nextDate: _nextDate,
       name: _nameCtrl.text.trim(),
       remindBeforeDays: _remindBeforeDays,
+      color: _color,
     );
     if (!mounted) return;
 
@@ -181,18 +196,10 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                   Text('Тип мероприятия',
                       style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: TreatmentKind.values.map((k) {
-                      return SoftGlassBadge(
-                        color: k.color,
-                        icon: k.icon,
-                        label: k.shortLabel,
-                        selected: _kind == k,
-                        onChanged: (_) => _setKind(k),
-                      );
-                    }).toList(),
+                  _IconPickerTile(
+                    kind: _kind,
+                    color: _color,
+                    onTap: _openIconPicker,
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -321,15 +328,10 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                           horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: entry.kind.color.withAlpha(20),
-                            ),
-                            child: Icon(entry.kind.icon,
-                                color: entry.kind.color, size: 20),
+                          TreatmentIcon(
+                            kind: entry.kind,
+                            colorValue: entry.color,
+                            fallback: entry.kind.color,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -435,7 +437,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
     if (_editingEntry == null) return;
     setState(() => _editSaving = true);
 
-    // Delete old, create new
+    // Delete old, create new — сохраняем выбранный цвет записи.
+    final preservedColor = _editingEntry!.color;
     await TreatmentService().deleteTreatment(widget.profile.id, _editingEntry!);
     await TreatmentService().addTreatment(
       petId: widget.profile.id,
@@ -444,6 +447,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
       nextDate: _editNextDate,
       name: _nameCtrl.text.trim(),
       remindBeforeDays: _editRemindDays,
+      color: preservedColor,
     );
 
     // Reload entries
@@ -523,6 +527,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
   Widget build(BuildContext context) {
     final accent = context.watch<AppearanceController>().primaryColor;
     final latest = _entries.isNotEmpty ? _entries.first : null;
+    // Цвет иконки берём из последней записи (или цвет типа по умолчанию).
+    final kindColor = latest?.displayColor ?? widget.kind.color;
 
     // Next date countdown
     String? countdownText;
@@ -562,17 +568,11 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: widget.kind.color.withAlpha(20),
-                    border: Border.all(
-                        color: widget.kind.color.withAlpha(60), width: 1.5),
-                  ),
-                  child:
-                      Icon(widget.kind.icon, color: widget.kind.color, size: 34),
+                TreatmentIcon(
+                  kind: widget.kind,
+                  colorValue: latest?.color,
+                  fallback: widget.kind.color,
+                  size: 72,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -775,13 +775,9 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                             height: 12,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: i == 0
-                                  ? widget.kind.color
-                                  : ThemeColors.border,
+                              color: i == 0 ? kindColor : ThemeColors.border,
                               border: Border.all(
-                                color: (i == 0
-                                        ? widget.kind.color
-                                        : ThemeColors.border)
+                                color: (i == 0 ? kindColor : ThemeColors.border)
                                     .withAlpha(60),
                                 width: 2,
                               ),
@@ -823,9 +819,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                                             .textTheme
                                             .titleSmall!
                                             .copyWith(
-                                              color: i == 0
-                                                  ? widget.kind.color
-                                                  : null,
+                                              color: i == 0 ? kindColor : null,
                                               fontWeight: FontWeight.w600,
                                             ),
                                       ),
@@ -893,6 +887,64 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/// Тайл выбора вида + цвета обработки (открывает [showTreatmentIconPicker]).
+class _IconPickerTile extends StatelessWidget {
+  final TreatmentKind kind;
+  final int? color;
+  final VoidCallback onTap;
+
+  const _IconPickerTile({
+    required this.kind,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: ThemeColors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            TreatmentIcon(
+              kind: kind,
+              colorValue: color,
+              fallback: kind.color,
+              size: 44,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Вид и цвет',
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: ThemeColors.textPrimary.withAlpha(128),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    kind.shortLabel,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: ThemeColors.border, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;

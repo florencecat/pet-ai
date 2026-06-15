@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/note.dart';
+import 'package:pet_satellite/models/pill.dart';
+import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 
@@ -50,6 +52,15 @@ enum EventSource {
   pill, // создано из напоминания о препарате (PillReminder)
   treatment, // создано из прививки / обработки (TreatmentEntry)
   note, // создано из заметки
+}
+
+/// Иконка + цвет для единообразного отображения события в списках.
+/// Получается через [Event.style] независимо от источника создания.
+class EventStyle {
+  final IconData icon;
+  final Color color;
+
+  const EventStyle({required this.icon, required this.color});
 }
 
 /// Дни недели для custom-повторений (1=Пн, 7=Вс)
@@ -195,6 +206,11 @@ class Event implements PbEntity {
   RepeatInterval repeat;
   List<int> customDays; // дни недели для RepeatInterval.custom (1=Пн..7=Вс)
 
+  /// Дата окончания повторения (включительно). null — повтор бессрочный.
+  /// Используется, например, курсами препаратов: после окончания курса
+  /// событие перестаёт появляться в календаре.
+  DateTime? repeatEndDate;
+
   /// Событие на весь день — время не указывается (хранится 00:00).
   bool allDay;
 
@@ -208,12 +224,21 @@ class Event implements PbEntity {
   /// для [EventSource.treatment] — не используется (link хранится в TreatmentEntry.eventId).
   final String? sourceId;
 
+  /// Идентификатор «вида» источника, выбранного пользователем — определяет
+  /// иконку: для [EventSource.pill] — [PillKind.id], для
+  /// [EventSource.treatment] — [TreatmentKind.name]. null — иконка по умолчанию.
+  String? styleKindId;
+
+  /// Выбранный пользователем цвет иконки (ARGB int). null — цвет по умолчанию.
+  int? color;
+
   Event({
     required this.name,
     required this.category,
     required this.dateTime,
     this.repeat = RepeatInterval.none,
     this.customDays = const [],
+    this.repeatEndDate,
     this.allDay = false,
     this.remindBeforeVariant = RemindBeforeVariant.days,
     this.remindBeforeValue = 0,
@@ -221,6 +246,8 @@ class Event implements PbEntity {
     List<String>? petIds,
     this.source = EventSource.manual,
     this.sourceId,
+    this.styleKindId,
+    this.color,
   }) : id = generateId(),
        starred = false,
        completedDates = {},
@@ -236,12 +263,16 @@ class Event implements PbEntity {
     required this.petIds,
     required this.repeat,
     required this.customDays,
+    this.repeatEndDate,
     required this.remindBeforeVariant,
     required this.remindBeforeValue,
     this.allDay = false,
     this.remind = true,
     this.source = EventSource.manual,
     this.sourceId,
+    this.symptomTag,
+    this.styleKindId,
+    this.color,
   });
 
   Event.fromNote({
@@ -294,24 +325,55 @@ class Event implements PbEntity {
     }
   }
 
-  Color get categoryColor {
+  /// Единый стиль отображения события (иконка + цвет) — определяется по
+  /// источнику создания, чтобы списки получали оформление единообразно,
+  /// независимо от того, создано ли событие вручную, из препарата,
+  /// прививки/обработки или заметки.
+  EventStyle get style {
     final defaultColor = ThemeColors.primary.withAlpha(128);
+    final chosenColor = color != null ? Color(color!) : null;
     switch (source) {
       case EventSource.note:
-        {
-          if (symptomTag != null) {
-            return SymptomTags.byId(symptomTag!)?.color ?? defaultColor;
-          }
-          return defaultColor;
-        }
+        // Иконка и цвет шаблона заметки (симптома), выбранного пользователем.
+        final tag = symptomTag != null ? SymptomTags.byId(symptomTag!) : null;
+        return EventStyle(
+          icon: tag?.icon ?? Icons.event_note_outlined,
+          color: chosenColor ?? tag?.color ?? defaultColor,
+        );
       case EventSource.pill:
-        return category.color;
+        // Вид препарата (PillKind) и цвет, выбранные пользователем.
+        final kind = (styleKindId != null && styleKindId!.isNotEmpty)
+            ? PillKind.byId(styleKindId!)
+            : null;
+        return EventStyle(
+          icon: (kind != null && kind.id.isNotEmpty)
+              ? kind.icon
+              : Icons.medication_outlined,
+          color: chosenColor ?? category.color,
+        );
       case EventSource.treatment:
-        return category.color;
+        // Вид обработки (TreatmentKind) и цвет, выбранные пользователем.
+        TreatmentKind? kind;
+        if (styleKindId != null) {
+          for (final k in TreatmentKind.values) {
+            if (k.name == styleKindId) {
+              kind = k;
+              break;
+            }
+          }
+        }
+        return EventStyle(
+          icon: kind?.icon ?? Icons.vaccines_outlined,
+          color: chosenColor ?? kind?.color ?? category.color,
+        );
       case EventSource.manual:
-        return category.color;
+        return EventStyle(icon: category.icon, color: category.color);
     }
   }
+
+  /// Цвет события по источнику. Совпадает со [style.color] — оставлен для
+  /// обратной совместимости.
+  Color get categoryColor => style.color;
 
   bool get fromNote => source == EventSource.note;
   bool get fromTreatment => source == EventSource.treatment;
@@ -377,6 +439,16 @@ class Event implements PbEntity {
     if (base == target) return true;
     if (target.isBefore(base)) return false;
 
+    // Повтор закончился — после даты окончания событие не появляется.
+    if (repeatEndDate != null) {
+      final end = DateTime(
+        repeatEndDate!.year,
+        repeatEndDate!.month,
+        repeatEndDate!.day,
+      );
+      if (target.isAfter(end)) return false;
+    }
+
     switch (repeat) {
       case RepeatInterval.none:
         return false;
@@ -401,12 +473,16 @@ class Event implements PbEntity {
     'petIds': petIds,
     'repeat': repeat.index,
     'customDays': customDays,
+    if (repeatEndDate != null) 'repeatEndDate': repeatEndDate!.toIso8601String(),
     'allDay': allDay,
     'remindBeforeVariant': remindBeforeVariant.name,
     'remindBeforeMinutes': remindBeforeValue,
     'remind': remind,
     'source': source.name,
+    if (symptomTag != null) 'symptomTag': symptomTag,
     if (sourceId != null) 'sourceId': sourceId,
+    if (styleKindId != null) 'styleKindId': styleKindId,
+    if (color != null) 'color': color,
   };
 
   @override
@@ -419,11 +495,14 @@ class Event implements PbEntity {
     'pets': petIds,
     'repeat_interval': repeat.name,
     if (customDays.isNotEmpty) 'repeat_days': customDays,
+    if (repeatEndDate != null) 'repeat_end': repeatEndDate!.toIso8601String(),
     'all_day': allDay,
     'remindBeforeVariant': remindBeforeVariant.name,
     'remind_before_minutes': remindBeforeValue,
     'remind': remind,
     'source': source.name,
+    if (styleKindId != null) 'style_kind': styleKindId,
+    'color': color,
   };
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -466,12 +545,18 @@ class Event implements PbEntity {
               ?.map((e) => e as int)
               .toList() ??
           const [],
+      repeatEndDate: json['repeatEndDate'] != null
+          ? DateTime.parse(json['repeatEndDate'] as String)
+          : null,
       allDay: json['allDay'] as bool? ?? false,
       remindBeforeVariant: remindBeforeVariant,
       remindBeforeValue: json['remindBeforeMinutes'] as int? ?? 0,
       remind: json['remind'] as bool? ?? true,
       source: source,
       sourceId: json['sourceId'] as String?,
+      symptomTag: json['symptomTag'] as String?,
+      styleKindId: json['styleKindId'] as String?,
+      color: (json['color'] as num?)?.toInt(),
     );
   }
 }
@@ -494,6 +579,10 @@ class _EventCodec extends PbCodec<Event> {
     ),
     customDays:
         (data['repeat_days'] as List<dynamic>?)?.cast<int>() ?? const [],
+    repeatEndDate: data['repeat_end'] != null &&
+            (data['repeat_end'] as String).isNotEmpty
+        ? DateTime.tryParse(data['repeat_end'] as String)
+        : null,
     allDay: data['all_day'] as bool? ?? false,
     remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
           (s) => s.name == (data['remindBeforeVariant'] as String?),
@@ -507,5 +596,8 @@ class _EventCodec extends PbCodec<Event> {
       orElse: () => EventSource.manual,
     ),
     sourceId: null,
+    symptomTag: data['symptomTag'] as String?,
+    styleKindId: data['style_kind'] as String?,
+    color: (data['color'] as num?)?.toInt(),
   );
 }

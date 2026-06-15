@@ -17,7 +17,6 @@ import 'package:provider/provider.dart';
 class GlassPlate extends StatelessWidget {
   final Widget child;
   final Color color;
-  final bool transparent;
   final double padding;
   final List<Color>? gradientColors;
   final bool useShadow;
@@ -26,7 +25,6 @@ class GlassPlate extends StatelessWidget {
     super.key,
     required this.child,
     this.color = Colors.white,
-    this.transparent = true,
     this.padding = 8,
     this.gradientColors,
     this.useShadow = true,
@@ -35,8 +33,8 @@ class GlassPlate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const borderRadius = BorderRadius.all(Radius.circular(24));
-    final borderColor = transparent ? color.withAlpha(180) : color;
-    final fillColor = transparent ? color.withAlpha(172) : color;
+    final borderColor = color.withAlpha(180);
+    final fillColor = color;
 
     final content = ClipRRect(
       borderRadius: borderRadius,
@@ -112,7 +110,7 @@ class SoftGlassPlate extends StatelessWidget {
   Widget build(BuildContext context) {
     const borderRadius = BorderRadius.all(Radius.circular(28));
     final borderColor = color.withAlpha(180);
-    final fillColor = color.withAlpha(64);
+    final fillColor = color;
 
     return RepaintBoundary(
       child: DecoratedBox(
@@ -166,7 +164,6 @@ class GlassCard extends StatelessWidget {
     return GlassPlate(
       padding: padding,
       color: color,
-      transparent: transparent,
       gradientColors: gradientColors,
       useShadow: useShadow,
       child: Pressable(
@@ -219,7 +216,6 @@ class GlassEventCard extends StatelessWidget {
     return Padding(
       padding: EdgeInsetsGeometry.symmetric(vertical: 8),
       child: GlassPlate(
-        transparent: false,
         color: cardColor,
         child: Pressable(
           onTap: callback == null ? null : () => callback!(),
@@ -236,11 +232,11 @@ class GlassEventCard extends StatelessWidget {
                           : Icons.radio_button_unchecked,
                       color: _isCompleted
                           ? context.watch<AppearanceController>().primaryColor
-                          : event.category.color,
+                          : event.style.color,
                       size: 28,
                     ),
                   )
-                : Icon(event.category.icon, color: event.category.color),
+                : Icon(event.style.icon, color: event.style.color),
             title: Text(
               event.name,
               style: Theme.of(context).textTheme.titleMedium!.copyWith(

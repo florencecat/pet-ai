@@ -342,9 +342,8 @@ class _EventSheetState extends State<EventSheet> {
     final event = widget.event!;
     final isCompleted = _isCompletedForDate;
     final accent = context.watch<AppearanceController>().primaryColor;
-    final catColor = event.category == EventCategories.empty
-        ? ThemeColors.border
-        : event.category.color;
+    // Единый стиль (иконка + цвет) независимо от источника события.
+    final catColor = event.style.color;
 
     return [
       // ── Hero ──────────────────────────────────────────────────────────────
@@ -360,7 +359,7 @@ class _EventSheetState extends State<EventSheet> {
                 color: catColor.withAlpha(20),
                 border: Border.all(color: catColor.withAlpha(60), width: 1.5),
               ),
-              child: Icon(event.category.icon, color: catColor, size: 34),
+              child: Icon(event.style.icon, color: catColor, size: 34),
             ),
             const SizedBox(height: 14),
 

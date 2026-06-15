@@ -94,6 +94,9 @@ class TreatmentEntry implements BaseEntry {
   /// id связанного PetEvent (для возможной отмены/перепланирования).
   final String? eventId;
 
+  /// Пользовательский цвет иконки (ARGB int). null — цвет по типу ([kind.color]).
+  final int? color;
+
   TreatmentEntry({
     required this.date,
     required this.kind,
@@ -101,6 +104,7 @@ class TreatmentEntry implements BaseEntry {
     this.name = '',
     this.remindBeforeDays = 7,
     this.eventId,
+    this.color,
   });
 
   String get displayName {
@@ -109,6 +113,9 @@ class TreatmentEntry implements BaseEntry {
     }
     return kind.label;
   }
+
+  /// Эффективный цвет иконки: выбранный пользователем или цвет типа.
+  Color get displayColor => color != null ? Color(color!) : kind.color;
 
   factory TreatmentEntry.fromJson(Map<String, dynamic> json) {
     return TreatmentEntry(
@@ -121,6 +128,7 @@ class TreatmentEntry implements BaseEntry {
       nextDate: DateTime.parse(json['nextDate'] as String),
       remindBeforeDays: json['remindBeforeDays'] as int? ?? 7,
       eventId: json['eventId'] as String?,
+      color: (json['color'] as num?)?.toInt(),
     );
   }
 
@@ -132,6 +140,7 @@ class TreatmentEntry implements BaseEntry {
     'nextDate': nextDate.toIso8601String(),
     'remindBeforeDays': remindBeforeDays,
     'eventId': eventId,
+    'color': color,
   };
 
   @override
@@ -142,6 +151,7 @@ class TreatmentEntry implements BaseEntry {
     'name': name,
     'next': nextDate.toIso8601String(),
     'remind_before_days': remindBeforeDays,
+    'color': color,
   };
 }
 
@@ -158,6 +168,7 @@ class _TreatmentEntryCodec extends PbCodec<TreatmentEntry> {
     name: data['name'] as String? ?? '',
     nextDate: DateTime.parse(data['next'] as String),
     remindBeforeDays: (data['remind_before_days'] as num?)?.toInt() ?? 7,
+    color: (data['color'] as num?)?.toInt(),
   );
 }
 

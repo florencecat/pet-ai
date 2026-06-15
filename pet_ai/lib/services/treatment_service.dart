@@ -19,6 +19,7 @@ class TreatmentService {
     required DateTime nextDate,
     String name = '',
     int remindBeforeDays = 7,
+    int? color,
   }) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return null;
@@ -40,6 +41,9 @@ class TreatmentService {
       remindBeforeValue: remindBeforeDays * 24 * 60,
       petIds: [petId],
       source: EventSource.treatment,
+      // Иконка/цвет события = выбранные пользователем вид и цвет обработки.
+      styleKindId: kind.name,
+      color: color,
     );
 
     await EventService().createEvent(event);
@@ -51,6 +55,7 @@ class TreatmentService {
       nextDate: nextDate,
       remindBeforeDays: remindBeforeDays,
       eventId: event.id,
+      color: color,
     );
 
     profile.treatmentHistory.add(entry);

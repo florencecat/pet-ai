@@ -365,36 +365,50 @@ class PetService {
     return avatarFile.path;
   }
 
+  /// Единый механизм выбора фото питомца: выбор из [source] + квадратное
+  /// кадрирование. Возвращает кадрированный файл (во временной папке) либо null,
+  /// если пользователь отменил выбор/кадрирование.
+  ///
+  /// Используется и в онбординге (до создания питомца), и в редактировании
+  /// профиля — чтобы кадрирование предлагалось единообразно.
+  Future<File?> pickAndCropImage({
+    required ImageSource source,
+  }) async {
+    if (kIsWeb) {
+      throw UnimplementedError("pickAndCropImage() is not supported on web");
+    }
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source, imageQuality: 90);
+    if (pickedFile == null) return null;
+
+    // ImageCropper не поддерживается на Windows — возвращаем как есть.
+    if (Platform.isWindows) return File(pickedFile.path);
+
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: pickedFile.path,
+      compressQuality: 90,
+      compressFormat: ImageCompressFormat.jpg,
+      maxWidth: 256,
+      maxHeight: 256,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+    );
+    if (cropped == null) return null;
+    return File(cropped.path);
+  }
+
+  /// Сохраняет [sourcePath] как постоянный аватар питомца [petId]
+  /// в каталоге приложения и возвращает итоговый путь.
+  Future<String> saveAvatar(String petId, String sourcePath) =>
+      _saveAvatarToAppDir(petId, sourcePath);
+
   Future<String?> pickProfileImage(
     String petId, {
     ImageSource source = ImageSource.gallery,
   }) async {
-    if (kIsWeb) {
-      throw UnimplementedError("pickProfileImage() is not supported on web");
-    }
-
-    final picker = ImagePicker();
-
-    final pickedFile = await picker.pickImage(source: source, imageQuality: 90);
-
-    if (pickedFile == null) return null;
-
-    if (!Platform.isWindows) {
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: pickedFile.path,
-        compressQuality: 90,
-        compressFormat: ImageCompressFormat.jpg,
-        maxWidth: 256,
-        maxHeight: 256,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      );
-
-      if (cropped == null) return null;
-
-      return await _saveAvatarToAppDir(petId, cropped.path);
-    } else {
-      return await _saveAvatarToAppDir(petId, pickedFile.path);
-    }
+    final file = await pickAndCropImage(source: source);
+    if (file == null) return null;
+    return await _saveAvatarToAppDir(petId, file.path);
   }
 
   Future<String> lastMoodString() async {

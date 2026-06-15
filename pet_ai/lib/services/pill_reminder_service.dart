@@ -36,11 +36,16 @@ class PillReminderService {
         customDays: reminder.frequencyType == PillFrequencyType.weekdays
             ? reminder.weekdays
             : [],
+        // Курс препарата заканчивается — событие перестаёт повторяться.
+        repeatEndDate: reminder.endDate,
         remindBeforeValue: 0,
         petIds: [petId],
         // Связываем событие с напоминанием для двусторонней синхронизации статуса
         source: EventSource.pill,
         sourceId: reminder.id,
+        // Иконка/цвет события = выбранные пользователем вид и цвет препарата.
+        styleKindId: reminder.kind?.id,
+        color: reminder.color,
       );
 
       await EventService().createEvent(event);
@@ -57,8 +62,9 @@ class PillReminderService {
   }
 
   /// Replaces an existing reminder in-place and persists the profile.
-  /// Does NOT touch the linked PetEvent (name / time changes are kept
-  /// local to the profile; a full sync can be added later).
+  /// Синхронизирует дату окончания курса со связанным PetEvent, чтобы
+  /// законченные курсы переставали отображаться в календаре.
+  /// (Изменения имени / времени пока остаются локальными в профиле.)
   Future<void> update({
     required String petId,
     required Pill updated,
@@ -69,6 +75,17 @@ class PillReminderService {
     if (idx < 0) return;
     profile.pillReminders[idx] = updated;
     await PetService().saveProfile(profile);
+
+    // Синхронизируем дату окончания повтора и стиль (вид/цвет) события.
+    if (updated.eventId != null) {
+      final all = await EventService().loadEvents(petId);
+      for (final e in all.where((e) => e.id == updated.eventId)) {
+        e.repeatEndDate = updated.endDate;
+        e.styleKindId = updated.kind?.id;
+        e.color = updated.color;
+        await EventService().saveEvent(e);
+      }
+    }
   }
 
   Future<void> delete({
