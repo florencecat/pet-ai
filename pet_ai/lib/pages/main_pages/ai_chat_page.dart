@@ -1,14 +1,19 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_satellite/models/event.dart';
+import 'package:pet_satellite/models/pet_profile.dart';
+import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
+import 'package:pet_satellite/theme/widgets/base_widgets.dart';
+import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -25,7 +30,6 @@ class _AIChatPageState extends State<AIChatPage> {
   @override
   void initState() {
     super.initState();
-
     _future = _createController();
   }
 
@@ -78,6 +82,10 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 }
+
+// ──────────────────────────────────────────────────────────
+// Status dots
+// ──────────────────────────────────────────────────────────
 
 class _OfflineDot extends StatelessWidget {
   @override
@@ -133,7 +141,6 @@ class _OnlineDotState extends State<_OnlineDot>
 
   @override
   Widget build(BuildContext context) {
-    // Fixed-size SizedBox so the Row layout never shifts during animation.
     return SizedBox(
       width: 8,
       height: 8,
@@ -179,14 +186,17 @@ class _ChatViewState extends State<_ChatView> {
   @override
   void initState() {
     super.initState();
-    // context.read — не регистрирует подписку; подходит для initState.
-    // context.watch нельзя использовать вне build() — вызывает ошибку
-    // деактивации InheritedElement и, как следствие, краш Scaffold layout.
     _controller = context.read<AIChatController>();
     _future = _controller.healthCheck();
-    // Периодически перепроверяем доступность бота, чтобы статус был реальным.
+    // Периодически перепроверяем доступность бота.
+    // ВАЖНО: блочное тело setState — стрелочный вариант
+    // `setState(() => _future = ...)` возвращает Future и Flutter бросает
+    // «setState() callback argument returned a Future».
     _healthTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() => _future = _controller.healthCheck());
+      if (!mounted) return;
+      setState(() {
+        _future = _controller.healthCheck();
+      });
     });
   }
 
@@ -196,22 +206,27 @@ class _ChatViewState extends State<_ChatView> {
     super.dispose();
   }
 
-  void _openHistorySheet(BuildContext context, AIChatController controller) {
+  void _openHistorySheet(AIChatController controller) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      builder: (_) {
-        return _HistorySheet(controller: controller);
-      },
+      backgroundColor: Colors.transparent,
+      builder: (_) => _HistorySheet(controller: controller),
+    );
+  }
+
+  void _openAttachmentPicker(AIChatController controller) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AttachmentPickerSheet(controller: controller),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch for reactive rebuilds when messages arrive or isLoading changes.
-    // _controller (set in initState via context.read) is only used for
-    // healthCheck(); all live state is read from the watched instance here.
     final controller = context.watch<AIChatController>();
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
@@ -242,40 +257,18 @@ class _ChatViewState extends State<_ChatView> {
                           ),
                         ],
                       )
-                    : ListView.builder(
-                        reverse: true,
-                        clipBehavior: Clip.none,
-                        padding: const EdgeInsets.only(
-                          left: 4,
-                          right: 4,
-                          bottom: 185,
-                          top: 108,
-                        ),
-                        itemCount: controller.messages.length,
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          final msg = controller
-                              .messages[controller.messages.length - 1 - index];
-                          return _MessageBubble(msg: msg);
-                        },
-                      ),
+                    : _FadingMessageList(controller: controller),
               ),
             ],
           ),
         ),
 
-        const _GlobalEdgeBlur(),
-
-        // Header card
+        // ── Header card ───────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.only(left: 16, right: 16),
           child: Align(
             alignment: Alignment.topCenter,
-            child: GlassCard(
-              callback: () {
-                _openHistorySheet(context, controller);
-              },
-              transparent: false,
+            child: GlassPlate(
               child: ListTile(
                 leading: SoftRoundedIcon(
                   icon: Icons.auto_awesome,
@@ -288,7 +281,6 @@ class _ChatViewState extends State<_ChatView> {
                 subtitle: FutureBuilder<bool>(
                   future: _future,
                   builder: (context, snapshot) {
-                    // Состояние проверки — пока первый запрос не завершился.
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         !snapshot.hasData) {
                       return Row(
@@ -303,15 +295,12 @@ class _ChatViewState extends State<_ChatView> {
                         ],
                       );
                     }
-
                     final online = snapshot.data == true;
                     return Row(
                       spacing: 6,
                       children: online
                           ? [
-                              _OnlineDot(
-                                color: ThemeColors.aiChatOnlineColor,
-                              ),
+                              _OnlineDot(color: ThemeColors.aiChatOnlineColor),
                               Text(
                                 'на связи',
                                 style: Theme.of(context).textTheme.bodyMedium!
@@ -331,41 +320,130 @@ class _ChatViewState extends State<_ChatView> {
                     );
                   },
                 ),
-                trailing: Icon(
-                  Icons.history,
-                  color: context.watch<AppearanceController>().primaryColor,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Новый диалог',
+                      icon: Icon(
+                        Icons.add_comment_outlined,
+                        color: controller.messages.isNotEmpty ? context
+                            .watch<AppearanceController>()
+                            .primaryColor : Colors.black12,
+                      ),
+                      onPressed: controller.messages.isNotEmpty ? () async {
+                        await controller.startNewThread();
+                      } : null,
+                    ),
+                    IconButton(
+                      tooltip: 'История общения',
+                      icon: Icon(
+                        Icons.history,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
+                      ),
+                      onPressed: () => _openHistorySheet(controller),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
 
+        // ── Bottom stack: typing / error / attachment chip / input ────────
         Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
             padding: EdgeInsets.only(
               bottom: keyboardInset > 0 ? keyboardInset : bottomPadding,
             ),
-            child: _InputBar(),
-          ),
-        ),
-
-        // "Typing..." indicator
-        if (controller.isLoading)
-          Positioned(
-            bottom: 191,
-            left: 16,
-            child: GlassPlate(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 14,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: SizeTransition(sizeFactor: anim, child: child),
+                  ),
+                  child: controller.isLoading
+                      ? const Padding(
+                          key: ValueKey('typing'),
+                          padding: EdgeInsets.fromLTRB(20, 0, 16, 6),
+                          child: _TypingIndicator(),
+                        )
+                      : controller.error != null
+                      ? Padding(
+                          key: const ValueKey('error'),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                          child: _ErrorBanner(
+                            message: controller.error!,
+                            canRetry: controller.canRetry,
+                            onRetry: () => controller.retryLast(),
+                            onDismiss: () => controller.clearError(),
+                          ),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('none')),
                 ),
-                child: const Text('Печатает...'),
-              ),
+                if (controller.pendingAttachment != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    child: _AttachmentChip(
+                      attachment: controller.pendingAttachment!,
+                      onRemove: controller.clearAttachment,
+                    ),
+                  ),
+                _InputBar(onAttach: () => _openAttachmentPicker(controller)),
+              ],
             ),
           ),
+        ),
       ],
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Message list with a cheap top fade (messages dissolve under the header)
+// ──────────────────────────────────────────────────────────
+
+class _FadingMessageList extends StatelessWidget {
+  final AIChatController controller;
+  const _FadingMessageList({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      // Дешёвый эффект «растворения»: верх списка плавно уходит в прозрачность,
+      // поэтому сообщения исчезают под плашкой «Помощник по уходу». Один шейдер,
+      // без per-frame BackdropFilter.
+      shaderCallback: (rect) {
+        final h = rect.height;
+        return LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [Colors.transparent, Colors.transparent, Colors.black],
+          stops: [0.0, (70 / h).clamp(0.0, 1.0), (118 / h).clamp(0.0, 1.0)],
+        ).createShader(rect);
+      },
+      blendMode: BlendMode.dstIn,
+      child: ListView.builder(
+        reverse: true,
+        clipBehavior: Clip.none,
+        padding: const EdgeInsets.only(left: 4, right: 4, bottom: 185, top: 96),
+        itemCount: controller.messages.length,
+        physics: const BouncingScrollPhysics(),
+        itemBuilder: (context, index) {
+          final msgs = controller.messages;
+          final msg = msgs[msgs.length - 1 - index];
+          return _MessageBubble(msg: msg);
+        },
+      ),
     );
   }
 }
@@ -396,7 +474,6 @@ class _WelcomeState extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Bot welcome bubble
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -410,7 +487,9 @@ class _WelcomeState extends StatelessWidget {
                 child: _BubbleContainer(
                   isUser: false,
                   child: Text(
-                    'Привет! Я знаю историю $petName и могу подсказать про корм, прививки или поведение. О чём хочешь узнать?',
+                    'Привет! Я знаю историю $petName и могу подсказать про корм, '
+                    'прививки или поведение. Можно прикрепить запись (🧷) — '
+                    'я учту её в ответе. О чём хочешь узнать?',
                     style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                       color: ThemeColors.textPrimary,
                     ),
@@ -419,10 +498,7 @@ class _WelcomeState extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Quick-reply chips
           Padding(
             padding: const EdgeInsets.only(left: 44),
             child: Wrap(
@@ -439,7 +515,7 @@ class _WelcomeState extends StatelessWidget {
                   color: primaryColor,
                   child: Text(
                     reply,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
                       color: Colors.white,
                       fontWeight: FontWeight.w500,
@@ -456,7 +532,7 @@ class _WelcomeState extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────────────────────
-// Shared bubble container with asymmetric border radius
+// Bubble container
 // ──────────────────────────────────────────────────────────
 
 class _BubbleContainer extends StatelessWidget {
@@ -549,11 +625,209 @@ class _MessageBubble extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────────────────────
+// Animated typing indicator (three bouncing dots)
+// ──────────────────────────────────────────────────────────
+
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        SoftRoundedIcon(
+          icon: Icons.auto_awesome,
+          gradient: ThemeColors.aiChatIconGradient,
+          size: 14,
+        ),
+        const SizedBox(width: 6),
+        _BubbleContainer(
+          isUser: false,
+          child: SizedBox(
+            width: 38,
+            height: 16,
+            child: AnimatedBuilder(
+              animation: _ctrl,
+              builder: (context, _) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(3, (i) {
+                    final t = (_ctrl.value - i * 0.18) % 1.0;
+                    // Подъём в первой трети цикла, затем покой.
+                    final lift = t < 0.4
+                        ? Curves.easeOut.transform(t / 0.4)
+                        : 1 -
+                              Curves.easeIn.transform(
+                                ((t - 0.4) / 0.6).clamp(0.0, 1.0),
+                              );
+                    return Transform.translate(
+                      offset: Offset(0, -3.0 * lift),
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: ThemeColors.aiChatOnlineColor.withAlpha(
+                            (120 + 135 * lift).round(),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Error banner with retry
+// ──────────────────────────────────────────────────────────
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  final bool canRetry;
+  final VoidCallback onRetry;
+  final VoidCallback onDismiss;
+
+  const _ErrorBanner({
+    required this.message,
+    required this.canRetry,
+    required this.onRetry,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: ThemeColors.dangerZone, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: ThemeColors.dangerZone,
+                ),
+              ),
+            ),
+            if (canRetry)
+              IconButton(
+                icon: Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: context.watch<AppearanceController>().primaryColor,
+                ),
+                onPressed: onRetry,
+              ),
+            IconButton(
+              onPressed: onDismiss,
+              icon: Icon(
+                Icons.close,
+                size: 20,
+                color: ThemeColors.dangerZone.withAlpha(160),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Attachment chip (above input)
+// ──────────────────────────────────────────────────────────
+
+class _AttachmentChip extends StatelessWidget {
+  final ChatAttachment attachment;
+  final VoidCallback onRemove;
+
+  const _AttachmentChip({required this.attachment, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: attachment.color.withAlpha(90)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withAlpha(16), blurRadius: 6),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(attachment.icon, size: 16, color: attachment.color),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: Text(
+                attachment.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: onRemove,
+              child: Icon(Icons.close, size: 16, color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
 // Input bar
 // ──────────────────────────────────────────────────────────
 
 class _InputBar extends StatefulWidget {
-  const _InputBar();
+  final VoidCallback onAttach;
+  const _InputBar({required this.onAttach});
 
   @override
   State<_InputBar> createState() => _InputBarState();
@@ -563,51 +837,102 @@ class _InputBarState extends State<_InputBar> {
   final controller = TextEditingController();
 
   @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  void _send(AIChatController chat) {
+    HapticFeedback.mediumImpact();
+    chat.sendMessage(controller.text.trim());
+    controller.clear();
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // watch — so the send button disables while the AI is replying.
     final chat = context.watch<AIChatController>();
-    final canSend = controller.text.isNotEmpty && !chat.isLoading;
+    final accent = context.watch<AppearanceController>().primaryColor;
+    final secondaryColor = context.watch<AppearanceController>().secondaryColor;
+
+    final hasText = controller.text.trim().isNotEmpty;
+    final canSend = hasText && !chat.isLoading;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
+          // Input pill (attach + text field)
           Expanded(
-            child: GlassPlate(
-              child: TextField(
-                controller: controller,
-                maxLines: 3,
-                minLines: 1,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: 'Спросите о питомце...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
+            child: Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: secondaryColor, width: 2),
+                borderRadius: BorderRadiusGeometry.circular(24),
+              ),
+              child: Padding(
+                padding: EdgeInsetsGeometry.symmetric(horizontal: 6),
+                child: Row(
+                  children: [
+                    GlassCard(
+                      useShadow: false,
+                      callback: chat.isLoading ? null : widget.onAttach,
+                      padding: 10,
+                      child: Icon(
+                        Icons.attach_file_rounded,
+                        color: chat.pendingAttachment != null
+                            ? accent
+                            : Colors.grey.shade500,
+                      ),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        maxLines: 3,
+                        minLines: 1,
+                        textInputAction: TextInputAction.newline,
+                        decoration: baseInputDecoration(
+                          'Спросите о питомце...',
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ],
                 ),
-                onChanged: (_) => setState(() {}),
               ),
             ),
           ),
-          const SizedBox(width: 8),
 
-          GlassCard(
-            callback: canSend
-                ? () {
-                    HapticFeedback.mediumImpact();
-                    chat.sendMessage(controller.text);
-                    controller.clear();
-                    setState(() {});
-                  }
-                : null,
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Icon(
-                Icons.send,
-                color: canSend
-                    ? context.watch<AppearanceController>().primaryColor
-                    : Colors.grey.shade400,
+          // Отступ перед кнопкой схлопывается вместе с ней.
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            width: hasText ? 8 : 0,
+          ),
+
+          // Send button: спрятана при пустом поле, выезжает справа при вводе.
+          // ClipRRect со скруглением кнопки — иначе прямоугольный клип
+          // оставляет уголки фона в углах при сжатии/расширении.
+          ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(24)),
+            child: AnimatedAlign(
+              alignment: Alignment.centerRight,
+              widthFactor: hasText ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              child: AnimatedOpacity(
+                opacity: hasText ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 180),
+                child: GlassCard(
+                  color: accent,
+                  callback: canSend ? () => _send(chat) : null,
+                  padding: 10,
+                  child: Icon(
+                    Icons.send,
+                    color: canSend ? Colors.white : Colors.grey.shade400,
+                  ),
+                ),
               ),
             ),
           ),
@@ -618,22 +943,86 @@ class _InputBarState extends State<_InputBar> {
 }
 
 // ──────────────────────────────────────────────────────────
-// History sheet — shows archived threads
+// History sheet — interactive threads
 // ──────────────────────────────────────────────────────────
 
-class _HistorySheet extends StatelessWidget {
+class _HistorySheet extends StatefulWidget {
   final AIChatController controller;
 
   const _HistorySheet({required this.controller});
 
-  String _formatDate(DateTime date) {
-    return DateFormat('d MMMM yyyy', 'ru_RU').format(date);
+  @override
+  State<_HistorySheet> createState() => _HistorySheetState();
+}
+
+class _HistorySheetState extends State<_HistorySheet> {
+  late Future<List<ArchivedThread>> _future;
+
+  AIChatController get _controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _controller.loadArchivedThreads();
+  }
+
+  void _reload() {
+    setState(() => _future = _controller.loadArchivedThreads());
+  }
+
+  String _formatDate(DateTime date) =>
+      DateFormat('d MMMM yyyy', 'ru_RU').format(date);
+
+  Future<void> _deleteThread(ArchivedThread thread) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить чат?',
+      message: 'Переписка будет удалена без возможности восстановления.',
+    );
+    if (!confirmed) return;
+    await _controller.deleteThread(thread.boxName);
+    _reload();
+  }
+
+  Future<void> _deleteAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить все чаты?'),
+        content: const Text(
+          'Будут удалены все переписки с ассистентом, включая текущую. '
+          'Это действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить все'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _controller.deleteAllThreads();
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 500,
+    final accent = context.watch<AppearanceController>().primaryColor;
+
+    return Container(
+      height: 520,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       child: Padding(
         padding: EdgeInsets.only(
           top: 12,
@@ -642,10 +1031,8 @@ class _HistorySheet extends StatelessWidget {
           bottom: MediaQuery.of(context).viewInsets.bottom + 12,
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Drag handle
             Center(
               child: Container(
                 width: 50,
@@ -657,33 +1044,47 @@ class _HistorySheet extends StatelessWidget {
                 ),
               ),
             ),
-
-            Text(
-              'История переписок',
-              style: Theme.of(context).textTheme.titleMedium,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'История переписок',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () async {
+                    await _controller.startNewThread();
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Новый'),
+                  style: TextButton.styleFrom(foregroundColor: accent),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 8),
             Expanded(
               child: FutureBuilder<List<ArchivedThread>>(
-                future: controller.loadArchivedThreads(),
+                future: _future,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
-
                   final threads = snapshot.data!;
-
                   if (threads.isEmpty) {
                     return const Center(
-                      child: Text(
-                        'Нет архивных переписок.\nКаждый новый день начинается новый тред.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'Нет прошлых переписок.\nЗдесь появятся диалоги, '
+                          'в которые можно вернуться и продолжить.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
                     );
                   }
-
                   return ListView.separated(
                     itemCount: threads.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
@@ -697,11 +1098,16 @@ class _HistorySheet extends StatelessWidget {
                           firstUserMsg ?? thread.messages.first.content;
 
                       return ListTile(
-                        leading: Icon(
-                          Icons.chat_bubble_outline,
-                          color: context
-                              .watch<AppearanceController>()
-                              .primaryColor,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: accent.withAlpha(30),
+                          child: Icon(
+                            Icons.forum_outlined,
+                            color: accent,
+                            size: 20,
+                          ),
                         ),
                         title: Text(
                           _formatDate(thread.date),
@@ -714,18 +1120,44 @@ class _HistorySheet extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Colors.grey),
                         ),
-                        trailing: Text(
-                          '${thread.messages.length} сообщ.',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
+                        trailing: IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: ThemeColors.dangerZone,
+                            size: 20,
                           ),
+                          tooltip: 'Удалить чат',
+                          onPressed: () => _deleteThread(thread),
                         ),
+                        onTap: () async {
+                          await _controller.switchToThread(thread.boxName);
+                          if (context.mounted) Navigator.pop(context);
+                        },
                       );
                     },
                   );
                 },
               ),
+            ),
+
+            // ── Удалить все ───────────────────────────────────────────────
+            FutureBuilder<List<ArchivedThread>>(
+              future: _future,
+              builder: (context, snapshot) {
+                final hasThreads = (snapshot.data?.isNotEmpty ?? false);
+                if (!hasThreads) return const SizedBox.shrink();
+                return Align(
+                  alignment: Alignment.center,
+                  child: TextButton.icon(
+                    onPressed: _deleteAll,
+                    icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                    label: const Text('Удалить все чаты'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: ThemeColors.dangerZone,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -735,33 +1167,318 @@ class _HistorySheet extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────────────────────
-// Edge blur overlay
+// Attachment picker sheet
 // ──────────────────────────────────────────────────────────
 
-class _GlobalEdgeBlur extends StatelessWidget {
-  const _GlobalEdgeBlur();
+class _AttachmentPickerSheet extends StatefulWidget {
+  final AIChatController controller;
+  const _AttachmentPickerSheet({required this.controller});
+
+  @override
+  State<_AttachmentPickerSheet> createState() => _AttachmentPickerSheetState();
+}
+
+class _AttachmentPickerSheetState extends State<_AttachmentPickerSheet> {
+  List<Event> _events = [];
+  bool _loadingEvents = true;
+
+  Pet? get _pet => widget.controller.pet;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    final pet = _pet;
+    if (pet == null) {
+      setState(() => _loadingEvents = false);
+      return;
+    }
+    final all = await EventService().loadEvents(pet.id);
+    all.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+    if (mounted) {
+      setState(() {
+        _events = all.take(15).toList();
+        _loadingEvents = false;
+      });
+    }
+  }
+
+  void _pick(ChatAttachment a) {
+    widget.controller.setAttachment(a);
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Column(
-        children: [
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaY: 0.5, sigmaX: 0.5),
-              child: Container(height: 120, decoration: const BoxDecoration()),
+    final accent = context.watch<AppearanceController>().primaryColor;
+    final pet = _pet;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: ThemeColors.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 6),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: ThemeColors.border.withAlpha(120),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Прикрепить к диалогу',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: pet == null
+                    ? const Center(child: Text('Нет данных питомца'))
+                    : ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        children: [
+                          // ── Препараты ───────────────────────────────────
+                          if (pet.pillReminders.isNotEmpty) ...[
+                            _SectionLabel('Препараты'),
+                            ...pet.pillReminders.map(
+                              (p) => _PickRow(
+                                icon: p.kind?.icon ?? Icons.medication_outlined,
+                                color: p.color != null
+                                    ? Color(p.color!)
+                                    : accent,
+                                title: p.name,
+                                subtitle: p.dose,
+                                onTap: () => _pick(
+                                  ChatAttachment(
+                                    type: 'pill',
+                                    label: p.name,
+                                    icon:
+                                        p.kind?.icon ??
+                                        Icons.medication_outlined,
+                                    color: p.color != null
+                                        ? Color(p.color!)
+                                        : accent,
+                                    data: p.toJson(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // ── Прививки и обработки ─────────────────────────
+                          if (pet.treatmentHistory.entries.isNotEmpty) ...[
+                            _SectionLabel('Прививки и обработки'),
+                            ...pet.treatmentHistory.entries.map(
+                              (t) => _PickRow(
+                                icon: t.kind.icon,
+                                color: t.displayColor,
+                                title: t.displayName,
+                                subtitle:
+                                    'Следующее: ${DateFormat('d MMM yyyy', 'ru').format(t.nextDate)}',
+                                onTap: () => _pick(
+                                  ChatAttachment(
+                                    type: 'treatment',
+                                    label: t.displayName,
+                                    icon: t.kind.icon,
+                                    color: t.displayColor,
+                                    data: t.toJson(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // ── Заметки ──────────────────────────────────────
+                          if (pet.noteHistory.entries.isNotEmpty) ...[
+                            _SectionLabel('Заметки'),
+                            ...pet.noteHistory.entries.reversed
+                                .take(10)
+                                .map(
+                                  (n) => _PickRow(
+                                    icon:
+                                        n.symptomTag?.icon ??
+                                        Icons.event_note_outlined,
+                                    color: n.symptomTag?.color ?? accent,
+                                    title: n.note,
+                                    subtitle: DateFormat(
+                                      'd MMM yyyy, HH:mm',
+                                      'ru',
+                                    ).format(n.date),
+                                    onTap: () => _pick(
+                                      ChatAttachment(
+                                        type: 'note',
+                                        label: n.note,
+                                        icon:
+                                            n.symptomTag?.icon ??
+                                            Icons.event_note_outlined,
+                                        color: n.symptomTag?.color ?? accent,
+                                        data: n.toJson(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // ── События ──────────────────────────────────────
+                          _SectionLabel('События'),
+                          if (_loadingEvents)
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else if (_events.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                'Событий пока нет',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            )
+                          else
+                            ..._events.map(
+                              (e) => _PickRow(
+                                icon: e.style.icon,
+                                color: e.style.color,
+                                title: e.name,
+                                subtitle: DateFormat(
+                                  'd MMM yyyy',
+                                  'ru',
+                                ).format(e.dateTime),
+                                onTap: () => _pick(
+                                  ChatAttachment(
+                                    type: 'event',
+                                    label: e.name,
+                                    icon: e.style.icon,
+                                    color: e.style.color,
+                                    data: e.toJson(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 6, top: 4),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: context.watch<AppearanceController>().secondaryColor,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _PickRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _PickRow({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassPlate(
+        padding: 0,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withAlpha(28),
+                    border: Border.all(color: color.withAlpha(70), width: 1.2),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      if (subtitle.isNotEmpty)
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.add_circle_outline,
+                  color: ThemeColors.border,
+                  size: 20,
+                ),
+              ],
             ),
           ),
-
-          const Spacer(),
-
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaY: 1, sigmaX: 1),
-              child: Container(height: 140, decoration: const BoxDecoration()),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

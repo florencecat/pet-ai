@@ -9,6 +9,7 @@ InputDecoration baseInputDecoration(String label, {Widget? suffixIcon}) {
       inherit: true,
       color: ThemeColors.textPrimary.withAlpha(128)
     ),
+    floatingLabelBehavior: FloatingLabelBehavior.never,
     filled: true,
     fillColor: ThemeColors.white,
     border: OutlineInputBorder(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -42,6 +43,24 @@ class ArchivedThread {
   });
 }
 
+/// Сущность, прикреплённая к сообщению (напоминание, заметка, прививка, …).
+/// [data] уходит в тело запроса в формате JSON.
+class ChatAttachment {
+  final String type; // 'pill' | 'note' | 'treatment' | 'event' | ...
+  final String label; // человекочитаемая подпись (для чипа)
+  final IconData icon;
+  final Color color;
+  final Map<String, dynamic> data;
+
+  const ChatAttachment({
+    required this.type,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.data,
+  });
+}
+
 class ChatRepository {
   final Box<ChatMessage> box;
 
@@ -56,6 +75,13 @@ class ChatRepository {
   Future<void> clear() async {
     await box.clear();
   }
+}
+
+/// Внутреннее исключение для не-200 ответов сервера / пустого ответа.
+class _ServerException implements Exception {
+  final int statusCode;
+  final String? message;
+  const _ServerException(this.statusCode, [this.message]);
 }
 
 class AIChatController extends ChangeNotifier {
@@ -76,6 +102,34 @@ class AIChatController extends ChangeNotifier {
 
   bool isLoading = false;
   bool isInitialized = false;
+
+  /// Текст последней ошибки (сети/сервера/GigaChat). null — ошибок нет.
+  String? _error;
+  String? get error => _error;
+
+  /// Текст последнего неудачного сообщения — для повторной отправки.
+  String? _lastFailedText;
+  bool get canRetry => _lastFailedText != null;
+
+  /// Сущность, прикреплённая к следующему сообщению (ephemeral).
+  ChatAttachment? _pendingAttachment;
+  ChatAttachment? get pendingAttachment => _pendingAttachment;
+
+  void setAttachment(ChatAttachment a) {
+    _pendingAttachment = a;
+    notifyListeners();
+  }
+
+  void clearAttachment() {
+    _pendingAttachment = null;
+    notifyListeners();
+  }
+
+  /// Активный профиль питомца (для пикера вложений).
+  Pet? get pet => _pet;
+
+  /// Имя текущего треда (для подсветки активного в истории).
+  String get currentBoxName => _currentBoxName;
 
   AIChatController({required this.basePath})
     : _healthRoute = Uri.parse('$basePath/health'),
@@ -166,6 +220,112 @@ class AIChatController extends ChangeNotifier {
     return threads;
   }
 
+  /// Переключается на архивный тред [boxName] и делает его текущим —
+  /// общение продолжается с его контекстом.
+  Future<void> switchToThread(String boxName) async {
+    if (boxName == _currentBoxName) return;
+    final prefs = await SharedPreferences.getInstance();
+    final archived = prefs.getStringList(_archivedBoxesKey) ?? [];
+
+    // Архивируем текущий тред, если в нём есть сообщения.
+    if ((_repo?.messages.isNotEmpty ?? false) &&
+        !archived.contains(_currentBoxName)) {
+      archived.add(_currentBoxName);
+    }
+    // Целевой тред становится текущим — убираем его из архива.
+    archived.remove(boxName);
+    await prefs.setStringList(_archivedBoxesKey, archived);
+
+    _currentBoxName = boxName;
+    await prefs.setString(_currentBoxKey, boxName);
+    final box = await Hive.openBox<ChatMessage>(boxName);
+    _repo = ChatRepository(box);
+    _error = null;
+    _lastFailedText = null;
+    _pendingAttachment = null;
+    notifyListeners();
+  }
+
+  /// Начинает новый пустой тред (текущий уходит в архив, если непустой).
+  Future<void> startNewThread() async {
+    final prefs = await SharedPreferences.getInstance();
+    final archived = prefs.getStringList(_archivedBoxesKey) ?? [];
+    if ((_repo?.messages.isNotEmpty ?? false) &&
+        !archived.contains(_currentBoxName)) {
+      archived.add(_currentBoxName);
+      await prefs.setStringList(_archivedBoxesKey, archived);
+    }
+
+    _currentBoxName = 'chat_thread_${DateTime.now().millisecondsSinceEpoch}';
+    await prefs.setString(_currentBoxKey, _currentBoxName);
+    final box = await Hive.openBox<ChatMessage>(_currentBoxName);
+    _repo = ChatRepository(box);
+    _error = null;
+    _lastFailedText = null;
+    _pendingAttachment = null;
+    notifyListeners();
+  }
+
+  /// Удаляет один тред (бокс) с диска и из архива. Если удалён текущий тред —
+  /// открывается новый пустой.
+  Future<void> deleteThread(String boxName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final archived = prefs.getStringList(_archivedBoxesKey) ?? [];
+    archived.remove(boxName);
+    await prefs.setStringList(_archivedBoxesKey, archived);
+
+    try {
+      await Hive.deleteBoxFromDisk(boxName);
+    } catch (_) {}
+
+    if (boxName == _currentBoxName) {
+      _currentBoxName = 'chat_thread_${DateTime.now().millisecondsSinceEpoch}';
+      await prefs.setString(_currentBoxKey, _currentBoxName);
+      final box = await Hive.openBox<ChatMessage>(_currentBoxName);
+      _repo = ChatRepository(box);
+      _error = null;
+      _lastFailedText = null;
+      _pendingAttachment = null;
+    }
+    notifyListeners();
+  }
+
+  /// Удаляет все треды (архивные + текущий) и начинает чистый диалог.
+  Future<void> deleteAllThreads() async {
+    final prefs = await SharedPreferences.getInstance();
+    final archived = prefs.getStringList(_archivedBoxesKey) ?? [];
+    final boxes = {...archived, _currentBoxName, _defaultBoxName};
+    for (final name in boxes) {
+      try {
+        await Hive.deleteBoxFromDisk(name);
+      } catch (_) {}
+    }
+    await prefs.remove(_archivedBoxesKey);
+
+    _currentBoxName = _defaultBoxName;
+    await prefs.setString(_currentBoxKey, _currentBoxName);
+    final box = await Hive.openBox<ChatMessage>(_currentBoxName);
+    _repo = ChatRepository(box);
+    _error = null;
+    _lastFailedText = null;
+    _pendingAttachment = null;
+    notifyListeners();
+  }
+
+  /// Сбрасывает баннер ошибки.
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  /// Повторяет последнее неудачное сообщение.
+  Future<void> retryLast() async {
+    final text = _lastFailedText;
+    if (text == null) return;
+    _lastFailedText = null;
+    await sendMessage(text);
+  }
+
   Stream<String> fakeStream(String fullText) async* {
     for (int i = 0; i < fullText.length; i++) {
       await Future.delayed(const Duration(milliseconds: 20));
@@ -174,81 +334,134 @@ class AIChatController extends ChangeNotifier {
   }
 
   Future<void> sendMessage(String text) async {
-    if (text.isEmpty || !isReady) return;
+    if (text.isEmpty || !isReady || isLoading) return;
 
+    // Снимаем вложение для этого сообщения (оно «расходуется» при отправке).
+    final attachment = _pendingAttachment;
+    _pendingAttachment = null;
+    _error = null;
+
+    final displayText = attachment != null
+        ? '$text\n\n📎 ${attachment.label}'
+        : text;
     final userMsg = ChatMessage(
       role: 'user',
-      content: text,
+      content: displayText,
       timestamp: DateTime.now(),
     );
-
     await _repo!.add(userMsg);
-
-    if (!kDebugMode) {
-      final fakeResponse =
-          'Для вельш-корги кардигана вес 14 кг может быть немного выше среднего для взрослого кобеля его возраста. Обычно взрослые корги весят около 12-14 кг. Рекомендуется проконсультироваться с ветеринаром для точного определения индекса массы тела и получения рекомендаций по питанию и физической активности.';
-      final fakeBotMsg = ChatMessage(
-        role: 'assistant',
-        content: fakeResponse,
-        timestamp: DateTime.now(),
-      );
-
-      await _repo!.add(fakeBotMsg);
-      await for (final chunk in fakeStream(fakeResponse)) {
-        fakeBotMsg.content = chunk;
-        await fakeBotMsg.save();
-        notifyListeners();
-      }
-
-      return;
-    }
 
     isLoading = true;
     notifyListeners();
 
-    final petContext = PetContextBuilder.build(_pet!);
-    final limitedHistory = messages.take(10).toList();
-    final context = [
-      {
-        "role": "system",
-        "content":
-            "Ты ветеринарный ассистент. Отвечай кратко, понятно и по делу. "
-            "Учитывай контекст питомца: $petContext",
-      },
-      ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
-    ];
+    try {
+      final petContext = PetContextBuilder.build(_pet!);
+      // Последние 10 сообщений (а не первые) — для актуального контекста.
+      final history = messages;
+      final limitedHistory = history.length > 10
+          ? history.sublist(history.length - 10)
+          : history;
 
-    final authService = GetIt.instance<AuthService>();
-    final body = jsonEncode({
-      "message": context.toString(),
-    });
-    final response = await _httpClient.post(
-      _messagesRoute,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${authService.token}',
-      },
-      body: body,
-    );
+      final context = [
+        {
+          "role": "system",
+          "content":
+              "Ты ветеринарный ассистент. Отвечай кратко, понятно и по делу. "
+              "Учитывай контекст питомца: $petContext"
+              "${attachment != null ? "\nПользователь прикрепил данные (${attachment.type}): ${jsonEncode(attachment.data)}" : ""}",
+        },
+        ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
+      ];
 
-    isLoading = false;
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      final fullResponse = data['response']["ответ"];
+      final authService = GetIt.instance<AuthService>();
+      final body = jsonEncode({
+        "message": context.toString(),
+        if (attachment != null) "attachment": attachment.data,
+      });
+
+      final response = await _httpClient
+          .post(
+            _messagesRoute,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${authService.token}',
+            },
+            body: body,
+          )
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode != 200) {
+        throw _ServerException(response.statusCode);
+      }
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final fullResponse = _extractAnswer(data);
+      if (fullResponse == null || fullResponse.trim().isEmpty) {
+        throw const _ServerException(0, 'Пустой ответ ассистента');
+      }
+
+      isLoading = false;
       final botMsg = ChatMessage(
         role: 'assistant',
         content: '',
         timestamp: DateTime.now(),
       );
-
       await _repo!.add(botMsg);
-
       await for (final chunk in fakeStream(fullResponse)) {
         botMsg.content = chunk;
         await botMsg.save();
         notifyListeners();
       }
+    } catch (e) {
+      // Любая ошибка (сеть, таймаут, сервер, GigaChat, парсинг) — не зависаем.
+      isLoading = false;
+      _error = _friendlyError(e);
+      _lastFailedText = text;
+      notifyListeners();
     }
+  }
+
+  /// Достаёт текст ответа из возможных форматов ответа сервера.
+  static String? _extractAnswer(dynamic data) {
+    if (data is Map) {
+      final resp = data['response'];
+      if (resp is Map && resp['ответ'] != null) return resp['ответ'].toString();
+      if (resp is Map && resp['answer'] != null) return resp['answer'].toString();
+      if (resp is String && resp.isNotEmpty) return resp;
+      if (data['ответ'] != null) return data['ответ'].toString();
+      if (data['answer'] != null) return data['answer'].toString();
+      if (data['message'] != null) return data['message'].toString();
+    }
+    if (data is String) return data;
+    return null;
+  }
+
+  static String _friendlyError(Object e) {
+    if (e is _ServerException) {
+      if (e.message != null) return e.message!;
+      switch (e.statusCode) {
+        case 401:
+        case 403:
+          return 'Сессия истекла — войдите снова';
+        case 429:
+          return 'Слишком много запросов — попробуйте позже';
+        case 500:
+        case 502:
+        case 503:
+          return 'Ассистент временно недоступен';
+        default:
+          return 'Ошибка сервера (${e.statusCode})';
+      }
+    }
+    if (e is TimeoutException) return 'Ассистент долго не отвечает';
+    final s = e.toString().toLowerCase();
+    if (s.contains('socket') ||
+        s.contains('connection') ||
+        s.contains('network') ||
+        s.contains('handshake')) {
+      return 'Нет подключения к сети';
+    }
+    return 'Не удалось получить ответ';
   }
 
   /// Проверяет доступность ИИ-бэкенда (`<aiUrl>/health`).
@@ -272,10 +485,19 @@ class AIChatController extends ChangeNotifier {
     }
   }
 
+  /// Полностью удаляет всю историю общения (все треды) — используется из
+  /// настроек, где живого контроллера нет.
   static Future<void> clearMessageHistory() async {
-    final repository = ChatRepository(
-      await Hive.openBox<ChatMessage>(_defaultBoxName),
-    );
-    repository.clear();
+    final prefs = await SharedPreferences.getInstance();
+    final archived = prefs.getStringList(_archivedBoxesKey) ?? [];
+    final current = prefs.getString(_currentBoxKey) ?? _defaultBoxName;
+    final boxes = {...archived, current, _defaultBoxName};
+    for (final name in boxes) {
+      try {
+        await Hive.deleteBoxFromDisk(name);
+      } catch (_) {}
+    }
+    await prefs.remove(_archivedBoxesKey);
+    await prefs.setString(_currentBoxKey, _defaultBoxName);
   }
 }
