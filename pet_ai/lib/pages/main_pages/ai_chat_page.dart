@@ -853,7 +853,6 @@ class _InputBarState extends State<_InputBar> {
   Widget build(BuildContext context) {
     final chat = context.watch<AIChatController>();
     final accent = context.watch<AppearanceController>().primaryColor;
-    final secondaryColor = context.watch<AppearanceController>().secondaryColor;
 
     final hasText = controller.text.trim().isNotEmpty;
     final canSend = hasText && !chat.isLoading;
@@ -868,7 +867,7 @@ class _InputBarState extends State<_InputBar> {
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: secondaryColor, width: 2),
+                border: Border.all(color: accent, width: 2),
                 borderRadius: BorderRadiusGeometry.circular(24),
               ),
               child: Padding(
