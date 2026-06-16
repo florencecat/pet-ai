@@ -233,7 +233,9 @@ class HomePageState extends State<HomePage> {
       if (e.source == EventSource.treatment) continue;
 
       if (e.repeat == RepeatInterval.none) {
-        if (!e.isCompletedOn(e.dateTime) && e.dateTime.isAfter(now) && e.dateTime.isBefore(in30Days)) {
+        if (!e.isCompletedOn(e.dateTime) &&
+            e.dateTime.isAfter(now) &&
+            e.dateTime.isBefore(in30Days)) {
           items.add(
             _TimelineItem(
               date: e.dateTime,
@@ -1133,11 +1135,7 @@ class _VetCardSheet extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _infoRow(
-                    context,
-                    'Имя',
-                    profile.name.isEmpty ? '—' : profile.name,
-                  ),
+                  _infoRow(context, 'Имя', profile.name),
                   _infoRow(context, 'Вид', profile.species.name),
                   _infoRow(
                     context,
@@ -1147,6 +1145,14 @@ class _VetCardSheet extends StatelessWidget {
                   _infoRow(context, 'Пол', profile.gender.caption),
                   _infoRow(context, 'Возраст', _formatAge()),
                   _infoRow(context, 'Дата рождения', _formatBirthDate()),
+                  _infoRow(context, 'Аллергии', profile.allergies),
+                  _infoRow(
+                    context,
+                    'Хронические заболевания',
+                    profile.chronicConditions,
+                  ),
+                  _infoRow(context, 'Ветеринар', profile.vetClinic),
+                  _infoRow(context, 'Стерилизация', _formatCastration()),
                 ],
               ),
             ),
@@ -1212,6 +1218,8 @@ class _VetCardSheet extends StatelessWidget {
 
   Widget _infoRow(BuildContext context, String label, String value) {
     Color textColor = context.watch<AppearanceController>().secondaryColor;
+    if (value.isEmpty) value = '—';
+
     if (value.startsWith('+')) {
       textColor = ThemeColors.ok.mainColor;
     } else if (value.startsWith('-')) {
@@ -1258,6 +1266,14 @@ class _VetCardSheet extends StatelessWidget {
   String _formatBirthDate() {
     if (profile.birthDate == null) return 'Нет данных';
     return DateFormat('dd.MM.yyyy', 'ru').format(profile.birthDate!);
+  }
+
+  String _formatCastration() {
+    if (!profile.castrated) return 'Нет';
+    if (profile.castratedDate != null) {
+      return 'Да, ${DateFormat('MMMM yyyy', 'ru_RU').format(profile.castratedDate!)}';
+    }
+    return 'Да';
   }
 
   Widget _buildWeightDynamics(BuildContext context) {
@@ -1309,15 +1325,12 @@ class _VetCardSheet extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: recentMoods.map((entry) {
-            return Chip(
-              avatar: Icon(entry.mood.icon, size: 16),
-              label: Text(
-                '${DateFormat('dd.MM').format(entry.date)} '
-                '${entry.dayPart.label} — ${entry.mood.label}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            return SoftGlassBadge(
+              color: context.watch<AppearanceController>().secondaryColor,
+              size: 10,
+              label:
+                  '${DateFormat('dd.MM').format(entry.date)} ${entry.dayPart.label} — ${entry.mood.label}',
+              icon: entry.mood.icon,
             );
           }).toList(),
         ),
