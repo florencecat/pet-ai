@@ -3,6 +3,7 @@ import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }
@@ -394,6 +395,9 @@ class Event implements PbEntity {
       completedDates.remove(key);
     } else {
       completedDates.add(key);
+    }
+    if (source ==  EventSource.pill) {
+      PillReminderService().markScheduleTakenFromEvent(this);
     }
   }
 

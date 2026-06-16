@@ -5,10 +5,7 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/models/event.dart';
 
 class PillReminderService {
-  Future<Pill> add({
-    required String petId,
-    required Pill reminder,
-  }) async {
+  Future<Pill> add({required String petId, required Pill reminder}) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return reminder;
 
@@ -65,10 +62,7 @@ class PillReminderService {
   /// Синхронизирует дату окончания курса со связанным PetEvent, чтобы
   /// законченные курсы переставали отображаться в календаре.
   /// (Изменения имени / времени пока остаются локальными в профиле.)
-  Future<void> update({
-    required String petId,
-    required Pill updated,
-  }) async {
+  Future<void> update({required String petId, required Pill updated}) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
     final idx = profile.pillReminders.indexWhere((r) => r.id == updated.id);
@@ -88,10 +82,7 @@ class PillReminderService {
     }
   }
 
-  Future<void> delete({
-    required String petId,
-    required Pill reminder,
-  }) async {
+  Future<void> delete({required String petId, required Pill reminder}) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
 
@@ -113,7 +104,12 @@ class PillReminderService {
     required String reminderId,
     required DateTime date,
   }) async {
-    await _toggleAllTaken(petId: petId, reminderId: reminderId, date: date, add: true);
+    await _toggleAllTaken(
+      petId: petId,
+      reminderId: reminderId,
+      date: date,
+      add: true,
+    );
   }
 
   /// Clears all schedules for [date] (reverses markTaken).
@@ -122,7 +118,36 @@ class PillReminderService {
     required String reminderId,
     required DateTime date,
   }) async {
-    await _toggleAllTaken(petId: petId, reminderId: reminderId, date: date, add: false);
+    await _toggleAllTaken(
+      petId: petId,
+      reminderId: reminderId,
+      date: date,
+      add: false,
+    );
+  }
+
+  Future<void> markScheduleTakenFromEvent(Event event) async {
+    if (event.source != EventSource.pill ||
+        event.sourceId == null ||
+        event.sourceId!.isEmpty)
+      return;
+
+    final profile = await PetService().loadProfile(event.petIds.first);
+    if (profile == null) return;
+
+    final pill = profile.pillReminders.firstWhere(
+      (p) => p.id == event.sourceId,
+    );
+    final index = pill.schedules.indexWhere(
+      (s) => s.hour == event.dateTime.hour && s.minute == event.dateTime.minute,
+    );
+
+    markScheduleTaken(
+      petId: profile.id,
+      reminderId: event.sourceId!,
+      date: event.dateTime,
+      scheduleIndex: index,
+    );
   }
 
   /// Marks a single [scheduleIndex] as taken for [date].
@@ -177,8 +202,7 @@ class PillReminderService {
       old.takenSchedules.map((k, v) => MapEntry(k, List<int>.from(v))),
     );
     if (add) {
-      newTakenSchedules[key] =
-          List.generate(old.schedules.length, (i) => i);
+      newTakenSchedules[key] = List.generate(old.schedules.length, (i) => i);
     } else {
       newTakenSchedules.remove(key);
     }
