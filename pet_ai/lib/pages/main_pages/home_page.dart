@@ -114,7 +114,7 @@ class HomePageState extends State<HomePage> {
   }
 
   void _openEventSheet(BuildContext context, Event event) async {
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -122,7 +122,9 @@ class HomePageState extends State<HomePage> {
       backgroundColor: Colors.transparent,
       builder: (_) => EventSheet(event: event),
     );
-    if (updated == true) await _initScreen();
+    // Обновляем безусловно: отметка «Выполнено» сохраняется сразу, но лист
+    // при закрытии (свайп/назад) не возвращает результат.
+    if (mounted) await _initScreen();
   }
 
   void _openBirthdaySheet(BuildContext context) {
@@ -231,7 +233,7 @@ class HomePageState extends State<HomePage> {
       if (e.source == EventSource.treatment) continue;
 
       if (e.repeat == RepeatInterval.none) {
-        if (e.dateTime.isAfter(now) && e.dateTime.isBefore(in30Days)) {
+        if (!e.isCompletedOn(e.dateTime) && e.dateTime.isAfter(now) && e.dateTime.isBefore(in30Days)) {
           items.add(
             _TimelineItem(
               date: e.dateTime,
@@ -298,7 +300,7 @@ class HomePageState extends State<HomePage> {
             int.tryParse(parts[1]) ?? 0,
             int.tryParse(parts[2]) ?? 0,
           );
-          if (date.isBefore(DateTime.now())) {
+          if (event.isCompletedOn(date) || date.isBefore(DateTime.now())) {
             items.add(
               _TimelineItem(
                 date: date,
