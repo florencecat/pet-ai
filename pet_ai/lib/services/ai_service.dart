@@ -218,34 +218,36 @@ class AIChatController extends ChangeNotifier {
       ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
     ];
 
+    final authService = GetIt.instance<AuthService>();
+    final body = jsonEncode({
+      "message": context.toString(),
+    });
     final response = await _httpClient.post(
       _messagesRoute,
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Authorization': 'Bearer ${authService.token}',
       },
-      body: jsonEncode({
-        "token": GetIt.instance<AuthService>().token,
-        "message": context.toString(),
-      }),
+      body: body,
     );
-
-    final data = jsonDecode(response.body);
-    final fullResponse = data['choices'][0]['message']['content'];
-    final botMsg = ChatMessage(
-      role: 'assistant',
-      content: '',
-      timestamp: DateTime.now(),
-    );
-
-    await _repo!.add(botMsg);
 
     isLoading = false;
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      final fullResponse = data['response']["ответ"];
+      final botMsg = ChatMessage(
+        role: 'assistant',
+        content: '',
+        timestamp: DateTime.now(),
+      );
 
-    await for (final chunk in fakeStream(fullResponse)) {
-      botMsg.content = chunk;
-      await botMsg.save();
-      notifyListeners();
+      await _repo!.add(botMsg);
+
+      await for (final chunk in fakeStream(fullResponse)) {
+        botMsg.content = chunk;
+        await botMsg.save();
+        notifyListeners();
+      }
     }
   }
 
