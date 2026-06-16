@@ -440,7 +440,7 @@ class PetService {
     if (profile != null) {
       final initialWeight = 12;
       final entries = <WeightEntry>[];
-      for (int i = 0; i < 12; ++i) {
+      for (int i = 12; i >= 0; --i) {
         final fault = Random().nextInt(10) / 10.0;
         final sign = Random().nextBool() ? -1 : 1;
         entries.add(
