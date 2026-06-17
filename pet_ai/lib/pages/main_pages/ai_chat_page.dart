@@ -43,8 +43,6 @@ class _AIChatPageState extends State<AIChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-
     return FutureBuilder<AIChatController>(
       future: _future,
       builder: (context, snapshot) {
@@ -66,13 +64,16 @@ class _AIChatPageState extends State<AIChatPage> {
           child: Builder(
             builder: (context) {
               return Scaffold(
+                // Клавиатуру обрабатываем вручную в _ChatView (Column + отступ
+                // инпута), поэтому Scaffold не ресайзим — градиент остаётся на
+                // весь экран, без «прыжков».
                 resizeToAvoidBottomInset: false,
                 body: Container(
-                  padding: EdgeInsets.fromLTRB(0, topPadding + 16, 0, 0),
                   decoration: context
                       .watch<AppearanceController>()
                       .gradientDecoration,
-                  child: const _ChatView(),
+                  // bottom: false — нижний отступ задаём сами (клавиатура/навбар).
+                  child: const SafeArea(bottom: false, child: _ChatView()),
                 ),
               );
             },
@@ -228,182 +229,188 @@ class _ChatViewState extends State<_ChatView> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AIChatController>();
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+
+    // Ручное управление клавиатурой (Scaffold не ресайзит): когда она открыта —
+    // поднимаем нижний блок на её высоту, иначе — на безопасную зону (навбар).
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final bottomInset = keyboardInset > 0 ? keyboardInset : safeBottom;
 
     final isEmpty = controller.messages.isEmpty;
 
-    return Stack(
+    return Column(
       children: [
-        // Тап по области сообщений скрывает клавиатуру.
-        GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () => FocusScope.of(context).unfocus(),
+        const SizedBox(height: 12),
+        _ChatHeader(
+          controller: controller,
+          statusFuture: _future,
+          onNewThread: controller.messages.isNotEmpty
+              ? () => controller.startNewThread()
+              : null,
+          onHistory: () => _openHistorySheet(controller),
+        ),
+
+        // ── Сообщения (занимают всё свободное место, ужимаются с клавиатурой) ─
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: isEmpty
+                ? SingleChildScrollView(
+                    reverse: true,
+                    padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
+                    child: _WelcomeState(petName: controller.petName),
+                  )
+                : _FadingMessageList(controller: controller),
+          ),
+        ),
+
+        // ── Нижний блок: индикатор/ошибка + чип вложения + поле ввода ─────────
+        Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: isEmpty
-                    ? Column(
-                        children: [
-                          const Spacer(),
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: 4,
-                              right: 4,
-                              bottom: 185,
-                            ),
-                            child: _WelcomeState(petName: controller.petName),
-                          ),
-                        ],
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: SizeTransition(sizeFactor: anim, child: child),
+                ),
+                child: controller.isLoading
+                    ? const Padding(
+                        key: ValueKey('typing'),
+                        padding: EdgeInsets.fromLTRB(20, 0, 16, 6),
+                        child: _TypingIndicator(),
                       )
-                    : _FadingMessageList(controller: controller),
+                    : controller.error != null
+                    ? Padding(
+                        key: const ValueKey('error'),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                        child: _ErrorBanner(
+                          message: controller.error!,
+                          canRetry: controller.canRetry,
+                          onRetry: () => controller.retryLast(),
+                          onDismiss: () => controller.clearError(),
+                        ),
+                      )
+                    : const SizedBox.shrink(key: ValueKey('none')),
+              ),
+              if (controller.pendingAttachment != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: _AttachmentChip(
+                    attachment: controller.pendingAttachment!,
+                    onRemove: controller.clearAttachment,
+                  ),
+                ),
+              _InputBar(onAttach: () => _openAttachmentPicker(controller)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Header
+// ──────────────────────────────────────────────────────────
+
+class _ChatHeader extends StatelessWidget {
+  final AIChatController controller;
+  final Future<bool> statusFuture;
+  final VoidCallback? onNewThread;
+  final VoidCallback onHistory;
+
+  const _ChatHeader({
+    required this.controller,
+    required this.statusFuture,
+    required this.onNewThread,
+    required this.onHistory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.watch<AppearanceController>().primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GlassPlate(
+        child: ListTile(
+          leading: SoftRoundedIcon(
+            icon: Icons.auto_awesome,
+            gradient: ThemeColors.aiChatIconGradient,
+          ),
+          title: Text(
+            'Помощник по уходу',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          subtitle: FutureBuilder<bool>(
+            future: statusFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return Row(
+                  spacing: 6,
+                  children: [
+                    _OfflineDot(),
+                    Text(
+                      'проверка связи…',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium!.copyWith(color: Colors.grey),
+                    ),
+                  ],
+                );
+              }
+              final online = snapshot.data == true;
+              return Row(
+                spacing: 6,
+                children: online
+                    ? [
+                        _OnlineDot(color: ThemeColors.aiChatOnlineColor),
+                        Text(
+                          'на связи',
+                          style: Theme.of(context).textTheme.bodyMedium!
+                              .copyWith(color: ThemeColors.aiChatOnlineColor),
+                        ),
+                      ]
+                    : [
+                        _OfflineDot(),
+                        Text(
+                          'оффлайн',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium!.copyWith(color: Colors.grey),
+                        ),
+                      ],
+              );
+            },
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Новый диалог',
+                icon: Icon(
+                  Icons.add_comment_outlined,
+                  color: onNewThread != null ? accent : Colors.black12,
+                ),
+                onPressed: onNewThread,
+              ),
+              IconButton(
+                tooltip: 'История общения',
+                icon: Icon(Icons.history, color: accent),
+                onPressed: onHistory,
               ),
             ],
           ),
         ),
-
-        // ── Header card ───────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: GlassPlate(
-              child: ListTile(
-                leading: SoftRoundedIcon(
-                  icon: Icons.auto_awesome,
-                  gradient: ThemeColors.aiChatIconGradient,
-                ),
-                title: Text(
-                  'Помощник по уходу',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                subtitle: FutureBuilder<bool>(
-                  future: _future,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting &&
-                        !snapshot.hasData) {
-                      return Row(
-                        spacing: 6,
-                        children: [
-                          _OfflineDot(),
-                          Text(
-                            'проверка связи…',
-                            style: Theme.of(context).textTheme.bodyMedium!
-                                .copyWith(color: Colors.grey),
-                          ),
-                        ],
-                      );
-                    }
-                    final online = snapshot.data == true;
-                    return Row(
-                      spacing: 6,
-                      children: online
-                          ? [
-                              _OnlineDot(color: ThemeColors.aiChatOnlineColor),
-                              Text(
-                                'на связи',
-                                style: Theme.of(context).textTheme.bodyMedium!
-                                    .copyWith(
-                                      color: ThemeColors.aiChatOnlineColor,
-                                    ),
-                              ),
-                            ]
-                          : [
-                              _OfflineDot(),
-                              Text(
-                                'оффлайн',
-                                style: Theme.of(context).textTheme.bodyMedium!
-                                    .copyWith(color: Colors.grey),
-                              ),
-                            ],
-                    );
-                  },
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Новый диалог',
-                      icon: Icon(
-                        Icons.add_comment_outlined,
-                        color: controller.messages.isNotEmpty ? context
-                            .watch<AppearanceController>()
-                            .primaryColor : Colors.black12,
-                      ),
-                      onPressed: controller.messages.isNotEmpty ? () async {
-                        await controller.startNewThread();
-                      } : null,
-                    ),
-                    IconButton(
-                      tooltip: 'История общения',
-                      icon: Icon(
-                        Icons.history,
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                      ),
-                      onPressed: () => _openHistorySheet(controller),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // ── Bottom stack: typing / error / attachment chip / input ────────
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: keyboardInset > 0 ? keyboardInset : bottomPadding,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, anim) => FadeTransition(
-                    opacity: anim,
-                    child: SizeTransition(sizeFactor: anim, child: child),
-                  ),
-                  child: controller.isLoading
-                      ? const Padding(
-                          key: ValueKey('typing'),
-                          padding: EdgeInsets.fromLTRB(20, 0, 16, 6),
-                          child: _TypingIndicator(),
-                        )
-                      : controller.error != null
-                      ? Padding(
-                          key: const ValueKey('error'),
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                          child: _ErrorBanner(
-                            message: controller.error!,
-                            canRetry: controller.canRetry,
-                            onRetry: () => controller.retryLast(),
-                            onDismiss: () => controller.clearError(),
-                          ),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('none')),
-                ),
-                if (controller.pendingAttachment != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                    child: _AttachmentChip(
-                      attachment: controller.pendingAttachment!,
-                      onRemove: controller.clearAttachment,
-                    ),
-                  ),
-                _InputBar(onAttach: () => _openAttachmentPicker(controller)),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -419,23 +426,22 @@ class _FadingMessageList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShaderMask(
-      // Дешёвый эффект «растворения»: верх списка плавно уходит в прозрачность,
-      // поэтому сообщения исчезают под плашкой «Помощник по уходу». Один шейдер,
-      // без per-frame BackdropFilter.
+      // Мягкое «растворение» сообщений у верхней кромки списка (под шапкой).
+      // Один шейдер — дёшево, без per-frame BackdropFilter.
       shaderCallback: (rect) {
         final h = rect.height;
         return LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: const [Colors.transparent, Colors.transparent, Colors.black],
-          stops: [0.0, (70 / h).clamp(0.0, 1.0), (118 / h).clamp(0.0, 1.0)],
+          colors: const [Colors.transparent, Colors.black],
+          stops: [0.0, (28 / h).clamp(0.0, 1.0)],
         ).createShader(rect);
       },
       blendMode: BlendMode.dstIn,
       child: ListView.builder(
         reverse: true,
         clipBehavior: Clip.none,
-        padding: const EdgeInsets.only(left: 4, right: 4, bottom: 185, top: 96),
+        padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
         itemCount: controller.messages.length,
         physics: const BouncingScrollPhysics(),
         itemBuilder: (context, index) {

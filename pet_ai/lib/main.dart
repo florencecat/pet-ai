@@ -193,6 +193,11 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       // extendBody lets the page gradient bleed behind the glass navbar.
       extendBody: true,
+      // Не ресайзим IndexedStack под клавиатуру: страницы вводят текст только в
+      // модальных листах (со своим учётом клавиатуры), а чат сам поднимает поле
+      // ввода. Иначе внешний ресайз сжимал бы активную страницу — и контент
+      // «улетал» наверх при открытии клавиатуры.
+      resizeToAvoidBottomInset: false,
       // Transparent so the inner-page gradient shows through the navbar region
       // instead of the Scaffold's own surface painting full-width there.
       backgroundColor: Colors.transparent,
