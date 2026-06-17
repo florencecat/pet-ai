@@ -46,3 +46,6 @@ app.*.map.json
 
 generated*
 pubspec.lock
+
+.env
+.env.local
