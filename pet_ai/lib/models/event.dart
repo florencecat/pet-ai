@@ -9,6 +9,39 @@ import 'package:pet_satellite/theme/app_colors.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }
 
+extension RepeatIntervalX on RepeatInterval {
+  /// Человекочитаемая подпись интервала повтора (для карточек/виджетов).
+  String get label {
+    switch (this) {
+      case RepeatInterval.none:
+        return 'Однократно';
+      case RepeatInterval.daily:
+        return 'Каждый день';
+      case RepeatInterval.weekly:
+        return 'Каждую неделю';
+      case RepeatInterval.monthly:
+        return 'Каждый месяц';
+      case RepeatInterval.custom:
+        return 'По дням недели';
+    }
+  }
+
+  /// Интервал из ответа ИИ (строки none/daily/weekly/monthly).
+  static RepeatInterval fromAi(String? value) {
+    switch (value) {
+      case 'daily':
+        return RepeatInterval.daily;
+      case 'weekly':
+        return RepeatInterval.weekly;
+      case 'monthly':
+        return RepeatInterval.monthly;
+      case 'none':
+      default:
+        return RepeatInterval.none;
+    }
+  }
+}
+
 enum RemindBeforeVariant { days, hours, minutes }
 
 extension RemindBeforeVariantX on RemindBeforeVariant {
@@ -182,6 +215,19 @@ class EventCategories {
 
   static EventCategory byId(String id) {
     return all.firstWhere((c) => c.id == id, orElse: () => other);
+  }
+
+  /// Категория из ответа ИИ (строки health / grooming / other).
+  static EventCategory fromAiId(String? id) {
+    switch (id) {
+      case 'health':
+        return health;
+      case 'grooming':
+        return grooming;
+      case 'other':
+      default:
+        return other;
+    }
   }
 }
 
@@ -571,18 +617,19 @@ class _EventCodec extends PbCodec<Event> {
 
   Future<Event?> fromAIResponse(Map<String, dynamic> data) async {
     final profileId = await PetService().getActiveProfileId();
-    if (profileId != null) {
-      final event = Event(
-        name: data['name'],
-        category: EventCategories.health, // TODO: update so ai uses ids
-        dateTime: DateTime.parse(data['datetime'] as String),
-        petIds: [profileId],
-        repeat: RepeatInterval.none,
-        customDays: const [],
-      );
-      return event;
-    }
-    return null;
+    if (profileId == null) return null;
+
+    final name = (data['name'] as String?)?.trim();
+    return Event(
+      name: (name == null || name.isEmpty) ? 'Напоминание' : name,
+      category: EventCategories.fromAiId(data['category'] as String?),
+      dateTime:
+          DateTime.tryParse(data['datetime'] as String? ?? '') ??
+          DateTime.now(),
+      petIds: [profileId],
+      repeat: RepeatIntervalX.fromAi(data['repeat'] as String?),
+      customDays: const [],
+    );
   }
 
   @override

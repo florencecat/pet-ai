@@ -20,19 +20,25 @@ class ChatMessageAdapter extends TypeAdapter<ChatMessage> {
       role: fields[0] as String,
       content: fields[1] as String,
       timestamp: fields[2] as DateTime,
+      eventsJson: fields[3] as String?,
+      completed: fields[4] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, ChatMessage obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.role)
       ..writeByte(1)
       ..write(obj.content)
       ..writeByte(2)
-      ..write(obj.timestamp);
+      ..write(obj.timestamp)
+      ..writeByte(4)
+      ..write(obj.completed)
+      ..writeByte(3)
+      ..write(obj.eventsJson);
   }
 
   @override

@@ -7,8 +7,8 @@ import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/hold_to_talk_mic.dart';
 import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:pet_satellite/models/pet_profile.dart';
 
 class NoteSheet extends StatefulWidget {
@@ -22,10 +22,7 @@ class NoteSheet extends StatefulWidget {
 
 class _NoteSheetState extends State<NoteSheet> {
   final TextEditingController _controller = TextEditingController();
-  final stt.SpeechToText _speech = stt.SpeechToText();
 
-  bool _isListening = false;
-  bool _speechAvailable = false;
   bool _isSaving = false;
   SymptomTag? _selectedSymptom;
 
@@ -35,49 +32,15 @@ class _NoteSheetState extends State<NoteSheet> {
   void initState() {
     super.initState();
     _history = widget.profile.noteHistory;
-    _initSpeech();
   }
 
-  Future<void> _initSpeech() async {
-    try {
-      final available = await _speech.initialize(
-        onError: (_) {
-          if (mounted) setState(() => _isListening = false);
-        },
-        onStatus: (status) {
-          if (mounted && (status == 'done' || status == 'notListening')) {
-            setState(() => _isListening = false);
-          }
-        },
+  void _onVoiceText(String words) {
+    setState(() {
+      _controller.text = words;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: _controller.text.length),
       );
-      if (mounted) setState(() => _speechAvailable = available);
-    } catch (_) {
-      // Распознавание речи может быть недоступно — тихо отключаем кнопку.
-      if (mounted) setState(() => _speechAvailable = false);
-    }
-  }
-
-  Future<void> _toggleListening() async {
-    if (!_speechAvailable) return;
-    if (_isListening) {
-      await _speech.stop();
-      setState(() => _isListening = false);
-      return;
-    }
-    setState(() => _isListening = true);
-    await _speech.listen(
-      onResult: (result) {
-        setState(() {
-          _controller.text = result.recognizedWords;
-          _controller.selection = TextSelection.fromPosition(
-            TextPosition(offset: _controller.text.length),
-          );
-        });
-      },
-      localeId: 'ru_RU',
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-    );
+    });
   }
 
   Future<void> _save() async {
@@ -118,7 +81,6 @@ class _NoteSheetState extends State<NoteSheet> {
   @override
   void dispose() {
     _controller.dispose();
-    _speech.cancel();
     super.dispose();
   }
 
@@ -230,39 +192,12 @@ class _NoteSheetState extends State<NoteSheet> {
                           ),
                         ),
                       ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _isListening
-                              ? ThemeColors.dangerZone
-                              : context
-                                    .watch<AppearanceController>()
-                                    .secondaryColor
-                                    .withAlpha(40),
-                        ),
-                        child: IconButton(
-                          onPressed: _speechAvailable ? _toggleListening : null,
-                          icon: Icon(
-                            _isListening ? Icons.mic : Icons.mic_none,
-                            size: 26,
-                          ),
-                          color: _isListening
-                              ? Colors.white
-                              : _speechAvailable
-                              ? context
-                                    .watch<AppearanceController>()
-                                    .secondaryColor
-                              : context
-                                    .watch<AppearanceController>()
-                                    .secondaryColor
-                                    .withAlpha(80),
-                          tooltip: _speechAvailable
-                              ? (_isListening
-                                    ? 'Остановить запись'
-                                    : 'Голосовой ввод')
-                              : 'Голосовой ввод недоступен',
-                        ),
+                      HoldToTalkMic(
+                        onText: _onVoiceText,
+                        activeColor: ThemeColors.dangerZone,
+                        idleColor: context
+                            .watch<AppearanceController>()
+                            .secondaryColor,
                       ),
                     ],
                   ),

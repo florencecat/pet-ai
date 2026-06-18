@@ -1,7 +1,4 @@
-import 'dart:convert';
-
-import 'package:pet_satellite/models/event.dart';
-import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/models/suggested_event.dart';
 
 class QuotaInfo {
   final int requestsToday;
@@ -41,18 +38,18 @@ class ChatResult {
     quota: QuotaInfo.fromJson(j['quota'] ?? {}),
   );
 
-  Future<void> createSuggestedEvents() async {
-    if (response.containsKey('events')) {
-      final events = response['events'] as List<dynamic>? ?? [];
-      if (events.isNotEmpty) {
-        for (final event in events) {
-          final newEvent = await Event.codec.fromAIResponse(event);
-          if (newEvent != null) {
-            EventService().createEvent(newEvent);
-          }
-        }
-      }
+  /// Извлекает предложенные ИИ события (`events`) из ответа. Само событие
+  /// здесь не создаётся — этим управляет контроллер чата (с учётом настройки
+  /// автосоздания и подтверждения пользователя).
+  List<SuggestedEvent> suggestedEvents() {
+    final r = response;
+    if (r is Map && r['events'] is List) {
+      return (r['events'] as List)
+          .whereType<Map>()
+          .map((m) => SuggestedEvent.fromAi(m.cast<String, dynamic>()))
+          .toList();
     }
+    return const [];
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
+import 'package:pet_satellite/models/suggested_event.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/api_service.dart';
@@ -14,7 +15,9 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/hold_to_talk_mic.dart';
 import 'package:provider/provider.dart';
 
 class AIChatPage extends StatefulWidget {
@@ -469,10 +472,9 @@ class _WelcomeState extends StatelessWidget {
     final primaryColor = context.watch<AppearanceController>().primaryColor;
 
     const quickReplies = [
+      'Что ты умеешь?',
       'Сколько корма в день?',
-      'Когда прививка?',
-      'Норма прогулок',
-      'Почему мой питомец вялый?',
+      'Когда ближайшая прививка?',
     ];
 
     return Padding(
@@ -544,8 +546,15 @@ class _WelcomeState extends StatelessWidget {
 class _BubbleContainer extends StatelessWidget {
   final bool isUser;
   final Widget child;
+  final Widget? widget;
+  final bool showWidget;
 
-  const _BubbleContainer({required this.isUser, required this.child});
+  const _BubbleContainer({
+    required this.isUser,
+    required this.child,
+    this.widget,
+    this.showWidget = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -567,7 +576,9 @@ class _BubbleContainer extends StatelessWidget {
             bottomRight: Radius.circular(18),
           );
 
-    return Container(
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
       constraints: const BoxConstraints(maxWidth: 280),
       decoration: BoxDecoration(
         borderRadius: borderRadius,
@@ -581,7 +592,24 @@ class _BubbleContainer extends StatelessWidget {
         ],
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-      child: child,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          child,
+          // Виджет предложенных событий разворачивается анимацией, когда печать
+          // ответа заканчивается (showWidget). AnimatedSize обёрнут только вокруг
+          // виджета, поэтому текст во время трансляции растёт без задержки, а на
+          // перезагрузке (size не меняется) анимация не проигрывается повторно.
+          if (widget != null)
+            AnimatedSize(
+              duration: const Duration(milliseconds: 340),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topLeft,
+              child: showWidget ? widget! : const SizedBox.shrink(),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -607,25 +635,329 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
 
+    final events = isUser ? const <SuggestedEvent>[] : msg.attachedEvents;
+
+    final suggestedEventWidget = events.isEmpty
+        ? null
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < events.length; i++) ...[
+                const _SuggestedDivider(),
+                _SuggestedEventCard(msg: msg, index: i, event: events[i]),
+              ],
+            ],
+          );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      child: Row(
-        mainAxisAlignment: isUser
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            SoftRoundedIcon(
-              icon: Icons.auto_awesome,
-              gradient: ThemeColors.aiChatIconGradient,
-              size: 14,
-            ),
-            const SizedBox(width: 6),
-          ],
-          _BubbleContainer(isUser: isUser, child: textWidget),
+          Row(
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isUser) ...[
+                SoftRoundedIcon(
+                  icon: Icons.auto_awesome,
+                  gradient: ThemeColors.aiChatIconGradient,
+                  size: 14,
+                ),
+                const SizedBox(width: 6),
+              ],
+              _BubbleContainer(
+                isUser: isUser,
+                widget: suggestedEventWidget,
+                showWidget: msg.completed,
+                child: textWidget,
+              ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Suggested-event card (under an assistant message)
+// ──────────────────────────────────────────────────────────
+
+class _SuggestedEventCard extends StatefulWidget {
+  final ChatMessage msg;
+  final int index;
+  final SuggestedEvent event;
+
+  const _SuggestedEventCard({
+    required this.msg,
+    required this.index,
+    required this.event,
+  });
+
+  @override
+  State<_SuggestedEventCard> createState() => _SuggestedEventCardState();
+}
+
+class _SuggestedEventCardState extends State<_SuggestedEventCard> {
+  bool _busy = false;
+
+  SuggestedEvent get _event => widget.event;
+
+  Future<void> _create() async {
+    setState(() => _busy = true);
+    await context.read<AIChatController>().createSuggestedEvent(
+      widget.msg,
+      widget.index,
+    );
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _cancel() async {
+    await context.read<AIChatController>().cancelSuggestedEvent(
+      widget.msg,
+      widget.index,
+    );
+  }
+
+  Future<void> _view() async {
+    final id = _event.createdEventId;
+    if (id == null) return;
+    final controller = context.read<AIChatController>();
+    final event = await controller.findCreatedEvent(id);
+    if (!mounted) return;
+    if (event == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Событие не найдено')));
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventSheet(event: event),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final category = _event.category;
+    final created = _event.status == SuggestedEventStatus.created;
+    final cancelled = _event.status == SuggestedEventStatus.cancelled;
+    final accent = context.watch<AppearanceController>().primaryColor;
+    final theme = Theme.of(context);
+
+    final whenLabel = DateFormat('d MMM, HH:mm', 'ru').format(_event.dateTime);
+
+    // ── Заголовок-статус ──────────────────────────────────────────────────
+    late final Widget caption;
+    if (created) {
+      caption = _CaptionRow(
+        icon: Icons.check_circle,
+        color: ThemeColors.ok.mainColor,
+        text: 'Событие создано',
+      );
+    } else if (cancelled) {
+      caption = _CaptionRow(
+        icon: Icons.cancel_outlined,
+        color: Colors.grey,
+        text: 'Не создано',
+      );
+    } else {
+      caption = _CaptionRow(
+        icon: Icons.event_outlined,
+        color: accent,
+        text: 'Предлагаю добавить событие',
+      );
+    }
+
+    final iconColor = cancelled ? Colors.grey : category.color;
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        caption,
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: iconColor.withAlpha(28),
+                border: Border.all(color: iconColor.withAlpha(70), width: 1.2),
+              ),
+              child: Icon(category.icon, color: iconColor, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _event.name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      decoration: cancelled
+                          ? TextDecoration.lineThrough
+                          : null,
+                      color: cancelled ? Colors.grey : null,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule,
+                        size: 13,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(whenLabel, style: theme.textTheme.bodySmall),
+                      if (_event.repeat != RepeatInterval.none) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.repeat,
+                          size: 13,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            _event.repeat.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Созданная карточка кликабельна — подсказываем шевроном.
+            if (created)
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: accent.withAlpha(160),
+                ),
+              ),
+          ],
+        ),
+
+        // ── Действия (только для ожидающих подтверждения) ────────────────
+        if (!created && !cancelled) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _busy ? null : _cancel,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.grey.shade600,
+                    side: BorderSide(color: Colors.grey.shade300),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Отмена'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  onPressed: _busy ? null : _create,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: _busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Создать'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+
+    // Созданная карточка целиком открывает событие по нажатии.
+    if (created) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _view,
+        child: body,
+      );
+    }
+    return body;
+  }
+}
+
+/// Тонкий разделитель внутри пузыря сообщения — отделяет текст ответа от
+/// карточек предложенных событий и карточки друг от друга.
+class _SuggestedDivider extends StatelessWidget {
+  const _SuggestedDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Divider(height: 1, thickness: 1, color: Colors.grey.withAlpha(40)),
+    );
+  }
+}
+
+class _CaptionRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  const _CaptionRow({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -842,6 +1174,10 @@ class _InputBar extends StatefulWidget {
 class _InputBarState extends State<_InputBar> {
   final controller = TextEditingController();
 
+  /// Текст поля на момент начала голосового ввода — распознанное дописываем к
+  /// нему, чтобы не затирать уже набранное.
+  String _voiceBase = '';
+
   @override
   void dispose() {
     controller.dispose();
@@ -853,6 +1189,17 @@ class _InputBarState extends State<_InputBar> {
     chat.sendMessage(controller.text.trim());
     controller.clear();
     setState(() {});
+  }
+
+  void _onVoiceText(String words) {
+    final sep = _voiceBase.isEmpty || _voiceBase.endsWith(' ') ? '' : ' ';
+    final text = words.isEmpty ? _voiceBase : '$_voiceBase$sep$words';
+    setState(() {
+      controller.text = text;
+      controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: controller.text.length),
+      );
+    });
   }
 
   @override
@@ -902,6 +1249,14 @@ class _InputBarState extends State<_InputBar> {
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
+                    ),
+                    // Голосовой ввод «по удержанию» (как в дневнике).
+                    HoldToTalkMic(
+                      onText: _onVoiceText,
+                      onStart: () => _voiceBase = controller.text,
+                      activeColor: ThemeColors.dangerZone,
+                      idleColor: Colors.grey.shade500,
+                      size: 22,
                     ),
                   ],
                 ),

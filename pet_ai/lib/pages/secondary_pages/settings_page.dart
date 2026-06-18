@@ -40,6 +40,9 @@ class _SettingsPageState extends State<SettingsPage> {
   // Подтверждение удаления (загружается асинхронно из SharedPreferences).
   bool _confirmDeleteEnabled = true;
 
+  // Автосоздание предложенных ИИ событий (без подтверждения).
+  bool _autoCreateEntities = false;
+
   late final CloudSyncService _sync;
   late final CrashReportingService _crash;
 
@@ -66,12 +69,14 @@ class _SettingsPageState extends State<SettingsPage> {
     final profiles = await PetService().loadAllProfiles();
     final user = await UserService().load();
     final confirmDeleteEnabled = await isDeleteConfirmationEnabled();
+    final autoCreateEntities = await isAutoCreateEntitiesEnabled();
     if (mounted) {
       setState(() {
         _profiles = profiles;
         _loadingProfiles = false;
         _user = user;
         _confirmDeleteEnabled = confirmDeleteEnabled;
+        _autoCreateEntities = autoCreateEntities;
       });
     }
   }
@@ -407,14 +412,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: '22:00 – 08:00',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-              ),
-              _Divider(),
-              SettingsRow(
-                icon: Icons.lightbulb_outline,
-                label: 'Советы помощника',
-                subtitle: 'Не чаще раза в день',
-                onTap: null, // stub
-                iconColor: ac.primaryColor,
                 last: true,
               ),
             ],
@@ -450,6 +447,47 @@ class _SettingsPageState extends State<SettingsPage> {
                 icon: Icons.straighten_outlined,
                 label: 'Единицы',
                 subtitle: 'кг · км',
+                onTap: null, // stub
+                iconColor: ac.primaryColor,
+                last: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Помощник ──────────────────────────────────────────────────────
+          _SectionLabel('Помощник'),
+          const SizedBox(height: 8),
+          SettingsCard(
+            children: [
+              SettingsRow(
+                icon: Icons.auto_awesome_outlined,
+                label: 'Создавать события автоматически',
+                subtitle: 'Без подтверждения, сразу после ответа ИИ',
+                iconColor: ac.primaryColor,
+                trailing: Switch(
+                  inactiveThumbColor: ac.primaryColor,
+                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
+                    states,
+                  ) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.transparent;
+                    }
+                    return ac.primaryColor;
+                  }),
+                  value: _autoCreateEntities,
+                  activeThumbColor: ac.primaryColor,
+                  onChanged: (v) async {
+                    await setAutoCreateEntitiesEnabled(v);
+                    if (mounted) setState(() => _autoCreateEntities = v);
+                  },
+                ),
+              ),
+              _Divider(),
+              SettingsRow(
+                icon: Icons.lightbulb_outline,
+                label: 'Советы помощника',
+                subtitle: 'Не чаще раза в день',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
                 last: true,

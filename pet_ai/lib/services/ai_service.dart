@@ -6,6 +6,7 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:http/io_client.dart';
 import 'package:pet_satellite/models/ai_api_dto.dart';
 import 'package:pet_satellite/models/event.dart';
+import 'package:pet_satellite/models/suggested_event.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'dart:convert';
@@ -27,12 +28,44 @@ class ChatMessage extends HiveObject {
   @HiveField(2)
   DateTime timestamp;
 
+  /// Завершена ли трансляция («печать») ответа. Виджет предложенных событий
+  /// показываем с анимацией только после окончания печати; флаг персистится,
+  /// чтобы после перезапуска карточки не пропадали и не переанимировались.
+  @HiveField(4)
+  bool completed;
+
+  /// Предложенные ИИ события для этого сообщения — JSON-список [SuggestedEvent].
+  /// null, если событий нет. Храним строкой, чтобы не плодить Hive-адаптеры.
+  @HiveField(3)
+  String? eventsJson;
+
   ChatMessage({
     required this.role,
     required this.content,
     required this.timestamp,
+    this.eventsJson,
+    this.completed = false,
   });
+
+  /// Декодированный список предложенных событий (пустой, если их нет).
+  List<SuggestedEvent> get attachedEvents =>
+      eventsJson == null ? const [] : SuggestedEvent.decodeList(eventsJson!);
+
+  set attachedEvents(List<SuggestedEvent> list) =>
+      eventsJson = list.isEmpty ? null : SuggestedEvent.encodeList(list);
 }
+
+// ── Настройка автосоздания сущностей ──────────────────────────────────────────
+
+const _autoCreateEntitiesKey = 'ai_auto_create_entities';
+
+/// Создавать ли предложенные ИИ сущности автоматически, без подтверждения.
+/// По умолчанию выключено — пользователь подтверждает каждое создание.
+Future<bool> isAutoCreateEntitiesEnabled() async =>
+    (await SharedPreferencesAsync().getBool(_autoCreateEntitiesKey)) ?? false;
+
+Future<void> setAutoCreateEntitiesEnabled(bool value) async =>
+    SharedPreferencesAsync().setBool(_autoCreateEntitiesKey, value);
 
 class ArchivedThread {
   final String boxName;
@@ -329,6 +362,59 @@ class AIChatController extends ChangeNotifier {
     await sendMessage(text);
   }
 
+  // ── Предложенные ИИ события ───────────────────────────────────────────────
+
+  /// Фактически создаёт событие из предложенного ИИ (общая логика для
+  /// автосоздания и подтверждения «Создать»).
+  Future<Event?> _createFromSuggested(SuggestedEvent s) async {
+    final event = await Event.codec.fromAIResponse(s.raw);
+    if (event != null) await EventService().createEvent(event);
+    return event;
+  }
+
+  /// Подтверждает создание предложенного события [index] из сообщения [msg].
+  Future<void> createSuggestedEvent(ChatMessage msg, int index) async {
+    final list = msg.attachedEvents;
+    if (index < 0 || index >= list.length) return;
+    final s = list[index];
+    if (s.status != SuggestedEventStatus.pending) return;
+
+    final event = await _createFromSuggested(s);
+    if (event == null) return;
+
+    list[index] = s.copyWith(
+      status: SuggestedEventStatus.created,
+      createdEventId: event.id,
+    );
+    msg.attachedEvents = list;
+    await msg.save();
+    notifyListeners();
+  }
+
+  /// Отклоняет предложенное событие [index] (нажатие «Отмена»).
+  Future<void> cancelSuggestedEvent(ChatMessage msg, int index) async {
+    final list = msg.attachedEvents;
+    if (index < 0 || index >= list.length) return;
+    final s = list[index];
+    if (s.status != SuggestedEventStatus.pending) return;
+
+    list[index] = s.copyWith(status: SuggestedEventStatus.cancelled);
+    msg.attachedEvents = list;
+    await msg.save();
+    notifyListeners();
+  }
+
+  /// Загружает созданное событие по id — для просмотра из карточки в чате.
+  Future<Event?> findCreatedEvent(String id) async {
+    final petId = _pet?.id;
+    if (petId == null) return null;
+    final all = await EventService().loadEvents(petId);
+    for (final e in all) {
+      if (e.id == id) return e;
+    }
+    return null;
+  }
+
   Stream<String> fakeStream(String fullText) async* {
     for (int i = 0; i < fullText.length; i++) {
       await Future.delayed(const Duration(milliseconds: 20));
@@ -400,10 +486,22 @@ class AIChatController extends ChangeNotifier {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final result = ChatResult.fromJson(data as Map<String, dynamic>);
       final fullResponse = _extractAnswer(result.response);
-      await result.createSuggestedEvents();
+      final suggested = result.suggestedEvents();
 
       if (fullResponse == null || fullResponse.trim().isEmpty) {
         throw const _ServerException(0, 'Пустой ответ ассистента');
+      }
+
+      // Автосоздание (если включено в настройках) — иначе пользователь
+      // подтверждает каждое событие карточкой под сообщением.
+      if (suggested.isNotEmpty && await isAutoCreateEntitiesEnabled()) {
+        for (final s in suggested) {
+          final event = await _createFromSuggested(s);
+          if (event != null) {
+            s.status = SuggestedEventStatus.created;
+            s.createdEventId = event.id;
+          }
+        }
       }
 
       isLoading = false;
@@ -411,6 +509,9 @@ class AIChatController extends ChangeNotifier {
         role: 'assistant',
         content: '',
         timestamp: DateTime.now(),
+        eventsJson: suggested.isEmpty
+            ? null
+            : SuggestedEvent.encodeList(suggested),
       );
       await _repo!.add(botMsg);
       await for (final chunk in fakeStream(fullResponse)) {
@@ -418,6 +519,9 @@ class AIChatController extends ChangeNotifier {
         await botMsg.save();
         notifyListeners();
       }
+      botMsg.completed = true;
+      await botMsg.save();
+      notifyListeners();
     } catch (e) {
       // Любая ошибка (сеть, таймаут, сервер, GigaChat, парсинг) — не зависаем.
       isLoading = false;
