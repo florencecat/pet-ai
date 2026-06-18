@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:http/io_client.dart';
+import 'package:pet_satellite/models/ai_api_dto.dart';
+import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
+import 'package:pet_satellite/services/event_service.dart';
 import 'dart:convert';
 import 'package:pet_satellite/services/http_client.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -395,7 +398,10 @@ class AIChatController extends ChangeNotifier {
       }
 
       final data = jsonDecode(utf8.decode(response.bodyBytes));
-      final fullResponse = _extractAnswer(data);
+      final result = ChatResult.fromJson(data as Map<String, dynamic>);
+      final fullResponse = _extractAnswer(result.response);
+      await result.createSuggestedEvents();
+
       if (fullResponse == null || fullResponse.trim().isEmpty) {
         throw const _ServerException(0, 'Пустой ответ ассистента');
       }
@@ -422,18 +428,11 @@ class AIChatController extends ChangeNotifier {
   }
 
   /// Достаёт текст ответа из возможных форматов ответа сервера.
-  static String? _extractAnswer(dynamic data) {
-    if (data is Map) {
-      final resp = data['response'];
-      if (resp is Map && resp['ответ'] != null) return resp['ответ'].toString();
-      if (resp is Map && resp['answer'] != null) return resp['answer'].toString();
-      if (resp is String && resp.isNotEmpty) return resp;
-      if (data['ответ'] != null) return data['ответ'].toString();
-      if (data['answer'] != null) return data['answer'].toString();
-      if (data['message'] != null) return data['message'].toString();
+  static String? _extractAnswer(dynamic response) {
+    if (response is Map && response.containsKey('response')) {
+      return response['response'] as String; // обёрнутый простой текст
     }
-    if (data is String) return data;
-    return null;
+    return response.toString();
   }
 
   static String _friendlyError(Object e) {

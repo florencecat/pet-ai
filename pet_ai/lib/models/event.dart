@@ -3,6 +3,7 @@ import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 
@@ -567,6 +568,22 @@ class Event implements PbEntity {
 
 class _EventCodec extends PbCodec<Event> {
   const _EventCodec();
+
+  Future<Event?> fromAIResponse(Map<String, dynamic> data) async {
+    final profileId = await PetService().getActiveProfileId();
+    if (profileId != null) {
+      final event = Event(
+        name: data['name'],
+        category: EventCategories.health, // TODO: update so ai uses ids
+        dateTime: DateTime.parse(data['datetime'] as String),
+        petIds: [profileId],
+        repeat: RepeatInterval.none,
+        customDays: const [],
+      );
+      return event;
+    }
+    return null;
+  }
 
   @override
   Event fromPocketBase(Map<String, dynamic> data) => Event.deserialize(
