@@ -39,16 +39,28 @@ jobs:
           pod install
 
       - name: Build IPA (no codesign)
+        working-directory: ./pet_ai/ios
         run: |
-          flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r app.ipa Payload
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ../build/ios_xcodebuild \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+          APP_PATH=$(find ../build/ios_xcodebuild -name "Runner.app" -path "*Release-iphoneos*")
+          echo "App found at: $APP_PATH"
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r ../build/ios/app.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
-          path: pet_ai/build/ios/iphoneos/app.ipa
+          path: pet_ai/build/ios/app.ipa
           retention-days: 7
