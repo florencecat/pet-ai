@@ -132,16 +132,21 @@ class _NavItem extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 3),
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 220),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                    color: isActive ? _activeContent : _inactiveContent,
+                if (isActive) ...[
+                  const SizedBox(height: 3),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 220),
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      inherit: true,
+                      fontSize: 8,
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      color: isActive ? _activeContent : _inactiveContent,
+                    ),
+                    child: Text(label),
                   ),
-                  child: Text(label),
-                ),
+                ],
               ],
             ),
           ),
