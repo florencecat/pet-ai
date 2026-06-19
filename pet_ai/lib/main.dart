@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -39,8 +38,6 @@ void main() async {
   // initialize hive db
   await Hive.initFlutter();
   Hive.registerAdapter(ChatMessageAdapter());
-  // initialize environment
-  await dotenv.load(fileName: ".env");
   // initialize locale
   await initializeDateFormatting('ru_RU', null);
 
