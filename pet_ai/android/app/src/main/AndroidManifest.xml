@@ -36,6 +36,14 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Отключаем Impeller → форсируем легаси-рендерер Skia/OpenGL.
+             Обход краша GPU-драйвера на бюджетных MediaTek/PowerVR (libGLESv2_mtk,
+             IMGeglMakeCurrent) при пересоздании EGL-поверхности. Полностью
+             обратимо: убрать meta-data, чтобы вернуть Impeller. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
             <intent-filter>
