@@ -2,59 +2,124 @@
 
 ---
 
+## v0.4.0 — AI Assistant, Cloud Sync & User Accounts
+
+### Features
+
+#### AI Assistant
+
+* AI assistant can now create reminders and events automatically
+* Added AI-generated event suggestions
+* One-tap creation of suggested events
+* Added hold-to-talk voice interaction
+* Refactored AI chat architecture
+
+#### Cloud Synchronization
+
+* Added cloud account support
+* Added cloud synchronization between devices
+* Improved synchronization reliability and data consistency
+
+#### User Accounts
+
+* Added user profiles
+* Added account management infrastructure
+* Unified user and pet profile components
+* Improved profile switching experience
+
+#### Treatments & Events
+
+* Added support for on-demand medications
+* Added custom colors for treatments
+* Added custom icons for events and treatments
+* Improved treatment-to-event synchronization
+* Improved event creation workflows
+
+#### UI & UX
+
+* Added skeleton loading states
+* Improved page transition performance
+* Redesigned AI chat page
+* Improved navigation consistency
+* Added healthy pet status animations
+* Added reusable pressable interaction components
+
+### Improvements
+
+* Improved application architecture and page organization
+* Improved draggable sheet system
+* Updated project documentation
+
+### Fixes
+
+* Fixed AI chatbot reliability issues
+* Fixed synchronization issues between events and treatments
+* Fixed health page refresh behavior
+* Fixed various UI inconsistencies
+
+---
+
 ## v0.3.4 — LocalNotification hotfix
 
-- Suppress shrinking for com.google.gson to avoid RuntimeException 'Missing type parameter'
+* Suppress shrinking for com.google.gson to avoid RuntimeException "Missing type parameter"
+
+---
 
 ## v0.3.3 — Treatment System & Major UI Refresh
 
 ### Features
 
 #### Treatments & Medication
-- Added pill reminder system
-- Support for multiple medication takes per day
-- Improved treatment scheduling logic
-- Automatic synchronization between treatment history and health page
-- Support for uncompletable events
-- Treatment category preselection when opening treatment details
+
+* Added pill reminder system
+* Support for multiple medication takes per day
+* Improved treatment scheduling logic
+* Automatic synchronization between treatment history and health page
+* Support for uncompletable events
+* Treatment category preselection when opening treatment details
 
 #### Events
-- Redesigned events page
-- Redesigned event draggable sheet
-- Unified event type handling
-- Improved overdue event visualization
-- Improved event search
-- Improved event creation flow from notes
-- Unified draggable sheet system across the app
+
+* Redesigned events page
+* Redesigned event draggable sheet
+* Unified event type handling
+* Improved overdue event visualization
+* Improved event search
+* Improved event creation flow from notes
+* Unified draggable sheet system across the app
 
 #### Registration & Profiles
-- Redesigned pet registration flow
-- Redesigned profile page
-- Redesigned settings page
-- Added species support
-- Improved profile switching UX
+
+* Redesigned pet registration flow
+* Redesigned profile page
+* Redesigned settings page
+* Added species support
+* Improved profile switching UX
 
 #### UI & UX
-- Added skeleton loading animations
-- Reduced lag during page transitions
-- Added GlassTileList widget
-- Unified draggable sheet styling
-- Redesigned AI chat page
-- Improved navigation bar
-- Added new color palette
-- Improved overall UI consistency and responsiveness
+
+* Added skeleton loading animations
+* Reduced lag during page transitions
+* Added GlassTileList widget
+* Unified draggable sheet styling
+* Redesigned AI chat page
+* Improved navigation bar
+* Added new color palette
+* Improved overall UI consistency and responsiveness
 
 ### Improvements
-- Improved synchronization reliability across services
-- Improved event preview offsets and warnings
-- Optimized widget hierarchy and removed unnecessary widgets
-- Temporary cache disabling for debugging and synchronization fixes
+
+* Improved synchronization reliability across services
+* Improved event preview offsets and warnings
+* Optimized widget hierarchy and removed unnecessary widgets
+* Temporary cache disabling for debugging and synchronization fixes
 
 ### Fixes
-- Fixed font colors on events page
-- Fixed synchronization issues on health page
-- Fixed several UI inconsistencies
-- Disabled notifications on unsupported debug platforms
+
+* Fixed font colors on events page
+* Fixed synchronization issues on health page
+* Fixed several UI inconsistencies
+* Disabled notifications on unsupported debug platforms
 
 ---
 
