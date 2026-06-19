@@ -2,6 +2,8 @@
 
 ---
 
+## v0.4.1 — Switch to Impeller renderer
+
 ## v0.4.0 — AI Assistant, Cloud Sync & User Accounts
 
 ### Features
