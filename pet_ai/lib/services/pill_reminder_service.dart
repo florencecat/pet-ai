@@ -129,8 +129,9 @@ class PillReminderService {
   Future<void> markScheduleTakenFromEvent(Event event) async {
     if (event.source != EventSource.pill ||
         event.sourceId == null ||
-        event.sourceId!.isEmpty)
+        event.sourceId!.isEmpty) {
       return;
+    }
 
     final profile = await PetService().loadProfile(event.petIds.first);
     if (profile == null) return;

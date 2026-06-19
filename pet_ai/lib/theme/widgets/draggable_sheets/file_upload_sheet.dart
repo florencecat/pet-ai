@@ -604,6 +604,7 @@ class SourcePickerSheet extends StatelessWidget {
   final VoidCallback onTakePhoto;
 
   const SourcePickerSheet({
+    super.key,
     required this.onPickFile,
     required this.onTakePhoto,
   });

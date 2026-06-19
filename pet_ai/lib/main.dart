@@ -23,6 +23,7 @@ import 'package:pet_satellite/services/notification_service.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_theme.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/theme/widgets/floating_navigation_bar.dart';
 import 'package:provider/provider.dart';
 
@@ -70,6 +71,11 @@ void main() async {
 class PetHealthApp extends StatelessWidget {
   const PetHealthApp({super.key});
 
+  /// Глобальный ключ навигатора — позволяет открывать экраны из обработчиков
+  /// тапа по уведомлению, у которых нет своего BuildContext.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -78,6 +84,7 @@ class PetHealthApp extends StatelessWidget {
         builder: (context, appearance, _) {
           return MaterialApp(
             title: 'Pet Health Tracker',
+            navigatorKey: navigatorKey,
             initialRoute: '/',
             routes: {'/registration': (context) => const PetRegistrationFlow()},
             theme: appearance.usePetColor
@@ -107,7 +114,7 @@ class MainPage extends StatefulWidget {
 
 enum NavigationTab { home, health, chat, calendar }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   bool _loading = true;
   bool _hasProfile = false;
   NavigationTab _selectedIndex = NavigationTab.home;
@@ -120,7 +127,79 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Тап по уведомлению при живом приложении — открыть/отметить событие.
+    NotificationService.onOpenEvent = _handleOpenEvent;
+    NotificationService.onCompleteEvent = _handleCompleteEvent;
     _checkProfile();
+    _bootstrapNotifications();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    NotificationService.onOpenEvent = null;
+    NotificationService.onCompleteEvent = null;
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Каждый возврат в приложение пересобирает расписание (на случай сброса
+    // системных будильников оптимизациями питания) и разбирает отложенные тапы.
+    if (state == AppLifecycleState.resumed) {
+      _bootstrapNotifications();
+    }
+  }
+
+  /// Точка входа регистрации уведомлений: при каждом открытии приложения
+  /// асинхронно пересобираем расписание и обрабатываем отложенные действия по
+  /// тапу из «холодного» старта. Не блокирует UI.
+  void _bootstrapNotifications() {
+    // Пересборка расписания не блокирует UI.
+    EventService().rescheduleAllNotifications();
+    // Отложенные действия по тапу разбираем после первого кадра — для открытия
+    // листа события нужен готовый Navigator.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _consumePendingNotificationActions(),
+    );
+  }
+
+  Future<void> _consumePendingNotificationActions() async {
+    final completeId =
+        await NotificationService.consumePendingCompleteEventId();
+    if (completeId != null) await _handleCompleteEvent(completeId);
+    final openId = await NotificationService.consumePendingOpenEventId();
+    if (openId != null) await _handleOpenEvent(openId);
+  }
+
+  /// Открывает связанное событие в листе деталей (по тапу на уведомление).
+  Future<void> _handleOpenEvent(String eventId) async {
+    final event = await EventService().findById(eventId);
+    if (event == null) return;
+    final ctx = PetHealthApp.navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await showModalBottomSheet<void>(
+      context: ctx,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventSheet(event: event),
+    );
+  }
+
+  /// Отмечает событие выполненным на сегодня (быстрое действие «Выполнено»).
+  Future<void> _handleCompleteEvent(String eventId) async {
+    final event = await EventService().findById(eventId);
+    if (event == null || event.petIds.isEmpty) return;
+    final today = DateTime.now();
+    if (event.isCompletedOn(today)) return;
+    await EventService().toggleCompleted(event.petIds.first, event, today);
+    if (mounted) {
+      _eventsKey.currentState?.refresh();
+      _refreshHealthScore();
+    }
   }
 
   void _onOpenCalendar() {

@@ -45,6 +45,15 @@ class EventService {
     }).toList();
   }
 
+  /// Событие по его ID (среди всех питомцев). null — не найдено.
+  Future<Event?> findById(String id) async {
+    final all = await _loadAll();
+    for (final e in all) {
+      if (e.id == id) return e;
+    }
+    return null;
+  }
+
   /// Возвращает события всех питомцев, сгруппированные по petId
   Future<Map<String, List<Event>>> loadAllEvents(List<String> petIds) async {
     final all = await _loadAll();
@@ -65,7 +74,10 @@ class EventService {
     if (event.remind && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       try {
         await NotificationService().ensurePermission();
-        await NotificationService().scheduleEventNotification(event);
+        await NotificationService().scheduleEventNotification(
+          event,
+          petLabel: await _resolveLabel(event),
+        );
       } catch (_) {
         // Silently ignore notification failures (e.g. permission denied).
       }
@@ -87,7 +99,10 @@ class EventService {
 
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       await NotificationService().cancelNotification(event.id);
-      await NotificationService().scheduleEventNotification(event);
+      await NotificationService().scheduleEventNotification(
+        event,
+        petLabel: await _resolveLabel(event),
+      );
     }
   }
 
@@ -228,6 +243,61 @@ class EventService {
     final events = await loadEvents(petId);
     return events.where((e) => e.category.id == category.id).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+  }
+
+  // ─── Уведомления ──────────────────────────────────────────────────────────
+
+  /// Полная пересборка расписания локальных уведомлений.
+  ///
+  /// Снимает все ранее запланированные напоминания (в т.ч. «осиротевшие» от
+  /// удалённых событий и устаревшие дубли) и заново планирует актуальные.
+  /// Вызывается при запуске/возврате приложения и при изменении настроек —
+  /// чтобы пережить перезагрузку телефона и агрессивные оптимизации питания,
+  /// обнуляющие системные будильники. Если уведомления выключены в настройках —
+  /// расписание просто стирается.
+  Future<void> rescheduleAllNotifications() async {
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return;
+
+    await NotificationService().cancelAll();
+
+    final settings = await NotificationSettings.load();
+    if (!settings.enabled) return; // выключено → всё стёрто
+
+    final all = await _loadAll();
+    final profiles = await PetService().loadAllProfiles();
+    final names = {for (final p in profiles) p.id: p.name};
+
+    try {
+      await NotificationService().ensurePermission();
+    } catch (_) {}
+
+    for (final e in all) {
+      if (!e.remind) continue;
+      try {
+        await NotificationService().scheduleEventNotification(
+          e,
+          petLabel: _petLabel(e.petIds, names),
+          settings: settings,
+        );
+      } catch (_) {
+        // Пропускаем сбойное событие, остальные планируем.
+      }
+    }
+  }
+
+  /// Человекочитаемая подпись питомца(ев) события для заголовка уведомления.
+  String? _petLabel(List<String> petIds, Map<String, String> names) {
+    final resolved = petIds.map((id) => names[id]).whereType<String>().toList();
+    if (resolved.isEmpty) return null;
+    return resolved.join(', ');
+  }
+
+  /// Разрешает подпись питомца для одиночного планирования (create/save).
+  Future<String?> _resolveLabel(Event e) async {
+    if (e.petIds.isEmpty) return null;
+    final profiles = await PetService().loadAllProfiles();
+    final names = {for (final p in profiles) p.id: p.name};
+    return _petLabel(e.petIds, names);
   }
 
   // ─── Миграция ─────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/secondary_pages/appearance_page.dart';
+import 'package:pet_satellite/pages/secondary_pages/notifications_page.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/pages/secondary_pages/user_profile_page.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
@@ -11,6 +12,7 @@ import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/crash_reporting_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/services/notification_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
@@ -18,6 +20,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
+import 'package:pet_satellite/theme/widgets/settings_widgets.dart';
 import 'package:provider/provider.dart';
 import '../../services/pet_profile_service.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -33,9 +36,6 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Pet> _profiles = [];
   bool _loadingProfiles = true;
   UserProfile? _user;
-
-  // Notification stubs
-  bool _remindersEnabled = true;
 
   // Подтверждение удаления (загружается асинхронно из SharedPreferences).
   bool _confirmDeleteEnabled = true;
@@ -140,45 +140,48 @@ class _SettingsPageState extends State<SettingsPage> {
     final petId = await PetService().getActiveProfileId();
     if (petId == null) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Загрузить с сервера?'),
-        content: const Text(
-          'Локальные данные питомца будут заменены данными с сервера. '
-          'Это действие нельзя отменить.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ThemeColors.dangerZone,
+    if (context.mounted) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) =>
+            AlertDialog(
+              title: const Text('Загрузить с сервера?'),
+              content: const Text(
+                'Локальные данные питомца будут заменены данными с сервера. '
+                    'Это действие нельзя отменить.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Отмена'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ThemeColors.dangerZone,
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Загрузить'),
+                ),
+              ],
             ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Загрузить'),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (confirmed != true) return;
+      if (confirmed != true) return;
 
-    try {
-      await _sync.pullAll();
-      await _loadAll();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Данные загружены с сервера')),
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_sync.lastError ?? 'Ошибка загрузки')),
-        );
+      try {
+        await _sync.pullAll();
+        await _loadAll();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Данные загружены с сервера')),
+          );
+        }
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_sync.lastError ?? 'Ошибка загрузки')),
+          );
+        }
       }
     }
   }
@@ -338,7 +341,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 24),
 
           // ── Питомцы ──────────────────────────────────────────────────────
-          _SectionLabel('Питомцы'),
+          SettingsSectionLabel(title: 'Питомцы'),
           const SizedBox(height: 8),
           SettingsCard(
             children: [
@@ -382,59 +385,35 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 24),
 
-          // ── Уведомления ───────────────────────────────────────────────────
-          _SectionLabel('Уведомления'),
+          // ── Оформление ────────────────────────────────────────────────────
+          SettingsSectionLabel(title: 'Персонализация'),
           const SizedBox(height: 8),
           SettingsCard(
             children: [
               SettingsRow(
                 icon: Icons.notifications_outlined,
-                label: 'Напоминания',
-                subtitle: 'Прививки, корм, прогулки',
-                trailing: Switch(
-                  inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.transparent; // Border color when ON
-                    }
-                    return ac.primaryColor; // Border color when OFF
-                  }),
-                  value: _remindersEnabled,
-                  activeThumbColor: ac.primaryColor,
-                  onChanged: (v) => setState(() => _remindersEnabled = v),
+                label: 'Уведомления',
+                subtitle: 'Настройки уведомлений',
+                iconColor: ac.primaryColor,
+                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationsPage()),
                 ),
-                iconColor: ac.primaryColor,
               ),
-              _Divider(),
-              SettingsRow(
-                icon: Icons.bedtime_outlined,
-                label: 'Тихие часы',
-                subtitle: '22:00 – 08:00',
-                onTap: null, // stub
-                iconColor: ac.primaryColor,
-                last: true,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // ── Оформление ────────────────────────────────────────────────────
-          _SectionLabel('Оформление'),
-          const SizedBox(height: 8),
-          SettingsCard(
-            children: [
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.palette_outlined,
                 label: 'Тема и цвета',
                 subtitle: 'Оформление приложения',
                 iconColor: ac.primaryColor,
-                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
+                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AppearancePage()),
                 ),
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.language_outlined,
                 label: 'Язык',
@@ -442,7 +421,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.straighten_outlined,
                 label: 'Единицы',
@@ -456,7 +435,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 24),
 
           // ── Помощник ──────────────────────────────────────────────────────
-          _SectionLabel('Помощник'),
+          SettingsSectionLabel(title: 'Помощник'),
           const SizedBox(height: 8),
           SettingsCard(
             children: [
@@ -483,7 +462,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                 ),
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.lightbulb_outline,
                 label: 'Советы помощника',
@@ -497,7 +476,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 24),
 
           // ── Данные и приватность ─────────────────────────────────────────
-          _SectionLabel('Данные и приватность'),
+          SettingsSectionLabel(title: 'Данные и приватность'),
           const SizedBox(height: 8),
           _SyncCard(
             sync: _sync,
@@ -516,14 +495,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: null,
                 iconColor: ac.primaryColor,
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.fingerprint,
                 label: 'Биометрия при входе',
                 onTap: null,
                 iconColor: ac.primaryColor,
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.delete_sweep_outlined,
                 label: 'Подтверждать удаление',
@@ -546,7 +525,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                 ),
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.bug_report_outlined,
                 label: 'Отправлять отчёты об ошибках',
@@ -572,7 +551,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 24),
 
           // ── О приложении ─────────────────────────────────────────────────
-          _SectionLabel('О приложении'),
+          SettingsSectionLabel(title: 'О приложении'),
           const SizedBox(height: 8),
           SettingsCard(
             children: [
@@ -581,25 +560,25 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: 'Помощь и FAQ',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
+                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.star_outline,
                 label: 'Оценить приложение',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
+                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.shield_outlined,
                 label: 'Условия и конфиденциальность',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-                trailing: _chevronIcon(ac.primaryColor.withAlpha(140)),
+                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
               ),
-              _Divider(),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.logout,
                 label: 'Выйти из аккаунта',
@@ -616,10 +595,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
           // ── Debug ─────────────────────────────────────────────────────────
           if (kDebugMode) ...[
-            _SectionLabel('Отладка'),
+            SettingsSectionLabel(title: 'Отладка'),
             const SizedBox(height: 8),
             SettingsCard(
               children: [
+                SettingsRow(
+                  icon: Icons.notifications_active_outlined,
+                  label: 'Тест уведомления',
+                  subtitle: 'Показать сейчас (звук/вибрация/heads-up)',
+                  iconColor: Colors.blue,
+                  onTap: () => NotificationService().showTestNotification(),
+                ),
+                SettingsCardDivider(),
                 SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить все данные',
@@ -628,35 +615,35 @@ class _SettingsPageState extends State<SettingsPage> {
                   labelColor: Colors.red,
                   onTap: () => _clearAppData(context),
                 ),
-                _Divider(),
+                SettingsCardDivider(),
                 SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить события',
                   iconColor: Colors.red,
                   onTap: () => _clearEvents(context),
                 ),
-                _Divider(),
+                SettingsCardDivider(),
                 SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить историю веса',
                   iconColor: Colors.red,
                   onTap: () => _clearWeightHistory(context),
                 ),
-                _Divider(),
+                SettingsCardDivider(),
                 SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить историю настроения',
                   iconColor: Colors.red,
                   onTap: () => _clearMoodHistory(context),
                 ),
-                _Divider(),
+                SettingsCardDivider(),
                 SettingsRow(
                   icon: Icons.delete_forever,
                   label: 'Очистить диалог с ИИ',
                   iconColor: Colors.red,
                   onTap: () => _clearMessageHistory(context),
                 ),
-                _Divider(),
+                SettingsCardDivider(),
                 SettingsRow(
                   icon: Icons.data_object,
                   label: 'Заполнить историю веса',
@@ -1003,29 +990,6 @@ class _UserAccountCard extends StatelessWidget {
   }
 }
 
-// ─── Section label ────────────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
-  final String title;
-  const _SectionLabel(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: context.watch<AppearanceController>().secondaryColor,
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Settings card ────────────────────────────────────────────────────────────
-
 // ─── Pet profile row ──────────────────────────────────────────────────────────
 
 class _PetRow extends StatelessWidget {
@@ -1108,26 +1072,8 @@ class _PetRow extends StatelessWidget {
             ),
           ),
         ),
-        if (!isLast) _Divider(),
+        if (!isLast) SettingsCardDivider(),
       ],
     );
   }
 }
-
-// ─── Thin divider ─────────────────────────────────────────────────────────────
-
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Divider(
-      height: 1,
-      thickness: 0.5,
-      indent: 16,
-      endIndent: 0,
-      color: Theme.of(context).dividerColor.withAlpha(60),
-    );
-  }
-}
-
-Icon _chevronIcon(Color color) =>
-    Icon(Icons.chevron_right, size: 18, color: color);

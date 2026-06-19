@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/settings_widgets.dart';
 import 'package:provider/provider.dart';
 
 /// Страница настроек внешнего вида.
@@ -10,13 +11,12 @@ class AppearancePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final appearance = context.watch<AppearanceController>();
     return Scaffold(
       backgroundColor: ThemeColors.background,
       appBar: AppBar(
-        title: const Text('Внешний вид'),
-        backgroundColor: ThemeColors.background,
-        elevation: 0,
+        title: Text('Внешний вид', style: theme.textTheme.titleMedium),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -27,7 +27,7 @@ class AppearancePage extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text('Тема', style: Theme.of(context).textTheme.titleMedium),
+                SettingsSectionLabel(title: 'Тема'),
                 const SizedBox(height: 8),
 
                 SettingsCard(
