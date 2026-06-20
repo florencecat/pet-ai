@@ -7,9 +7,12 @@ import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 import 'package:pet_satellite/models/suggested_event.dart';
 import 'package:pet_satellite/models/treatment.dart';
+import 'package:pet_satellite/models/user_profile.dart';
+import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/authentification_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
@@ -46,43 +49,257 @@ class _AIChatPageState extends State<AIChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<AIChatController>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+    final auth = GetIt.instance<AuthService>();
+    return AnimatedBuilder(
+      animation: auth,
+      builder: (context, _) {
+        if (!auth.isAuthenticated) {
           return Scaffold(
+            resizeToAvoidBottomInset: false,
             body: Container(
-              width: double.infinity,
-              height: double.infinity,
               decoration: context
                   .watch<AppearanceController>()
                   .gradientDecoration,
-              child: InlineLoading(isLoading: !snapshot.hasData),
+              child: const SafeArea(bottom: false,  child: _AuthGate()),
             ),
           );
         }
-
-        return ChangeNotifierProvider.value(
-          value: snapshot.data!,
-          child: Builder(
-            builder: (context) {
+        return FutureBuilder<AIChatController>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
               return Scaffold(
-                // Клавиатуру обрабатываем вручную в _ChatView (Column + отступ
-                // инпута), поэтому Scaffold не ресайзим — градиент остаётся на
-                // весь экран, без «прыжков».
-                resizeToAvoidBottomInset: false,
                 body: Container(
+                  width: double.infinity,
+                  height: double.infinity,
                   decoration: context
                       .watch<AppearanceController>()
                       .gradientDecoration,
-                  // bottom: false — нижний отступ задаём сами (клавиатура/навбар).
-                  child: const SafeArea(bottom: false, child: _ChatView()),
+                  child: InlineLoading(isLoading: !snapshot.hasData),
                 ),
               );
-            },
-          ),
+            }
+
+            return ChangeNotifierProvider.value(
+              value: snapshot.data!,
+              child: Builder(
+                builder: (context) {
+                  return Scaffold(
+                    // Клавиатуру обрабатываем вручную в _ChatView (Column +
+                    // отступ инпута), поэтому Scaffold не ресайзим — градиент
+                    // остаётся на весь экран, без «прыжков».
+                    resizeToAvoidBottomInset: false,
+                    body: Container(
+                      decoration: context
+                          .watch<AppearanceController>()
+                          .gradientDecoration,
+                      // bottom: false — нижний отступ задаём сами.
+                      child: const SafeArea(bottom: false, child: _ChatView()),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         );
       },
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Auth gate — blocks the chat until the user signs in.
+// ──────────────────────────────────────────────────────────
+
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  Future<void> _openLogin(BuildContext context) async {
+    await Navigator.of(context).push<UserProfile?>(
+      MaterialPageRoute(
+        builder: (_) => const UserRegistrationFlow(),
+        fullscreenDialog: true,
+      ),
+    );
+    // No setState needed — AuthService notifies and the outer AnimatedBuilder
+    // rebuilds when the auth store updates.
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.watch<AppearanceController>().primaryColor;
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              SoftRoundedIcon(
+                icon: Icons.auto_awesome,
+                gradient: ThemeColors.aiChatIconGradient,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Помощник по уходу',
+                  style: theme.textTheme.titleLarge,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: SingleChildScrollView(
+              child: GlassPlate(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Войдите, чтобы общаться с ассистентом',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Аккаунт нужен для работы ИИ-помощника и открывает '
+                        'дополнительные возможности:',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: ThemeColors.textPrimary.withAlpha(180),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _Benefit(
+                        icon: Icons.auto_awesome,
+                        color: accent,
+                        title: 'ИИ-ветеринар на связи',
+                        subtitle:
+                            'Советы по уходу с учётом истории и событий '
+                            'питомца.',
+                      ),
+                      _Benefit(
+                        icon: Icons.cloud_done_outlined,
+                        color: accent,
+                        title: 'Облачное сохранение',
+                        subtitle:
+                            'Профили и история не потеряются при смене '
+                            'устройства.',
+                      ),
+                      _Benefit(
+                        icon: Icons.family_restroom_outlined,
+                        color: accent,
+                        title: 'Семейный доступ',
+                        subtitle:
+                            'Скоро: несколько человек смогут вести одного '
+                            'питомца вместе.',
+                        comingSoon: true,
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () => _openLogin(context),
+                        icon: const Icon(Icons.login_rounded),
+                        label: const Text('Войти или создать аккаунт'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: accent,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(54),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Benefit extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final bool comingSoon;
+
+  const _Benefit({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    this.comingSoon = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withAlpha(28),
+              border: Border.all(color: color.withAlpha(70), width: 1.2),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(title, style: theme.textTheme.titleSmall),
+                    ),
+                    if (comingSoon) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(28),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'скоро',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: ThemeColors.textPrimary.withAlpha(160),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

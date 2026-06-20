@@ -16,21 +16,31 @@ class PocketBaseService {
   final Uri _baseUri;
 
   late PocketBase _pb;
+  bool _initialized = false;
 
-  PocketBaseService({required this.basePath}) : _baseUri = Uri.parse(basePath) {
-    createPocketBase();
+  PocketBaseService({required this.basePath}) : _baseUri = Uri.parse(basePath);
+
+  PocketBase get pb {
+    assert(
+      _initialized,
+      'PocketBaseService used before init() — await init() before reading pb',
+    );
+    return _pb;
   }
 
-  PocketBase get pb => _pb;
-
-  Future<void> createPocketBase() async {
+  /// Loads the persisted auth token from SharedPreferences and instantiates the
+  /// PocketBase client. Must be awaited once at startup before any other
+  /// service reads [pb]; otherwise a still-logged-in user appears anonymous and
+  /// the backend rejects requests with 401 ("Сессия истекла").
+  Future<void> init() async {
+    if (_initialized) return;
     final initial = await SharedPreferencesAsync().getString('pb_auth');
-
     final store = AsyncAuthStore(
-      save: (String data) async => SharedPreferencesAsync().setString('pb_auth', data),
+      save: (String data) async =>
+          SharedPreferencesAsync().setString('pb_auth', data),
       initial: initial,
     );
-
     _pb = PocketBase(_baseUri.toString(), authStore: store);
+    _initialized = true;
   }
 }

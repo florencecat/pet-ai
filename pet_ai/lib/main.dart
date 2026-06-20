@@ -49,9 +49,14 @@ void main() async {
       aiUrl: 'https://ai.pet-sputnik.ru',
     ),
   );
-  GetIt.instance.registerSingleton<PocketBaseService>(
-    PocketBaseService(basePath: GetIt.instance<ApiService>().apiUrl),
+  // PocketBase loads its auth token from SharedPreferences asynchronously.
+  // Must complete before AuthService/CloudSyncService are constructed, or the
+  // already-signed-in user will look anonymous to the backend → "Сессия истекла".
+  final pbService = PocketBaseService(
+    basePath: GetIt.instance<ApiService>().apiUrl,
   );
+  await pbService.init();
+  GetIt.instance.registerSingleton<PocketBaseService>(pbService);
   GetIt.instance.registerSingleton<AuthService>(
     AuthService(pbService: GetIt.instance<PocketBaseService>()),
   );

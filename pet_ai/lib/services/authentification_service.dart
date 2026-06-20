@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/pb_service.dart';
@@ -35,15 +37,25 @@ class AuthResult {
       );
 }
 
-class AuthService {
+class AuthService extends ChangeNotifier {
   static final _usersCollection = GetIt.instance<ApiService>().usersRoute;
 
   final PocketBaseService pbService;
+  late final StreamSubscription<AuthStoreEvent> _sub;
 
-  AuthService({required this.pbService});
+  AuthService({required this.pbService}) {
+    _sub = pbService.pb.authStore.onChange.listen((_) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
 
   RecordModel? get userRecord => pbService.pb.authStore.record;
   String get token => pbService.pb.authStore.token;
+  bool get isAuthenticated => pbService.pb.authStore.isValid;
 
   /// Unified entry point for both sign-in and sign-up.
   ///
