@@ -17,7 +17,6 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
-import 'package:pet_satellite/services/health_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
@@ -1417,18 +1416,11 @@ class _VetCardSheet extends StatelessWidget {
                           '→ ${formatSmartDate(t.nextDate)}',
                           style: Theme.of(context).textTheme.bodySmall!
                               .copyWith(
-                                color: t.nextDate.isBefore(DateTime.now())
-                                    ? HealthBadgeSeverity
-                                          .danger
-                                          .palette
-                                          .mainColor
-                                    : context
-                                          .watch<AppearanceController>()
-                                          .secondaryColor
-                                          .withAlpha(153),
-                                fontWeight: t.nextDate.isBefore(DateTime.now())
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
+                                color: context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor
+                                    .withAlpha(153),
+                                fontWeight: FontWeight.w700,
                               ),
                         ),
                       ],
