@@ -483,6 +483,7 @@ class EventsPageState extends State<EventsPage> {
                 else
                   ...filtered.map(
                     (e) => Padding(
+                      key: ValueKey('${e.id}_${_selectedDay!.toIso8601String()}'),
                       padding: const EdgeInsets.only(bottom: 8),
                       child: _SwipeableEventTile(
                         event: e,
@@ -621,9 +622,9 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
   static const double _btnSize = 52.0;
   static const double _btnGap = 10.0;
   static const double _sidePad = 12.0;
-  static late double _actionsCount;
-  static late double _actionWidth;
 
+  late final double _actionsCount;
+  late final double _actionWidth;
   late final AnimationController _ctrl;
   late final Animation<double> _slide;
   bool _revealed = false;
