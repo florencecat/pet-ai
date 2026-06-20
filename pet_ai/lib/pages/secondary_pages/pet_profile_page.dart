@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -96,36 +95,19 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _editSpecies() async {
-    final speciesNames = Map.fromEntries(
-      BuiltInSpecies.all.map((s) => MapEntry(s.id, s.name)),
-    );
-    final result = await showItemSelector(
-      context,
-      items: speciesNames,
-      hintText: 'Поиск вида...',
-      leadingIcon: Icons.category_outlined,
-    );
-    if (result != null && result != _profile!.species.id) {
-      final matched = BuiltInSpecies.all.firstWhere(
-        (s) => result.contains(s.id),
-        orElse: () => BuiltInSpecies.other,
-      );
+    final species = await showSpeciesSelector(context);
+    if (species != null && species.id != _profile!.species.id) {
       setState(() {
-        _profile!.species = matched;
-        _profile!.breed = PetBreed.empty();
+        _profile!.species = species;
+        _profile!.breed = const PetBreed.empty();
       });
     }
   }
 
   Future<void> _editBreed() async {
-    final result = await showBreedSelector(context, _profile!.species);
-    if (result != null && result.isNotEmpty) {
-      setState(
-        () => _profile!.breed = PetBreedService.breedById(
-          _profile!.species,
-          result,
-        ),
-      );
+    final breed = await showBreedSelector(context, _profile!.species);
+    if (breed != null && !breed.isEmpty) {
+      setState(() => _profile!.breed = breed);
     }
   }
 
@@ -304,14 +286,12 @@ class _PetProfilePageState extends State<PetProfilePage> {
   String _castrationLabel() {
     if (!_profile!.castrated) return 'Нет';
     if (_profile!.castratedDate != null) {
-      return 'Да, ${DateFormat('MMMM yyyy', 'ru_RU').format(_profile!.castratedDate!)}';
+      return DateFormat(
+        'd MMMM yyyy',
+        'ru_RU',
+      ).format(_profile!.castratedDate!);
     }
     return 'Да';
-  }
-
-  String _speciesLabel() {
-    final s = _profile!.species;
-    return s.emoji.isEmpty ? s.name : '${s.emoji} ${s.name}';
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -402,7 +382,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
             _InfoRow(
               icon: FontAwesome.paw,
               label: 'Вид',
-              value: _speciesLabel(),
+              value: p.species.name.isEmpty ? 'Не указана' : p.species.name,
               onTap: _editSpecies,
             ),
             _InfoRow(
@@ -1229,7 +1209,7 @@ class _CastrationSheetState extends State<_CastrationSheet> {
 
   String get _dateLabel {
     if (_date == null) return 'Указать дату';
-    return DateFormat('MMMM yyyy', 'ru_RU').format(_date!);
+    return DateFormat('d MMMM yyyy', 'ru_RU').format(_date!);
   }
 
   @override
@@ -1262,6 +1242,7 @@ class _CastrationSheetState extends State<_CastrationSheet> {
           const SizedBox(height: 20),
           // Toggle row
           GlassPlate(
+            padding: 16,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1281,9 +1262,10 @@ class _CastrationSheetState extends State<_CastrationSheet> {
           ),
           if (_castrated) ...[
             const SizedBox(height: 12),
-            GestureDetector(
-              onTap: _pickDate,
-              child: GlassPlate(
+            GlassPlate(
+              padding: 16,
+              child: Pressable(
+                onTap: _pickDate,
                 child: Row(
                   children: [
                     Icon(

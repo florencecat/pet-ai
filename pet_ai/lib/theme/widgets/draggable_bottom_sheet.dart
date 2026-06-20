@@ -83,15 +83,9 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  alignment: Alignment.centerLeft,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.add),
+              child: TextButton.icon(
                 label: Text(widget.addCustomItemLabel),
+                icon: const Icon(Icons.add),
                 onPressed: () async {
                   final result = await widget.onAddCustomItem!();
                   if (result != null && context.mounted) {
@@ -101,7 +95,7 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Expanded(
             child: _filtered.isEmpty
                 ? const Center(

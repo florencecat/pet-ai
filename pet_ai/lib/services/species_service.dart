@@ -6,7 +6,39 @@ import 'package:pet_satellite/models/species.dart';
 class SpeciesService {
   static const _cacheKey = 'cached_species';
   static const _cacheTtlKey = 'cached_species_ttl';
+  static const _customKey = 'custom_species';
   static const _cacheDuration = Duration(days: 7);
+
+  static Future<List<PetSpecies>> loadCustomSpecies() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_customKey) ?? [];
+    return list
+        .map((s) => PetSpecies.fromJson(jsonDecode(s) as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<PetSpecies> saveCustomSpecies(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_customKey) ?? [];
+    final species = PetSpecies(
+      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      emoji: '🐾',
+    );
+    list.add(jsonEncode(species.toJson()));
+    await prefs.setStringList(_customKey, list);
+    return species;
+  }
+
+  static Future<PetSpecies?> speciesByIdIncludingCustom(String id) async {
+    final builtIn = BuiltInSpecies.byId(id);
+    if (builtIn != null) return builtIn;
+    final custom = await loadCustomSpecies();
+    for (final s in custom) {
+      if (s.id == id) return s;
+    }
+    return null;
+  }
 
   /// Главный метод: интернет → кэш → встроенный список
   Future<List<PetSpecies>> loadSpecies() async {

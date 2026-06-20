@@ -614,15 +614,11 @@ class _Step1 extends StatelessWidget {
                 // ── Порода ────────────────────────────────────────────────
                 GestureDetector(
                   onTap: breedInputAvaliable ? () async {
-                    final result = await showBreedSelector(
+                    final breed = await showBreedSelector(
                       context,
                       selectedSpecies,
                     );
-                    if (result != null && result.isNotEmpty) {
-                      final breed = PetBreedService.breedById(
-                        selectedSpecies,
-                        result,
-                      );
+                    if (breed != null && !breed.isEmpty) {
                       onBreedChanged(breed);
                     }
                   } : null,

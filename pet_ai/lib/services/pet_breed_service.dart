@@ -56,6 +56,23 @@ class PetBreedService {
     return breedsBySpecies(species).firstWhere((b) => b.id == id);
   }
 
+  /// Looks up a breed across both built-in and user-created lists.
+  /// Returns [PetBreed.empty] when nothing matches.
+  static Future<PetBreed> breedByIdIncludingCustom(
+    PetSpecies species,
+    String id,
+  ) async {
+    final builtIn = breedsBySpecies(species);
+    for (final b in builtIn) {
+      if (b.id == id) return b;
+    }
+    final custom = await loadCustomBreeds(species.id);
+    for (final b in custom) {
+      if (b.id == id) return b;
+    }
+    return const PetBreed.empty();
+  }
+
   static List<PetBreed> breedsBySpecies(PetSpecies species) {
     switch (species.id) {
       case 'pqmhnzkblhx1xuw':
