@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
@@ -29,7 +30,7 @@ class GlassPlate extends StatelessWidget {
     this.padding = 8,
     this.gradientColors,
     this.useShadow = true,
-    this.transparent = true
+    this.transparent = true,
   });
 
   @override
@@ -632,6 +633,199 @@ class CollapsibleSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+enum SourceCardType { files, gallery, camera }
+
+extension SourceCardTypeX on SourceCardType {
+  IconData get icon {
+    switch (this) {
+      case SourceCardType.files:
+        return Icons.attach_file_rounded;
+      case SourceCardType.gallery:
+        return Icons.photo_library_outlined;
+      case SourceCardType.camera:
+        return Icons.camera_alt_outlined;
+    }
+  }
+
+  String get title {
+    switch (this) {
+      case SourceCardType.files:
+        return 'Файлы';
+      case SourceCardType.gallery:
+        return 'Галерея';
+      case SourceCardType.camera:
+        return 'Камера';
+    }
+  }
+
+  String get subtitle {
+    switch (this) {
+      case SourceCardType.files:
+        return 'прикрепить файл';
+      case SourceCardType.gallery:
+        return 'из библиотеки';
+      case SourceCardType.camera:
+        return 'сделать сейчас';
+    }
+  }
+}
+
+class GlassSourceCard extends StatelessWidget {
+  final SourceCardType type;
+  final Color color;
+  final VoidCallback onTap;
+
+  const GlassSourceCard({
+    super.key,
+    required this.type,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 28),
+        decoration: BoxDecoration(
+          color: color.withAlpha(30),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withAlpha(100)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: color.withAlpha(60),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(type.icon, size: 26, color: color.withAlpha(220)),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              type.title,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              type.subtitle,
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                color: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(172),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Two-button male/female toggle row. Tapping the currently-selected gender
+/// clears it back to [Gender.none], matching the in-place behaviour used in
+/// pet registration step 2.
+class GlassGenderSelector extends StatelessWidget {
+  final Gender gender;
+  final ValueChanged<Gender> onChanged;
+
+  const GlassGenderSelector({
+    super.key,
+    required this.gender,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: GlassGenderButton(
+            gender: Gender.male,
+            selected: gender == Gender.male,
+            onTap: () => onChanged(
+              gender == Gender.male ? Gender.none : Gender.male,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GlassGenderButton(
+            gender: Gender.female,
+            selected: gender == Gender.female,
+            onTap: () => onChanged(
+              gender == Gender.female ? Gender.none : Gender.female,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class GlassGenderButton extends StatelessWidget {
+  final Gender gender;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const GlassGenderButton({
+    super.key,
+    required this.gender,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: selected ? gender.color.withAlpha(40) : ThemeColors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected
+                ? gender.color
+                : context.watch<AppearanceController>().primaryColor.withAlpha(
+                    92,
+                  ),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              gender.icon,
+              size: 32,
+              color: selected
+                  ? gender.color
+                  : context
+                        .watch<AppearanceController>()
+                        .secondaryColor
+                        .withAlpha(128),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              gender.label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

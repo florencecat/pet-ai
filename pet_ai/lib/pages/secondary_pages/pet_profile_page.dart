@@ -138,8 +138,11 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   Future<void> _editGender() async {
-    final result = await _showGenderSheet(context, current: _profile!.gender);
-    if (result != null) setState(() => _profile!.gender = result);
+    await _showGenderSheet(
+      context,
+      current: _profile!.gender,
+      onGenderChanged: (g) => setState(() => _profile!.gender = g),
+    );
   }
 
   Future<void> _editCastration() async {
@@ -219,7 +222,6 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
   /// Нижний лист с выбором источника фото: камера или галерея.
   Future<ImageSource?> _pickImageSource() {
-    final accent = context.read<AppearanceController>().primaryColor;
     return showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.white,
@@ -240,17 +242,32 @@ class _PetProfilePageState extends State<PetProfilePage> {
               ),
             ),
             const SizedBox(height: 8),
-            ListTile(
-              leading: Icon(Icons.photo_camera_outlined, color: accent),
-              title: const Text('Сделать фото'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            Text(
+              'Фото питомца',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            ListTile(
-              leading: Icon(Icons.photo_library_outlined, color: accent),
-              title: const Text('Выбрать из галереи'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    child: GlassSourceCard(
+                      type: SourceCardType.camera,
+                      color: ThemeColors.cameraImageSource,
+                      onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                    ),
+                  ),
+                  Expanded(
+                    child: GlassSourceCard(
+                      type: SourceCardType.gallery,
+                      color: ThemeColors.galleryImageSource,
+                      onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -849,16 +866,21 @@ Future<DateTime?> _showDateSheet(
   );
 }
 
-/// Gender selection sheet.
-Future<Gender?> _showGenderSheet(
+/// Gender selection sheet. Taps inside the sheet update the parent live via
+/// [onGenderChanged]; the sheet is dismissed by dragging it down.
+Future<void> _showGenderSheet(
   BuildContext context, {
   required Gender current,
+  required ValueChanged<Gender> onGenderChanged,
 }) async {
-  return showModalBottomSheet<Gender>(
+  await showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black54,
-    builder: (ctx) => _GenderSheet(current: current),
+    builder: (ctx) => _GenderSheet(
+      initial: current,
+      onChanged: onGenderChanged,
+    ),
   );
 }
 
@@ -1083,14 +1105,27 @@ class _DateSheetState extends State<_DateSheet> {
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-class _GenderSheet extends StatelessWidget {
-  final Gender current;
-  const _GenderSheet({required this.current});
+class _GenderSheet extends StatefulWidget {
+  final Gender initial;
+  final ValueChanged<Gender> onChanged;
+
+  const _GenderSheet({required this.initial, required this.onChanged});
+
+  @override
+  State<_GenderSheet> createState() => _GenderSheetState();
+}
+
+class _GenderSheetState extends State<_GenderSheet> {
+  late Gender _gender = widget.initial;
+
+  void _set(Gender g) {
+    setState(() => _gender = g);
+    widget.onChanged(g);
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final ac = context.watch<AppearanceController>();
 
     return Container(
       decoration: BoxDecoration(
@@ -1114,59 +1149,7 @@ class _GenderSheet extends StatelessWidget {
           ),
           Text('Пол', style: theme.textTheme.titleMedium),
           const SizedBox(height: 20),
-          ...Gender.values.map((g) {
-            final selected = current == g;
-            return GestureDetector(
-              onTap: () => Navigator.pop(context, g),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: selected
-                      ? ac.primaryColor.withAlpha(30)
-                      : Colors.white.withAlpha(200),
-                  border: Border.all(
-                    color: selected
-                        ? ac.primaryColor
-                        : Colors.grey.withAlpha(60),
-                    width: selected ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    if (g.icon != null)
-                      Icon(g.icon, size: 20, color: ac.primaryColor)
-                    else
-                      Icon(
-                        Icons.remove_circle_outline,
-                        size: 20,
-                        color: Colors.grey,
-                      ),
-                    const SizedBox(width: 12),
-                    Text(
-                      g.label,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: selected ? ac.primaryColor : null,
-                      ),
-                    ),
-                    if (selected) ...[
-                      const Spacer(),
-                      Icon(Icons.check, size: 18, color: ac.primaryColor),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          }),
+          GlassGenderSelector(gender: _gender, onChanged: _set),
         ],
       ),
     );

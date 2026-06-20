@@ -80,8 +80,8 @@ class  ThemeColors {
   static const border = secondary;
   static const splash = Color(0x40698583);
 
-  static const maleGender = Color(0xFFdcebf5);
-  static const femaleGender = Color(0xFFf4d9e9);
+  static const maleGender = Color(0xFF9CC3E0);
+  static const femaleGender = Color(0xFFD599C0);
 
   // home page
   static const vetCardIconColor = Color(0xFFe07b5c);
@@ -105,6 +105,9 @@ class  ThemeColors {
   static const positiveDynamics = Color(0xFF6fb888);
   static const negativeDynamics = Color(0xFFe07b5c);
   static const neutralDynamics = Color(0xFF9a8e84);
+
+  static const cameraImageSource = Color(0xFF9CC3E0);
+  static const galleryImageSource = Color(0xFFB5D3A8);
 
   static const ok = ColorPalette(Color(0xFF43A047), Color(0xff235426));
   static const info = ColorPalette(Color(0xFF1976D2), Color(0xff0B335C));

@@ -891,32 +891,9 @@ class _Step2 extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _GenderButton(
-                        label: 'Мальчик',
-                        symbol: '♂',
-                        selected: gender == Gender.male,
-                        color: const Color(0xFF9CC3E0),
-                        onTap: () => onGenderChanged(
-                          gender == Gender.male ? Gender.none : Gender.male,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _GenderButton(
-                        label: 'Девочка',
-                        symbol: '♀',
-                        selected: gender == Gender.female,
-                        color: const Color(0xFFD599C0),
-                        onTap: () => onGenderChanged(
-                          gender == Gender.female ? Gender.none : Gender.female,
-                        ),
-                      ),
-                    ),
-                  ],
+                GlassGenderSelector(
+                  gender: gender,
+                  onChanged: onGenderChanged,
                 ),
 
                 const SizedBox(height: 16),
@@ -1134,71 +1111,6 @@ class _DateWheelPickerState extends State<_DateWheelPicker> {
   }
 }
 
-// ─── Gender button ────────────────────────────────────────────────────────────
-
-class _GenderButton extends StatelessWidget {
-  final String label;
-  final String symbol;
-  final bool selected;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _GenderButton({
-    required this.label,
-    required this.symbol,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        decoration: BoxDecoration(
-          color: selected ? color.withAlpha(40) : ThemeColors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: selected
-                ? color
-                : context.watch<AppearanceController>().primaryColor.withAlpha(
-                    92,
-                  ),
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              symbol,
-              style: TextStyle(
-                fontSize: 28,
-                color: selected
-                    ? color
-                    : context
-                          .watch<AppearanceController>()
-                          .secondaryColor
-                          .withAlpha(128),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Step 3: Photo ────────────────────────────────────────────────────────────
 
 class _Step3 extends StatelessWidget {
@@ -1291,21 +1203,17 @@ class _Step3 extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _PhotoSourceCard(
-                        icon: Icons.camera_alt_outlined,
-                        title: 'Камера',
-                        subtitle: 'сделать сейчас',
-                        color: const Color(0xFF9CC3E0),
+                      child: GlassSourceCard(
+                        type: SourceCardType.camera,
+                        color: ThemeColors.cameraImageSource,
                         onTap: () => onPickPhoto(ImageSource.camera),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _PhotoSourceCard(
-                        icon: Icons.photo_library_outlined,
-                        title: 'Галерея',
-                        subtitle: 'из библиотеки',
-                        color: const Color(0xFFB5D3A8),
+                      child: GlassSourceCard(
+                        type: SourceCardType.gallery,
+                        color: ThemeColors.galleryImageSource,
                         onTap: () => onPickPhoto(ImageSource.gallery),
                       ),
                     ),
@@ -1317,67 +1225,6 @@ class _Step3 extends StatelessWidget {
         ),
         _BottomBar(onNext: onNext, onBack: onBack, label: 'Дальше'),
       ],
-    );
-  }
-}
-
-class _PhotoSourceCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _PhotoSourceCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        decoration: BoxDecoration(
-          color: color.withAlpha(30),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withAlpha(100)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: color.withAlpha(60),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 26, color: color.withAlpha(220)),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: context
-                    .watch<AppearanceController>()
-                    .secondaryColor
-                    .withAlpha(172),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

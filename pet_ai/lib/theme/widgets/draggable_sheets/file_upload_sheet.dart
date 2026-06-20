@@ -78,6 +78,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
       backgroundColor: Colors.transparent,
       builder: (_) => SourcePickerSheet(
         onPickFile: _pickFromFiles,
+        onPickFromGallery: _pickFromGallery,
         onTakePhoto: _takePhoto,
       ),
     );
@@ -101,6 +102,29 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Не удалось выбрать файл: $e')));
+      }
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    Navigator.pop(context);
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 90,
+      );
+      if (image != null) {
+        setState(() {
+          _pickedFilePath = image.path;
+          _pickedFileName = image.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось сделать снимок: $e')),
+        );
       }
     }
   }
@@ -601,11 +625,13 @@ class _ImagePreviewDialog extends StatelessWidget {
 
 class SourcePickerSheet extends StatelessWidget {
   final VoidCallback onPickFile;
+  final VoidCallback onPickFromGallery;
   final VoidCallback onTakePhoto;
 
   const SourcePickerSheet({
     super.key,
     required this.onPickFile,
+    required this.onPickFromGallery,
     required this.onTakePhoto,
   });
 
@@ -635,26 +661,31 @@ class SourcePickerSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Row(
+            spacing: 8,
             children: [
               Expanded(
-                child: _SourceTile(
-                  icon: Icons.folder_open_rounded,
-                  label: 'Из файлов',
+                child: GlassSourceCard(
+                  type: SourceCardType.camera,
+                  color: ThemeColors.cameraImageSource,
+                  onTap: onTakePhoto
+                ),
+              ),
+              Expanded(
+                child: GlassSourceCard(
+                  type: SourceCardType.gallery,
+                  color: ThemeColors.galleryImageSource,
+                  onTap: onPickFromGallery,
+                ),
+              ),
+              Expanded(
+                child: GlassSourceCard(
+                  type: SourceCardType.files,
                   color: context.watch<AppearanceController>().primaryColor,
                   onTap: onPickFile,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SourceTile(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Сделать снимок',
-                  color: const Color(0xFF00897B),
-                  onTap: onTakePhoto,
-                ),
-              ),
             ],
-          ),
+          )
         ],
       ),
     );
