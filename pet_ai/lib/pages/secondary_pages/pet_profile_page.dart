@@ -28,7 +28,6 @@ class PetProfilePage extends StatefulWidget {
 class _PetProfilePageState extends State<PetProfilePage> {
   Pet? _profile;
   bool _loading = true;
-  bool _saving = false;
   bool _paletteChanged = false;
   // Bumped on each avatar pick so the Image widget re-resolves its FileImage.
   // The avatar path is deterministic (avatar_<id>.png), so FileImage equality
@@ -61,23 +60,15 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
   Future<void> _saveProfile() async {
     if (_profile == null) return;
-    setState(() => _saving = true);
-    try {
-      await PetService().saveProfile(_profile!);
-      if (mounted) {
-        context.read<AppearanceController>().updatePetPalette(
-          _profile!.palette,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Профиль сохранён'),
-            backgroundColor: ThemeColors.gradientEnd,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+    try { await PetService().saveProfile(_profile!); }
+    catch (_) { }
+  }
+
+  Future<void> _savePalette() async {
+    if (_profile == null) return;
+    final appearance = mounted ? context.read<AppearanceController>() : null;
+    try { appearance?.updatePetPalette(_profile!.palette); }
+    catch (_) { }
   }
 
   // ── Field editors ─────────────────────────────────────────────────────────
@@ -277,7 +268,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   Future<void> _deleteProfile() async {
     final confirmed = await confirmDelete(
       context,
-      title: 'Удалить профиль ${_profile!.name}?',
+      title: 'Удалить профиль питомца?',
       message:
           'Все данные питомца будут удалены без возможности восстановления.',
     );
@@ -318,41 +309,26 @@ class _PetProfilePageState extends State<PetProfilePage> {
     final ac = context.watch<AppearanceController>();
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _loading ? 'Профиль' : 'Профиль ${_profile!.name}',
-          style: theme.textTheme.titleMedium,
+    return PopScope(
+      canPop: true,
+      // Fires right after the page is popped (back gesture, system back, or
+      // an in-app Navigator.pop). Persist any pending edits without blocking
+      // the navigation.
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _saveProfile();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text(
+            'Профиль питомца',
+            style: theme.textTheme.titleMedium,
+          ),
         ),
-        actions: [
-          if (!_loading)
-            _saving
-                ? const Padding(
-                    padding: EdgeInsets.only(right: 16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : TextButton(
-                    onPressed: () {
-                      triggerHaptic(HapticStrength.medium);
-                      _saveProfile();
-                    },
-                    child: Text(
-                      'Сохранить',
-                      style: TextStyle(
-                        color: ac.primaryColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-        ],
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _buildBody(ac, theme),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildBody(ac, theme),
     );
   }
 
@@ -375,10 +351,13 @@ class _PetProfilePageState extends State<PetProfilePage> {
         // ── Palette ─────────────────────────────────────────────────────────
         _PaletteSection(
           current: p.palette,
-          onChanged: (palette) => setState(() {
-            p.palette = palette;
-            _paletteChanged = true;
-          }),
+          onChanged: (palette) async {
+            setState(() {
+              p.palette = palette;
+              _paletteChanged = true;
+            });
+            await _savePalette();
+          },
           primaryColor: ac.primaryColor,
           paletteChanged: _paletteChanged,
         ),
@@ -507,7 +486,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
           child: OutlinedButton.icon(
             onPressed: _deleteProfile,
             icon: const Icon(Icons.delete_outline),
-            label: Text('Удалить профиль ${p.name}'),
+            label: Text('Удалить профиль питомца'),
             style: OutlinedButton.styleFrom(
               foregroundColor: ThemeColors.dangerZone,
               side: const BorderSide(color: ThemeColors.dangerZone, width: 1.5),
