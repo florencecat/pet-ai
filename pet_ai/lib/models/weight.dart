@@ -79,7 +79,9 @@ class WeightHistory extends History<WeightEntry> {
 
   String lastWeightString() {
     if (lastWeight != null) {
-      return "${lastWeight!.toStringAsFixed(1)} кг";
+      return "${lastWeight!.toStringAsFixed(
+          lastWeight! - lastWeight!.floorToDouble() < 1e-12 ? 0 : 1
+      )} кг";
     } else {
       return "Нет данных";
     }
