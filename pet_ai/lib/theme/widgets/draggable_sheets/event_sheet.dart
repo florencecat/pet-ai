@@ -18,7 +18,7 @@ extension EventSheetModeX on EventSheetMode {
   bool get isCreate => this == EventSheetMode.create;
   bool get isEditable => isEdit || isCreate;
 
-  String get label {
+  String get title {
     switch (this) {
       case EventSheetMode.view:
         return 'Событие';
@@ -26,6 +26,17 @@ extension EventSheetModeX on EventSheetMode {
         return 'Новое событие';
       case EventSheetMode.edit:
         return 'Редактирование';
+    }
+  }
+
+  String get action {
+    switch (this) {
+      case EventSheetMode.view:
+        return 'Изменить';
+      case EventSheetMode.create:
+        return 'Создать';
+      case EventSheetMode.edit:
+        return 'Сохранить';
     }
   }
 }
@@ -174,7 +185,7 @@ class _EventSheetState extends State<EventSheet> {
     final petId = event.petIds.isNotEmpty ? event.petIds.first : '';
     final date = widget.completionDate ?? event.dateTime;
     await EventService().toggleCompleted(petId, event, date);
-    setState(() { });
+    setState(() {});
   }
 
   bool get _isCompletedForDate {
@@ -268,7 +279,7 @@ class _EventSheetState extends State<EventSheet> {
 
     return DraggableSheet(
       centerTitle: true,
-      title: _mode.label,
+      title: _mode.title,
       onBack: () => Navigator.of(context).pop(),
       initialSize: _mode.isView ? 0.65 : 0.85,
       minSize: 0.4,
@@ -314,26 +325,7 @@ class _EventSheetState extends State<EventSheet> {
       ];
     }
     // Edit / create
-    return [
-      IconButton(
-        icon: widget.event?.starred == true
-            ? const Icon(Icons.star_rounded)
-            : const Icon(Icons.star_outline_rounded),
-        color: context.watch<AppearanceController>().primaryColor,
-        onPressed: () {
-          setState(() {
-            if (widget.event != null) {
-              widget.event!.starred = !widget.event!.starred;
-            }
-          });
-        },
-      ),
-      IconButton(
-        icon: const Icon(Icons.check),
-        color: context.watch<AppearanceController>().primaryColor,
-        onPressed: _submitForm,
-      ),
-    ];
+    return [TextButton(onPressed: _submitForm, child: Text(_mode.action))];
   }
 
   // ─── View Mode ─────────────────────────────────────────────────────────────

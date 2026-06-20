@@ -239,7 +239,6 @@ class Event implements PbEntity {
   EventCategory category;
   DateTime dateTime;
 
-  bool starred;
   bool remind;
 
   /// Даты выполнения в формате "yyyy-MM-dd" — отдельно для каждого вхождения
@@ -297,7 +296,6 @@ class Event implements PbEntity {
     this.styleKindId,
     this.color,
   }) : id = generateId(),
-       starred = false,
        completedDates = {},
        petIds = petIds ?? [];
 
@@ -306,7 +304,6 @@ class Event implements PbEntity {
     required this.name,
     required this.category,
     required this.dateTime,
-    required this.starred,
     required this.completedDates,
     required this.petIds,
     required this.repeat,
@@ -329,7 +326,6 @@ class Event implements PbEntity {
     this.symptomTag,
   }) : id = generateId(),
        category = EventCategories.empty,
-       starred = false,
        completedDates = {},
        petIds = [],
        repeat = RepeatInterval.none,
@@ -346,7 +342,6 @@ class Event implements PbEntity {
       name = "",
       category = EventCategories.empty,
       dateTime = DateTime.now(),
-      starred = false,
       completedDates = {},
       petIds = [],
       repeat = RepeatInterval.none,
@@ -519,7 +514,6 @@ class Event implements PbEntity {
     'name': name,
     'category': category.id,
     'dateTime': dateTime.toIso8601String(),
-    'starred': starred,
     'completedDates': completedDates.toList(),
     'petIds': petIds,
     'repeat': repeat.index,
@@ -541,7 +535,6 @@ class Event implements PbEntity {
     'id': id,
     'name': name,
     'category': category.id,
-    'starred': starred,
     'datetime': dateTime.toIso8601String(),
     'pets': petIds,
     'repeat_interval': repeat.name,
@@ -587,7 +580,6 @@ class Event implements PbEntity {
       name: json['name'] as String,
       category: EventCategories.byId(json['category'] as String),
       dateTime: DateTime.parse(json['dateTime'] as String),
-      starred: json['starred'] as bool? ?? false,
       completedDates: completedDates,
       petIds: petIds,
       repeat: RepeatInterval.values[json['repeat'] as int? ?? 0],
@@ -638,7 +630,6 @@ class _EventCodec extends PbCodec<Event> {
     name: data['name'] as String,
     category: EventCategories.byId(data['category'] as String),
     dateTime: DateTime.parse(data['datetime'] as String),
-    starred: data['starred'] as bool? ?? false,
     completedDates: const {},
     petIds: (data['pets'] as List<dynamic>?)?.cast<String>() ?? [],
     repeat: RepeatInterval.values.firstWhere(

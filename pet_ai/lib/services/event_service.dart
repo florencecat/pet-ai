@@ -228,13 +228,6 @@ class EventService {
     return sorted.take(limit).toList();
   }
 
-  /// Starred-события питомца, отсортированные по дате.
-  Future<List<Event>> starredEvents(String petId) async {
-    final events = await loadEvents(petId);
-    return events.where((e) => e.starred).toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
-  }
-
   /// События питомца по категории.
   Future<List<Event>> eventsByCategory(
     String petId,
