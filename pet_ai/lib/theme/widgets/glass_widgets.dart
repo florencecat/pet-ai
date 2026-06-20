@@ -20,6 +20,7 @@ class GlassPlate extends StatelessWidget {
   final double padding;
   final List<Color>? gradientColors;
   final bool useShadow;
+  final bool transparent;
 
   const GlassPlate({
     super.key,
@@ -28,13 +29,14 @@ class GlassPlate extends StatelessWidget {
     this.padding = 8,
     this.gradientColors,
     this.useShadow = true,
+    this.transparent = true
   });
 
   @override
   Widget build(BuildContext context) {
     const borderRadius = BorderRadius.all(Radius.circular(24));
     final borderColor = color.withAlpha(180);
-    final fillColor = color;
+    final fillColor = transparent ? color.withAlpha(180) : color;
 
     final content = ClipRRect(
       borderRadius: borderRadius,

@@ -826,14 +826,11 @@ class _EventTileCard extends StatelessWidget {
         : DateFormat('HH:mm').format(event.dateTime);
 
     return GlassPlate(
+      transparent: false,
       color: Colors.white,
       padding: 0,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap?.call();
-        },
-        borderRadius: BorderRadius.circular(20),
+      child: Pressable(
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
           child: IntrinsicHeight(
@@ -849,7 +846,9 @@ class _EventTileCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge!.copyWith(
                         color: overdue
                             ? ThemeColors.dangerZone
-                            : context.watch<AppearanceController>().secondaryColor,
+                            : context
+                                  .watch<AppearanceController>()
+                                  .secondaryColor,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -1030,8 +1029,8 @@ class _EventSearchSheetState extends State<_EventSearchSheet> {
                   ? 'Все события (${results.length})'
                   : 'Найдено: ${results.length}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: ac.secondaryColor.withAlpha(160),
-                  ),
+                color: ac.secondaryColor.withAlpha(160),
+              ),
             ),
           ),
 
@@ -1050,8 +1049,8 @@ class _EventSearchSheetState extends State<_EventSearchSheet> {
                   Text(
                     'Ничего не найдено',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: ac.secondaryColor.withAlpha(120),
-                        ),
+                      color: ac.secondaryColor.withAlpha(120),
+                    ),
                   ),
                 ],
               ),
@@ -1120,10 +1119,10 @@ class _SearchResultTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: overdue
-                                ? ThemeColors.dangerZone
-                                : ac.secondaryColor,
-                          ),
+                        color: overdue
+                            ? ThemeColors.dangerZone
+                            : ac.secondaryColor,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
