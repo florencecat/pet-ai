@@ -553,7 +553,7 @@ class HealthPageState extends State<HealthPage> {
                   ),
                   _HealthActionButton(
                     callback: () => _openMoodHistory(context),
-                    icon: _profile!.moodHistory.lastEntry != null
+                    icon:_profile?.moodHistory.lastEntry != null
                         ? _profile!.moodHistory.lastEntry!.mood.icon
                         : Icons.sentiment_very_satisfied_outlined,
                     iconColor: ThemeColors.moodIconColor,
