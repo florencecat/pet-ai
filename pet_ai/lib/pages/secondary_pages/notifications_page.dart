@@ -69,6 +69,20 @@ class _NotificationPageState extends State<NotificationsPage> {
     );
   }
 
+  Future<void> _pickAllDayTime() async {
+    final current = _notificationSettings.allDayReminderMinutes;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
+    );
+    if (picked == null) return;
+    await _updateNotif(
+      _notificationSettings.copyWith(
+        allDayReminderMinutes: picked.hour * 60 + picked.minute,
+      ),
+    );
+  }
+
   String _fmtMinutes(int m) =>
       '${(m ~/ 60).toString().padLeft(2, '0')}:'
           '${(m % 60).toString().padLeft(2, '0')}';
@@ -202,6 +216,16 @@ class _NotificationPageState extends State<NotificationsPage> {
                     onTap: () => _pickQuietTime(false),
                   ),
                 ],
+                SettingsCardDivider(),
+                SettingsRow(
+                  icon: Icons.wb_sunny_outlined,
+                  label: 'События на весь день',
+                  subtitle:
+                      'Напоминать в ${_fmtMinutes(_notificationSettings.allDayReminderMinutes)}',
+                  iconColor: ac.primaryColor,
+                  trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
+                  onTap: _pickAllDayTime,
+                ),
                 SettingsCardDivider(),
                 SettingsRow(
                   icon: Icons.volume_up_outlined,

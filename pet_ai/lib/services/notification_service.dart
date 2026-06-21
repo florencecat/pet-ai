@@ -35,6 +35,11 @@ class NotificationSettings {
   /// Повышенная важность — всплывающее уведомление (heads-up) на Android.
   final bool highImportance;
 
+  /// Час доставки напоминаний о событиях «на весь день» — минуты от полуночи
+  /// (09:00 → 540). У all-day события нет времени суток (хранится 00:00),
+  /// поэтому напоминание шлём в этот фиксированный момент, а не в полночь.
+  final int allDayReminderMinutes;
+
   const NotificationSettings({
     this.enabled = true,
     this.quietHoursEnabled = false,
@@ -43,6 +48,7 @@ class NotificationSettings {
     this.sound = true,
     this.vibrate = true,
     this.highImportance = true,
+    this.allDayReminderMinutes = 9 * 60,
   });
 
   static const _kEnabled = 'notif_enabled';
@@ -52,6 +58,7 @@ class NotificationSettings {
   static const _kSound = 'notif_sound';
   static const _kVibrate = 'notif_vibrate';
   static const _kHighImportance = 'notif_high_importance';
+  static const _kAllDayReminder = 'notif_all_day_reminder';
 
   static Future<NotificationSettings> load() async {
     final p = SharedPreferencesAsync();
@@ -63,6 +70,7 @@ class NotificationSettings {
       sound: await p.getBool(_kSound) ?? true,
       vibrate: await p.getBool(_kVibrate) ?? true,
       highImportance: await p.getBool(_kHighImportance) ?? true,
+      allDayReminderMinutes: await p.getInt(_kAllDayReminder) ?? 9 * 60,
     );
   }
 
@@ -75,6 +83,7 @@ class NotificationSettings {
     await p.setBool(_kSound, sound);
     await p.setBool(_kVibrate, vibrate);
     await p.setBool(_kHighImportance, highImportance);
+    await p.setInt(_kAllDayReminder, allDayReminderMinutes);
   }
 
   NotificationSettings copyWith({
@@ -85,6 +94,7 @@ class NotificationSettings {
     bool? sound,
     bool? vibrate,
     bool? highImportance,
+    int? allDayReminderMinutes,
   }) {
     return NotificationSettings(
       enabled: enabled ?? this.enabled,
@@ -94,6 +104,8 @@ class NotificationSettings {
       sound: sound ?? this.sound,
       vibrate: vibrate ?? this.vibrate,
       highImportance: highImportance ?? this.highImportance,
+      allDayReminderMinutes:
+          allDayReminderMinutes ?? this.allDayReminderMinutes,
     );
   }
 
@@ -355,9 +367,24 @@ class NotificationService {
     final id = event.id.hashCode;
 
     // Вычисляем время напоминания (с учётом отсрочки).
-    final scheduledTime = event.dateTime.subtract(
-      event.remindBeforeVariant.duration(event.remindBeforeValue),
-    );
+    // Для события «на весь день» отсчёт от полуночи (event.dateTime = 00:00)
+    // бессмысленен — доставляем в фиксированный час (allDayReminderMinutes),
+    // а «напомнить за» трактуем только в целых днях.
+    final DateTime scheduledTime;
+    if (event.allDay) {
+      final base = DateTime(
+        event.dateTime.year,
+        event.dateTime.month,
+        event.dateTime.day,
+        s.allDayReminderMinutes ~/ 60,
+        s.allDayReminderMinutes % 60,
+      );
+      scheduledTime = base.subtract(Duration(days: event.remindBeforeValue));
+    } else {
+      scheduledTime = event.dateTime.subtract(
+        event.remindBeforeVariant.duration(event.remindBeforeValue),
+      );
+    }
 
     // Тихие часы: если время срабатывания попадает в интервал — не планируем.
     if (s.isQuiet(scheduledTime)) return;
@@ -422,8 +449,11 @@ class NotificationService {
     } else {
       title = 'Напоминание';
     }
+    final remindVariant = event.allDay
+        ? model.RemindBeforeVariant.days
+        : event.remindBeforeVariant;
     final body = event.remindBeforeValue > 0
-        ? "${event.name} (через ${event.remindBeforeValue} ${event.remindBeforeVariant.declension(event.remindBeforeValue)})"
+        ? "${event.name} (через ${event.remindBeforeValue} ${remindVariant.declension(event.remindBeforeValue)})"
         : event.name;
 
     // Гарантируем существование канала с актуальными настройками.

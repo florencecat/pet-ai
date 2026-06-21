@@ -596,7 +596,15 @@ class _EventSheetState extends State<EventSheet> {
           ),
           value: _allDay,
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
-          onChanged: (val) => setState(() => _allDay = val),
+          onChanged: (val) => setState(() {
+            _allDay = val;
+            // У события «на весь день» нет времени суток — напоминание считается
+            // только в целых днях (доставка в час из настроек уведомлений).
+            if (val && _remindBeforeVariant != RemindBeforeVariant.days) {
+              _remindBeforeVariant = RemindBeforeVariant.days;
+              _remindBeforeValue = 0;
+            }
+          }),
         ),
       ),
 
@@ -727,10 +735,18 @@ class _EventSheetState extends State<EventSheet> {
               ),
               const SizedBox(width: 8),
               PopupMenuButton<RemindBeforeVariant>(
-                initialValue: RemindBeforeVariant.minutes,
-                itemBuilder: (_) => RemindBeforeVariant.values
-                    .map((v) => PopupMenuItem(value: v, child: Text(v.label)))
-                    .toList(),
+                initialValue: _remindBeforeVariant,
+                // Для all-day доступны только дни — час доставки задаётся
+                // глобально в настройках уведомлений.
+                enabled: !_allDay,
+                itemBuilder: (_) =>
+                    (_allDay
+                            ? const [RemindBeforeVariant.days]
+                            : RemindBeforeVariant.values)
+                        .map(
+                          (v) => PopupMenuItem(value: v, child: Text(v.label)),
+                        )
+                        .toList(),
                 onSelected: (v) => setState(() {
                   if (v != _remindBeforeVariant) {
                     _remindBeforeValue = 0;
@@ -744,13 +760,14 @@ class _EventSheetState extends State<EventSheet> {
                       _remindBeforeVariant.declension(_remindBeforeValue),
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
-                    Icon(
-                      Icons.expand_more,
-                      size: 24,
-                      color: context
-                          .watch<AppearanceController>()
-                          .secondaryColor,
-                    ),
+                    if (!_allDay)
+                      Icon(
+                        Icons.expand_more,
+                        size: 24,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor,
+                      ),
                   ],
                 ),
               ),
