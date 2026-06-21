@@ -184,7 +184,7 @@ class _WeightEntryCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    formatSmartDate(entry.date),
+                    formatSmartDate(entry.date, pattern: 'd MMMM yyyy'),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

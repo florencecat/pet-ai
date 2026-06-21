@@ -9,6 +9,7 @@ import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/grouped_history_list.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
 
@@ -54,23 +55,7 @@ class _MoodSheetState extends State<MoodSheet> {
       dayPart: selectedDayPart,
     );
 
-    // Если за сегодня уже есть запись с таким же настроением и другим
-    // временем суток — объединяем (не дублируем).
-    final now = DateTime.now();
-    final existingIdx = history.entries.indexWhere(
-      (e) =>
-          e.date.year == now.year &&
-          e.date.month == now.month &&
-          e.date.day == now.day &&
-          e.dayPart == selectedDayPart,
-    );
-
-    if (existingIdx >= 0) {
-      history.entries[existingIdx] = entry;
-    } else {
-      history.entries.add(entry);
-    }
-
+    // Запись за тот же день и время суток перезаписывается (см. addOrReplace).
     await PetService().updateMoodHistory(widget.profile.id, entry);
 
     // Stay in sheet — reload history and reset selection
@@ -389,8 +374,9 @@ class _MoodSheetState extends State<MoodSheet> {
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Добавить'),
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    context.watch<AppearanceController>().primaryColor,
+                backgroundColor: context
+                    .watch<AppearanceController>()
+                    .primaryColor,
                 disabledBackgroundColor: context
                     .watch<AppearanceController>()
                     .secondaryColor
@@ -411,14 +397,16 @@ class _MoodSheetState extends State<MoodSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            ...List.from(history.entries.reversed).map<Widget>(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _MoodEntryCard(
-                  entry: e as MoodEntry,
-                  onDelete: () => _deleteEntry(e),
-                ),
-              ),
+            GroupedHistoryList<MoodEntry>(
+              entries: history.entries,
+              // Внутри даты: утро → день → вечер, затем по времени.
+              sortWithinGroup: (a, b) {
+                final byPart = b.dayPart.index.compareTo(a.dayPart.index);
+                if (byPart != 0) return byPart;
+                return a.date.compareTo(b.date);
+              },
+              itemBuilder: (context, e) =>
+                  _MoodEntryCard(entry: e, onDelete: () => _deleteEntry(e)),
             ),
           ],
         ],
@@ -436,55 +424,36 @@ class _MoodEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
+      useShadow: false,
+      child: ListTile(
+        leading: Icon(
+          entry.mood.icon,
+          color: context.watch<AppearanceController>().primaryColor,
+          size: 26,
+        ),
+        title: Text(
+          entry.mood.label,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall!.copyWith(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Row(
+          spacing: 4,
           children: [
             Icon(
-              entry.mood.icon,
+              entry.dayPart.icon,
+              size: 14,
               color: context.watch<AppearanceController>().primaryColor,
-              size: 22,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    spacing: 4,
-                    children: [
-                      Icon(
-                        entry.dayPart.icon,
-                        size: 14,
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                      ),
-                      Text(
-                        entry.dayPart.label
-                      ),
-                      Text("-"),
-                      Text(
-                        entry.mood.label,
-                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    formatSmartDate(entry.date),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              color: ThemeColors.dangerZone.withAlpha(180),
-              onPressed: onDelete,
-            ),
+            Text(entry.dayPart.label, style: Theme.of(
+              context,
+            ).textTheme.bodySmall),
           ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, size: 20),
+          color: ThemeColors.dangerZone.withAlpha(180),
+          onPressed: onDelete,
         ),
       ),
     );

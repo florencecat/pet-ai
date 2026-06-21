@@ -9,6 +9,7 @@ import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/grouped_history_list.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -97,7 +98,7 @@ class _FoodSheetState extends State<FoodSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = List<MealEntry>.from(_history.entries.reversed);
+    final entries = _history.entries;
 
     return DraggableSheet(
       title: 'История питания',
@@ -284,13 +285,19 @@ class _FoodSheetState extends State<FoodSheet> {
                     Icon(
                       Icons.restaurant_outlined,
                       size: 56,
-                      color: context.watch<AppearanceController>().primaryColor.withAlpha(60),
+                      color: context
+                          .watch<AppearanceController>()
+                          .primaryColor
+                          .withAlpha(60),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'История питания пуста',
                       style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        color: context.watch<AppearanceController>().primaryColor.withAlpha(120),
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor
+                            .withAlpha(120),
                       ),
                     ),
                   ],
@@ -300,11 +307,16 @@ class _FoodSheetState extends State<FoodSheet> {
           else ...[
             Text('История', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            ...entries.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _FoodEntryCard(entry: e, onDelete: () => _delete(e)),
-              ),
+            GroupedHistoryList<MealEntry>(
+              entries: entries,
+              // Внутри даты: ночь → вечер → день → утро, затем по времени.
+              sortWithinGroup: (a, b) {
+                final byTime = b.mealTime.index.compareTo(a.mealTime.index);
+                if (byTime != 0) return byTime;
+                return a.date.compareTo(b.date);
+              },
+              itemBuilder: (context, e) =>
+                  _FoodEntryCard(entry: e, onDelete: () => _delete(e)),
             ),
           ],
         ],
@@ -396,82 +408,54 @@ class _FoodEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
+      useShadow: false,
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _appetiteColor.withAlpha(40),
+            border: Border.all(color: _appetiteColor, width: 1.5),
+          ),
+          child: Center(
+            child: Text(
+              '${entry.appetiteScore}',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: _appetiteColor,
+              ),
+            ),
+          ),
+        ),
+        title: Row(
+          spacing: 4,
           children: [
-            // Appetite score badge
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _appetiteColor.withAlpha(40),
-                border: Border.all(color: _appetiteColor, width: 1.5),
-              ),
-              child: Center(
-                child: Text(
-                  '${entry.appetiteScore}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: _appetiteColor,
-                  ),
-                ),
-              ),
+            Icon(
+              entry.mealTime.icon,
+              size: 14,
+              color: context.watch<AppearanceController>().primaryColor,
             ),
-
-            const SizedBox(width: 12),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        entry.mealTime.icon,
-                        size: 14,
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        entry.mealTime.label,
-                        style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                          color: context
-                              .watch<AppearanceController>()
-                              .secondaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${entry.grams} г',
-                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: context
-                              .watch<AppearanceController>()
-                              .primaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatSmartDate(entry.date),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+            Text(
+              entry.mealTime.label,
+              style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                color: context.watch<AppearanceController>().secondaryColor,
               ),
-            ),
-
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              color: ThemeColors.dangerZone.withAlpha(180),
-              onPressed: onDelete,
             ),
           ],
+        ),
+        subtitle: Text(
+          '${entry.grams} г',
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            color: context.watch<AppearanceController>().primaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, size: 20),
+          color: ThemeColors.dangerZone.withAlpha(180),
+          onPressed: onDelete,
         ),
       ),
     );

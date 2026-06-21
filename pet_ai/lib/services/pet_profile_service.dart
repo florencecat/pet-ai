@@ -264,7 +264,7 @@ class PetService {
   Future<void> updateMoodHistory(String petId, MoodEntry entry) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      profile.moodHistory.add(entry);
+      profile.moodHistory.addOrReplace(entry);
       await saveProfile(profile);
       // Fire-and-forget cloud push.
       CloudSyncService.instance.pushAsync('moods', entry, petId);
@@ -274,7 +274,7 @@ class PetService {
   Future<void> updateFoodHistory(String petId, MealEntry entry) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      profile.foodHistory.add(entry);
+      profile.foodHistory.addOrReplace(entry);
       await saveProfile(profile);
       // Fire-and-forget cloud push.
       CloudSyncService.instance.pushAsync('meals', entry, petId);

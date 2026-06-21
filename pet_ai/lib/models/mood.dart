@@ -181,6 +181,23 @@ class MoodHistory extends History<MoodEntry> {
     return a.date.compareTo(b.date);
   }
 
+  /// Добавляет или заменяет запись настроения за тот же день и время суток —
+  /// в один день/время суток допустима только одна запись.
+  void addOrReplace(MoodEntry entry) {
+    final idx = entries.indexWhere(
+      (e) =>
+          e.date.year == entry.date.year &&
+          e.date.month == entry.date.month &&
+          e.date.day == entry.date.day &&
+          e.dayPart == entry.dayPart,
+    );
+    if (idx >= 0) {
+      entries[idx] = entry;
+    } else {
+      add(entry);
+    }
+  }
+
   bool hasTodayEntry() {
     final now = DateTime.now();
     return entries.any((e) =>

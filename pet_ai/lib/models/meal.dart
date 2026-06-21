@@ -97,6 +97,23 @@ class MealHistory extends History<MealEntry> {
   MealHistory({required super.entries});
   MealHistory.empty() : super.empty();
 
+  /// Добавляет или заменяет запись питания за тот же день и время приёма —
+  /// в один день/время суток допустима только одна запись.
+  void addOrReplace(MealEntry entry) {
+    final idx = entries.indexWhere(
+      (e) =>
+          e.date.year == entry.date.year &&
+          e.date.month == entry.date.month &&
+          e.date.day == entry.date.day &&
+          e.mealTime == entry.mealTime,
+    );
+    if (idx >= 0) {
+      entries[idx] = entry;
+    } else {
+      add(entry);
+    }
+  }
+
   static final foodSerializer = HistorySerializer<MealEntry>(
     fromJson: MealEntry.fromJson,
   );
