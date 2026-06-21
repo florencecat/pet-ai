@@ -29,7 +29,7 @@ class WeightChart extends StatelessWidget {
     if (entries.isEmpty) {
       return const ChartPlaceholder(message: 'История веса пока пуста');
     }
-    if (entries.length <= 3) {
+    if (entries.length <= 2) {
       return const ChartPlaceholder(message: 'Слишком мало записей для графика');
     }
 
@@ -60,6 +60,69 @@ class WeightChart extends StatelessWidget {
               show: true,
               border: Border.all(color: ThemeColors.border),
             ),
+            lineTouchData: LineTouchData(
+              // Маркер на выбранной точке в фирменном цвете.
+              getTouchedSpotIndicator: (barData, indexes) => indexes
+                  .map(
+                    (_) => TouchedSpotIndicatorData(
+                      const FlLine(
+                        color: ThemeColors.primary,
+                        strokeWidth: 1.5,
+                      ),
+                      FlDotData(
+                        getDotPainter: (spot, percent, bar, index) =>
+                            FlDotCirclePainter(
+                              radius: 4,
+                              color: ThemeColors.white,
+                              strokeWidth: 2,
+                              strokeColor: ThemeColors.primary,
+                            ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              touchTooltipData: LineTouchTooltipData(
+                // Не даём подсказке обрезаться краями графика: при нехватке
+                // места её сдвигает внутрь (в т.ч. рисует ниже точки).
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                tooltipBorderRadius: BorderRadius.circular(12),
+                tooltipPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                tooltipMargin: 12,
+                tooltipBorder: const BorderSide(
+                  color: ThemeColors.primary,
+                  width: 1,
+                ),
+                getTooltipColor: (_) => ThemeColors.white,
+                getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
+                  final index = spot.x.toInt();
+                  final date = (index >= 0 && index < entries.length)
+                      ? DateFormat('dd.MM.yyyy').format(entries[index].date)
+                      : '';
+                  return LineTooltipItem(
+                    '${spot.y.toStringAsFixed(1)} кг',
+                    Theme.of(context).textTheme.titleSmall!.copyWith(
+                          color: ThemeColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                    children: date.isEmpty
+                        ? null
+                        : [
+                            TextSpan(
+                              text: '\n$date',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall!
+                                  .copyWith(color: ThemeColors.secondary),
+                            ),
+                          ],
+                  );
+                }).toList(),
+              ),
+            ),
             titlesData: FlTitlesData(
               show: true,
               rightTitles: const AxisTitles(),
@@ -87,6 +150,7 @@ class WeightChart extends StatelessWidget {
               ),
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
+                  minIncluded: false,
                   reservedSize: 46,
                   showTitles: true,
                   interval: yInterval,
@@ -106,6 +170,7 @@ class WeightChart extends StatelessWidget {
                 gradient: const LinearGradient(
                   colors: ThemeColors.gradientColors,
                 ),
+                preventCurveOverShooting: true,
                 dotData: FlDotData(show: entries.length <= 20),
                 belowBarData: BarAreaData(
                   show: true,
