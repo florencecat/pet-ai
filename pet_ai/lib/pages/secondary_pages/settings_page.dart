@@ -143,27 +143,26 @@ class _SettingsPageState extends State<SettingsPage> {
     if (context.mounted) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (ctx) =>
-            AlertDialog(
-              title: const Text('Загрузить с сервера?'),
-              content: const Text(
-                'Локальные данные питомца будут заменены данными с сервера. '
-                    'Это действие нельзя отменить.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Отмена'),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ThemeColors.dangerZone,
-                  ),
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Загрузить'),
-                ),
-              ],
+        builder: (ctx) => AlertDialog(
+          title: const Text('Загрузить с сервера?'),
+          content: const Text(
+            'Локальные данные питомца будут заменены данными с сервера. '
+            'Это действие нельзя отменить.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена'),
             ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: ThemeColors.dangerZone,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Загрузить'),
+            ),
+          ],
+        ),
       );
 
       if (confirmed != true) return;
@@ -510,8 +509,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
                 trailing: Switch(
                   inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor:
-                      WidgetStateProperty.resolveWith<Color?>((states) {
+                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
+                    states,
+                  ) {
                     if (states.contains(WidgetState.selected)) {
                       return Colors.transparent;
                     }
@@ -533,8 +533,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
                 trailing: Switch(
                   inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor:
-                      WidgetStateProperty.resolveWith<Color?>((states) {
+                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
+                    states,
+                  ) {
                     if (states.contains(WidgetState.selected)) {
                       return Colors.transparent;
                     }
@@ -594,78 +595,76 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 24),
 
           // ── Debug ─────────────────────────────────────────────────────────
-          if (kDebugMode) ...[
-            SettingsSectionLabel(title: 'Отладка'),
-            const SizedBox(height: 8),
-            SettingsCard(
-              children: [
-                SettingsRow(
-                  icon: Icons.notifications_active_outlined,
-                  label: 'Тест уведомления',
-                  subtitle: 'Показать сейчас (звук/вибрация/heads-up)',
-                  iconColor: Colors.blue,
-                  onTap: () => NotificationService().showTestNotification(),
-                ),
-                SettingsCardDivider(),
-                SettingsRow(
-                  icon: Icons.delete_forever,
-                  label: 'Очистить все данные',
-                  subtitle: 'Сброс SharedPreferences',
-                  iconColor: Colors.red,
-                  labelColor: Colors.red,
-                  onTap: () => _clearAppData(context),
-                ),
-                SettingsCardDivider(),
-                SettingsRow(
-                  icon: Icons.delete_forever,
-                  label: 'Очистить события',
-                  iconColor: Colors.red,
-                  onTap: () => _clearEvents(context),
-                ),
-                SettingsCardDivider(),
-                SettingsRow(
-                  icon: Icons.delete_forever,
-                  label: 'Очистить историю веса',
-                  iconColor: Colors.red,
-                  onTap: () => _clearWeightHistory(context),
-                ),
-                SettingsCardDivider(),
-                SettingsRow(
-                  icon: Icons.delete_forever,
-                  label: 'Очистить историю настроения',
-                  iconColor: Colors.red,
-                  onTap: () => _clearMoodHistory(context),
-                ),
-                SettingsCardDivider(),
-                SettingsRow(
-                  icon: Icons.delete_forever,
-                  label: 'Очистить диалог с ИИ',
-                  iconColor: Colors.red,
-                  onTap: () => _clearMessageHistory(context),
-                ),
-                SettingsCardDivider(),
-                SettingsRow(
-                  icon: Icons.data_object,
-                  label: 'Заполнить историю веса',
-                  iconColor: Colors.blue,
-                  onTap: () {
-                    PetService().fillWeightHistory();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('История веса заполнена')),
-                    );
-                  },
-                  last: true,
-                ),
-                SettingsRow(
-                  icon: Icons.data_object,
-                  label: 'Экспорт данных',
-                  iconColor: Colors.blue,
-                  onTap: () async => await PetService().exportAllProfiles(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
+          SettingsSectionLabel(title: 'Отладка'),
+          const SizedBox(height: 8),
+          SettingsCard(
+            children: [
+              SettingsRow(
+                icon: Icons.notifications_active_outlined,
+                label: 'Тест уведомления',
+                subtitle: 'Показать сейчас (звук/вибрация/heads-up)',
+                iconColor: Colors.blue,
+                onTap: () => NotificationService().showTestNotification(),
+              ),
+              SettingsCardDivider(),
+              SettingsRow(
+                icon: Icons.delete_forever,
+                label: 'Очистить все данные',
+                subtitle: 'Сброс SharedPreferences',
+                iconColor: Colors.red,
+                labelColor: Colors.red,
+                onTap: () => _clearAppData(context),
+              ),
+              SettingsCardDivider(),
+              SettingsRow(
+                icon: Icons.delete_forever,
+                label: 'Очистить события',
+                iconColor: Colors.red,
+                onTap: () => _clearEvents(context),
+              ),
+              SettingsCardDivider(),
+              SettingsRow(
+                icon: Icons.delete_forever,
+                label: 'Очистить историю веса',
+                iconColor: Colors.red,
+                onTap: () => _clearWeightHistory(context),
+              ),
+              SettingsCardDivider(),
+              SettingsRow(
+                icon: Icons.delete_forever,
+                label: 'Очистить историю настроения',
+                iconColor: Colors.red,
+                onTap: () => _clearMoodHistory(context),
+              ),
+              SettingsCardDivider(),
+              SettingsRow(
+                icon: Icons.delete_forever,
+                label: 'Очистить диалог с ИИ',
+                iconColor: Colors.red,
+                onTap: () => _clearMessageHistory(context),
+              ),
+              SettingsCardDivider(),
+              SettingsRow(
+                icon: Icons.data_object,
+                label: 'Заполнить историю веса',
+                iconColor: Colors.blue,
+                onTap: () {
+                  PetService().fillWeightHistory();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('История веса заполнена')),
+                  );
+                },
+                last: true,
+              ),
+              SettingsRow(
+                icon: Icons.data_object,
+                label: 'Экспорт данных',
+                iconColor: Colors.blue,
+                onTap: () async => await PetService().exportAllProfiles(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
 
           // ── Version footer ────────────────────────────────────────────────
           Center(
