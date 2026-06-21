@@ -100,7 +100,7 @@ class _FoodSheetState extends State<FoodSheet> {
     return DraggableSheet(
       title: 'История питания',
       centerTitle: true,
-      initialSize: 0.85,
+      initialSize: 0.65,
       maxSize: 1.0,
       onBack: () => Navigator.of(context).pop(true),
       body: Column(
@@ -111,7 +111,6 @@ class _FoodSheetState extends State<FoodSheet> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     'Новая запись',
@@ -244,7 +243,7 @@ class _FoodSheetState extends State<FoodSheet> {
                   // Добавить
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton.icon(
+                    child: TextButton.icon(
                       onPressed: _isSaving ? null : _save,
                       icon: _isSaving
                           ? const SizedBox(
@@ -257,12 +256,6 @@ class _FoodSheetState extends State<FoodSheet> {
                             )
                           : const Icon(Icons.add, size: 18),
                       label: const Text('Добавить'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
                     ),
                   ),
                 ],

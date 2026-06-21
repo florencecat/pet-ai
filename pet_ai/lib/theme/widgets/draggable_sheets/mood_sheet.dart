@@ -77,7 +77,7 @@ class _MoodSheetState extends State<MoodSheet> {
       title: "История настроения",
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(true),
-      initialSize: 0.75,
+      initialSize: 0.65,
       minSize: 0.5,
       maxSize: 0.95,
       body: Column(
@@ -128,6 +128,11 @@ class _MoodSheetState extends State<MoodSheet> {
               child: Column(
                 spacing: 16,
                 children: [
+                  Text(
+                    'Новая запись',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+
                   Row(
                     children: DayPart.values.map((mt) {
                       final selected = selectedDayPart == mt;
@@ -257,34 +262,22 @@ class _MoodSheetState extends State<MoodSheet> {
                       );
                     }).toList(),
                   ),
+
+                  // ── Добавить ─────────────────────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: change
+                          ? () {
+                        triggerHaptic(HapticStrength.medium);
+                        save();
+                      }
+                          : null,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Добавить'),
+                    ),
+                  ),
                 ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Добавить ─────────────────────────────────────────────────────
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: change
-                  ? () {
-                      triggerHaptic(HapticStrength.medium);
-                      save();
-                    }
-                  : null,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Добавить'),
-              style: FilledButton.styleFrom(
-                backgroundColor: context
-                    .watch<AppearanceController>()
-                    .primaryColor,
-                disabledBackgroundColor: context
-                    .watch<AppearanceController>()
-                    .secondaryColor
-                    .withAlpha(60),
-                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),

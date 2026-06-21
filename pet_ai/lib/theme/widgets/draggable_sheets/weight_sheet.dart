@@ -58,7 +58,6 @@ class _WeightSheetState extends State<WeightSheet> {
   @override
   Widget build(BuildContext context) {
     final entries = _history.filterByPeriod(_period);
-    final primaryColor = context.watch<AppearanceController>().primaryColor;
     final color = context.watch<AppearanceController>().secondaryColor;
 
     return DraggableSheet(
@@ -97,29 +96,38 @@ class _WeightSheetState extends State<WeightSheet> {
           WeightChart(entries: entries),
 
           // ── New-weight stepper ────────────────────────────────────────────
-          Center(
-            child: PillStepper(
-              value: _weight,
-              onChanged: (value) => setState(() {
-                _changed = true;
-                _weight = value;
-              }),
-            ),
-          ),
+          GlassPlate(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                spacing: 16,
+                children: [
+                  Text(
+                    'Новая запись',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
 
-          const SizedBox(height: 12),
+                  Center(
+                    child: PillStepper(
+                      value: _weight,
+                      onChanged: (value) => setState(() {
+                        _changed = true;
+                        _weight = value;
+                      }),
+                    ),
+                  ),
 
-          // ── Добавить ──────────────────────────────────────────────────────
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _changed ? _save : null,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Добавить'),
-              style: FilledButton.styleFrom(
-                backgroundColor: primaryColor,
-                disabledBackgroundColor: color.withAlpha(60),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                  // ── Добавить ──────────────────────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: _changed ? _save : null,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Добавить'),
+
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
