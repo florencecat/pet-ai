@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/widgets/chart_placeholder.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
@@ -40,12 +39,6 @@ class _MoodSheetState extends State<MoodSheet> {
     history = widget.profile.moodHistory;
   }
 
-  List<FlSpot> buildSpots(List<MoodEntry> entries) {
-    return List.generate(entries.length, (i) {
-      return FlSpot(i.toDouble(), entries[i].mood.value.toDouble());
-    });
-  }
-
   void save() async {
     if (selectedMood == null) return;
 
@@ -79,7 +72,6 @@ class _MoodSheetState extends State<MoodSheet> {
   @override
   Widget build(BuildContext context) {
     final entries = history.filterByPeriod(period);
-    final spots = buildSpots(entries);
 
     return DraggableSheet(
       title: "История настроения",
@@ -122,99 +114,10 @@ class _MoodSheetState extends State<MoodSheet> {
           // ── Chart ─────────────────────────────────────────────────────────
           if (entries.isEmpty)
             const ChartPlaceholder(message: "История настроения пуста")
-          else if (entries.length <= 3)
-            const ChartPlaceholder(message: "Слишком мало записей для графика")
           else
             Padding(
               padding: const EdgeInsets.fromLTRB(5, 10, 10, 10),
-              child: SizedBox(
-                height: 200,
-                child: LineChart(
-                  LineChartData(
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: 1,
-                      getDrawingHorizontalLine: (_) => const FlLine(
-                        color: ThemeColors.primary,
-                        strokeWidth: 0.5,
-                      ),
-                    ),
-                    borderData: FlBorderData(
-                      show: true,
-                      border: Border.all(color: ThemeColors.border),
-                    ),
-                    titlesData: FlTitlesData(
-                      show: true,
-                      rightTitles: const AxisTitles(),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          reservedSize: 30,
-                          showTitles: true,
-                          interval: (entries.length / 5).ceilToDouble().clamp(
-                            1,
-                            9999,
-                          ),
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
-                            if (index >= entries.length) {
-                              return const SizedBox();
-                            }
-                            final date = entries[index].date;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                DateFormat('dd.MM').format(date),
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          reservedSize: 30,
-                          showTitles: true,
-                          interval: 1,
-                          getTitlesWidget: (value, meta) {
-                            final v = value.toInt();
-                            // Only show integers in the 1-4 range (mood values)
-                            if (v < 1 || v > 4) return const SizedBox();
-                            return Text(
-                              '$v',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    minY: 1,
-                    maxY: 4,
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: spots,
-                        isCurved: true,
-                        barWidth: 3,
-                        gradient: LinearGradient(
-                          colors: ThemeColors.gradientColors,
-                        ),
-                        dotData: FlDotData(show: true),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          gradient: LinearGradient(
-                            colors: ThemeColors.gradientColors
-                                .map((c) => c.withValues(alpha: 0.3))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              child: _MoodFrequencyChart(entries: entries),
             ),
 
           const SizedBox(height: 8),
@@ -454,6 +357,166 @@ class _MoodEntryCard extends StatelessWidget {
           icon: const Icon(Icons.delete_outline, size: 20),
           color: ThemeColors.dangerZone.withAlpha(180),
           onPressed: onDelete,
+        ),
+      ),
+    );
+  }
+}
+
+/// Гистограмма частоты видов настроения за выбранный период.
+/// По оси X — типы настроения (от «Болеет» к «Счастлив»), по Y — число записей.
+class _MoodFrequencyChart extends StatelessWidget {
+  final List<MoodEntry> entries;
+
+  const _MoodFrequencyChart({required this.entries});
+
+  /// Порядок столбцов: от худшего настроения к лучшему.
+  static const _order = [
+    PetMood.sick,
+    PetMood.calm,
+    PetMood.playful,
+    PetMood.happy,
+  ];
+
+  static Color _colorFor(PetMood mood) {
+    switch (mood) {
+      case PetMood.sick:
+        return const Color(0xFFEF5350);
+      case PetMood.calm:
+        return const Color(0xFFFFC107);
+      case PetMood.playful:
+        return const Color(0xFF42A5F5);
+      case PetMood.happy:
+        return const Color(0xFF66BB6A);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Считаем частоту каждого настроения.
+    final counts = {for (final m in _order) m: 0};
+    for (final e in entries) {
+      counts[e.mood] = (counts[e.mood] ?? 0) + 1;
+    }
+    final maxCount = counts.values.fold<int>(0, (a, b) => a > b ? a : b);
+    // Округляем верх до удобного значения, чтобы подписи оси были целыми.
+    final maxY = (maxCount + 1).toDouble();
+
+    return SizedBox(
+      height: 200,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxY,
+          minY: 0,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 1,
+            getDrawingHorizontalLine: (_) =>
+                const FlLine(color: ThemeColors.primary, strokeWidth: 0.5),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: ThemeColors.border),
+          ),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              fitInsideHorizontally: true,
+              fitInsideVertically: true,
+              tooltipBorderRadius: BorderRadius.circular(12),
+              tooltipPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              tooltipMargin: 12,
+              tooltipBorder: const BorderSide(
+                color: ThemeColors.primary,
+                width: 1,
+              ),
+              getTooltipColor: (_) => ThemeColors.white,
+              getTooltipItem: (group, _, rod, _) {
+                final mood = _order[group.x];
+                return BarTooltipItem(
+                  '${rod.toY.toInt()}',
+                  Theme.of(context).textTheme.titleSmall!.copyWith(
+                    color: ThemeColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '\n${mood.label}',
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                        color: ThemeColors.secondary,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: const AxisTitles(),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 34,
+                getTitlesWidget: (value, meta) {
+                  final i = value.toInt();
+                  if (i < 0 || i >= _order.length) return const SizedBox();
+                  final mood = _order[i];
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Icon(
+                      mood.icon,
+                      size: 20,
+                      color: _colorFor(mood),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  if (value != value.roundToDouble()) return const SizedBox();
+                  return Text(
+                    '${value.toInt()}',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  );
+                },
+              ),
+            ),
+          ),
+          barGroups: [
+            for (var i = 0; i < _order.length; i++)
+              BarChartGroupData(
+                x: i,
+                barRods: [
+                  BarChartRodData(
+                    toY: counts[_order[i]]!.toDouble(),
+                    width: 26,
+                    color: _colorFor(_order[i]),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(6),
+                    ),
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      toY: maxY,
+                      color: _colorFor(_order[i]).withAlpha(20),
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
