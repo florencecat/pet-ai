@@ -60,9 +60,6 @@ class _FoodSheetState extends State<FoodSheet> {
         if (fresh != null && mounted) {
           setState(() {
             _history = fresh.foodHistory;
-            _date = DateTime.now();
-            _appetiteScore = 3;
-            _grams = 100;
           });
         }
       }
