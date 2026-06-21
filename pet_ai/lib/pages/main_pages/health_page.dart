@@ -282,7 +282,10 @@ class HealthPageState extends State<HealthPage> {
     if (mounted) await _initScreen();
   }
 
-  void _openRecommendations(BuildContext context, List<HealthBadge> badges) async {
+  void _openRecommendations(
+    BuildContext context,
+    List<HealthBadge> badges,
+  ) async {
     final visible = badges
         .where((b) => b.id == null || !_dismissedBadgeIds.contains(b.id))
         .toList();
@@ -550,7 +553,9 @@ class HealthPageState extends State<HealthPage> {
                   ),
                   _HealthActionButton(
                     callback: () => _openMoodHistory(context),
-                    icon: Icons.sentiment_very_satisfied_outlined,
+                    icon: _profile!.moodHistory.lastEntry != null
+                        ? _profile!.moodHistory.lastEntry!.mood.icon
+                        : Icons.sentiment_very_satisfied_outlined,
                     iconColor: ThemeColors.moodIconColor,
                     caption: _moodStatus,
                     bottomWidget:
@@ -592,19 +597,20 @@ class HealthPageState extends State<HealthPage> {
                   PopupMenuButton<HistoryPeriod>(
                     initialValue: _chartPeriod,
                     onSelected: (p) => setState(() => _chartPeriod = p),
-                    itemBuilder: (_) => [
-                      HistoryPeriod.month,
-                      HistoryPeriod.halfYear,
-                      HistoryPeriod.year,
-                      HistoryPeriod.all,
-                    ]
-                        .map(
-                          (p) => PopupMenuItem(
-                            value: p,
-                            child: Text(_periodLabel(p)),
-                          ),
-                        )
-                        .toList(),
+                    itemBuilder: (_) =>
+                        [
+                              HistoryPeriod.month,
+                              HistoryPeriod.halfYear,
+                              HistoryPeriod.year,
+                              HistoryPeriod.all,
+                            ]
+                            .map(
+                              (p) => PopupMenuItem(
+                                value: p,
+                                child: Text(_periodLabel(p)),
+                              ),
+                            )
+                            .toList(),
                     borderRadius: BorderRadius.circular(8),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -650,24 +656,26 @@ class HealthPageState extends State<HealthPage> {
                 children: [
                   const SizedBox(height: 8),
                   GlassPlate(
-                    child: Padding(padding: EdgeInsetsGeometry.all(6), child: Column(
-                      children: [
-                        WeightChart(entries: weightEntries, height: 180),
-                        if (_profile != null &&
-                            _profile!.weightHistory.entries.length >= 3)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 4,
-                              horizontal: 8,
+                    child: Padding(
+                      padding: EdgeInsetsGeometry.all(6),
+                      child: Column(
+                        children: [
+                          WeightChart(entries: weightEntries, height: 180),
+                          if (_profile != null &&
+                              _profile!.weightHistory.entries.length >= 3)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 8,
+                              ),
+                              child: _WeightSummaryRow(
+                                history: _profile!.weightHistory,
+                              ),
                             ),
-                            child: _WeightSummaryRow(
-                              history: _profile!.weightHistory,
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  )
                 ],
               ),
             ),
@@ -876,8 +884,7 @@ class HealthPageState extends State<HealthPage> {
                             children: activeReminders
                                 .map(
                                   (r) => Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.only(bottom: 8),
                                     child: _PillReminderTile(
                                       reminder: r,
                                       petId: _profile!.id,
@@ -1426,7 +1433,13 @@ class _PillReminderTileState extends State<_PillReminderTile> {
 
     // None taken — check whether all scheduled times have already passed.
     final allPassed = widget.reminder.schedules.every((s) {
-      final scheduled = DateTime(now.year, now.month, now.day, s.hour, s.minute);
+      final scheduled = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        s.hour,
+        s.minute,
+      );
       return now.isAfter(scheduled);
     });
 
@@ -1462,7 +1475,9 @@ class _PillReminderTileState extends State<_PillReminderTile> {
             children: [
               SoftRoundedIcon(
                 icon: widget.reminder.kind?.icon ?? Icons.medication_outlined,
-                color: widget.reminder.color != null ? Color(widget.reminder.color!) : accent,
+                color: widget.reminder.color != null
+                    ? Color(widget.reminder.color!)
+                    : accent,
                 size: 22,
               ),
               const SizedBox(width: 12),
@@ -1559,9 +1574,9 @@ class _HealthCelebrationOverlay extends StatefulWidget {
 class _CelebrationParticle {
   final double startX; // 0..1 fraction of width
   final double driftX; // horizontal drift, in pixels
-  final double rise;   // upward travel, in pixels
+  final double rise; // upward travel, in pixels
   final double size;
-  final double delay;  // 0..1 of total duration
+  final double delay; // 0..1 of total duration
   final IconData icon;
   final double rotation;
 
@@ -1603,12 +1618,13 @@ class _HealthCelebrationOverlayState extends State<_HealthCelebrationOverlay>
         rotation: (rng.nextDouble() - 0.5) * 1.2,
       );
     });
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..addStatusListener((status) {
-        if (status == AnimationStatus.completed) widget.onDone();
-      });
+    _ctrl =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 1800),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) widget.onDone();
+        });
     _ctrl.forward();
   }
 
@@ -1647,8 +1663,10 @@ class _HealthCelebrationOverlayState extends State<_HealthCelebrationOverlay>
                 ),
               ),
               ..._particles.map((p) {
-                final localT = ((_ctrl.value - p.delay) / (1 - p.delay))
-                    .clamp(0.0, 1.0);
+                final localT = ((_ctrl.value - p.delay) / (1 - p.delay)).clamp(
+                  0.0,
+                  1.0,
+                );
                 final eased = Curves.easeOut.transform(localT);
                 final x = size.width * p.startX + p.driftX * eased;
                 final y = startY - p.rise * eased;
@@ -1665,11 +1683,7 @@ class _HealthCelebrationOverlayState extends State<_HealthCelebrationOverlay>
                       angle: p.rotation * eased,
                       child: Transform.scale(
                         scale: scale.clamp(0.0, 1.2),
-                        child: Icon(
-                          p.icon,
-                          color: widget.color,
-                          size: p.size,
-                        ),
+                        child: Icon(p.icon, color: widget.color, size: p.size),
                       ),
                     ),
                   ),
@@ -1682,17 +1696,23 @@ class _HealthCelebrationOverlayState extends State<_HealthCelebrationOverlay>
                 top: size.height * 0.4,
                 child: Center(
                   child: Opacity(
-                    opacity: (_ctrl.value < 0.7
-                            ? (_ctrl.value / 0.2).clamp(0.0, 1.0)
-                            : (1 - (_ctrl.value - 0.7) / 0.3))
-                        .clamp(0.0, 1.0),
+                    opacity:
+                        (_ctrl.value < 0.7
+                                ? (_ctrl.value / 0.2).clamp(0.0, 1.0)
+                                : (1 - (_ctrl.value - 0.7) / 0.3))
+                            .clamp(0.0, 1.0),
                     child: Transform.scale(
-                      scale: 0.7 + Curves.easeOutBack
-                              .transform(_ctrl.value.clamp(0.0, 1.0)) *
-                          0.4,
+                      scale:
+                          0.7 +
+                          Curves.easeOutBack.transform(
+                                _ctrl.value.clamp(0.0, 1.0),
+                              ) *
+                              0.4,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 10),
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: widget.color.withAlpha(40),
                           borderRadius: BorderRadius.circular(100),
@@ -1704,8 +1724,7 @@ class _HealthCelebrationOverlayState extends State<_HealthCelebrationOverlay>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.favorite,
-                                color: widget.color, size: 22),
+                            Icon(Icons.favorite, color: widget.color, size: 22),
                             const SizedBox(width: 8),
                             Text(
                               'Всё в порядке',
