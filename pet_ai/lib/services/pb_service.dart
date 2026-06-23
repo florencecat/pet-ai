@@ -1,6 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 abstract interface class PbEntity {
   Map<String, dynamic> toPocketBase(String petId);
@@ -29,10 +28,6 @@ class PocketBaseService {
     return _pb;
   }
 
-  /// Loads the persisted auth token from SharedPreferences and instantiates the
-  /// PocketBase client. Must be awaited once at startup before any other
-  /// service reads [pb]; otherwise a still-logged-in user appears anonymous and
-  /// the backend rejects requests with 401 ("Сессия истекла").
   Future<void> init() async {
     if (_initialized) return;
     final initial = await FlutterSecureStorage().read(key: 'pb_auth');
