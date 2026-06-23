@@ -127,11 +127,11 @@ class _SettingsPageState extends State<SettingsPage> {
     await launchUrl(Uri.parse(GetIt.instance<ApiService>().termsUrl));
   }
 
-  Future<void> _deleteUserProfile() async {
+  Future<void> _logout() async {
     final confirmed = await confirmDelete(
       context,
-      title: 'Удалить профиль?',
-      message: 'Данные вашего аккаунта будут удалены с устройства.',
+      title: 'Выйти из аккаунта?',
+      message: 'Сессия на этом устройстве будет завершена и вам придется войти заново.',
     );
     if (confirmed) {
       await UserService().delete();
@@ -362,7 +362,7 @@ class _SettingsPageState extends State<SettingsPage> {
             user: _user,
             primaryColor: ac.primaryColor,
             onTap: _openUserProfile,
-            onDelete: _user != null ? _deleteUserProfile : null,
+            onDelete: _user != null ? _logout : null,
           ),
           const SizedBox(height: 24),
 
@@ -615,7 +615,7 @@ class _SettingsPageState extends State<SettingsPage> {
               SettingsRow(
                 icon: Icons.logout,
                 label: 'Выйти из аккаунта',
-                onTap: _user != null ? _deleteUserProfile : null,
+                onTap: _user != null ? _logout : null,
                 iconColor: _user != null
                     ? ThemeColors.dangerZone
                     : ThemeColors.border,
