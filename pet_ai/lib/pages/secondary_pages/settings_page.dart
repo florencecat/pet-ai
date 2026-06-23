@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/secondary_pages/appearance_page.dart';
 import 'package:pet_satellite/pages/secondary_pages/notifications_page.dart';
@@ -43,6 +44,10 @@ class _SettingsPageState extends State<SettingsPage> {
   // Автосоздание предложенных ИИ событий (без подтверждения).
   bool _autoCreateEntities = false;
 
+  // Имя и версия приложения для футера — читаются из package_info, чтобы
+  // совпадать с релизной сборкой и не требовать ручного обновления.
+  String _appVersion = '';
+
   late final CloudSyncService _sync;
   late final CrashReportingService _crash;
 
@@ -70,6 +75,15 @@ class _SettingsPageState extends State<SettingsPage> {
     final user = await UserService().load();
     final confirmDeleteEnabled = await isDeleteConfirmationEnabled();
     final autoCreateEntities = await isAutoCreateEntitiesEnabled();
+
+    String? appVersion;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      appVersion = info.version;
+    } catch (_) {
+      // package_info может быть недоступен — оставляем значения по умолчанию.
+    }
+
     if (mounted) {
       setState(() {
         _profiles = profiles;
@@ -77,6 +91,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _user = user;
         _confirmDeleteEnabled = confirmDeleteEnabled;
         _autoCreateEntities = autoCreateEntities;
+        if (appVersion != null) _appVersion = appVersion;
       });
     }
   }
@@ -671,7 +686,9 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Version footer ────────────────────────────────────────────────
           Center(
             child: Text(
-              'pet_ai · v 0.3.4 · сделано с 🐾',
+              _appVersion.isEmpty
+                  ? 'PetСпутник'
+                  : 'PetСпутник [ $_appVersion ]',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: Colors.grey.shade500,
               ),
