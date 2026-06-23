@@ -47,6 +47,8 @@ void main() async {
     ApiService(
       apiUrl: 'https://api.pet-sputnik.ru',
       aiUrl: 'https://ai.pet-sputnik.ru',
+      privacyUrl: 'https://pet-sputnik.ru',
+      termsUrl: 'https://pet-sputnik.ru',
     ),
   );
   // PocketBase loads its auth token from SharedPreferences asynchronously.

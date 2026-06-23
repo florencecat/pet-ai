@@ -10,6 +10,7 @@ import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/pages/secondary_pages/user_profile_page.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
+import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/crash_reporting_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -25,6 +26,7 @@ import 'package:pet_satellite/theme/widgets/settings_widgets.dart';
 import 'package:provider/provider.dart';
 import '../../services/pet_profile_service.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -115,6 +117,14 @@ class _SettingsPageState extends State<SettingsPage> {
       );
       _loadAll();
     }
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    await launchUrl(Uri.parse(GetIt.instance<ApiService>().privacyUrl));
+  }
+
+  Future<void> _openTermsOfUse() async {
+    await launchUrl(Uri.parse(GetIt.instance<ApiService>().termsUrl));
   }
 
   Future<void> _deleteUserProfile() async {
@@ -588,9 +598,16 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               SettingsCardDivider(),
               SettingsRow(
+                icon: Icons.newspaper_rounded,
+                label: 'Пользовательское соглашение',
+                onTap: _openTermsOfUse,
+                iconColor: ac.primaryColor,
+                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
+              ),
+              SettingsRow(
                 icon: Icons.shield_outlined,
-                label: 'Условия и конфиденциальность',
-                onTap: null, // stub
+                label: 'Политика конфиденциальности',
+                onTap: _openPrivacyPolicy,
                 iconColor: ac.primaryColor,
                 trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
               ),
