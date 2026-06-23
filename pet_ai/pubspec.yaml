@@ -58,6 +58,7 @@ dependencies:
   pocketbase: ^0.24.0
   get_it: ^9.2.1
   url_launcher: ^6.3.2
+  flutter_secure_storage: ^10.3.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -34,10 +35,12 @@ class PocketBaseService {
   /// the backend rejects requests with 401 ("Сессия истекла").
   Future<void> init() async {
     if (_initialized) return;
-    final initial = await SharedPreferencesAsync().getString('pb_auth');
+    final initial = await FlutterSecureStorage().read(key: 'pb_auth');
     final store = AsyncAuthStore(
-      save: (String data) async =>
-          SharedPreferencesAsync().setString('pb_auth', data),
+      save: (String data) async => FlutterSecureStorage().write(
+          key: 'pb_auth',
+          value: data
+      ),
       initial: initial,
     );
     _pb = PocketBase(_baseUri.toString(), authStore: store);
