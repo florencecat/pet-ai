@@ -8,6 +8,7 @@ import 'package:pet_satellite/models/ai_api_dto.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/suggested_event.dart';
 import 'package:pet_satellite/services/authentification_service.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'dart:convert';
 import 'package:pet_satellite/services/http_client.dart';
@@ -39,12 +40,18 @@ class ChatMessage extends HiveObject {
   @HiveField(3)
   String? eventsJson;
 
+  /// id записи в коллекции `chats` PocketBase (для апсерта/дедупликации при
+  /// синхронизации). null, пока сообщение не выгружено в облако.
+  @HiveField(5)
+  String? remoteId;
+
   ChatMessage({
     required this.role,
     required this.content,
     required this.timestamp,
     this.eventsJson,
     this.completed = false,
+    this.remoteId,
   });
 
   /// Декодированный список предложенных событий (пустой, если их нет).
@@ -310,6 +317,16 @@ class AIChatController extends ChangeNotifier {
     archived.remove(boxName);
     await prefs.setStringList(_archivedBoxesKey, archived);
 
+    // Удаляем сообщения треда из облака.
+    try {
+      final box = await Hive.openBox<ChatMessage>(boxName);
+      for (final m in box.values) {
+        if (m.remoteId != null) {
+          CloudSyncService.instance.deleteChat(m.remoteId!);
+        }
+      }
+    } catch (_) {}
+
     try {
       await Hive.deleteBoxFromDisk(boxName);
     } catch (_) {}
@@ -337,6 +354,8 @@ class AIChatController extends ChangeNotifier {
       } catch (_) {}
     }
     await prefs.remove(_archivedBoxesKey);
+    // Чистим всю историю чата и в облаке.
+    await CloudSyncService.instance.deleteAllChats();
 
     _currentBoxName = _defaultBoxName;
     await prefs.setString(_currentBoxKey, _currentBoxName);
@@ -388,6 +407,7 @@ class AIChatController extends ChangeNotifier {
     );
     msg.attachedEvents = list;
     await msg.save();
+    _pushMessage(msg);
     notifyListeners();
   }
 
@@ -401,6 +421,7 @@ class AIChatController extends ChangeNotifier {
     list[index] = s.copyWith(status: SuggestedEventStatus.cancelled);
     msg.attachedEvents = list;
     await msg.save();
+    _pushMessage(msg);
     notifyListeners();
   }
 
@@ -413,6 +434,29 @@ class AIChatController extends ChangeNotifier {
       if (e.id == id) return e;
     }
     return null;
+  }
+
+  /// Fire-and-forget upsert сообщения [msg] текущего треда в облако.
+  /// Полученный remoteId сохраняется обратно в сообщение для последующих правок.
+  void _pushMessage(ChatMessage msg) {
+    CloudSyncService.instance
+        .pushChat(
+          remoteId: msg.remoteId,
+          thread: _currentBoxName,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          completed: msg.completed,
+          eventsJson: msg.eventsJson,
+        )
+        .then((id) async {
+          if (id != null && id != msg.remoteId) {
+            msg.remoteId = id;
+            try {
+              await msg.save();
+            } catch (_) {}
+          }
+        });
   }
 
   Stream<String> fakeStream(String fullText) async* {
@@ -439,6 +483,7 @@ class AIChatController extends ChangeNotifier {
       timestamp: DateTime.now(),
     );
     await _repo!.add(userMsg);
+    _pushMessage(userMsg);
 
     isLoading = true;
     notifyListeners();
@@ -521,6 +566,7 @@ class AIChatController extends ChangeNotifier {
       }
       botMsg.completed = true;
       await botMsg.save();
+      _pushMessage(botMsg);
       notifyListeners();
     } catch (e) {
       // Любая ошибка (сеть, таймаут, сервер, GigaChat, парсинг) — не зависаем.
@@ -602,5 +648,61 @@ class AIChatController extends ChangeNotifier {
     }
     await prefs.remove(_archivedBoxesKey);
     await prefs.setString(_currentBoxKey, _defaultBoxName);
+    await CloudSyncService.instance.deleteAllChats();
+  }
+
+  /// Восстанавливает всю историю чата из облака (новое устройство).
+  /// Группирует сообщения по тредам, пересоздаёт Hive-боксы и выставляет
+  /// активным самый свежий тред. Безопасно вызывать повторно.
+  static Future<void> restoreThreadsFromCloud() async {
+    final records = await CloudSyncService.instance.fetchChats();
+    if (records.isEmpty) return;
+
+    final byThread = <String, List<dynamic>>{};
+    for (final r in records) {
+      final thread = r.data['thread'] as String? ?? _defaultBoxName;
+      byThread.putIfAbsent(thread, () => []).add(r);
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final threadNames = <String>[];
+    DateTime? latestTime;
+    String? latestThread;
+
+    for (final entry in byThread.entries) {
+      final box = await Hive.openBox<ChatMessage>(entry.key);
+      await box.clear();
+      for (final r in entry.value) {
+        final eventsJson = r.data['events_json'] as String?;
+        await box.add(
+          ChatMessage(
+            role: r.data['role'] as String? ?? 'user',
+            content: r.data['content'] as String? ?? '',
+            timestamp:
+                DateTime.tryParse(r.data['timestamp'] as String? ?? '') ??
+                    DateTime.now(),
+            completed: r.data['completed'] as bool? ?? false,
+            eventsJson: (eventsJson == null || eventsJson.isEmpty)
+                ? null
+                : eventsJson,
+            remoteId: r.id as String?,
+          ),
+        );
+      }
+      threadNames.add(entry.key);
+      final lastTs = box.values.isNotEmpty ? box.values.last.timestamp : null;
+      if (lastTs != null &&
+          (latestTime == null || lastTs.isAfter(latestTime))) {
+        latestTime = lastTs;
+        latestThread = entry.key;
+      }
+    }
+
+    final current = latestThread ?? _defaultBoxName;
+    await prefs.setString(_currentBoxKey, current);
+    await prefs.setStringList(
+      _archivedBoxesKey,
+      threadNames.where((t) => t != current).toList(),
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── Категории документов ────────────────────────────────────────────────────
@@ -94,6 +95,10 @@ class PetDocument {
   String fileName;
   final DateTime addedAt;
 
+  /// id записи в коллекции `files` PocketBase (для удаления/дедупликации).
+  /// null, пока документ не выгружен в облако.
+  String? remoteId;
+
   PetDocument({
     required this.id,
     required this.name,
@@ -101,6 +106,7 @@ class PetDocument {
     required this.filePath,
     required this.fileName,
     this.category,
+    this.remoteId,
     DateTime? addedAt,
   }) : addedAt = addedAt ?? DateTime.now();
 
@@ -129,6 +135,7 @@ class PetDocument {
     'filePath': filePath,
     'fileName': fileName,
     'addedAt': addedAt.toIso8601String(),
+    if (remoteId != null) 'remoteId': remoteId,
   };
 
   factory PetDocument.fromJson(Map<String, dynamic> json) => PetDocument(
@@ -140,6 +147,7 @@ class PetDocument {
     category: json['category'] != null
         ? DocumentCategories.byId(json['category'] as String)
         : null,
+    remoteId: json['remoteId'] as String?,
     addedAt: json['addedAt'] != null
         ? DateTime.parse(json['addedAt'] as String)
         : DateTime.now(),
@@ -207,7 +215,20 @@ class FileStorageService {
     final docs = await loadDocuments(petId);
     docs.add(doc);
     await _persist(petId, docs);
+
+    // Fire-and-forget cloud upload — сохраняем полученный remoteId.
+    final remoteId = await CloudSyncService.instance.pushDocument(doc, petId);
+    if (remoteId != null) {
+      doc.remoteId = remoteId;
+      await _persist(petId, docs);
+    }
     return doc;
+  }
+
+  /// Импортирует документы [docs] для [petId] из облака (файлы уже скачаны).
+  /// Замещает локальный список без обратного пуша.
+  Future<void> importDocuments(String petId, List<PetDocument> docs) async {
+    await _persist(petId, docs);
   }
 
   Future<void> deleteDocument(String petId, PetDocument doc) async {
@@ -220,6 +241,39 @@ class FileStorageService {
     final docs = await loadDocuments(petId);
     docs.removeWhere((d) => d.id == doc.id);
     await _persist(petId, docs);
+
+    // Fire-and-forget remote delete.
+    if (doc.remoteId != null) {
+      CloudSyncService.instance.deleteAsync('files', doc.remoteId!);
+    }
+  }
+
+  /// Сохраняет скачанный из облака файл в каталог приложения и возвращает
+  /// готовый [PetDocument] (без записи в список — это делает [importDocuments]).
+  Future<PetDocument> buildDocumentFromRemote({
+    required String petId,
+    required String remoteId,
+    required String name,
+    required DateTime date,
+    required String fileName,
+    required List<int> bytes,
+    DocumentCategory? category,
+  }) async {
+    final docId = DateTime.now().microsecondsSinceEpoch.toString();
+    final dir = await getApplicationDocumentsDirectory();
+    final ext = p.extension(fileName);
+    final sanitizedPetId = petId.replaceAll(RegExp(r'[^\w]'), '_');
+    final destPath = '${dir.path}/doc_${sanitizedPetId}_$docId$ext';
+    await File(destPath).writeAsBytes(bytes);
+    return PetDocument(
+      id: docId,
+      name: name,
+      date: date,
+      filePath: destPath,
+      fileName: fileName,
+      category: category,
+      remoteId: remoteId,
+    );
   }
 
   Future<void> clearAll(String petId) async {

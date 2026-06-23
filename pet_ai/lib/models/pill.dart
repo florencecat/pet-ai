@@ -441,9 +441,14 @@ class Pill implements PbEntity {
     "pet": ownerId,
     "dose": dose,
     "frequency": frequencyType.name,
-    "weekdays": weekdays.map((w) => w.toString()).join(', '),
+    // weekdays в схеме — multi-select со строковыми значениями "1".."7".
+    "weekdays": weekdays.map((w) => w.toString()).toList(),
     "start": startDate.toIso8601String(),
     "end": endDate?.toIso8601String(),
+    // Времена приёма и история отметок (json-поля).
+    "schedules": schedules.map((s) => s.toJson()).toList(),
+    "taken_schedules": takenSchedules,
+    "taken_dates": takenDates,
   };
 }
 
@@ -452,14 +457,34 @@ class _PillReminderCodec extends PbCodec<Pill> {
 
   @override
   Pill fromPocketBase(Map<String, dynamic> data) {
-    final weekdayStr = data['weekdays'] as String? ?? '';
-    final weekdays = weekdayStr.isEmpty
-        ? <int>[]
-        : weekdayStr
-              .split(',')
-              .map((s) => int.tryParse(s.trim()))
-              .whereType<int>()
-              .toList();
+    // weekdays приходит как List<String> ("1".."7"). На всякий случай
+    // поддерживаем и старый формат — строку "1, 2, 3".
+    final rawWeekdays = data['weekdays'];
+    final List<int> weekdays;
+    if (rawWeekdays is List) {
+      weekdays = rawWeekdays
+          .map((s) => int.tryParse(s.toString().trim()))
+          .whereType<int>()
+          .toList();
+    } else if (rawWeekdays is String && rawWeekdays.isNotEmpty) {
+      weekdays = rawWeekdays
+          .split(',')
+          .map((s) => int.tryParse(s.trim()))
+          .whereType<int>()
+          .toList();
+    } else {
+      weekdays = <int>[];
+    }
+
+    // Времена приёма: json-список {hour, minute}. Если пусто — дефолт 09:00.
+    final rawSchedules = data['schedules'];
+    final schedules = (rawSchedules is List && rawSchedules.isNotEmpty)
+        ? rawSchedules
+              .map((s) => PillSchedule.fromJson(
+                    (s as Map).map((k, v) => MapEntry(k.toString(), v)),
+                  ))
+              .toList()
+        : const [PillSchedule(hour: 9, minute: 0)];
 
     return Pill(
       id: data['id'] as String,
@@ -474,13 +499,14 @@ class _PillReminderCodec extends PbCodec<Pill> {
         orElse: () => PillFrequencyType.daily,
       ),
       weekdays: weekdays,
-      // schedules не хранятся в PocketBase — восстанавливаем дефолтное
-      schedules: const [PillSchedule(hour: 9, minute: 0)],
+      schedules: schedules,
       startDate: DateTime.parse(data['start'] as String),
-      endDate: data['end'] != null
+      endDate: data['end'] != null && (data['end'] as String).isNotEmpty
           ? DateTime.tryParse(data['end'] as String)
           : null,
-      takenDates: const [],
+      takenDates:
+          (data['taken_dates'] as List<dynamic>?)?.cast<String>() ?? const [],
+      takenSchedules: Pill._parseTakenSchedules(data['taken_schedules']),
     );
   }
 }

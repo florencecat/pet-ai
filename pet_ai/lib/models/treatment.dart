@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 
 /// Тип медицинского мероприятия
 enum TreatmentKind {
@@ -82,6 +83,8 @@ class TreatmentEntry implements BaseEntry {
   static const codec = _TreatmentEntryCodec();
 
   @override
+  final String id;
+  @override
   final DateTime date;
   final TreatmentKind kind;
   /// Имя для kind=vaccine; для остальных — пусто/служебное.
@@ -98,6 +101,7 @@ class TreatmentEntry implements BaseEntry {
   final int? color;
 
   TreatmentEntry({
+    String? id,
     required this.date,
     required this.kind,
     required this.nextDate,
@@ -105,7 +109,7 @@ class TreatmentEntry implements BaseEntry {
     this.remindBeforeDays = 7,
     this.eventId,
     this.color,
-  });
+  }) : id = id ?? generateId();
 
   String get displayName {
     if (kind == TreatmentKind.vaccine && name.isNotEmpty) {
@@ -119,6 +123,7 @@ class TreatmentEntry implements BaseEntry {
 
   factory TreatmentEntry.fromJson(Map<String, dynamic> json) {
     return TreatmentEntry(
+      id: json['id'] as String?,
       date: DateTime.parse(json['date'] as String),
       kind: TreatmentKind.values.firstWhere(
         (k) => k.name == json['kind'],
@@ -134,6 +139,7 @@ class TreatmentEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toJson() => {
+    'id': id,
     'date': date.toIso8601String(),
     'kind': kind.name,
     'name': name,
@@ -145,6 +151,7 @@ class TreatmentEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toPocketBase(String ownerId) => {
+    'id': id,
     'pet': ownerId,
     'date': date.toIso8601String(),
     'kind': kind.name,
@@ -160,6 +167,7 @@ class _TreatmentEntryCodec extends PbCodec<TreatmentEntry> {
 
   @override
   TreatmentEntry fromPocketBase(Map<String, dynamic> data) => TreatmentEntry(
+    id: data['id'] as String?,
     date: DateTime.parse(data['date'] as String),
     kind: TreatmentKind.values.firstWhere(
       (k) => k.name == data['kind'],

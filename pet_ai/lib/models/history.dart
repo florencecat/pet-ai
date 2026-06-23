@@ -3,6 +3,10 @@ import 'package:pet_satellite/services/pb_service.dart';
 enum HistoryPeriod { day, month, halfYear, year, all }
 
 abstract class BaseEntry implements PbEntity {
+  /// Стабильный идентификатор записи (совпадает с record id в PocketBase).
+  /// Нужен для дедупликации пушей и синхронизации удалений.
+  String get id;
+
   DateTime get date;
 
   Map<String, dynamic> toJson();
@@ -20,6 +24,13 @@ class History<T extends BaseEntry> {
 
   void deleteEntry(DateTime date) {
     entries.removeWhere((e) => e.date == date);
+  }
+
+  /// Удаляет запись по [id]. Возвращает удалённую запись, либо null.
+  T? deleteById(String id) {
+    final idx = entries.indexWhere((e) => e.id == id);
+    if (idx < 0) return null;
+    return entries.removeAt(idx);
   }
 
   void clear() => entries.clear();

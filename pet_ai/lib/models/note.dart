@@ -5,6 +5,7 @@ import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 
 // ─── Предустановленные симптомы ──────────────────────────────────────────────
 
@@ -100,19 +101,27 @@ class NoteEntry implements BaseEntry {
   static const codec = _NoteEntryCodec();
 
   @override
+  final String id;
+  @override
   final DateTime date;
   final String note;
 
   /// Если заметка создана по предустановленному симптому — его id, иначе null.
   final String? symptomId;
 
-  NoteEntry({required this.date, required this.note, this.symptomId});
+  NoteEntry({
+    String? id,
+    required this.date,
+    required this.note,
+    this.symptomId,
+  }) : id = id ?? generateId();
 
   SymptomTag? get symptomTag =>
       symptomId != null ? SymptomTags.byId(symptomId!) : null;
 
   factory NoteEntry.fromJson(Map<String, dynamic> json) {
     return NoteEntry(
+      id: json['id'] as String?,
       date: DateTime.parse(json['date']),
       note: json['note'],
       symptomId: json['symptomId'] as String?,
@@ -121,6 +130,7 @@ class NoteEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toJson() => {
+    'id': id,
     'date': date.toIso8601String(),
     'note': note,
     if (symptomId != null) 'symptomId': symptomId,
@@ -128,6 +138,7 @@ class NoteEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toPocketBase(String ownerId) => {
+    'id': id,
     'pet': ownerId,
     'date': date.toIso8601String(),
     'note': note,
@@ -140,6 +151,7 @@ class _NoteEntryCodec extends PbCodec<NoteEntry> {
 
   @override
   NoteEntry fromPocketBase(Map<String, dynamic> data) => NoteEntry(
+    id: data['id'] as String?,
     date: DateTime.parse(data['date'] as String),
     note: data['note'] as String,
     symptomId: data['symptom'] as String?,

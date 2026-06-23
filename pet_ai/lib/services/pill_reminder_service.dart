@@ -69,6 +69,7 @@ class PillReminderService {
     if (idx < 0) return;
     profile.pillReminders[idx] = updated;
     await PetService().saveProfile(profile);
+    CloudSyncService.instance.pushAsync('pills', updated, petId);
 
     // Синхронизируем дату окончания повтора и стиль (вид/цвет) события.
     if (updated.eventId != null) {
@@ -88,6 +89,7 @@ class PillReminderService {
 
     profile.pillReminders.removeWhere((r) => r.id == reminder.id);
     await PetService().saveProfile(profile);
+    CloudSyncService.instance.deleteAsync('pills', reminder.id);
 
     if (reminder.eventId != null) {
       final all = await EventService().loadEvents(petId);
@@ -221,6 +223,11 @@ class PillReminderService {
       takenSchedules: newTakenSchedules,
     );
     await PetService().saveProfile(profile);
+    CloudSyncService.instance.pushAsync(
+      'pills',
+      profile.pillReminders[idx],
+      petId,
+    );
 
     // Синхронизируем связанное событие в календаре
     if (old.eventId != null) {
@@ -277,6 +284,11 @@ class PillReminderService {
       takenSchedules: newTakenSchedules,
     );
     await PetService().saveProfile(profile);
+    CloudSyncService.instance.pushAsync(
+      'pills',
+      profile.pillReminders[idx],
+      petId,
+    );
 
     // Sync linked calendar event: complete when all schedules are taken.
     if (old.eventId != null) {

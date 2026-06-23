@@ -1,17 +1,22 @@
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 
 class WeightEntry implements BaseEntry {
   static const codec = _WeightEntryCodec();
 
   @override
+  final String id;
+  @override
   final DateTime date;
   final double weight;
 
-  WeightEntry({required this.date, required this.weight});
+  WeightEntry({String? id, required this.date, required this.weight})
+    : id = id ?? generateId();
 
   factory WeightEntry.fromJson(Map<String, dynamic> json) {
     return WeightEntry(
+      id: json['id'] as String?,
       date: DateTime.parse(json['date']),
       weight: (json['weight'] as num).toDouble(),
     );
@@ -19,11 +24,12 @@ class WeightEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toJson() {
-    return {'date': date.toIso8601String(), 'weight': weight};
+    return {'id': id, 'date': date.toIso8601String(), 'weight': weight};
   }
 
   @override
   Map<String, dynamic> toPocketBase(String ownerId) => {
+    'id': id,
     'pet': ownerId,
     'date': date.toIso8601String(),
     'weight': weight,
@@ -35,6 +41,7 @@ class _WeightEntryCodec extends PbCodec<WeightEntry> {
 
   @override
   WeightEntry fromPocketBase(Map<String, dynamic> data) => WeightEntry(
+    id: data['id'] as String?,
     date: DateTime.parse(data['date'] as String),
     weight: (data['weight'] as num).toDouble(),
   );
@@ -45,7 +52,8 @@ class WeightHistory extends History<WeightEntry> {
   WeightHistory.empty() : super.empty();
 
   /// Добавляет или заменяет запись веса за сегодня (макс. одна в день).
-  void addWeight(double weight) {
+  /// Возвращает фактически сохранённую запись (для пуша в облако).
+  WeightEntry addWeight(double weight) {
     final now = DateTime.now();
     final todayIdx = entries.indexWhere(
       (e) =>
@@ -55,6 +63,9 @@ class WeightHistory extends History<WeightEntry> {
     );
 
     final entry = WeightEntry(
+      // Сохраняем id существующей записи за сегодня, чтобы апсерт в облаке
+      // обновлял ту же запись, а не плодил дубликаты.
+      id: todayIdx >= 0 ? entries[todayIdx].id : null,
       date: now,
       weight: double.parse(weight.toStringAsFixed(1)),
     );
@@ -64,6 +75,7 @@ class WeightHistory extends History<WeightEntry> {
     } else {
       add(entry);
     }
+    return entry;
   }
 
   /// Есть ли запись за сегодня.

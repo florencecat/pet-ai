@@ -170,6 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
       try {
         await _sync.pullAll();
+        await AIChatController.restoreThreadsFromCloud();
         await _loadAll();
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

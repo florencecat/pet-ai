@@ -249,59 +249,75 @@ class PetService {
   Future<void> updateWeightHistory(String petId, double weight) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      profile.weightHistory.addWeight(weight);
+      final entry = profile.weightHistory.addWeight(weight);
       await saveProfile(profile);
-      // Fire-and-forget cloud push for the latest weight entry.
-      final last = profile.weightHistory.entries.isNotEmpty
-          ? profile.weightHistory.entries.last
-          : null;
-      if (last != null) {
-        CloudSyncService.instance.pushAsync('weights', last, petId);
-      }
+      // Fire-and-forget cloud push (upsert by id — правка перезапишет запись).
+      CloudSyncService.instance.pushAsync('weights', entry, petId);
     }
   }
 
   Future<void> updateMoodHistory(String petId, MoodEntry entry) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      profile.moodHistory.addOrReplace(entry);
+      final saved = profile.moodHistory.addOrReplace(entry);
       await saveProfile(profile);
-      // Fire-and-forget cloud push.
-      CloudSyncService.instance.pushAsync('moods', entry, petId);
+      // Fire-and-forget cloud push (saved хранит стабильный id для апсерта).
+      CloudSyncService.instance.pushAsync('moods', saved, petId);
     }
   }
 
   Future<void> updateFoodHistory(String petId, MealEntry entry) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      profile.foodHistory.addOrReplace(entry);
+      final saved = profile.foodHistory.addOrReplace(entry);
       await saveProfile(profile);
       // Fire-and-forget cloud push.
-      CloudSyncService.instance.pushAsync('meals', entry, petId);
+      CloudSyncService.instance.pushAsync('meals', saved, petId);
     }
   }
 
   Future<void> deleteFoodEntry(String petId, DateTime date) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
+      final ids = profile.foodHistory.entries
+          .where((e) => e.date == date)
+          .map((e) => e.id)
+          .toList();
       profile.foodHistory.deleteEntry(date);
       await saveProfile(profile);
+      for (final id in ids) {
+        CloudSyncService.instance.deleteAsync('meals', id);
+      }
     }
   }
 
   Future<void> deleteWeightEntry(String petId, DateTime date) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
+      final ids = profile.weightHistory.entries
+          .where((e) => e.date == date)
+          .map((e) => e.id)
+          .toList();
       profile.weightHistory.deleteEntry(date);
       await saveProfile(profile);
+      for (final id in ids) {
+        CloudSyncService.instance.deleteAsync('weights', id);
+      }
     }
   }
 
   Future<void> deleteMoodEntry(String petId, DateTime date) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
+      final ids = profile.moodHistory.entries
+          .where((e) => e.date == date)
+          .map((e) => e.id)
+          .toList();
       profile.moodHistory.deleteEntry(date);
       await saveProfile(profile);
+      for (final id in ids) {
+        CloudSyncService.instance.deleteAsync('moods', id);
+      }
     }
   }
 
@@ -323,8 +339,15 @@ class PetService {
   Future<void> deleteNoteEntry(String petId, DateTime date) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
+      final ids = profile.noteHistory.entries
+          .where((e) => e.date == date)
+          .map((e) => e.id)
+          .toList();
       profile.noteHistory.deleteEntry(date);
       await saveProfile(profile);
+      for (final id in ids) {
+        CloudSyncService.instance.deleteAsync('notes', id);
+      }
     }
   }
 

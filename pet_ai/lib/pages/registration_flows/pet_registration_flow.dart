@@ -7,6 +7,7 @@ import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -175,6 +176,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     setState(() => _isFinishing = true);
     try {
       await sync.fullRestore();
+      await AIChatController.restoreThreadsFromCloud();
       if (mounted) Navigator.pushReplacementNamed(context, '/');
     } catch (_) {
       if (mounted) {
@@ -247,11 +249,11 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     await PetService().setActiveProfile(profile.id);
 
     // Push pet identity to cloud so it can be restored on a new device.
-    CloudSyncService.instance.pushAsync(
-      'pets',
-      profile,
-      profile.id,
-    );
+    // owner = id пользователя (createRule требует user = auth.id).
+    final uid = CloudSyncService.instance.userId;
+    if (uid != null) {
+      CloudSyncService.instance.pushAsync('pets', profile, uid);
+    }
 
     if (mounted) Navigator.pushReplacementNamed(context, '/');
   }

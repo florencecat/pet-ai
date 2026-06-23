@@ -538,13 +538,17 @@ class Event implements PbEntity {
     'datetime': dateTime.toIso8601String(),
     'pets': petIds,
     'repeat_interval': repeat.name,
-    if (customDays.isNotEmpty) 'repeat_days': customDays,
+    // repeat_days в схеме — multi-select со строковыми значениями "1".."7".
+    'repeat_days': customDays.map((d) => d.toString()).toList(),
     if (repeatEndDate != null) 'repeat_end': repeatEndDate!.toIso8601String(),
     'all_day': allDay,
-    'remindBeforeVariant': remindBeforeVariant.name,
-    'remind_before_minutes': remindBeforeValue,
+    'remind_before_variant': remindBeforeVariant.name,
+    'remind_before_value': remindBeforeValue,
     'remind': remind,
     'source': source.name,
+    if (sourceId != null) 'source_id': sourceId,
+    'completed_dates': completedDates.toList(),
+    if (symptomTag != null) 'symptom_tag': symptomTag,
     if (styleKindId != null) 'style_kind': styleKindId,
     'color': color,
   };
@@ -630,33 +634,48 @@ class _EventCodec extends PbCodec<Event> {
     name: data['name'] as String,
     category: EventCategories.byId(data['category'] as String),
     dateTime: DateTime.parse(data['datetime'] as String),
-    completedDates: const {},
+    completedDates:
+        (data['completed_dates'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toSet() ??
+        <String>{},
     petIds: (data['pets'] as List<dynamic>?)?.cast<String>() ?? [],
     repeat: RepeatInterval.values.firstWhere(
       (r) => r.name == (data['repeat_interval'] as String?),
       orElse: () => RepeatInterval.none,
     ),
+    // repeat_days приходит как List<String> ("1".."7").
     customDays:
-        (data['repeat_days'] as List<dynamic>?)?.cast<int>() ?? const [],
+        (data['repeat_days'] as List<dynamic>?)
+            ?.map((e) => int.tryParse(e.toString()))
+            .whereType<int>()
+            .toList() ??
+        const [],
     repeatEndDate: data['repeat_end'] != null &&
             (data['repeat_end'] as String).isNotEmpty
         ? DateTime.tryParse(data['repeat_end'] as String)
         : null,
     allDay: data['all_day'] as bool? ?? false,
     remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
-          (s) => s.name == (data['remindBeforeVariant'] as String?),
+          (s) => s.name == (data['remind_before_variant'] as String?),
       orElse: () => RemindBeforeVariant.days,
     ),
     remindBeforeValue:
-        (data['remind_before_minutes'] as num?)?.toInt() ?? 0,
+        (data['remind_before_value'] as num?)?.toInt() ?? 0,
     remind: data['remind'] as bool? ?? true,
     source: EventSource.values.firstWhere(
       (s) => s.name == (data['source'] as String?),
       orElse: () => EventSource.manual,
     ),
-    sourceId: null,
-    symptomTag: data['symptomTag'] as String?,
-    styleKindId: data['style_kind'] as String?,
+    sourceId: (data['source_id'] as String?)?.isEmpty ?? true
+        ? null
+        : data['source_id'] as String,
+    symptomTag: (data['symptom_tag'] as String?)?.isEmpty ?? true
+        ? null
+        : data['symptom_tag'] as String,
+    styleKindId: (data['style_kind'] as String?)?.isEmpty ?? true
+        ? null
+        : data['style_kind'] as String,
     color: (data['color'] as num?)?.toInt(),
   );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -224,10 +225,13 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
     final name = _isNewUser
         ? _nameCtrl.text.trim()
         : (record?.data['name'] as String? ?? '');
+    // Город восстанавливаем из облака при входе существующего пользователя.
+    final city = record?.data['city'] as String? ?? '';
     final profile = UserProfile(
       id: record?.id ?? '',
       name: name,
       email: _emailCtrl.text.trim(),
+      city: city,
       emailVerified: true,
     );
 
@@ -256,6 +260,7 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
 
     try {
       await sync.pullAll();
+      await AIChatController.restoreThreadsFromCloud();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

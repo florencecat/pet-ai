@@ -21,14 +21,15 @@ class ChatMessageAdapter extends TypeAdapter<ChatMessage> {
       content: fields[1] as String,
       timestamp: fields[2] as DateTime,
       eventsJson: fields[3] as String?,
-      completed: fields[4] as bool? ?? false,
+      completed: fields[4] as bool,
+      remoteId: fields[5] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ChatMessage obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.role)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class ChatMessageAdapter extends TypeAdapter<ChatMessage> {
       ..writeByte(4)
       ..write(obj.completed)
       ..writeByte(3)
-      ..write(obj.eventsJson);
+      ..write(obj.eventsJson)
+      ..writeByte(5)
+      ..write(obj.remoteId);
   }
 
   @override

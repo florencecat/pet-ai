@@ -225,6 +225,7 @@ class Pet implements PbEntity {
     'chronic_conditions': chronicConditions,
     'vet_clinic': vetClinic,
     'chip_number': chipNumber,
+    'palette': palette.toJson(),
   };
 }
 
@@ -256,6 +257,13 @@ class _PetCodec extends PbCodec<Pet> {
         ? DateTime.tryParse(data['birthdate'].toString())
         : null;
 
+    final paletteRaw = data['palette'];
+    final palette = (paletteRaw is Map && paletteRaw.isNotEmpty)
+        ? ColorPalette.fromJson(
+            paletteRaw.map((k, v) => MapEntry(k.toString(), v)),
+          )
+        : ThemeColors.defaultProfilePalette;
+
     return Pet.deserialize(
       id: data['id'] as String,
       name: data['name'] as String? ?? '',
@@ -278,7 +286,7 @@ class _PetCodec extends PbCodec<Pet> {
       treatmentHistory: TreatmentHistory.empty(),
       foodHistory: MealHistory.empty(),
       pillReminders: [],
-      palette: ThemeColors.defaultProfilePalette,
+      palette: palette,
     );
   }
 }

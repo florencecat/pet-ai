@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -62,6 +63,11 @@ class _PetProfilePageState extends State<PetProfilePage> {
     if (_profile == null) return;
     try { await PetService().saveProfile(_profile!); }
     catch (_) { }
+    // Fire-and-forget cloud upsert профиля (owner = id пользователя).
+    final uid = CloudSyncService.instance.userId;
+    if (uid != null) {
+      CloudSyncService.instance.pushAsync('pets', _profile!, uid);
+    }
   }
 
   Future<void> _savePalette() async {

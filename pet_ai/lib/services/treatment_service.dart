@@ -76,10 +76,23 @@ class TreatmentService {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
 
+    final removed = profile.treatmentHistory.entries
+        .where(
+          (e) =>
+              e.date == entry.date &&
+              e.kind == entry.kind &&
+              e.name == entry.name,
+        )
+        .map((e) => e.id)
+        .toList();
     profile.treatmentHistory.entries.removeWhere(
       (e) => e.date == entry.date && e.kind == entry.kind && e.name == entry.name,
     );
     await PetService().saveProfile(profile);
+
+    for (final id in removed) {
+      CloudSyncService.instance.deleteAsync('treatments', id);
+    }
 
     if (entry.eventId != null) {
       // Найдём и удалим связанное событие

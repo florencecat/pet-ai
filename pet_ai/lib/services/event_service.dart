@@ -33,6 +33,38 @@ class EventService {
     return all.where((e) => e.petIds.contains(petId)).toList();
   }
 
+  /// Все события всех питомцев плоским списком (для полной выгрузки в облако).
+  Future<List<Event>> loadAllEventsFlat() => _loadAll();
+
+  /// Импортирует события [events] для [petId] из облака **без** обратного пуша.
+  /// Существующие события этого питомца замещаются; дедупликация по id события
+  /// (одно событие может относиться к нескольким питомцам).
+  Future<void> importEvents(String petId, List<Event> events) async {
+    final all = await _loadAll();
+    final byId = <String, Event>{
+      for (final e in all)
+        if (!e.petIds.contains(petId)) e.id: e,
+    };
+    for (final e in events) {
+      if (!e.petIds.contains(petId)) e.petIds.add(petId);
+      byId[e.id] = e;
+    }
+    final merged = byId.values.toList();
+    await _persistAll(merged);
+
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      for (final e in events) {
+        if (!e.remind) continue;
+        try {
+          await NotificationService().scheduleEventNotification(
+            e,
+            petLabel: await _resolveLabel(e),
+          );
+        } catch (_) {}
+      }
+    }
+  }
+
   /// Все события нескольких питомцев, дедуплицированные по ID события
   Future<List<Event>> loadEventsForPets(List<String> petIds) async {
     final all = await _loadAll();
@@ -103,6 +135,11 @@ class EventService {
         event,
         petLabel: await _resolveLabel(event),
       );
+    }
+
+    // Fire-and-forget cloud upsert (правки/отметки выполнения уезжают в облако).
+    if (event.petIds.isNotEmpty) {
+      CloudSyncService.instance.pushAsync('events', event, event.petIds.first);
     }
   }
 
@@ -184,6 +221,9 @@ class EventService {
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       await NotificationService().cancelNotification(event.id);
     }
+
+    // Fire-and-forget remote delete.
+    CloudSyncService.instance.deleteAsync('events', event.id);
   }
 
   // ─── Очистка ──────────────────────────────────────────────────────────────
@@ -199,7 +239,9 @@ class EventService {
           if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
             await NotificationService().cancelNotification(e.id);
           }
-          continue; // удаляем осиротевшее событие
+          // Осиротевшее событие удаляем и из облака.
+          CloudSyncService.instance.deleteAsync('events', e.id);
+          continue;
         }
       }
       updated.add(e);

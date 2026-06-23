@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 
 /// Время суток для записи настроения / питания.
 enum DayPart { morning, afternoon, evening }
@@ -91,20 +92,24 @@ class MoodEntry implements BaseEntry {
   static const codec = _MoodEntryCodec();
 
   @override
+  final String id;
+  @override
   final DateTime date;
   final PetMood mood;
   final DayPart dayPart;
 
   MoodEntry({
+    String? id,
     required this.date,
     required this.mood,
     required this.dayPart,
-  });
+  }) : id = id ?? generateId();
 
   /// Обратная совместимость: если dayPart не сохранён — угадываем по часу.
   factory MoodEntry.fromJson(Map<String, dynamic> json) {
     final date = DateTime.parse(json["date"]);
     return MoodEntry(
+      id: json["id"] as String?,
       date: date,
       mood: PetMood.values.firstWhere((e) => e.name == json["mood"]),
       dayPart: json["dayPart"] != null
@@ -118,6 +123,7 @@ class MoodEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toJson() => {
+    "id": id,
     "date": date.toIso8601String(),
     "mood": mood.name,
     "dayPart": dayPart.name,
@@ -125,6 +131,7 @@ class MoodEntry implements BaseEntry {
 
   @override
   Map<String, dynamic> toPocketBase(String ownerId) => {
+    'id': id,
     'pet': ownerId,
     "date": date.toIso8601String(),
     "mood": mood.name,
@@ -139,6 +146,7 @@ class _MoodEntryCodec extends PbCodec<MoodEntry> {
   MoodEntry fromPocketBase(Map<String, dynamic> data) {
     final date = DateTime.parse(data['date'] as String);
     return MoodEntry(
+      id: data['id'] as String?,
       date: date,
       mood: PetMood.values.firstWhere(
         (e) => e.name == data['mood'],
@@ -183,7 +191,9 @@ class MoodHistory extends History<MoodEntry> {
 
   /// Добавляет или заменяет запись настроения за тот же день и время суток —
   /// в один день/время суток допустима только одна запись.
-  void addOrReplace(MoodEntry entry) {
+  /// Возвращает запись, которая фактически сохранена в истории (с тем же id,
+  /// что и существующая, если это замена — для корректного апсерта в облаке).
+  MoodEntry addOrReplace(MoodEntry entry) {
     final idx = entries.indexWhere(
       (e) =>
           e.date.year == entry.date.year &&
@@ -192,9 +202,17 @@ class MoodHistory extends History<MoodEntry> {
           e.dayPart == entry.dayPart,
     );
     if (idx >= 0) {
-      entries[idx] = entry;
+      final merged = MoodEntry(
+        id: entries[idx].id,
+        date: entry.date,
+        mood: entry.mood,
+        dayPart: entry.dayPart,
+      );
+      entries[idx] = merged;
+      return merged;
     } else {
       add(entry);
+      return entry;
     }
   }
 
