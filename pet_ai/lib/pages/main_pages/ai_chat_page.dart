@@ -660,7 +660,7 @@ class _FadingMessageList extends StatelessWidget {
       blendMode: BlendMode.dstIn,
       child: ListView.builder(
         reverse: true,
-        clipBehavior: Clip.none,
+        clipBehavior: Clip.hardEdge,
         padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
         itemCount: controller.messages.length,
         physics: const BouncingScrollPhysics(),
