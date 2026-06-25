@@ -111,12 +111,11 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
 
   Future<void> _pickDate({required bool isEnd}) async {
     final initial = isEnd ? _form.endDate : _form.startDate;
-    final first = DateTime.now().subtract(const Duration(days: 30));
     final last = DateTime.now().add(const Duration(days: 365 * 5));
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: first,
+      firstDate: DateTime(2000),
       lastDate: last,
       locale: const Locale('ru'),
     );
