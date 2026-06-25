@@ -413,8 +413,10 @@ class CloudSyncService extends ChangeNotifier {
 
       final petFilter = 'pet = "$petId"';
 
+      final weightEntries = await _fetchAllAs('weights', petFilter, WeightEntry.codec);
+      weightEntries.sort((a, b) => a.date.compareTo(b.date));
       profile.weightHistory = WeightHistory(
-        entries: await _fetchAllAs('weights', petFilter, WeightEntry.codec),
+        entries: weightEntries,
       );
       profile.moodHistory = MoodHistory(
         entries: await _fetchAllAs('moods', petFilter, MoodEntry.codec),
