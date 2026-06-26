@@ -26,7 +26,6 @@ import 'package:pet_satellite/theme/widgets/settings_widgets.dart';
 import 'package:provider/provider.dart';
 import '../../services/pet_profile_service.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

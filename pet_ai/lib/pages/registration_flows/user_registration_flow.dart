@@ -11,7 +11,6 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 // ─── Backward-compat aliases ──────────────────────────────────────────────────
 
