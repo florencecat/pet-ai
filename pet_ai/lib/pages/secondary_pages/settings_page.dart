@@ -119,14 +119,6 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _openPrivacyPolicy() async {
-    await launchUrl(Uri.parse(GetIt.instance<ApiService>().privacyUrl));
-  }
-
-  Future<void> _openTermsOfUse() async {
-    await launchUrl(Uri.parse(GetIt.instance<ApiService>().termsUrl));
-  }
-
   Future<void> _logout() async {
     final confirmed = await confirmDelete(
       context,
@@ -600,14 +592,14 @@ class _SettingsPageState extends State<SettingsPage> {
               SettingsRow(
                 icon: Icons.newspaper_rounded,
                 label: 'Пользовательское соглашение',
-                onTap: _openTermsOfUse,
+                onTap: () async => GetIt.instance<ApiService>().openTerms(),
                 iconColor: ac.primaryColor,
                 trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
               ),
               SettingsRow(
                 icon: Icons.shield_outlined,
                 label: 'Политика конфиденциальности',
-                onTap: _openPrivacyPolicy,
+                onTap: () async => GetIt.instance<ApiService>().openPrivacy(),
                 iconColor: ac.primaryColor,
                 trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
               ),

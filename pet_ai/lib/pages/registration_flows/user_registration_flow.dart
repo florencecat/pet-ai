@@ -1,6 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/models/user_profile.dart';
+import 'package:pet_satellite/services/api_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
@@ -9,6 +11,7 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ─── Backward-compat aliases ──────────────────────────────────────────────────
 
@@ -67,6 +70,9 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
   bool _loading = false;
   String? _serverError;
 
+  // Согласие с политикой использования — обязательно для шага 0.
+  bool _agreedToPolicy = false;
+
   /// Progress bar length: 2 steps for existing users, 3 for new.
   int get _totalSteps => _isNewUser ? 3 : 2;
 
@@ -96,6 +102,8 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
   // ── Step 0: Email → requestAccess ─────────────────────────────────────────
 
   Future<void> _submitEmail() async {
+    // Защита на случай отправки по клавиатуре, когда согласие не отмечено.
+    if (!_agreedToPolicy) return;
     final email = _emailCtrl.text.trim();
     if (!_isValidEmail(email)) {
       setState(() => _emailError = 'Некорректный адрес эл. почты');
@@ -320,6 +328,8 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
           emailError: _emailError,
           serverError: _serverError,
           loading: _loading,
+          agreedToPolicy: _agreedToPolicy,
+          onAgreedChanged: (v) => setState(() => _agreedToPolicy = v),
           onNext: _submitEmail,
           onExit: Navigator.of(context).pop,
         );
@@ -441,6 +451,8 @@ class _EmailStep extends StatelessWidget {
   final String? emailError;
   final String? serverError;
   final bool loading;
+  final bool agreedToPolicy;
+  final ValueChanged<bool> onAgreedChanged;
   final VoidCallback onNext;
   final VoidCallback onExit;
 
@@ -449,6 +461,8 @@ class _EmailStep extends StatelessWidget {
     required this.emailError,
     required this.serverError,
     required this.loading,
+    required this.agreedToPolicy,
+    required this.onAgreedChanged,
     required this.onNext,
     required this.onExit,
   });
@@ -490,7 +504,9 @@ class _EmailStep extends StatelessWidget {
                     textInputAction: TextInputAction.done,
                     autocorrect: false,
                     enableSuggestions: false,
-                    onSubmitted: (_) => onNext(),
+                    onSubmitted: (_) {
+                      if (agreedToPolicy) onNext();
+                    },
                     decoration: InputDecoration(
                       hintText: 'Эл. почта',
                       hintStyle: theme.textTheme.bodyLarge!.copyWith(
@@ -509,15 +525,111 @@ class _EmailStep extends StatelessWidget {
             ),
           ),
         ),
+        _PolicyConsent(agreed: agreedToPolicy, onChanged: onAgreedChanged),
         _BottomBar(
           label: 'Получить код',
           nextIcon: Icons.send_rounded,
           onNext: onNext,
-          onNextAvailable: !loading,
+          onNextAvailable: !loading && emailCtrl.text.isNotEmpty && agreedToPolicy,
           loading: loading,
           onExit: onExit,
         ),
       ],
+    );
+  }
+}
+
+// ─── Policy consent ───────────────────────────────────────────────────────────
+
+/// Чекбокс согласия с политикой использования. Ссылка ведёт на termsUrl
+/// (как в настройках) и открывается во внешнем браузере.
+class _PolicyConsent extends StatefulWidget {
+  final bool agreed;
+  final ValueChanged<bool> onChanged;
+
+  const _PolicyConsent({required this.agreed, required this.onChanged});
+
+  @override
+  State<_PolicyConsent> createState() => _PolicyConsentState();
+}
+
+class _PolicyConsentState extends State<_PolicyConsent> {
+  late final TapGestureRecognizer _termsLinkTap;
+  late final TapGestureRecognizer _privacyLinkTap;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsLinkTap = TapGestureRecognizer()..onTap = () async => GetIt.instance<ApiService>().openTerms();
+    _privacyLinkTap = TapGestureRecognizer()..onTap = () async => GetIt.instance<ApiService>().openPrivacy();
+  }
+
+  @override
+  void dispose() {
+    _termsLinkTap.dispose();
+    _privacyLinkTap.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    final theme = Theme.of(context);
+    final baseStyle = theme.textTheme.bodySmall?.copyWith(
+      color: ac.secondaryColor.withAlpha(180),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 20, 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: Checkbox(
+              value: widget.agreed,
+              onChanged: (v) => widget.onChanged(v ?? false),
+              activeColor: ac.secondaryColor,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: baseStyle,
+                children: [
+                  const TextSpan(text: 'Я принимаю '),
+                  TextSpan(
+                    text: 'политику использования',
+                    style: baseStyle?.copyWith(
+                      color: ac.secondaryColor,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: _termsLinkTap,
+                  ),
+                  const TextSpan(text: ' и соглашаюсь с '),
+                  TextSpan(
+                    text: 'правилами обработки персональных данных',
+                    style: baseStyle?.copyWith(
+                      color: ac.secondaryColor,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: _privacyLinkTap,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
