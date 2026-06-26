@@ -12,6 +12,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/pet_image_source_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
@@ -218,58 +219,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   }
 
   /// Нижний лист с выбором источника фото: камера или галерея.
-  Future<ImageSource?> _pickImageSource() {
-    return showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: ThemeColors.border.withAlpha(120),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Фото питомца',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Row(
-                spacing: 8,
-                children: [
-                  Expanded(
-                    child: GlassSourceCard(
-                      type: SourceCardType.camera,
-                      color: ThemeColors.cameraImageSource,
-                      onTap: () => Navigator.pop(ctx, ImageSource.camera),
-                    ),
-                  ),
-                  Expanded(
-                    child: GlassSourceCard(
-                      type: SourceCardType.gallery,
-                      color: ThemeColors.galleryImageSource,
-                      onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Future<ImageSource?> _pickImageSource() => showPetImageSourceSheet(context);
 
   Future<void> _deleteProfile() async {
     final confirmed = await confirmDelete(
