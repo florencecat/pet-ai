@@ -45,7 +45,7 @@ class CrashReportingService extends ChangeNotifier {
 
   PocketBase get _pb => _pbService.pb;
 
-  bool _enabled = true;
+  bool _enabled = false;
   bool get enabled => _enabled;
 
   bool _installed = false;
