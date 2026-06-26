@@ -82,20 +82,20 @@ extension RemindBeforeVariantX on RemindBeforeVariant {
 /// Источник создания события.
 /// Позволяет связать событие с породившим его объектом (препарат, вакцина, заметка)
 /// и применить контекстно-корректное поведение (синхронизация статуса, UI).
-enum EventSource {
-  manual, // создано вручную через EventSheet
-  pill, // создано из напоминания о препарате (PillReminder)
-  treatment, // создано из прививки / обработки (TreatmentEntry)
-  note, // создано из заметки
-}
+enum EventSource { manual, pill, treatment, note, ai }
 
 /// Иконка + цвет для единообразного отображения события в списках.
 /// Получается через [Event.style] независимо от источника создания.
 class EventStyle {
   final IconData icon;
-  final Color color;
+  final Color? color;
+  final List<Color>? gradient;
 
-  const EventStyle({required this.icon, required this.color});
+  const EventStyle({
+    required this.icon,
+    this.color,
+    this.gradient,
+  });
 }
 
 /// Дни недели для custom-повторений (1=Пн, 7=Вс)
@@ -320,22 +320,19 @@ class Event implements PbEntity {
     this.color,
   });
 
-  Event.fromNote({
-    required this.name,
-    required this.dateTime,
-    this.symptomTag,
-  }) : id = generateId(),
-       category = EventCategories.empty,
-       completedDates = {},
-       petIds = [],
-       repeat = RepeatInterval.none,
-       customDays = const [],
-       allDay = false,
-       remindBeforeVariant = RemindBeforeVariant.days,
-       remindBeforeValue = 0,
-       remind = false,
-       source = EventSource.note,
-       sourceId = null;
+  Event.fromNote({required this.name, required this.dateTime, this.symptomTag})
+    : id = generateId(),
+      category = EventCategories.empty,
+      completedDates = {},
+      petIds = [],
+      repeat = RepeatInterval.none,
+      customDays = const [],
+      allDay = false,
+      remindBeforeVariant = RemindBeforeVariant.days,
+      remindBeforeValue = 0,
+      remind = false,
+      source = EventSource.note,
+      sourceId = null;
 
   Event.empty()
     : id = generateId(),
@@ -363,6 +360,8 @@ class Event implements PbEntity {
         return 'Приём лекарств';
       case EventSource.treatment:
         return 'Обработка';
+      case EventSource.ai:
+        return 'Сделано с помощью ИИ';
       case EventSource.manual:
         return category.name;
     }
@@ -411,12 +410,14 @@ class Event implements PbEntity {
         );
       case EventSource.manual:
         return EventStyle(icon: category.icon, color: category.color);
+      case EventSource.ai:
+        return EventStyle(icon: category.icon, gradient: ThemeColors.gradientColors);
     }
   }
 
   /// Цвет события по источнику. Совпадает со [style.color] — оставлен для
   /// обратной совместимости.
-  Color get categoryColor => style.color;
+  Color? get categoryColor => style.color;
 
   bool get fromNote => source == EventSource.note;
   bool get fromTreatment => source == EventSource.treatment;
@@ -438,7 +439,7 @@ class Event implements PbEntity {
     } else {
       completedDates.add(key);
     }
-    if (source ==  EventSource.pill) {
+    if (source == EventSource.pill) {
       PillReminderService().markScheduleTakenFromEvent(this);
     }
   }
@@ -518,7 +519,8 @@ class Event implements PbEntity {
     'petIds': petIds,
     'repeat': repeat.index,
     'customDays': customDays,
-    if (repeatEndDate != null) 'repeatEndDate': repeatEndDate!.toIso8601String(),
+    if (repeatEndDate != null)
+      'repeatEndDate': repeatEndDate!.toIso8601String(),
     'allDay': allDay,
     'remindBeforeVariant': remindBeforeVariant.name,
     'remindBeforeMinutes': remindBeforeValue,
@@ -625,6 +627,7 @@ class _EventCodec extends PbCodec<Event> {
       petIds: [profileId],
       repeat: RepeatIntervalX.fromAi(data['repeat'] as String?),
       customDays: const [],
+      source: EventSource.ai
     );
   }
 
@@ -651,17 +654,16 @@ class _EventCodec extends PbCodec<Event> {
             .whereType<int>()
             .toList() ??
         const [],
-    repeatEndDate: data['repeat_end'] != null &&
-            (data['repeat_end'] as String).isNotEmpty
+    repeatEndDate:
+        data['repeat_end'] != null && (data['repeat_end'] as String).isNotEmpty
         ? DateTime.tryParse(data['repeat_end'] as String)
         : null,
     allDay: data['all_day'] as bool? ?? false,
     remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
-          (s) => s.name == (data['remind_before_variant'] as String?),
+      (s) => s.name == (data['remind_before_variant'] as String?),
       orElse: () => RemindBeforeVariant.days,
     ),
-    remindBeforeValue:
-        (data['remind_before_value'] as num?)?.toInt() ?? 0,
+    remindBeforeValue: (data['remind_before_value'] as num?)?.toInt() ?? 0,
     remind: data['remind'] as bool? ?? true,
     source: EventSource.values.firstWhere(
       (s) => s.name == (data['source'] as String?),

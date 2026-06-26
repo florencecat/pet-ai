@@ -335,7 +335,7 @@ class _EventSheetState extends State<EventSheet> {
     final isCompleted = _isCompletedForDate;
     final accent = context.watch<AppearanceController>().primaryColor;
     // Единый стиль (иконка + цвет) независимо от источника события.
-    final catColor = event.style.color;
+    final catColor = event.style.color ?? accent;
 
     return [
       // ── Hero ──────────────────────────────────────────────────────────────
@@ -968,29 +968,41 @@ class _SourceTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, icon, color) = switch (source) {
+    final (label, icon, color, gradient) = switch (source) {
       EventSource.pill => (
         'Препарат',
         Icons.medication_outlined,
         const Color(0xFF5C6BC0),
+        null,
       ),
       EventSource.treatment => (
         'Прививка / обработка',
         Icons.vaccines_outlined,
         const Color(0xFF00897B),
+        null,
       ),
       EventSource.note => (
         'Из заметки',
         Icons.note_outlined,
         ThemeColors.border,
+        null,
       ),
-      _ => ('', Icons.circle, ThemeColors.border),
+      EventSource.ai => (
+        'Сделано с помощью ИИ',
+        Icons.auto_awesome,
+        ThemeColors.border,
+        ThemeColors.gradientColors,
+      ),
+      _ => ('', Icons.circle, ThemeColors.border, null),
     };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withAlpha(15),
+        color: color.withAlpha(64),
+        gradient: LinearGradient(
+          colors: ThemeColors.gradientColors,
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withAlpha(50)),
       ),

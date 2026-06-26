@@ -872,6 +872,7 @@ class _EventTileCard extends StatelessWidget {
                       SoftRoundedIcon(
                         icon: event.style.icon,
                         color: event.style.color,
+                        gradient: event.style.gradient,
                         size: 24,
                       ),
                       const SizedBox(width: 12),

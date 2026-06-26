@@ -1941,7 +1941,7 @@ class _AttachmentPickerSheetState extends State<_AttachmentPickerSheet> {
                             ..._events.map(
                               (e) => _PickRow(
                                 icon: e.style.icon,
-                                color: e.style.color,
+                                color: e.style.color ?? accent,
                                 title: e.name,
                                 subtitle: DateFormat(
                                   'd MMM yyyy',
@@ -1952,7 +1952,7 @@ class _AttachmentPickerSheetState extends State<_AttachmentPickerSheet> {
                                     type: 'event',
                                     label: e.name,
                                     icon: e.style.icon,
-                                    color: e.style.color,
+                                    color: e.style.color ?? accent,
                                     data: e.toJson(),
                                   ),
                                 ),

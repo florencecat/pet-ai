@@ -241,7 +241,9 @@ class HomePageState extends State<HomePage> {
               title: e.name,
               subtitle: e.category.name,
               icon: e.style.icon,
-              color: e.style.color,
+              color:
+                  e.style.color ??
+                  context.watch<AppearanceController>().primaryColor,
               event: e,
             ),
           );
@@ -271,7 +273,9 @@ class HomePageState extends State<HomePage> {
                   title: e.name,
                   subtitle: '${e.category.name} · повторяется',
                   icon: e.style.icon,
-                  color: e.style.color,
+                  color:
+                      e.style.color ??
+                      context.watch<AppearanceController>().primaryColor,
                   event: e,
                 ),
               );
