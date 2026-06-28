@@ -18,21 +18,23 @@ class SettingsCard extends StatelessWidget {
 }
 
 class SettingsRow extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
   final String label;
   final String? subtitle;
   final Color? iconColor;
   final Color? labelColor;
+  final Widget? leading;
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool last;
 
   const SettingsRow({super.key,
-    required this.icon,
     required this.label,
+    this.icon,
     this.subtitle,
     this.iconColor,
     this.labelColor,
+    this.leading,
     this.trailing,
     this.onTap,
     this.last = false,
@@ -40,6 +42,8 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    assert(icon != null || leading != null);
+
     final theme = Theme.of(context);
     final ac = context.watch<AppearanceController>();
     final effectiveIconColor = iconColor ?? ac.primaryColor;
@@ -58,7 +62,7 @@ class SettingsRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: effectiveIconColor),
+            leading ?? Icon(icon, size: 20, color: effectiveIconColor),
             const SizedBox(width: 14),
             Expanded(
               child: Column(

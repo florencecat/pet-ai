@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pet_satellite/services/api_service.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/models/mood.dart';
@@ -39,10 +40,51 @@ class CloudSyncService extends ChangeNotifier {
   /// Number of fire-and-forget calls currently in-flight.
   int _inFlight = 0;
 
+  static const _syncEnabledKey = 'cloud_sync_enabled';
+  static const _lastSyncKey = 'cloud_sync_last';
+
+  /// Whether background sync to the server is enabled. Persisted across runs.
+  /// While enabled (and authenticated) local changes are pushed to the server.
+  bool _syncEnabled = true;
+
   PocketBase get _pb => _pbService.pb;
 
   /// Whether the user is currently authenticated.
   bool get isAuthenticated => _pb.authStore.isValid;
+
+  /// Whether background sync to the server is currently enabled.
+  bool get syncEnabled => _syncEnabled;
+
+  /// Loads the persisted [syncEnabled] preference and the last sync time.
+  /// Call once at startup so the UI reflects state across restarts.
+  Future<void> init() async {
+    final prefs = SharedPreferencesAsync();
+    _syncEnabled = (await prefs.getBool(_syncEnabledKey)) ?? true;
+    final lastIso = await prefs.getString(_lastSyncKey);
+    _lastSync = lastIso != null ? DateTime.tryParse(lastIso) : null;
+    // Восстанавливаем «зелёный» статус, если синхронизация уже была.
+    _status = _lastSync != null ? SyncStatus.success : SyncStatus.idle;
+    notifyListeners();
+  }
+
+  /// Records a successful sync (now), persists it, and flips status to success.
+  void _markSynced() {
+    _lastSync = DateTime.now();
+    SharedPreferencesAsync().setString(
+      _lastSyncKey,
+      _lastSync!.toIso8601String(),
+    );
+    _setStatus(SyncStatus.success);
+  }
+
+  /// Enables/disables background sync and persists the choice. Returns the new
+  /// value. Pushing the current data on enable is left to the caller (so it can
+  /// surface progress/errors in the UI).
+  Future<void> setSyncEnabled(bool enabled) async {
+    _syncEnabled = enabled;
+    await SharedPreferencesAsync().setBool(_syncEnabledKey, enabled);
+    notifyListeners();
+  }
 
   /// PocketBase user-record ID of the authenticated user, or null.
   String? get userId => _pb.authStore.record?.id;
@@ -64,7 +106,7 @@ class CloudSyncService extends ChangeNotifier {
   ///   retries / duplicate pushes are safe (409 → silently ignored).
   /// - Updates [status] and [lastSync] reactively via [notifyListeners].
   void pushAsync(String collection, PbEntity entity, String petId) {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !_syncEnabled) return;
 
     final body = entity.toPocketBase(petId);
     final id = body['id'] as String?;
@@ -80,7 +122,7 @@ class CloudSyncService extends ChangeNotifier {
   /// Delete a single remote [id] from [collection] in the background.
   /// Silently ignores 404 (already deleted) and missing auth.
   void deleteAsync(String collection, String id) {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !_syncEnabled) return;
 
     _inFlight++;
     _setStatus(SyncStatus.syncing);
@@ -123,8 +165,7 @@ class CloudSyncService extends ChangeNotifier {
   void _onInFlightDone() {
     _inFlight--;
     if (_inFlight == 0 && _status != SyncStatus.error) {
-      _lastSync = DateTime.now();
-      _setStatus(SyncStatus.success);
+      _markSynced();
     }
   }
 
@@ -332,8 +373,7 @@ class CloudSyncService extends ChangeNotifier {
         await push('events', e.toPocketBase(e.petIds.first));
       }
 
-      _lastSync = DateTime.now();
-      _setStatus(SyncStatus.success);
+      _markSynced();
     } catch (e) {
       _lastError = _friendlyError(e);
       _setStatus(SyncStatus.error);
@@ -454,8 +494,7 @@ class CloudSyncService extends ChangeNotifier {
       // ── Документы ─────────────────────────────────────────────────────────
       await _pullDocuments(petId);
 
-      _lastSync = DateTime.now();
-      _setStatus(SyncStatus.success);
+      _markSynced();
 
     } catch (e) {
       _lastError = _friendlyError(e);

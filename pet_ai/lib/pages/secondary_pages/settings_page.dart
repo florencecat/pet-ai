@@ -122,7 +122,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final confirmed = await confirmDelete(
       context,
       title: 'Выйти из аккаунта?',
-      message: 'Сессия на этом устройстве будет завершена и вам придется войти заново.',
+      message:
+          'Сессия на этом устройстве будет завершена и вам придется войти заново.',
     );
     if (confirmed) {
       await UserService().delete();
@@ -159,27 +160,26 @@ class _SettingsPageState extends State<SettingsPage> {
     if (context.mounted) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (ctx) =>
-            AlertDialog(
-              title: const Text('Загрузить с сервера?'),
-              content: const Text(
-                'Локальные данные питомца будут заменены данными с сервера. '
-                    'Это действие нельзя отменить.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Отмена'),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ThemeColors.dangerZone,
-                  ),
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Загрузить'),
-                ),
-              ],
+        builder: (ctx) => AlertDialog(
+          title: const Text('Загрузить с сервера?'),
+          content: const Text(
+            'Локальные данные питомца будут заменены данными с сервера. '
+            'Это действие нельзя отменить.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена'),
             ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: ThemeColors.dangerZone,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Загрузить'),
+            ),
+          ],
+        ),
       );
 
       if (confirmed != true) return;
@@ -201,6 +201,15 @@ class _SettingsPageState extends State<SettingsPage> {
         }
       }
     }
+  }
+
+  /// Toggles background sync. Enabling immediately uploads current data to the
+  /// server (same as the «Загрузить на сервер» action).
+  Future<void> _toggleSync(BuildContext context, bool enabled) async {
+    await _sync.setSyncEnabled(enabled);
+    if (!mounted) return;
+    setState(() {});
+    if (enabled && context.mounted) await _syncPushAll(context);
   }
 
   // ── Debug actions ─────────────────────────────────────────────────────────
@@ -494,17 +503,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
           // ── Данные и приватность ─────────────────────────────────────────
           SettingsSectionLabel(title: 'Данные и приватность'),
-          const SizedBox(height: 8),
-          _SyncCard(
-            sync: _sync,
-            isAuthenticated: _user != null,
-            primaryColor: ac.primaryColor,
-            onPushAll: () => _syncPushAll(context),
-            onPullAll: () => _syncPullAll(context),
-          ),
+
           const SizedBox(height: 8),
           SettingsCard(
             children: [
+              _SyncCard(
+                sync: _sync,
+                isAuthenticated: _user != null,
+                primaryColor: ac.primaryColor,
+                syncEnabled: _sync.syncEnabled,
+                onToggle: (v) => _toggleSync(context, v),
+              ),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.download_outlined,
                 label: 'Экспорт данных',
@@ -527,8 +537,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
                 trailing: Switch(
                   inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor:
-                      WidgetStateProperty.resolveWith<Color?>((states) {
+                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
+                    states,
+                  ) {
                     if (states.contains(WidgetState.selected)) {
                       return Colors.transparent;
                     }
@@ -550,8 +561,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
                 trailing: Switch(
                   inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor:
-                      WidgetStateProperty.resolveWith<Color?>((states) {
+                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
+                    states,
+                  ) {
                     if (states.contains(WidgetState.selected)) {
                       return Colors.transparent;
                     }
@@ -686,6 +698,23 @@ class _SettingsPageState extends State<SettingsPage> {
                   iconColor: Colors.blue,
                   onTap: () async => await PetService().exportAllProfiles(),
                 ),
+                SettingsCardDivider(),
+                SettingsRow(
+                  icon: Icons.upload_outlined,
+                  label: 'Загрузить на сервер',
+                  subtitle: _user != null ? null : 'Требуется вход',
+                  iconColor: _user != null ? Colors.blue : ThemeColors.border,
+                  onTap: _user != null ? () => _syncPushAll(context) : null,
+                ),
+                SettingsCardDivider(),
+                SettingsRow(
+                  icon: Icons.download_outlined,
+                  label: 'Скачать с сервера',
+                  subtitle: _user != null ? null : 'Требуется вход',
+                  iconColor: _user != null ? Colors.blue : ThemeColors.border,
+                  onTap: _user != null ? () => _syncPullAll(context) : null,
+                  last: true,
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -715,22 +744,24 @@ class _SyncCard extends StatelessWidget {
   final CloudSyncService sync;
   final bool isAuthenticated;
   final Color primaryColor;
-  final VoidCallback onPushAll;
-  final VoidCallback onPullAll;
+  final bool syncEnabled;
+  final ValueChanged<bool> onToggle;
 
   const _SyncCard({
     required this.sync,
     required this.isAuthenticated,
     required this.primaryColor,
-    required this.onPushAll,
-    required this.onPullAll,
+    required this.syncEnabled,
+    required this.onToggle,
   });
 
   Color get _statusColor {
-    if (!isAuthenticated) return Colors.grey.shade400;
+    if (!isAuthenticated || !syncEnabled) return Colors.grey.shade400;
     switch (sync.status) {
       case SyncStatus.idle:
-        return Colors.grey.shade400;
+        return sync.lastSync != null
+            ? Colors.green.shade500
+            : Colors.grey.shade400;
       case SyncStatus.syncing:
         return Colors.amber.shade600;
       case SyncStatus.success:
@@ -742,13 +773,14 @@ class _SyncCard extends StatelessWidget {
 
   String get _statusLabel {
     if (!isAuthenticated) return 'Требуется вход в аккаунт';
+    if (!syncEnabled) return 'Синхронизация отключена';
     switch (sync.status) {
       case SyncStatus.idle:
         return sync.lastSync != null
             ? _formatSync(sync.lastSync!)
             : 'Нет данных';
       case SyncStatus.syncing:
-        return 'Синхронизация…';
+        return 'Отправляем на сервер…';
       case SyncStatus.success:
         return sync.lastSync != null ? _formatSync(sync.lastSync!) : 'Готово';
       case SyncStatus.error:
@@ -757,135 +789,58 @@ class _SyncCard extends StatelessWidget {
   }
 
   String _formatSync(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inSeconds < 60) return 'Только что';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} мин. назад';
-    if (diff.inHours < 24) return '${diff.inHours} ч. назад';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(dt.year, dt.month, dt.day);
+    final diffDays = today.difference(day).inDays;
+    final time = DateFormat('HH:mm', 'ru_RU').format(dt);
+    if (diffDays == 0) {
+      final diff = now.difference(dt);
+      if (diff.inSeconds < 60) return 'Только что';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} мин. назад';
+      return 'Сегодня, $time';
+    }
+    if (diffDays == 1) return 'Вчера, $time';
     return DateFormat('d MMM, HH:mm', 'ru_RU').format(dt);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final canSync = isAuthenticated && !sync.isSyncing;
-
-    return GlassPlate(
-      padding: 0,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header row ──────────────────────────────────────────────────
-            Row(
-              children: [
-                // Coloured cloud icon
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _statusColor.withAlpha(30),
-                  ),
-                  child: Icon(
-                    sync.status == SyncStatus.syncing
-                        ? Icons.cloud_sync_outlined
-                        : Icons.cloud_outlined,
-                    color: _statusColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Облачная синхронизация',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _statusLabel,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: sync.status == SyncStatus.error
-                              ? Colors.red.shade400
-                              : Colors.grey.shade500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                // Spinning indicator while syncing
-                if (sync.isSyncing)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.amber.shade600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-
-            // ── Action buttons (only when authenticated) ─────────────────────
-            if (isAuthenticated) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  // Push all
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: canSync ? onPushAll : null,
-                      icon: const Icon(Icons.upload_outlined, size: 16),
-                      label: const Text('Загрузить на сервер'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: primaryColor,
-                        side: BorderSide(color: primaryColor.withAlpha(80)),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        textStyle: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Pull all
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: canSync ? onPullAll : null,
-                      icon: const Icon(Icons.download_outlined, size: 16),
-                      label: const Text('Скачать с сервера'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey.shade600,
-                        side: BorderSide(color: Colors.grey.shade300),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        textStyle: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+    return SettingsRow(
+      leading: sync.isSyncing == true
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.amber.shade600,
               ),
-            ],
-          ],
-        ),
-      ),
+            )
+          : Icon(
+              sync.status == SyncStatus.syncing
+                  ? Icons.cloud_sync_outlined
+                  : Icons.cloud_outlined,
+              color: _statusColor,
+              size: 20,
+            ),
+      label: 'Облачная синхронизация',
+      subtitle: _statusLabel,
+      trailing: isAuthenticated
+          ? Switch(
+              value: syncEnabled,
+              activeThumbColor: syncEnabled ? _statusColor : primaryColor,
+              inactiveThumbColor: primaryColor,
+              trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
+                states,
+              ) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.transparent;
+                }
+                return primaryColor;
+              }),
+              onChanged: onToggle,
+            )
+          : null,
     );
   }
 }

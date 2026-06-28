@@ -65,6 +65,7 @@ void main() async {
   GetIt.instance.registerSingleton<CloudSyncService>(
     CloudSyncService(pbService: GetIt.instance<PocketBaseService>()),
   );
+  await GetIt.instance<CloudSyncService>().init();
   // Crash/error reporting — устанавливает глобальные обработчики ошибок и
   // отправляет их в PocketBase (если включено в настройках).
   GetIt.instance.registerSingleton<CrashReportingService>(
