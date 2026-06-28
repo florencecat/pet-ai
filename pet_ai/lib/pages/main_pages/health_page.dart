@@ -1404,11 +1404,21 @@ class _PillReminderTileState extends State<_PillReminderTile> {
 
     // «По требованию»: никогда не «пропущено» — пользователь сам решает, когда дать.
     if (widget.reminder.frequencyType == PillFrequencyType.onDemand) {
-      final taken = widget.reminder.isTakenOnDay(now);
+      final intakes = widget.reminder.intakesOnDay(now);
+      if (intakes.isEmpty) {
+        return (
+          color: ThemeColors.info.mainColor,
+          label: 'По требованию',
+          icon: Icons.alarm_on_outlined,
+        );
+      }
+      final last = intakes.last.timeLabel;
       return (
-        color: taken ? ThemeColors.ok.mainColor : ThemeColors.info.mainColor,
-        label: taken ? 'Принято сегодня' : 'По требованию',
-        icon: taken ? Icons.check_circle_outline : Icons.alarm_on_outlined,
+        color: ThemeColors.ok.mainColor,
+        label: intakes.length == 1
+            ? 'Принято · $last'
+            : 'Принято ${intakes.length}× · $last',
+        icon: Icons.check_circle_outline,
       );
     }
 
@@ -1504,7 +1514,11 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                   ],
                 ),
               ),
-              if (widget.reminder.schedules.length > 1)
+              if (widget.reminder.frequencyType ==
+                      PillFrequencyType.onDemand ||
+                  widget.reminder.schedules.length > 1)
+                // «По требованию» и многократные приёмы — открываем карточку
+                // (там журнал приёмов / отдельные тоглы), а не один чекбокс.
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: Icon(

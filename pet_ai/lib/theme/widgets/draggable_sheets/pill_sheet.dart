@@ -18,9 +18,12 @@ import 'package:pet_satellite/models/pet_profile.dart';
 /// Holds mutable form state for create / edit.
 class _PillFormState {
   final TextEditingController nameCtrl;
-  final TextEditingController doseCtrl;
+  final TextEditingController doseAmountCtrl;
   PillKind? kind;
   int? color;
+  DoseUnit doseUnit;
+  // Пользователь вручную менял единицу → не переопределять её при смене вида.
+  bool doseUnitTouched;
   PillFrequencyType frequency;
   Set<int> weekdays;
   List<TimeOfDay> schedules;
@@ -32,7 +35,9 @@ class _PillFormState {
     String name = '',
     this.kind,
     this.color,
-    String dose = '',
+    String doseAmount = '',
+    DoseUnit? doseUnit,
+    this.doseUnitTouched = false,
     this.frequency = PillFrequencyType.daily,
     Set<int>? weekdays,
     List<TimeOfDay>? schedules,
@@ -40,7 +45,8 @@ class _PillFormState {
     this.hasEndDate = false,
     DateTime? endDate,
   }) : nameCtrl = TextEditingController(text: name),
-       doseCtrl = TextEditingController(text: dose),
+       doseAmountCtrl = TextEditingController(text: doseAmount),
+       doseUnit = doseUnit ?? DoseUnit.forKind(kind).first,
        weekdays = weekdays ?? {1, 2, 3, 4, 5},
        schedules = schedules ?? [const TimeOfDay(hour: 9, minute: 0)],
        startDate = startDate ?? DateTime.now(),
@@ -50,7 +56,11 @@ class _PillFormState {
     name: r.name,
     kind: r.kind,
     color: r.color,
-    dose: r.dose,
+    doseAmount: r.doseValue == 0 ? '' : r.doseValue.toString(),
+    doseUnit: r.doseUnit,
+    // Если у препарата уже задана единица — считаем её выбранной пользователем,
+    // чтобы не сбросить при смене вида.
+    doseUnitTouched: r.doseUnit.id != 'none',
     frequency: r.frequencyType,
     weekdays: Set.of(r.weekdays),
     schedules: r.schedules.map((s) => s.toTimeOfDay()).toList(),
@@ -59,9 +69,11 @@ class _PillFormState {
     endDate: r.endDate ?? DateTime.now().add(const Duration(days: 30)),
   );
 
+  int get doseValue => int.tryParse(doseAmountCtrl.text.trim()) ?? 0;
+
   void dispose() {
     nameCtrl.dispose();
-    doseCtrl.dispose();
+    doseAmountCtrl.dispose();
   }
 }
 
@@ -169,7 +181,8 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       name: name,
       kind: _form.kind,
       color: _form.color,
-      dose: _form.doseCtrl.text.trim(),
+      doseValue: _form.doseValue,
+      doseUnit: _form.doseUnit,
       frequencyType: _form.frequency,
       weekdays: _form.frequency == PillFrequencyType.weekdays
           ? (List.of(_form.weekdays)..sort())
@@ -414,6 +427,11 @@ class _PillForm extends StatelessWidget {
             if (result != null) {
               form.kind = result.kind;
               form.color = result.color;
+              // Единицы дозы зависят от вида: если пользователь не выбирал
+              // единицу вручную — подставляем подходящую по умолчанию.
+              if (!form.doseUnitTouched) {
+                form.doseUnit = DoseUnit.forKind(form.kind).first;
+              }
               onChanged();
             }
           },
@@ -425,11 +443,7 @@ class _PillForm extends StatelessWidget {
           textCapitalization: TextCapitalization.sentences,
         ),
         const SizedBox(height: 10),
-        TextField(
-          controller: form.doseCtrl,
-          decoration: baseInputDecoration('Доза'),
-          textCapitalization: TextCapitalization.sentences,
-        ),
+        _DoseField(form: form, accent: accent, onChanged: onChanged),
 
         const SizedBox(height: 12),
         Text('Периодичность', style: Theme.of(context).textTheme.bodySmall),
@@ -470,20 +484,66 @@ class _PillForm extends StatelessWidget {
         // Для «по требованию» нет фиксированного времени приёма — пользователь
         // отмечает каждый приём вручную.
         if (form.frequency != PillFrequencyType.onDemand) ...[
-        const SizedBox(height: 12),
-        Text('Время приёма', style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            ...form.schedules.asMap().entries.map((entry) {
-              final i = entry.key;
-              final t = entry.value;
-              final label =
-                  '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-              return InkWell(
-                onTap: () => onEditSchedule(i),
+          const SizedBox(height: 12),
+          Text('Время приёма', style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              ...form.schedules.asMap().entries.map((entry) {
+                final i = entry.key;
+                final t = entry.value;
+                final label =
+                    '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+                return InkWell(
+                  onTap: () => onEditSchedule(i),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accent.withAlpha(20),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: accent.withAlpha(80)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: accent),
+                        const SizedBox(width: 5),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: accent,
+                          ),
+                        ),
+                        if (form.schedules.length > 1) ...[
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () {
+                              form.schedules.removeAt(i);
+                              onChanged();
+                            },
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: accent.withAlpha(180),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              // "+" chip to add another time
+              InkWell(
+                onTap: onAddSchedule,
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -491,75 +551,29 @@ class _PillForm extends StatelessWidget {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: accent.withAlpha(20),
+                    color: Colors.white.withAlpha(160),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: accent.withAlpha(80)),
+                    border: Border.all(color: accent.withAlpha(60)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.access_time, size: 14, color: accent),
-                      const SizedBox(width: 5),
+                      Icon(Icons.add, size: 14, color: accent),
+                      const SizedBox(width: 4),
                       Text(
-                        label,
+                        'Добавить',
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w600,
                           color: accent,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      if (form.schedules.length > 1) ...[
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: () {
-                            form.schedules.removeAt(i);
-                            onChanged();
-                          },
-                          child: Icon(
-                            Icons.close,
-                            size: 14,
-                            color: accent.withAlpha(180),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
-              );
-            }),
-            // "+" chip to add another time
-            InkWell(
-              onTap: onAddSchedule,
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(160),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: accent.withAlpha(60)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add, size: 14, color: accent),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Добавить',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: accent,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ],
 
         const SizedBox(height: 12),
@@ -634,6 +648,111 @@ class _PillForm extends StatelessWidget {
   }
 }
 
+// ─── Dose field (numeric input + unit dropdown, units depend on kind) ─────────
+
+/// Builds the unit list for [kind], guaranteeing [selected] is present so the
+/// dropdown never asserts on a value outside its items.
+List<DoseUnit> _doseUnitsFor(PillKind? kind, DoseUnit selected) {
+  final list = List<DoseUnit>.from(DoseUnit.forKind(kind));
+  if (!list.contains(selected)) list.insert(0, selected);
+  return list;
+}
+
+class _DoseField extends StatelessWidget {
+  final _PillFormState form;
+  final Color accent;
+  final VoidCallback onChanged;
+
+  const _DoseField({
+    required this.form,
+    required this.accent,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: form.doseAmountCtrl,
+            keyboardType: TextInputType.number,
+            // Перерисовываем, чтобы склонение единицы в дропдауне отражало
+            // введённое количество (напр. «1 впрыск» → «3 впрыска»).
+            onChanged: (_) => onChanged(),
+            decoration: baseInputDecoration('Доза'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        _DoseUnitDropdown(
+          units: _doseUnitsFor(form.kind, form.doseUnit),
+          value: form.doseUnit,
+          count: form.doseValue,
+          accent: accent,
+          onChanged: (u) {
+            form.doseUnit = u;
+            form.doseUnitTouched = true;
+            onChanged();
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Dropdown styled to match [baseInputDecoration] — used in the form and in the
+/// on-demand intake dialog.
+class _DoseUnitDropdown extends StatelessWidget {
+  final List<DoseUnit> units;
+  final DoseUnit value;
+  final int count; // для корректного склонения единицы
+  final Color accent;
+  final ValueChanged<DoseUnit> onChanged;
+
+  const _DoseUnitDropdown({
+    required this.units,
+    required this.value,
+    required this.count,
+    required this.accent,
+    required this.onChanged,
+  });
+
+  static String _menuLabel(DoseUnit u, int count) =>
+      u.id == 'none' ? 'другое' : DoseUnit.declensionByUnit(count, u);
+  static String _fieldLabel(DoseUnit u, int count) =>
+      u.id == 'none' ? 'ед.' : DoseUnit.declensionByUnit(count, u);
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<DoseUnit>(
+      initialValue: value,
+      onSelected: onChanged,
+      enableFeedback: true,
+      itemBuilder: (_) => units
+          .map((u) => PopupMenuItem(value: u, child: Text(_menuLabel(u, count))))
+          .toList(),
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _fieldLabel(value, count),
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                color: value.id == 'none'
+                    ? ThemeColors.textPrimary.withAlpha(128)
+                    : ThemeColors.textPrimary,
+              ),
+            ),
+            Icon(Icons.expand_more, size: 22, color: accent),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Icon picker tile (opens iOS-style shape + colour picker) ─────────────────
 
 class _IconPickerTile extends StatelessWidget {
@@ -663,12 +782,7 @@ class _IconPickerTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            PillIcon(
-              kind: kind,
-              colorValue: color,
-              fallback: accent,
-              size: 44,
-            ),
+            PillIcon(kind: kind, colorValue: color, fallback: accent, size: 44),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -688,7 +802,11 @@ class _IconPickerTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: ThemeColors.border, size: 22),
+            const Icon(
+              Icons.chevron_right,
+              color: ThemeColors.border,
+              size: 22,
+            ),
           ],
         ),
       ),
@@ -737,9 +855,11 @@ class _ReminderListTile extends StatelessWidget {
                     ),
                     Text(
                       [
-                        if (reminder.dose.isNotEmpty) reminder.dose,
+                        if (reminder.doseLabel.isNotEmpty) reminder.doseLabel,
                         reminder.frequencyLabel,
-                        reminder.timeLabel,
+                        if (reminder.frequencyType !=
+                            PillFrequencyType.onDemand)
+                          reminder.timeLabel,
                       ].join(' · '),
                       style: Theme.of(context).textTheme.bodySmall,
                       maxLines: 1,
@@ -799,22 +919,32 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
 
   // ── View mode actions ────────────────────────────────────────────────────
 
-  Future<void> _toggleOnDemandTaken() async {
-    final today = DateTime.now();
-    final taken = _reminder.isTakenOnDay(today);
-    if (taken) {
-      await PillReminderService().markUntaken(
-        petId: widget.profile.id,
-        reminderId: _reminder.id,
-        date: today,
-      );
-    } else {
-      await PillReminderService().markTaken(
-        petId: widget.profile.id,
-        reminderId: _reminder.id,
-        date: today,
-      );
-    }
+  /// Логирует приём «по требованию»: спрашиваем дозу и время, затем добавляем
+  /// запись в журнал.
+  Future<void> _logOnDemandIntake() async {
+    final result = await showOnDemandIntakeDialog(
+      context,
+      kind: _reminder.kind,
+      defaultDoseValue: _reminder.doseValue,
+      defaultDoseUnit: _reminder.doseUnit,
+    );
+    if (result == null) return;
+    await PillReminderService().addOnDemandIntake(
+      petId: widget.profile.id,
+      reminderId: _reminder.id,
+      time: result.time,
+      doseValue: result.doseValue,
+      doseUnit: result.doseUnit,
+    );
+    await _reloadReminder();
+  }
+
+  Future<void> _removeIntake(PillIntake intake) async {
+    await PillReminderService().removeOnDemandIntake(
+      petId: widget.profile.id,
+      reminderId: _reminder.id,
+      time: intake.time,
+    );
     await _reloadReminder();
   }
 
@@ -926,7 +1056,8 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
       name: name,
       kind: form.kind,
       color: form.color,
-      dose: form.doseCtrl.text.trim(),
+      doseValue: form.doseValue,
+      doseUnit: form.doseUnit,
       frequencyType: form.frequency,
       weekdays: form.frequency == PillFrequencyType.weekdays
           ? (List.of(form.weekdays)..sort())
@@ -1064,6 +1195,10 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     final isOnDemand = _reminder.frequencyType == PillFrequencyType.onDemand;
     // «По требованию» нельзя пропустить — раздел пропусков не показываем.
     final missedDays = isOnDemand ? <DateTime>[] : _missedDays(30);
+    final todayIntakes = isOnDemand
+        ? _reminder.intakesOnDay(today)
+        : <PillIntake>[];
+    final journalIntakes = isOnDemand ? _recentIntakes(today) : <PillIntake>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1086,10 +1221,10 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              if (_reminder.dose.isNotEmpty) ...[
+              if (_reminder.doseLabel.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
-                  _reminder.dose,
+                  _reminder.doseLabel,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
@@ -1131,7 +1266,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                 color: ThemeColors.border.withAlpha(60),
               ),
               // Show each time as a separate row (skip for on-demand — no schedule).
-              if (!isOnDemand)
+              if (!isOnDemand) ...[
                 ..._reminder.schedules.asMap().entries.map((entry) {
                   final i = entry.key;
                   final s = entry.value;
@@ -1152,11 +1287,12 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                     ],
                   );
                 }),
-              Divider(
-                height: 1,
-                indent: 46,
-                color: ThemeColors.border.withAlpha(60),
-              ),
+                Divider(
+                  height: 1,
+                  indent: 46,
+                  color: ThemeColors.border.withAlpha(60),
+                ),
+              ],
               _DetailRow(
                 icon: Icons.event,
                 iconColor: accent,
@@ -1175,18 +1311,19 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
         if (scheduledToday) ...[
           Text('Сегодня', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          if (isOnDemand)
-            // Один общий тогл «Принято сегодня» вместо расписания.
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _TodayToggle(
-                isTaken: _reminder.isTakenOnDay(today),
-                time: 'По требованию',
+          if (isOnDemand) ...[
+            // «По требованию» — журнал приёмов: каждая отметка со временем и
+            // дозой, можно добавить несколько за день.
+            _AddIntakeButton(accent: accent, onTap: _logOnDemandIntake),
+            if (todayIntakes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _IntakeList(
+                intakes: todayIntakes,
                 accent: accent,
-                onTap: _toggleOnDemandTaken,
+                onRemove: _removeIntake,
               ),
-            )
-          else
+            ],
+          ] else
             // One toggle per schedule — each is toggled independently.
             ..._reminder.schedules.asMap().entries.map((entry) {
               final i = entry.key;
@@ -1305,7 +1442,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
               }).toList(),
             ),
           ),
-        ] else ...[
+        ] else if (!isOnDemand) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Row(
@@ -1327,8 +1464,34 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
             ),
           ),
         ],
+
+        // ── Журнал приёмов «по требованию» (последние 30 дней) ───────────────
+        if (isOnDemand && journalIntakes.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Журнал приёмов',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          _IntakeList(
+            intakes: journalIntakes,
+            accent: accent,
+            onRemove: _removeIntake,
+            showDay: true,
+          ),
+        ],
       ],
     );
+  }
+
+  /// On-demand intakes from the last 30 days, excluding today, newest first.
+  List<PillIntake> _recentIntakes(DateTime today) {
+    final t0 = DateTime(today.year, today.month, today.day);
+    final start = t0.subtract(const Duration(days: 30));
+    return _reminder.intakes
+        .where((i) => i.time.isAfter(start) && i.time.isBefore(t0))
+        .toList()
+      ..sort((a, b) => b.time.compareTo(a.time));
   }
 
   // ── Edit body ────────────────────────────────────────────────────────────
@@ -1437,6 +1600,307 @@ class _TodayToggle extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── On-demand intake log ─────────────────────────────────────────────────────
+
+String _intakeDayLabel(DateTime d) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(d.year, d.month, d.day);
+  final diff = today.difference(day).inDays;
+  if (diff == 0) return 'Сегодня';
+  if (diff == 1) return 'Вчера';
+  return DateFormat('d MMM', 'ru').format(d);
+}
+
+class _AddIntakeButton extends StatelessWidget {
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _AddIntakeButton({required this.accent, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Дать препарат'),
+        style: FilledButton.styleFrom(
+          backgroundColor: accent,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
+class _IntakeList extends StatelessWidget {
+  final List<PillIntake> intakes;
+  final Color accent;
+  final ValueChanged<PillIntake> onRemove;
+  final bool showDay;
+
+  const _IntakeList({
+    required this.intakes,
+    required this.accent,
+    required this.onRemove,
+    this.showDay = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPlate(
+      padding: 0,
+      child: Column(
+        children: [
+          for (var i = 0; i < intakes.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                indent: 16,
+                color: ThemeColors.border.withAlpha(60),
+              ),
+            _IntakeRow(
+              intake: intakes[i],
+              showDay: showDay,
+              onRemove: () => onRemove(intakes[i]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _IntakeRow extends StatelessWidget {
+  final PillIntake intake;
+  final bool showDay;
+  final VoidCallback onRemove;
+
+  const _IntakeRow({
+    required this.intake,
+    required this.showDay,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title = showDay
+        ? '${_intakeDayLabel(intake.time)}, ${intake.timeLabel}'
+        : intake.timeLabel;
+    return ListTile(
+      leading: Icon(
+        Icons.check_circle,
+        size: 18,
+        color: ThemeColors.ok.mainColor,
+      ),
+      title: Row(
+        spacing: 6,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.bodyMedium),
+          if (intake.doseLabel.isNotEmpty)
+            Text(
+              '(${intake.doseLabel})',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
+            ),
+        ],
+      ),
+
+      trailing: IconButton(
+        constraints: BoxConstraints(maxWidth: 36, maxHeight: 36),
+        onPressed: onRemove,
+        icon: Icon(Icons.close, size: 12, color: ThemeColors.border),
+      ),
+    );
+
+    //   Row(
+    //     children: [
+    //       Icon(Icons.check_circle, size: 18, color: ThemeColors.ok.mainColor),
+    //       const SizedBox(width: 12),
+    //       Expanded(
+    //         child: Column(
+    //           crossAxisAlignment: CrossAxisAlignment.start,
+    //           children: [
+    //             Text(title, style: Theme.of(context).textTheme.bodyMedium),
+    //             if (intake.dose.isNotEmpty) ...[
+    //               const SizedBox(height: 2),
+    //               Text(
+    //                 intake.dose,
+    //                 style: Theme.of(
+    //                   context,
+    //                 ).textTheme.bodySmall!.copyWith(color: ThemeColors.border),
+    //               ),
+    //             ],
+    //           ],
+    //         ),
+    //       ),
+    //       GestureDetector(
+    //         onTap: onRemove,
+    //         behavior: HitTestBehavior.opaque,
+    //         child: const Padding(
+    //           padding: EdgeInsets.all(4),
+    //           child: Icon(Icons.close, size: 18, color: ThemeColors.border),
+    //         ),
+    //       ),
+    //     ],
+    //   ),
+    // );
+  }
+}
+
+// ─── On-demand intake dialog (asks dose + time on each intake) ────────────────
+
+Future<({DateTime time, int doseValue, DoseUnit doseUnit})?>
+showOnDemandIntakeDialog(
+  BuildContext context, {
+  required PillKind? kind,
+  required int defaultDoseValue,
+  required DoseUnit defaultDoseUnit,
+}) {
+  return showDialog<({DateTime time, int doseValue, DoseUnit doseUnit})>(
+    context: context,
+    builder: (_) => _OnDemandIntakeDialog(
+      kind: kind,
+      defaultDoseValue: defaultDoseValue,
+      defaultDoseUnit: defaultDoseUnit,
+    ),
+  );
+}
+
+class _OnDemandIntakeDialog extends StatefulWidget {
+  final PillKind? kind;
+  final int defaultDoseValue;
+  final DoseUnit defaultDoseUnit;
+
+  const _OnDemandIntakeDialog({
+    required this.kind,
+    required this.defaultDoseValue,
+    required this.defaultDoseUnit,
+  });
+
+  @override
+  State<_OnDemandIntakeDialog> createState() => _OnDemandIntakeDialogState();
+}
+
+class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
+  late final TextEditingController _amountCtrl;
+  late DoseUnit _unit;
+  late TimeOfDay _time;
+
+  int get _value => int.tryParse(_amountCtrl.text.trim()) ?? 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl = TextEditingController(
+      text: widget.defaultDoseValue == 0
+          ? ''
+          : widget.defaultDoseValue.toString(),
+    );
+    _unit = widget.defaultDoseUnit.id == 'none'
+        ? DoseUnit.forKind(widget.kind).first
+        : widget.defaultDoseUnit;
+    _time = TimeOfDay.now();
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(context: context, initialTime: _time);
+    if (picked != null) setState(() => _time = picked);
+  }
+
+  void _save() {
+    final now = DateTime.now();
+    final time = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _time.hour,
+      _time.minute,
+    );
+    Navigator.of(
+      context,
+    ).pop((time: time, doseValue: _value, doseUnit: _unit));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.watch<AppearanceController>().primaryColor;
+    return AlertDialog(
+      title: const Text('Отметить приём'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GlassPlate(
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _amountCtrl,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: baseInputDecoration('Доза'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _DoseUnitDropdown(
+                  units: _doseUnitsFor(widget.kind, _unit),
+                  value: _unit,
+                  count: _value,
+                  accent: accent,
+                  onChanged: (u) => setState(() => _unit = u),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          GlassCard(
+            callback: _pickTime,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.access_time, size: 18, color: accent),
+                  const SizedBox(width: 8),
+                  Text('Время', style: Theme.of(context).textTheme.bodyMedium),
+                  const Spacer(),
+                  Text(
+                    _time.format(context),
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          style: FilledButton.styleFrom(backgroundColor: accent),
+          child: const Text('Сохранить'),
+        ),
+      ],
     );
   }
 }

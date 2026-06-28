@@ -363,8 +363,8 @@ class HealthAnalyzer {
       if (now.isAfter(scheduled) && !pill.isTakenOnDay(now)) {
         addBadge(HealthBadge(
           title: 'Пропущен приём: ${pill.name}',
-          subtitle: pill.dose.isNotEmpty
-              ? '${pill.dose} · ${pill.timeLabel}'
+          subtitle: pill.doseLabel.isNotEmpty
+              ? '${pill.doseLabel} · ${pill.timeLabel}'
               : pill.timeLabel,
           severity: HealthBadgeSeverity.warning,
           icon: Icons.medication_outlined,

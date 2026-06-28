@@ -1839,7 +1839,7 @@ class _AttachmentPickerSheetState extends State<_AttachmentPickerSheet> {
                                     ? Color(p.color!)
                                     : accent,
                                 title: p.name,
-                                subtitle: p.dose,
+                                subtitle: p.doseLabel,
                                 onTap: () => _pick(
                                   ChatAttachment(
                                     type: 'pill',

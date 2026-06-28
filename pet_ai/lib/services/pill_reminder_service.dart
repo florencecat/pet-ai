@@ -235,6 +235,55 @@ class PillReminderService {
     }
   }
 
+  // ── On-demand intake log («по требованию») ─────────────────────────────────
+
+  /// Logs a single on-demand intake at [time] with an optional [dose].
+  Future<void> addOnDemandIntake({
+    required String petId,
+    required String reminderId,
+    required DateTime time,
+    int doseValue = 0,
+    DoseUnit doseUnit = DoseUnit.none,
+  }) async {
+    final profile = await PetService().loadProfile(petId);
+    if (profile == null) return;
+    final idx = profile.pillReminders.indexWhere((r) => r.id == reminderId);
+    if (idx < 0) return;
+
+    final old = profile.pillReminders[idx];
+    final newIntakes = List<PillIntake>.from(old.intakes)
+      ..add(PillIntake(time: time, doseValue: doseValue, doseUnit: doseUnit))
+      ..sort((a, b) => a.time.compareTo(b.time));
+
+    profile.pillReminders[idx] = old.copyWith(intakes: newIntakes);
+    await PetService().saveProfile(profile);
+    CloudSyncService.instance.pushAsync('pills', profile.pillReminders[idx], petId);
+  }
+
+  /// Removes the on-demand intake recorded at exactly [time].
+  Future<void> removeOnDemandIntake({
+    required String petId,
+    required String reminderId,
+    required DateTime time,
+  }) async {
+    final profile = await PetService().loadProfile(petId);
+    if (profile == null) return;
+    final idx = profile.pillReminders.indexWhere((r) => r.id == reminderId);
+    if (idx < 0) return;
+
+    final old = profile.pillReminders[idx];
+    final newIntakes = List<PillIntake>.from(old.intakes);
+    final removeAt = newIntakes.indexWhere(
+      (i) => i.time.isAtSameMomentAs(time),
+    );
+    if (removeAt < 0) return;
+    newIntakes.removeAt(removeAt);
+
+    profile.pillReminders[idx] = old.copyWith(intakes: newIntakes);
+    await PetService().saveProfile(profile);
+    CloudSyncService.instance.pushAsync('pills', profile.pillReminders[idx], petId);
+  }
+
   Future<void> _toggleSchedule({
     required String petId,
     required String reminderId,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/services/pb_service.dart';
+import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 
 class PillKind {
@@ -126,6 +127,144 @@ class PillKind {
   }
 }
 
+/// Единица измерения дозы. Доступный набор единиц зависит от вида препарата
+/// ([PillKind]) — см. [DoseUnit.forKind].
+class DoseUnit {
+  final String id;
+  final String label; // краткая форма для отображения, напр. «таб.», «мл»
+
+  const DoseUnit({required this.id, required this.label});
+
+  static const none = DoseUnit(id: 'none', label: '');
+  static const tablet = DoseUnit(id: 'tablet', label: 'таб.');
+  static const capsule = DoseUnit(id: 'capsule', label: 'капс.');
+  static const ml = DoseUnit(id: 'ml', label: 'мл');
+  static const mg = DoseUnit(id: 'mg', label: 'мг');
+  static const gram = DoseUnit(id: 'gram', label: 'г');
+  static const drop = DoseUnit(id: 'drop', label: 'кап.');
+  static const unit = DoseUnit(id: 'unit', label: 'ед.');
+  static const spray = DoseUnit(id: 'spray', label: 'впрыск');
+  static const application = DoseUnit(id: 'application', label: 'нанесение');
+  static const piece = DoseUnit(id: 'piece', label: 'шт.');
+  static const teaspoon = DoseUnit(id: 'teaspoon', label: 'ч.л.');
+
+  static const all = <DoseUnit>[
+    tablet,
+    capsule,
+    ml,
+    mg,
+    gram,
+    drop,
+    unit,
+    spray,
+    application,
+    piece,
+    teaspoon,
+    none,
+  ];
+
+  static DoseUnit byId(String id) =>
+      all.firstWhere((u) => u.id == id, orElse: () => none);
+
+  /// Единицы, подходящие выбранному виду препарата. Первая — по умолчанию.
+  /// Всегда заканчивается на [none] («другое») как запасным вариантом.
+  static List<DoseUnit> forKind(PillKind? kind) {
+    switch (kind?.id) {
+      case 'c1855lfnv3bni66': // Таблетка
+        return const [tablet, mg, piece, none];
+      case 'qyamefo3gztqwg1': // Капсула
+        return const [capsule, mg, piece, none];
+      case 'rm4pf2ni3l99r4b': // Жидкость
+        return const [ml, mg, none];
+      case 'kepj0nk6qnccw77': // Капли
+        return const [drop, ml, none];
+      case 'unku1v40f48p4l4': // Инъекция
+        return const [ml, unit, mg, none];
+      case '2k0u98csxnvsh8o': // Ингалятор
+        return const [spray, unit, none];
+      case 'mon5i8j2s9xoho7': // Спрей
+        return const [spray, application, none];
+      case 's2akauj574a7mrx': // Порошок
+        return const [mg, gram, teaspoon, none];
+      case 'o21zqz6cfs3dcs4': // Гель
+      case '3nyf1vbu009dn6x': // Мазь
+      case 'ie1sziw80vagg4q': // Крем
+        return const [application, gram, none];
+      case '34lz4yydq52c0n0': // Лосьон
+        return const [application, ml, none];
+      case 'bf1o8009eycnzfr': // Пенка
+        return const [application, none];
+      case 'htv28sijgs6dagw': // Пластырь
+        return const [piece, none];
+      case 'lv3or9euunqavjq': // Препарат местного действия
+        return const [application, piece, none];
+      default:
+        return const [tablet, ml, mg, drop, piece, unit, application, none];
+    }
+  }
+
+  static String declensionByUnit(int count, DoseUnit unit) {
+    switch(unit.id) {
+      case 'spray': return declension(count, 'впрыск', 'впрыска', 'впрысков');
+      case 'application': return declension(count, 'нанесение', 'нанесения', 'нанесений');
+      default: return unit.label;
+    }
+  }
+
+  @override
+  bool operator ==(Object other) => other is DoseUnit && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+/// Одна отметка приёма препарата «по требованию»: время и (опционально) доза.
+class PillIntake {
+  final DateTime time;
+  final int doseValue; // 0 → доза не указана
+  final DoseUnit doseUnit;
+
+  const PillIntake({
+    required this.time,
+    this.doseValue = 0,
+    this.doseUnit = DoseUnit.none,
+  });
+
+  String get timeLabel =>
+      '${time.hour.toString().padLeft(2, '0')}:'
+      '${time.minute.toString().padLeft(2, '0')}';
+
+  String get doseLabel => doseValue == 0
+      ? ''
+      : '$doseValue ${DoseUnit.declensionByUnit(doseValue, doseUnit)}'.trimRight();
+
+  Map<String, dynamic> toJson() => {
+    'time': time.toIso8601String(),
+    if (doseValue != 0) 'doseValue': doseValue,
+    if (doseValue != 0) 'doseUnit': doseUnit.id,
+  };
+
+  factory PillIntake.fromJson(Map<String, dynamic> json) {
+    // Legacy: ранние сборки хранили дозу строкой в ключе 'dose'.
+    final legacy = json['dose'] as String?;
+    if (json['doseValue'] == null && legacy != null && legacy.isNotEmpty) {
+      final (value, unit) = Pill.legacyParseDose(legacy);
+      return PillIntake(
+        time: DateTime.parse(json['time'] as String),
+        doseValue: value,
+        doseUnit: unit,
+      );
+    }
+    return PillIntake(
+      time: DateTime.parse(json['time'] as String),
+      doseValue: (json['doseValue'] as num?)?.toInt() ?? 0,
+      doseUnit: json['doseUnit'] != null
+          ? DoseUnit.byId(json['doseUnit'] as String)
+          : DoseUnit.none,
+    );
+  }
+}
+
 enum PillFrequencyType { daily, weekdays, onDemand }
 
 extension PillFrequencyTypeX on PillFrequencyType {
@@ -198,7 +337,8 @@ class Pill implements PbEntity {
 
   /// Цвет иконки (ARGB int). null → используется акцентный цвет приложения.
   final int? color;
-  final String dose; // e.g., "1 таблетка", "5 мл"
+  final int doseValue; // 0 → доза не указана
+  final DoseUnit doseUnit;
   final PillFrequencyType frequencyType;
   final List<int> weekdays; // 1=Пн..7=Вс; only for frequencyType.weekdays
   /// Ordered list of daily intake times. At least one entry is always present.
@@ -211,6 +351,10 @@ class Pill implements PbEntity {
 
   /// Per-schedule taken state: dateKey → list of schedule indices that were taken.
   final Map<String, List<int>> takenSchedules;
+
+  /// Журнал приёмов для вида «по требованию» (каждый приём — время + доза).
+  /// Для остальных видов всегда пустой.
+  final List<PillIntake> intakes;
   final String? eventId; // linked PetEvent for notifications
 
   const Pill({
@@ -218,7 +362,8 @@ class Pill implements PbEntity {
     required this.name,
     required this.kind,
     this.color,
-    required this.dose,
+    this.doseValue = 0,
+    this.doseUnit = DoseUnit.none,
     required this.frequencyType,
     required this.weekdays,
     required this.schedules,
@@ -226,6 +371,7 @@ class Pill implements PbEntity {
     this.endDate,
     required this.takenDates,
     this.takenSchedules = const {},
+    this.intakes = const [],
     this.eventId,
   });
 
@@ -235,6 +381,12 @@ class Pill implements PbEntity {
   int get minute => schedules.isNotEmpty ? schedules.first.minute : 0;
 
   // ── Computed properties ───────────────────────────────────────────────────
+
+  /// Доза в человекочитаемом виде, напр. «2 таб.», «3 впрыска». Пусто, если
+  /// доза не задана.
+  String get doseLabel => doseValue == 0
+      ? ''
+      : '$doseValue ${DoseUnit.declensionByUnit(doseValue, doseUnit)}'.trimRight();
 
   bool get isActive {
     if (endDate == null) return true;
@@ -263,9 +415,28 @@ class Pill implements PbEntity {
     }
   }
 
+  /// Отметки приёма «по требованию» за [day], отсортированные по времени.
+  List<PillIntake> intakesOnDay(DateTime day) {
+    final result =
+        intakes
+            .where(
+              (i) =>
+                  i.time.year == day.year &&
+                  i.time.month == day.month &&
+                  i.time.day == day.day,
+            )
+            .toList()
+          ..sort((a, b) => a.time.compareTo(b.time));
+    return result;
+  }
+
   /// Returns true when every schedule for [day] is marked as taken.
   bool isTakenOnDay(DateTime day) {
     final key = dateKey(day);
+    if (frequencyType == PillFrequencyType.onDemand) {
+      if (intakesOnDay(day).isNotEmpty) return true;
+      return takenDates.contains(key); // legacy on-demand saves
+    }
     if (takenSchedules.containsKey(key)) {
       return (takenSchedules[key]?.length ?? 0) >= schedules.length;
     }
@@ -282,6 +453,11 @@ class Pill implements PbEntity {
   /// Number of individual schedules marked as taken on [day].
   int countTakenOnDay(DateTime day) {
     final key = dateKey(day);
+    if (frequencyType == PillFrequencyType.onDemand) {
+      final c = intakesOnDay(day).length;
+      if (c > 0) return c;
+      return takenDates.contains(key) ? 1 : 0; // legacy on-demand saves
+    }
     if (takenSchedules.containsKey(key)) {
       return takenSchedules[key]?.length ?? 0;
     }
@@ -322,7 +498,8 @@ class Pill implements PbEntity {
     PillKind? kind,
     int? color,
     bool clearColor = false,
-    String? dose,
+    int? doseValue,
+    DoseUnit? doseUnit,
     PillFrequencyType? frequencyType,
     List<int>? weekdays,
     List<PillSchedule>? schedules,
@@ -331,13 +508,15 @@ class Pill implements PbEntity {
     bool clearEndDate = false,
     List<String>? takenDates,
     Map<String, List<int>>? takenSchedules,
+    List<PillIntake>? intakes,
     String? eventId,
   }) => Pill(
     id: id,
     name: name ?? this.name,
     kind: kind ?? this.kind,
     color: clearColor ? null : (color ?? this.color),
-    dose: dose ?? this.dose,
+    doseValue: doseValue ?? this.doseValue,
+    doseUnit: doseUnit ?? this.doseUnit,
     frequencyType: frequencyType ?? this.frequencyType,
     weekdays: weekdays ?? this.weekdays,
     schedules: schedules ?? this.schedules,
@@ -345,10 +524,27 @@ class Pill implements PbEntity {
     endDate: clearEndDate ? null : (endDate ?? this.endDate),
     takenDates: takenDates ?? this.takenDates,
     takenSchedules: takenSchedules ?? this.takenSchedules,
+    intakes: intakes ?? this.intakes,
     eventId: eventId ?? this.eventId,
   );
 
   // ── Serialization ─────────────────────────────────────────────────────────
+
+  /// Migration-only: разбирает legacy-строку дозы (напр. «1 таблетка», «5 мл»)
+  /// в структурированную пару значение+единица. Используется лишь при чтении
+  /// старых сохранений; новые данные всегда хранят [doseValue]/[doseUnit].
+  static (int value, DoseUnit unit) legacyParseDose(String dose) {
+    final match = RegExp(r'^\s*([0-9]+)\s*(.*)$').firstMatch(dose);
+    if (match == null) return (0, DoseUnit.none);
+    final value = int.tryParse(match.group(1)!) ?? 0;
+    final rest = match.group(2)!.trim().toLowerCase();
+    if (rest.isEmpty) return (value, DoseUnit.none);
+    final unit = DoseUnit.all.firstWhere(
+      (u) => u.id != 'none' && rest.startsWith(u.label.toLowerCase()),
+      orElse: () => DoseUnit.none,
+    );
+    return (value, unit);
+  }
 
   static String dateKey(DateTime day) =>
       '${day.year.toString().padLeft(4, '0')}-'
@@ -371,32 +567,81 @@ class Pill implements PbEntity {
       ];
     }
 
+    final frequencyType = PillFrequencyType.values.firstWhere(
+      (f) => f.name == json['frequencyType'],
+      orElse: () => PillFrequencyType.daily,
+    );
+    final takenDates =
+        (json['takenDates'] as List<dynamic>?)?.cast<String>() ?? const [];
+
     return Pill(
       id: json['id'] as String,
       name: json['name'] as String,
       kind: json['kind'] != null ? PillKind.byId(json['kind'] as String) : null,
       color: _parseColor(json['color']),
-      dose: json['dose'] as String? ?? '',
-      frequencyType: PillFrequencyType.values.firstWhere(
-        (f) => f.name == json['frequencyType'],
-        orElse: () => PillFrequencyType.daily,
-      ),
+      doseValue: _parseDoseValue(json['doseValue'], json['dose']),
+      doseUnit: _parseDoseUnit(json['doseUnit'], json['dose']),
+      frequencyType: frequencyType,
       weekdays: (json['weekdays'] as List<dynamic>?)?.cast<int>() ?? [],
       schedules: schedules,
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: json['endDate'] != null
           ? DateTime.parse(json['endDate'] as String)
           : null,
-      takenDates: (json['takenDates'] as List<dynamic>?)?.cast<String>() ?? [],
+      takenDates: takenDates,
       takenSchedules: _parseTakenSchedules(json['takenSchedules']),
+      intakes: _parseIntakes(json['intakes'], frequencyType, takenDates),
       eventId: json['eventId'] as String?,
     );
+  }
+
+  /// Parses the on-demand intake log. Falls back to migrating legacy on-demand
+  /// saves (which only stored per-day dateKeys in [takenDates]).
+  static List<PillIntake> _parseIntakes(
+    dynamic raw,
+    PillFrequencyType frequencyType,
+    List<String> legacyTakenDates,
+  ) {
+    if (raw is List) {
+      return raw
+          .map(
+            (e) =>
+                PillIntake.fromJson((e as Map).cast<String, dynamic>()),
+          )
+          .toList();
+    }
+    if (frequencyType == PillFrequencyType.onDemand) {
+      return legacyTakenDates
+          .map((k) => DateTime.tryParse(k))
+          .whereType<DateTime>()
+          .map((d) => PillIntake(time: d))
+          .toList();
+    }
+    return const [];
   }
 
   static Map<String, List<int>> _parseTakenSchedules(dynamic raw) {
     if (raw == null) return {};
     final map = raw as Map<String, dynamic>;
     return map.map((k, v) => MapEntry(k, (v as List<dynamic>).cast<int>()));
+  }
+
+  /// Reads the dose value, preferring the structured [doseValue] key and
+  /// falling back to migrating a legacy free-text [dose] string.
+  static int _parseDoseValue(dynamic rawValue, dynamic legacyDose) {
+    if (rawValue is num) return rawValue.toInt();
+    if (legacyDose is String && legacyDose.isNotEmpty) {
+      return legacyParseDose(legacyDose).$1;
+    }
+    return 0;
+  }
+
+  static DoseUnit _parseDoseUnit(dynamic rawUnit, dynamic legacyDose) {
+    if (rawUnit is String && rawUnit.isNotEmpty) return DoseUnit.byId(rawUnit);
+    if (legacyDose is String && legacyDose.isNotEmpty) {
+      return legacyParseDose(legacyDose).$2;
+    }
+    return DoseUnit.none;
   }
 
   /// Tolerant parse of a stored colour: accepts int, num, or hex/decimal string.
@@ -418,7 +663,10 @@ class Pill implements PbEntity {
     'name': name,
     'kind': kind?.id,
     'color': color,
-    'dose': dose,
+    'doseValue': doseValue,
+    'doseUnit': doseUnit.id,
+    // Legacy-зеркало для старых сборок, читающих строковую дозу.
+    'dose': doseLabel,
     'frequencyType': frequencyType.name,
     'weekdays': weekdays,
     'schedules': schedules.map((s) => s.toJson()).toList(),
@@ -429,6 +677,7 @@ class Pill implements PbEntity {
     'endDate': endDate?.toIso8601String(),
     'takenDates': takenDates,
     'takenSchedules': takenSchedules,
+    'intakes': intakes.map((i) => i.toJson()).toList(),
     'eventId': eventId,
   };
 
@@ -439,7 +688,10 @@ class Pill implements PbEntity {
     'kind': kind?.id,
     'color': color,
     "pet": ownerId,
-    "dose": dose,
+    "dose_value": doseValue,
+    "dose_unit": doseUnit.id,
+    // Legacy-зеркало (human-readable) для старых клиентов.
+    "dose": doseLabel,
     "frequency": frequencyType.name,
     // weekdays в схеме — multi-select со строковыми значениями "1".."7".
     "weekdays": weekdays.map((w) => w.toString()).toList(),
@@ -448,7 +700,11 @@ class Pill implements PbEntity {
     // Времена приёма и история отметок (json-поля).
     "schedules": schedules.map((s) => s.toJson()).toList(),
     "taken_schedules": takenSchedules,
-    "taken_dates": takenDates,
+    // Для «по требованию» в taken_dates лежит журнал приёмов (объекты
+    // {time, dose}); для остальных видов — список dateKey-строк.
+    "taken_dates": frequencyType == PillFrequencyType.onDemand
+        ? intakes.map((i) => i.toJson()).toList()
+        : takenDates,
   };
 }
 
@@ -486,6 +742,34 @@ class _PillReminderCodec extends PbCodec<Pill> {
               .toList()
         : const [PillSchedule(hour: 9, minute: 0)];
 
+    final frequencyType = PillFrequencyType.values.firstWhere(
+      (f) => f.name == data['frequency'],
+      orElse: () => PillFrequencyType.daily,
+    );
+
+    // taken_dates: для «по требованию» — журнал приёмов (объекты {time, dose}),
+    // для остальных видов — список dateKey-строк. Поддерживаем оба формата и
+    // миграцию старых on-demand-записей (строки → приём в полночь).
+    final rawTakenDates = data['taken_dates'] as List<dynamic>? ?? const [];
+    final List<String> takenDates;
+    final List<PillIntake> intakes;
+    if (frequencyType == PillFrequencyType.onDemand) {
+      takenDates = const [];
+      intakes = rawTakenDates
+          .map((e) {
+            if (e is Map) {
+              return PillIntake.fromJson(e.cast<String, dynamic>());
+            }
+            final d = DateTime.tryParse(e.toString());
+            return d != null ? PillIntake(time: d) : null;
+          })
+          .whereType<PillIntake>()
+          .toList();
+    } else {
+      takenDates = rawTakenDates.map((e) => e.toString()).toList();
+      intakes = const [];
+    }
+
     return Pill(
       id: data['id'] as String,
       name: data['name'] as String,
@@ -493,20 +777,18 @@ class _PillReminderCodec extends PbCodec<Pill> {
           ? PillKind.byId(data['kind'] as String)
           : null,
       color: Pill._parseColor(data['color']),
-      dose: data['dose'] as String? ?? '',
-      frequencyType: PillFrequencyType.values.firstWhere(
-        (f) => f.name == data['frequency'],
-        orElse: () => PillFrequencyType.daily,
-      ),
+      doseValue: Pill._parseDoseValue(data['dose_value'], data['dose']),
+      doseUnit: Pill._parseDoseUnit(data['dose_unit'], data['dose']),
+      frequencyType: frequencyType,
       weekdays: weekdays,
       schedules: schedules,
       startDate: DateTime.parse(data['start'] as String),
       endDate: data['end'] != null && (data['end'] as String).isNotEmpty
           ? DateTime.tryParse(data['end'] as String)
           : null,
-      takenDates:
-          (data['taken_dates'] as List<dynamic>?)?.cast<String>() ?? const [],
+      takenDates: takenDates,
       takenSchedules: Pill._parseTakenSchedules(data['taken_schedules']),
+      intakes: intakes,
     );
   }
 }
