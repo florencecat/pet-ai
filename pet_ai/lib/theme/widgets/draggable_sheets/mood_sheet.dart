@@ -126,13 +126,17 @@ class _MoodSheetState extends State<MoodSheet> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                spacing: 16,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     'Новая запись',
                     style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 16),
 
+                  Text('Время суток', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 8),
                   Row(
                     children: DayPart.values.map((mt) {
                       final selected = selectedDayPart == mt;
@@ -199,6 +203,10 @@ class _MoodSheetState extends State<MoodSheet> {
                       );
                     }).toList(),
                   ),
+                  const SizedBox(height: 16),
+
+                  Text('Настроение', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -262,8 +270,8 @@ class _MoodSheetState extends State<MoodSheet> {
                       );
                     }).toList(),
                   ),
+                  const SizedBox(height: 16),
 
-                  // ── Добавить ─────────────────────────────────────────────────────
                   SizedBox(
                     width: double.infinity,
                     child: TextButton.icon(

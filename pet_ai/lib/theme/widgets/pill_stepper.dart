@@ -70,7 +70,7 @@ class _PillStepperState extends State<PillStepper> {
         border: Border.all(color: color, width: 2),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _circleButton(Icons.remove, decrease),
 

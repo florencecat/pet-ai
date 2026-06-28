@@ -291,6 +291,19 @@ class PetService {
     }
   }
 
+  /// Удаляет одну запись питания по её [entryId]. В отличие от удаления по дате,
+  /// корректно работает, когда за один день/приём пищи записано несколько блюд.
+  Future<void> deleteFoodEntryById(String petId, String entryId) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      final removed = profile.foodHistory.deleteById(entryId);
+      if (removed != null) {
+        await saveProfile(profile);
+        CloudSyncService.instance.deleteAsync('meals', entryId);
+      }
+    }
+  }
+
   Future<void> deleteWeightEntry(String petId, DateTime date) async {
     final profile = await loadProfile(petId);
     if (profile != null) {

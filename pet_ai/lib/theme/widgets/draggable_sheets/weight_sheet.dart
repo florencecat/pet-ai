@@ -100,24 +100,26 @@ class _WeightSheetState extends State<WeightSheet> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                spacing: 16,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     'Новая запись',
                     style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 16),
 
-                  Center(
-                    child: PillStepper(
+                  Text('Вес', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  PillStepper(
                       value: _weight,
                       onChanged: (value) => setState(() {
                         _changed = true;
                         _weight = value;
                       }),
                     ),
-                  ),
 
-                  // ── Добавить ──────────────────────────────────────────────────────
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: TextButton.icon(

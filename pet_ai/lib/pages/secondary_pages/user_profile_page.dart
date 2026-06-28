@@ -7,6 +7,7 @@ import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/suggestion_list.dart';
 import 'package:provider/provider.dart';
 
 // ─── Russian cities ───────────────────────────────────────────────────────────
@@ -611,52 +612,13 @@ class _CitySheetState extends State<_CitySheet> {
 
           if (_suggestions.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: _suggestions.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final city = entry.value;
-                  final isLast = i == _suggestions.length - 1;
-                  return Column(
-                    children: [
-                      InkWell(
-                        onTap: () {
-                          _ctrl.text = city;
-                          setState(() => _suggestions = []);
-                        },
-                        borderRadius: BorderRadius.circular(14),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.location_on_outlined,
-                                  size: 16, color: widget.accent),
-                              const SizedBox(width: 10),
-                              Text(city,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (!isLast)
-                        Divider(
-                          height: 1,
-                          indent: 42,
-                          color: ThemeColors.border.withAlpha(50),
-                        ),
-                    ],
-                  );
-                }).toList(),
-              ),
+            SuggestionList(
+              suggestions: _suggestions,
+              accent: widget.accent,
+              onSelected: (city) {
+                _ctrl.text = city;
+                setState(() => _suggestions = []);
+              },
             ),
           ],
 
