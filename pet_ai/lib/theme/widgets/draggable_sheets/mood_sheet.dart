@@ -77,9 +77,8 @@ class _MoodSheetState extends State<MoodSheet> {
       title: "История настроения",
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(true),
-      initialSize: 0.65,
-      minSize: 0.5,
-      maxSize: 0.95,
+      initialSize: 0.85,
+      maxSize: 0.85,
       body: Column(
         children: [
           SegmentedButton<HistoryPeriod>(

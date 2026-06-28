@@ -64,9 +64,8 @@ class _WeightSheetState extends State<WeightSheet> {
       onBack: () => Navigator.of(context).pop(true),
       title: 'История веса',
       centerTitle: true,
-      initialSize: 0.85,
-      minSize: 0.4,
-      maxSize: 1.0,
+      initialSize: 0.75,
+      maxSize: 0.85,
       body: Column(
         children: [
           // ── Period selector ───────────────────────────────────────────────

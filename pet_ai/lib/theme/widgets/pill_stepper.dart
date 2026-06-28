@@ -17,7 +17,7 @@ class _PillStepperState extends State<PillStepper> {
   late TextEditingController controller;
   late double weight;
 
-  final step = 0.1;
+  final step = 1.0;
 
   @override
   void initState() {

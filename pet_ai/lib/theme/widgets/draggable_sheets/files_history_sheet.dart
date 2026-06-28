@@ -61,8 +61,8 @@ class _FilesHistorySheetState extends State<FilesHistorySheet> {
     return DraggableSheet(
       title: 'Документы',
       centerTitle: true,
-      initialSize: 0.7,
-      maxSize: 0.95,
+      initialSize: 0.85,
+      maxSize: 0.85,
       onBack: () => Navigator.of(context).pop(),
       body: _isLoading
           ? const Center(

@@ -267,7 +267,7 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
       title: 'Документы',
       centerTitle: true,
       initialSize: 0.85,
-      maxSize: 1.0,
+      maxSize: 0.85,
       onBack: () => Navigator.of(context).pop(true),
       actions: [
         if (_isSaving)

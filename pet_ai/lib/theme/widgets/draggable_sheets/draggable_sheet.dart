@@ -25,7 +25,9 @@ class DraggableSheet extends StatelessWidget {
   final List<Widget>? actions;
   final VoidCallback? onBack;
 
-  // Kept for API compatibility only — no longer used for sizing.
+  // Sizing as a fraction of screen height. `initialSize` sets the resting
+  // height the sheet opens at; `maxSize` caps how tall it may grow. `minSize`
+  // is kept for API compatibility only (drag-to-dismiss handles shrinking).
   final double initialSize;
   final double minSize;
   final double maxSize;
@@ -51,55 +53,72 @@ class DraggableSheet extends StatelessWidget {
     final primaryColor = theme.colorScheme.primary;
     final titleStyle = theme.textTheme.titleMedium;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    // Fixed resting height: open at `initialSize`, never grow past `maxSize`.
+    // Without this the sheet's height tracks its content, so a long history
+    // list pushes the content past the screen and the sheet snaps to full
+    // height instead of staying at its intended size. With a stable minHeight
+    // the overflowing body scrolls *inside* the sheet instead.
+    final minHeight = (screenHeight * initialSize).clamp(
+      0.0,
+      screenHeight * maxSize,
+    );
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: minHeight,
+        maxHeight: screenHeight * maxSize,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Drag handle ───────────────────────────────────────────────
-          // Kept OUTSIDE the scroll view: showModalBottomSheet's enableDrag
-          // detects vertical drags on the sheet surface, but a wrapping
-          // SingleChildScrollView consumes them — so a drag on the handle
-          // or header wouldn't dismiss the sheet (this was the iOS bug
-          // where the sheet body scrolled bouncily instead of stretching
-          // the sheet down).
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade400,
-                borderRadius: BorderRadius.circular(2),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Drag handle ───────────────────────────────────────────────
+            // Kept OUTSIDE the scroll view: showModalBottomSheet's enableDrag
+            // detects vertical drags on the sheet surface, but a wrapping
+            // SingleChildScrollView consumes them — so a drag on the handle
+            // or header wouldn't dismiss the sheet (this was the iOS bug
+            // where the sheet body scrolled bouncily instead of stretching
+            // the sheet down).
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
 
-          // ── Header ────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: _buildHeader(primaryColor, titleStyle),
-          ),
+            // ── Header ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _buildHeader(primaryColor, titleStyle),
+            ),
 
-          // ── Body ──────────────────────────────────────────────────────
-          // Flexible so the column hugs its content when small (sheet keeps
-          // wrapping to body height) but caps at the available height when
-          // the body overflows (then the body scrolls).
-          Flexible(
-            fit: FlexFit.loose,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, keyboardInset + 24),
-                child: body,
+            // ── Body ──────────────────────────────────────────────────────
+            // Flexible so the column hugs its content when small (sheet keeps
+            // wrapping to body height) but caps at the available height when
+            // the body overflows (then the body scrolls).
+            Flexible(
+              fit: FlexFit.loose,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, keyboardInset + 24),
+                  child: body,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -123,11 +142,7 @@ class DraggableSheet extends StatelessWidget {
 
           if (centerTitle) const Spacer(),
 
-          if (title != null)
-            Text(
-              title!,
-              style: titleStyle,
-            ),
+          if (title != null) Text(title!, style: titleStyle),
 
           if (centerTitle) const Spacer(),
 

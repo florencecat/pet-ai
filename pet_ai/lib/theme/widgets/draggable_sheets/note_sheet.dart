@@ -91,10 +91,10 @@ class _NoteSheetState extends State<NoteSheet> {
     final entries = List<NoteEntry>.from(_history.entries.reversed);
 
     return DraggableSheet(
-      title: 'Дневник',
+      title: 'Заметки',
       centerTitle: true,
-      initialSize: 0.9,
-      maxSize: 1.0,
+      initialSize: 0.85,
+      maxSize: 0.85,
       onBack: () => Navigator.of(context).pop(true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
