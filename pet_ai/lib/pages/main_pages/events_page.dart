@@ -483,7 +483,9 @@ class EventsPageState extends State<EventsPage> {
                 else
                   ...filtered.map(
                     (e) => Padding(
-                      key: ValueKey('${e.id}_${_selectedDay!.toIso8601String()}'),
+                      key: ValueKey(
+                        '${e.id}_${_selectedDay!.toIso8601String()}',
+                      ),
                       padding: const EdgeInsets.only(bottom: 8),
                       child: _SwipeableEventTile(
                         event: e,
@@ -871,8 +873,7 @@ class _EventTileCard extends StatelessWidget {
                     children: [
                       SoftRoundedIcon(
                         icon: event.style.icon,
-                        color: event.style.color,
-                        gradient: event.style.gradient,
+                        color: event.style.color ?? event.category.color,
                         size: 24,
                       ),
                       const SizedBox(width: 12),
@@ -906,7 +907,7 @@ class _EventTileCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              event.categoryCaption,
+                              event.category.name,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             if (petBadges.isNotEmpty) ...[

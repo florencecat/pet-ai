@@ -264,9 +264,7 @@ class HomePageState extends State<HomePage> {
               title: e.name,
               subtitle: e.category.name,
               icon: e.style.icon,
-              color:
-                  e.style.color ??
-                  context.watch<AppearanceController>().primaryColor,
+              color: e.style.color ?? e.category.color,
               event: e,
             ),
           );
@@ -700,7 +698,7 @@ class HomePageState extends State<HomePage> {
                       ),
                       tooltip: 'Что показывать',
                       visualDensity: VisualDensity.compact,
-                    )
+                    ),
                   ],
                 ),
                 TextButton(
