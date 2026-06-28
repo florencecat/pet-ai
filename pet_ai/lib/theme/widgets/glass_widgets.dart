@@ -619,7 +619,7 @@ class CollapsibleSection extends StatelessWidget {
                 ),
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
         // ── Тело (анимированное) ──────────────────────────────────────────
