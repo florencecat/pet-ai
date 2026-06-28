@@ -683,12 +683,13 @@ class HomePageState extends State<HomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'История питомца',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
                 Row(
+                  spacing: 4,
                   children: [
+                    Text(
+                      'История питомца',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     IconButton(
                       onPressed: () => _openHistoryFilter(context),
                       icon: Icon(
@@ -699,25 +700,25 @@ class HomePageState extends State<HomePage> {
                       ),
                       tooltip: 'Что показывать',
                       visualDensity: VisualDensity.compact,
-                    ),
-                    TextButton(
-                      onPressed: widget.onOpenCalendar,
-                      child: Row(
-                        children: [
-                          Text(
-                            'Все события',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          Icon(
-                            Icons.chevron_right,
-                            color: context
-                                .watch<AppearanceController>()
-                                .secondaryColor,
-                          ),
-                        ],
-                      ),
-                    ),
+                    )
                   ],
+                ),
+                TextButton(
+                  onPressed: widget.onOpenCalendar,
+                  child: Row(
+                    children: [
+                      Text(
+                        'Все события',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -833,7 +834,7 @@ class _PetTimeline extends StatelessWidget {
     return IntrinsicHeight(
       child: Row(
         children: [
-          _LineColumn(showLine: true, dot: false),
+          _LineColumn(showLine: true, dot: true),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
