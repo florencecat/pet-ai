@@ -4,6 +4,7 @@ import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/models/event.dart';
+import 'package:pet_satellite/models/history_filter.dart';
 import 'package:pet_satellite/pages/secondary_pages/settings_page.dart';
 import 'package:pet_satellite/services/file_storage_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -22,6 +23,7 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/file_upload_sheet.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/history_filter_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -51,11 +53,15 @@ class HomePageState extends State<HomePage> {
   List<Event> _allEvents = [];
   int _filesCount = 0;
   int _notesCount = 0;
+  HistoryFilter _filter = const HistoryFilter.defaults();
 
   @override
   void initState() {
     super.initState();
     _initScreen();
+    HistoryFilter.load().then((f) {
+      if (mounted) setState(() => _filter = f);
+    });
   }
 
   /// Called by [MainPage] via GlobalKey whenever the home tab becomes active,
@@ -135,6 +141,20 @@ class HomePageState extends State<HomePage> {
       enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => BirthdaySheet(profile: _profile!),
+    );
+  }
+
+  void _openHistoryFilter(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => HistoryFilterSheet(
+        filter: _filter,
+        onChanged: (f) => setState(() => _filter = f),
+      ),
     );
   }
 
@@ -227,9 +247,12 @@ class HomePageState extends State<HomePage> {
     final items = <_TimelineItem>[];
 
     for (final e in _allEvents) {
-      // Pill/treatment events are already shown on the health page
-      if (e.source == EventSource.pill) continue;
-      if (e.source == EventSource.treatment) continue;
+      // Pill/treatment events are shown on the health page by default; on the
+      // timeline only when explicitly enabled in the history filter.
+      if (e.source == EventSource.pill && !_filter.upcomingPills) continue;
+      if (e.source == EventSource.treatment && !_filter.upcomingTreatments) {
+        continue;
+      }
 
       if (e.repeat == RepeatInterval.none) {
         if (!e.isCompletedOn(e.dateTime) &&
@@ -293,37 +316,45 @@ class HomePageState extends State<HomePage> {
   List<_TimelineItem> _buildHistoryItems() {
     final items = <_TimelineItem>[];
 
-    // Completed events (exclude pill/treatment auto-events — they clutter the timeline)
-    for (final event in _allEvents) {
-      if (event.source == EventSource.pill) continue;
-      if (event.source == EventSource.treatment) continue;
-      for (final dateStr in event.completedDates) {
-        final parts = dateStr.split('-');
-        if (parts.length == 3) {
-          final date = DateTime(
-            int.tryParse(parts[0]) ?? 0,
-            int.tryParse(parts[1]) ?? 0,
-            int.tryParse(parts[2]) ?? 0,
-          );
-          if (event.isCompletedOn(date) || date.isBefore(DateTime.now())) {
-            items.add(
-              _TimelineItem(
-                date: date,
-                title: event.name,
-                subtitle: 'Выполнено · ${event.category.name}',
-                icon: Icons.check_circle_outline,
-                color: event.category.color,
-                isCompleted: true,
-                event: event,
-              ),
+    // Completed events (exclude pill/treatment auto-events — they clutter the
+    // timeline and are shown on the health page).
+    if (_filter.completedEvents) {
+      for (final event in _allEvents) {
+        if (event.source == EventSource.pill) continue;
+        if (event.source == EventSource.treatment) continue;
+        for (final dateStr in event.completedDates) {
+          final parts = dateStr.split('-');
+          if (parts.length == 3) {
+            final date = DateTime(
+              int.tryParse(parts[0]) ?? 0,
+              int.tryParse(parts[1]) ?? 0,
+              int.tryParse(parts[2]) ?? 0,
             );
+            if (event.isCompletedOn(date) || date.isBefore(DateTime.now())) {
+              items.add(
+                _TimelineItem(
+                  date: date,
+                  title: event.name,
+                  subtitle: 'Выполнено · ${event.category.name}',
+                  icon: Icons.check_circle_outline,
+                  color: event.category.color,
+                  isCompleted: true,
+                  event: event,
+                ),
+              );
+            }
           }
         }
       }
     }
 
-    // Birthday
-    if (_profile?.birthDate != null) {
+    // Missed events — прошедшие вхождения (за 30 дней), не отмеченные выполненными.
+    if (_filter.missedEvents) {
+      items.addAll(_buildMissedItems());
+    }
+
+    // Birthday (automatic event)
+    if (_filter.automaticEvents && _profile?.birthDate != null) {
       final birthday = _profile!.birthDate!;
       final now = DateTime.now();
       var thisBirthday = DateTime(now.year, birthday.month, birthday.day);
@@ -346,6 +377,57 @@ class HomePageState extends State<HomePage> {
     items.sort((a, b) => b.date.compareTo(a.date));
     return items;
   }
+
+  /// Прошедшие (за последние 30 дней) вхождения событий, не отмеченные
+  /// выполненными. Препараты/обработки исключены — они на странице здоровья.
+  List<_TimelineItem> _buildMissedItems() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final items = <_TimelineItem>[];
+
+    for (final e in _allEvents) {
+      if (e.source == EventSource.pill) continue;
+      if (e.source == EventSource.treatment) continue;
+
+      if (e.repeat == RepeatInterval.none) {
+        final cutoff = today.subtract(const Duration(days: 30));
+        if (e.dateTime.isBefore(now) &&
+            !e.dateTime.isBefore(cutoff) &&
+            !e.isCompletedOn(e.dateTime)) {
+          items.add(_missedItem(e, e.dateTime));
+        }
+      } else {
+        // Для повторяющихся — прошедшие дни (сегодняшнее вхождение уже учтено
+        // секцией «предстоящие»).
+        for (int d = 1; d <= 30; d++) {
+          final day = today.subtract(Duration(days: d));
+          if (!e.occursOn(day) || e.isCompletedOn(day)) continue;
+          items.add(
+            _missedItem(
+              e,
+              DateTime(
+                day.year,
+                day.month,
+                day.day,
+                e.dateTime.hour,
+                e.dateTime.minute,
+              ),
+            ),
+          );
+        }
+      }
+    }
+    return items;
+  }
+
+  _TimelineItem _missedItem(Event e, DateTime date) => _TimelineItem(
+    date: date,
+    title: e.name,
+    subtitle: 'Пропущено · ${e.category.name}',
+    icon: Icons.cancel_outlined,
+    color: ThemeColors.warning.mainColor,
+    event: e,
+  );
 
   static String _yearsWord(int n) {
     final mod10 = n % 10;
@@ -605,22 +687,37 @@ class HomePageState extends State<HomePage> {
                   'История питомца',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                TextButton(
-                  onPressed: widget.onOpenCalendar,
-                  child: Row(
-                    children: [
-                      Text(
-                        'Все события',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      Icon(
-                        Icons.chevron_right,
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _openHistoryFilter(context),
+                      icon: Icon(
+                        Icons.tune,
                         color: context
                             .watch<AppearanceController>()
                             .secondaryColor,
                       ),
-                    ],
-                  ),
+                      tooltip: 'Что показывать',
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    TextButton(
+                      onPressed: widget.onOpenCalendar,
+                      child: Row(
+                        children: [
+                          Text(
+                            'Все события',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: context
+                                .watch<AppearanceController>()
+                                .secondaryColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
