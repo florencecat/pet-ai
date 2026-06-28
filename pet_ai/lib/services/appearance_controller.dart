@@ -7,7 +7,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 /// Уведомляет слушателей при изменении цвета/настройки — тема применяется сразу.
 class AppearanceController extends ChangeNotifier {
   bool _loaded = false;
-  bool _usePetColor = false;
+  bool _usePetColor = true;
   ColorPalette _profilePalette = ThemeColors.defaultProfilePalette;
 
   bool get loaded => _loaded;
