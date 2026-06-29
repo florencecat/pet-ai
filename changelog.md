@@ -2,6 +2,75 @@
 
 ---
 
+## v0.5.0 — Food Diary, History Insights & Sync Polish
+
+### Features
+
+#### Food Diary
+
+* Added different meal types to the food diary
+* Made diary sheets UI consistent
+
+#### History & Charts
+
+* Added filter options to pet history
+* Added mood history chart
+* Improved weight chart UI
+* Group entries by date and sort mood and food entries by day-part
+* Show last entry mood icon in the mood history widget
+
+#### Treatments & Events
+
+* Added doses and multiple take entries for on-demand pills
+* Added dedicated logic for all-day events
+
+#### Cloud Sync & Accounts
+
+* Completed cloud synchronization implementation
+* Replaced manual sync buttons with a toggle and clearer status value
+* Added profile context menu
+
+#### AI Assistant
+
+* Added auth gate for the AI assistant
+* Added AI-generated badge
+
+#### Privacy & Settings
+
+* Added terms of use and privacy policy to settings
+* Added privacy and terms acceptance to the auth/registration page
+* Sync app version in settings
+
+#### Notifications
+
+* Improved notifications: verbose descriptions, fallbacks, and auto-generation on start
+* Added notification channels
+
+### Improvements
+
+* Switched profile storage from shared preferences to secure storage
+* Save profile immediately after change
+* Added custom species option and refined the custom breed button
+* Reused shared widgets for file and gender pickers
+* Improved history sheets UI
+* Disabled crash reporting by default
+
+### Fixes
+
+* Fixed draggable sheets expanding infinitely
+* Fixed event tile not updating after a date change
+* Fixed clearing a profile not triggering logout
+* Fixed AI page messages overflowing the header
+* Fixed weight entries not sorting by date
+* Fixed shadowed params not clearing after creating a food entry
+* Fixed theme color initialization based on pet color
+* Fixed 'made by AI' badge UI
+* Removed the first-date interval requirement for pill creation
+* Removed red highlight for treatments
+* Restored transparent glass plates
+
+---
+
 ## v0.4.1 — Switch to Impeller renderer
 
 ## v0.4.0 — AI Assistant, Cloud Sync & User Accounts
