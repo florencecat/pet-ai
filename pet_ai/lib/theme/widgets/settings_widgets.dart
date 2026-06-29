@@ -6,12 +6,14 @@ import 'package:provider/provider.dart';
 
 class SettingsCard extends StatelessWidget {
   final List<Widget> children;
-  const SettingsCard({super.key, required this.children});
+  final bool transparent;
+  const SettingsCard({super.key, required this.children, this.transparent = true});
 
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
       padding: 0,
+      transparent: transparent,
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }

@@ -16,6 +16,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/birthday_sheet.dart
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/home_pet_avatar.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -54,6 +55,10 @@ class HomePageState extends State<HomePage> {
   int _filesCount = 0;
   int _notesCount = 0;
   HistoryFilter _filter = const HistoryFilter.defaults();
+
+  // Пока аватар раскрыт в оверлей — прячем шеврон-переключатель, чтобы он не
+  // «висел в воздухе» (он не часть Hero и остаётся на месте во время полёта).
+  bool _avatarExpanded = false;
 
   @override
   void initState() {
@@ -209,6 +214,18 @@ class HomePageState extends State<HomePage> {
       MaterialPageRoute(builder: (_) => const SettingsPage()),
     );
     await _initScreen();
+  }
+
+  /// Нажатие по аватарке: раскрытие в центр с анимацией. Возвращает true, если
+  /// фото поменяли — тогда обновляем экран.
+  Future<void> _onAvatarTap() async {
+    final pet = _profile;
+    if (pet == null) return;
+    setState(() => _avatarExpanded = true); // скрыть шеврон на время полёта
+    final changed = await showPetAvatarExpand(context, pet);
+    if (!mounted) return;
+    setState(() => _avatarExpanded = false); // вернулись — показать снова
+    if (changed == true) await _initScreen();
   }
 
   void _showProfileSwitcher(BuildContext context) async {
@@ -439,6 +456,10 @@ class HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    // Аватар адаптируется под ширину экрана (больше на планшетах), в разумных
+    // пределах.
+    final double avatarDiameter =
+        (MediaQuery.sizeOf(context).width * 0.2).clamp(76.0, 128.0).toDouble();
 
     return Scaffold(
       backgroundColor: ThemeColors.white,
@@ -504,33 +525,23 @@ class HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.all(24),
                     child: Row(
                       children: [
+                        _isLoadingProfile
+                            ? SkeletonBox(
+                                width: avatarDiameter,
+                                height: avatarDiameter,
+                                borderRadius: avatarDiameter / 2,
+                              )
+                            : HomePetAvatar(
+                                pet: _profile!,
+                                diameter: avatarDiameter,
+                                multipleProfiles: _multipleProfiles ?? false,
+                                showSwitcher: !_avatarExpanded,
+                                onTapAvatar: _onAvatarTap,
+                                onTapSwitcher: () =>
+                                    _showProfileSwitcher(context),
+                              ),
+                        const SizedBox(width: 16),
                         Expanded(
-                          flex: 1,
-                          child: Pressable(
-                            haptic: HapticStrength.selection,
-                            scale: 0.92,
-                            onTap: _isLoadingProfile
-                                ? null
-                                : () => _showProfileSwitcher(context),
-                            child: _isLoadingProfile
-                                ? Center(
-                                    child: SkeletonBox(
-                                      width: 66,
-                                      height: 66,
-                                      borderRadius: 33,
-                                    ),
-                                  )
-                                : PetService().buildProfileAvatar(
-                                    context,
-                                    _profile,
-                                    withSwitcher: true,
-                                    multipleProfiles: _multipleProfiles,
-                                  ),
-                          ),
-                        ),
-
-                        Expanded(
-                          flex: 4,
                           child: _isLoadingProfile
                               ? Padding(
                                   padding: const EdgeInsets.symmetric(
