@@ -2,6 +2,8 @@
 
 ---
 
+## v0.5.1 — Avatar preview, context actions
+
 ## v0.5.0 — Food Diary, History Insights & Sync Polish
 
 ### Features
