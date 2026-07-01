@@ -144,8 +144,8 @@ class _EventSheetState extends State<EventSheet> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
-      firstDate: now.subtract(const Duration(days: 365)),
-      lastDate: now.add(const Duration(days: 365 * 2)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
       locale: const Locale('ru'),
     );
     if (picked != null) setState(() => _selectedDate = picked);

@@ -159,8 +159,8 @@ class _FileUploadSheetState extends State<FileUploadSheet> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
-      firstDate: DateTime(2000),
-      lastDate: now.add(const Duration(days: 365 * 5)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
       locale: const Locale('ru'),
     );
     if (picked != null) {

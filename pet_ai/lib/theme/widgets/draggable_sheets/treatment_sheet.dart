@@ -72,16 +72,13 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
 
   Future<void> _pickDate({required bool isNext}) async {
     final initial = isNext ? _nextDate : _date;
-    final firstDate = isNext
-        ? DateTime.now().subtract(const Duration(days: 30))
-        : DateTime.now().subtract(const Duration(days: 365 * 5));
     final lastDate = DateTime.now().add(const Duration(days: 365 * 5));
 
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: firstDate,
-      lastDate: lastDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
       locale: const Locale('ru'),
     );
     if (picked == null) return;
@@ -481,13 +478,11 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
 
   Future<void> _pickEditDate({required bool isNext}) async {
     final initial = isNext ? _editNextDate : _editDate;
-    final firstDate = DateTime.now().subtract(const Duration(days: 365 * 5));
-    final lastDate = DateTime.now().add(const Duration(days: 365 * 5));
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: firstDate,
-      lastDate: lastDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
       locale: const Locale('ru'),
     );
     if (picked == null) return;

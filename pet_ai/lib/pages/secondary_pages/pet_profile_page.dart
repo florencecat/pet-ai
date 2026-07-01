@@ -1028,7 +1028,7 @@ class _DateSheetState extends State<_DateSheet> {
               mode: CupertinoDatePickerMode.date,
               initialDateTime: _selected,
               maximumDate: DateTime.now(),
-              minimumDate: DateTime(2000),
+              minimumDate: DateTime(1900),
               onDateTimeChanged: (dt) => _selected = dt,
             ),
           ),
@@ -1118,8 +1118,8 @@ class _CastrationSheetState extends State<_CastrationSheet> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _date ?? now,
-      firstDate: DateTime(2000),
-      lastDate: now,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
       locale: const Locale('ru'),
     );
     if (picked != null) setState(() => _date = picked);
