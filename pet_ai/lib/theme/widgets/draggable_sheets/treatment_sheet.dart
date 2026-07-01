@@ -72,7 +72,6 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
 
   Future<void> _pickDate({required bool isNext}) async {
     final initial = isNext ? _nextDate : _date;
-    final lastDate = DateTime.now().add(const Duration(days: 365 * 5));
 
     final picked = await showDatePicker(
       context: context,

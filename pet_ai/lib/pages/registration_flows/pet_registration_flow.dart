@@ -32,23 +32,6 @@ const _kSpeciesOptions = [
   _SpeciesOption(BuiltInSpecies.other, '🐦'),
 ];
 
-// ─── Month labels ─────────────────────────────────────────────────────────────
-
-const _kMonths = [
-  'янв',
-  'фев',
-  'мар',
-  'апр',
-  'май',
-  'июн',
-  'июл',
-  'авг',
-  'сен',
-  'окт',
-  'ноя',
-  'дек',
-];
-
 // ─── Age formatting ───────────────────────────────────────────────────────────
 
 String _formatAge(DateTime birth) {
@@ -615,15 +598,17 @@ class _Step1 extends StatelessWidget {
 
                 // ── Порода ────────────────────────────────────────────────
                 GestureDetector(
-                  onTap: breedInputAvaliable ? () async {
-                    final breed = await showBreedSelector(
-                      context,
-                      selectedSpecies,
-                    );
-                    if (breed != null && !breed.isEmpty) {
-                      onBreedChanged(breed);
-                    }
-                  } : null,
+                  onTap: breedInputAvaliable
+                      ? () async {
+                          final breed = await showBreedSelector(
+                            context,
+                            selectedSpecies,
+                          );
+                          if (breed != null && !breed.isEmpty) {
+                            onBreedChanged(breed);
+                          }
+                        }
+                      : null,
                   child: _card(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -645,7 +630,9 @@ class _Step1 extends StatelessWidget {
                                       color: context
                                           .watch<AppearanceController>()
                                           .secondaryColor
-                                          .withAlpha(breedInputAvaliable ? 172 : 64),
+                                          .withAlpha(
+                                            breedInputAvaliable ? 172 : 64,
+                                          ),
                                     ),
                                 border: InputBorder.none,
                               ),
@@ -653,14 +640,14 @@ class _Step1 extends StatelessWidget {
                           ),
                         ),
                         if (breedInputAvaliable)
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: context
-                              .watch<AppearanceController>()
-                              .secondaryColor
-                              .withAlpha(128),
-                          size: 20,
-                        ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: context
+                                .watch<AppearanceController>()
+                                .secondaryColor
+                                .withAlpha(128),
+                            size: 20,
+                          ),
                       ],
                     ),
                   ),
@@ -825,9 +812,7 @@ class _Step2 extends StatelessWidget {
                   child: IgnorePointer(
                     ignoring: unknownDate,
                     child: _DateWheelPicker(
-                      initialDate:
-                          birthDate ??
-                          DateTime.now().subtract(const Duration(days: 365)),
+                      initialDate: birthDate ?? DateTime.now(),
                       onChanged: onDateChanged,
                     ),
                   ),
@@ -893,10 +878,7 @@ class _Step2 extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                GlassGenderSelector(
-                  gender: gender,
-                  onChanged: onGenderChanged,
-                ),
+                GlassGenderSelector(gender: gender, onChanged: onGenderChanged),
 
                 const SizedBox(height: 16),
 
@@ -1000,7 +982,6 @@ class _DateWheelPickerState extends State<_DateWheelPicker> {
   late FixedExtentScrollController _yearCtrl;
 
   final int _startYear = 2000;
-  final int _endYear = DateTime.now().year + 1;
 
   @override
   void initState() {
@@ -1021,13 +1002,6 @@ class _DateWheelPickerState extends State<_DateWheelPicker> {
     super.dispose();
   }
 
-  int get _daysInMonth => DateTime(_year, _month + 1, 0).day;
-
-  void _notify() {
-    final safeDay = _day.clamp(1, _daysInMonth);
-    widget.onChanged(DateTime(_year, _month, safeDay));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1036,78 +1010,11 @@ class _DateWheelPickerState extends State<_DateWheelPicker> {
         color: ThemeColors.white,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        children: [
-          // Day
-          Expanded(
-            child: _wheel(
-              controller: _dayCtrl,
-              count: 31,
-              label: (i) => '${i + 1}',
-              onSelected: (i) {
-                _day = i + 1;
-                _notify();
-              },
-            ),
-          ),
-          // Month
-          Expanded(
-            flex: 2,
-            child: _wheel(
-              controller: _monthCtrl,
-              count: 12,
-              label: (i) => _kMonths[i],
-              onSelected: (i) {
-                _month = i + 1;
-                _notify();
-              },
-            ),
-          ),
-          // Year
-          Expanded(
-            flex: 2,
-            child: _wheel(
-              controller: _yearCtrl,
-              count: _endYear - _startYear + 1,
-              label: (i) => '${_startYear + i}',
-              onSelected: (i) {
-                _year = _startYear + i;
-                _notify();
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _wheel({
-    required FixedExtentScrollController controller,
-    required int count,
-    required String Function(int) label,
-    required ValueChanged<int> onSelected,
-  }) {
-    return CupertinoPicker(
-      scrollController: controller,
-      itemExtent: 40,
-      selectionOverlay: const CupertinoPickerDefaultSelectionOverlay(
-        background: Color(0x0F000000),
-      ),
-      onSelectedItemChanged: onSelected,
-      children: List.generate(
-        count,
-        (i) => Center(
-          child: Text(
-            label(i),
-            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-              fontWeight: FontWeight.w600,
-              color: context
-                  .watch<AppearanceController>()
-                  .secondaryColor
-                  .withAlpha(216),
-            ),
-          ),
-        ),
+      child: CupertinoDatePicker(
+        mode: CupertinoDatePickerMode.date,
+        onDateTimeChanged: widget.onChanged,
+        maximumDate: DateTime.now(),
+        initialDateTime: widget.initialDate,
       ),
     );
   }
