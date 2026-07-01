@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка уведомления запрашивается по строковому имени во время выполнения
+  (flutter_local_notifications → getIdentifier("ic_notification", ...)), поэтому
+  сжатие ресурсов (shrinkResources) не видит её как используемую и вырезает из
+  release-сборки → PlatformException(invalid_icon). Явно запрещаем удаление.
+-->
+<resources
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification" />

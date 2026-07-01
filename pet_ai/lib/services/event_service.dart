@@ -130,11 +130,15 @@ class EventService {
     await _persistAll(all);
 
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      await NotificationService().cancelNotification(event.id);
-      await NotificationService().scheduleEventNotification(
-        event,
-        petLabel: await _resolveLabel(event),
-      );
+      try {
+        await NotificationService().cancelNotification(event.id);
+        await NotificationService().scheduleEventNotification(
+          event,
+          petLabel: await _resolveLabel(event),
+        );
+      } catch (_) {
+        // Сбой планирования уведомления не должен ломать сохранение события.
+      }
     }
 
     // Fire-and-forget cloud upsert (правки/отметки выполнения уезжают в облако).
