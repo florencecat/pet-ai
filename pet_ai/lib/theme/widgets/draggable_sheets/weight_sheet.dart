@@ -112,6 +112,8 @@ class _WeightSheetState extends State<WeightSheet> {
                   const SizedBox(height: 8),
                   PillStepper(
                       value: _weight,
+                      min: 0,
+                      max: 150,
                       onChanged: (value) => setState(() {
                         _changed = true;
                         _weight = value;

@@ -10,6 +10,7 @@ import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pill_icon.dart';
+import 'package:pet_satellite/theme/widgets/toast.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -146,23 +147,21 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
   Future<void> _save() async {
     final name = _form.nameCtrl.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите название препарата')),
-      );
+      showAppToast(context, 'Введите название препарата');
+      return;
+    }
+    if (_form.kind == null || _form.kind!.id.isEmpty) {
+      showAppToast(context, 'Выберите вид препарата');
       return;
     }
     if (_form.frequency == PillFrequencyType.weekdays &&
         _form.weekdays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Выберите хотя бы один день')),
-      );
+      showAppToast(context, 'Выберите хотя бы один день');
       return;
     }
     if (_form.frequency != PillFrequencyType.onDemand &&
         _form.schedules.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Добавьте хотя бы одно время приёма')),
-      );
+      showAppToast(context, 'Добавьте хотя бы одно время приёма');
       return;
     }
 
@@ -1024,21 +1023,19 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
     final form = _form!;
     final name = form.nameCtrl.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите название препарата')),
-      );
+      showAppToast(context, 'Введите название препарата');
+      return;
+    }
+    if (form.kind == null || form.kind!.id.isEmpty) {
+      showAppToast(context, 'Выберите вид препарата');
       return;
     }
     if (form.frequency == PillFrequencyType.weekdays && form.weekdays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Выберите хотя бы один день')),
-      );
+      showAppToast(context, 'Выберите хотя бы один день');
       return;
     }
     if (form.schedules.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Добавьте хотя бы одно время приёма')),
-      );
+      showAppToast(context, 'Добавьте хотя бы одно время приёма');
       return;
     }
 
@@ -1789,6 +1786,7 @@ class _OnDemandIntakeDialog extends StatefulWidget {
 class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
   late final TextEditingController _amountCtrl;
   late DoseUnit _unit;
+  late DateTime _date;
   late TimeOfDay _time;
 
   int get _value => int.tryParse(_amountCtrl.text.trim()) ?? 0;
@@ -1804,6 +1802,7 @@ class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
     _unit = widget.defaultDoseUnit.id == 'none'
         ? DoseUnit.forKind(widget.kind).first
         : widget.defaultDoseUnit;
+    _date = DateTime.now();
     _time = TimeOfDay.now();
   }
 
@@ -1813,17 +1812,27 @@ class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
     super.dispose();
   }
 
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(now.year - 5),
+      lastDate: now, // приём в будущем отметить нельзя
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
   Future<void> _pickTime() async {
     final picked = await showTimePicker(context: context, initialTime: _time);
     if (picked != null) setState(() => _time = picked);
   }
 
   void _save() {
-    final now = DateTime.now();
     final time = DateTime(
-      now.year,
-      now.month,
-      now.day,
+      _date.year,
+      _date.month,
+      _date.day,
       _time.hour,
       _time.minute,
     );
@@ -1861,6 +1870,28 @@ class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
                   onChanged: (u) => setState(() => _unit = u),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          GlassCard(
+            callback: _pickDate,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 18, color: accent),
+                  const SizedBox(width: 8),
+                  Text('Дата', style: Theme.of(context).textTheme.bodyMedium),
+                  const Spacer(),
+                  Text(
+                    DateFormat('d MMM yyyy', 'ru_RU').format(_date),
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),

@@ -7,7 +7,17 @@ class PillStepper extends StatefulWidget {
   final double value;
   final ValueChanged<double> onChanged;
 
-  const PillStepper({super.key, required this.value, required this.onChanged});
+  /// Допустимый диапазон значения (включительно). По умолчанию — широкий.
+  final double min;
+  final double max;
+
+  const PillStepper({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.min = 0,
+    this.max = 999,
+  });
 
   @override
   State<PillStepper> createState() => _PillStepperState();
@@ -30,6 +40,7 @@ class _PillStepperState extends State<PillStepper> {
 
   void updateWeight(double newWeight) {
     newWeight = (newWeight * 10).round() / 10;
+    newWeight = newWeight.clamp(widget.min, widget.max).toDouble();
 
     setState(() {
       weight = newWeight;
@@ -46,17 +57,34 @@ class _PillStepperState extends State<PillStepper> {
 
   void decrease() async {
     await HapticFeedback.selectionClick();
-    updateWeight((weight - step).clamp(0, 999));
+    updateWeight(weight - step);
   }
 
   void onTextChanged(String value) {
     value = value.replaceAll(',', '.');
     final parsed = double.tryParse(value);
+    if (parsed == null) return;
 
-    if (parsed != null) {
-      weight = parsed;
-      widget.onChanged(weight);
+    if (parsed > widget.max) {
+      // Больше максимума ввести нельзя — фиксируем на границе (со сбросом текста).
+      updateWeight(widget.max);
+      return;
     }
+    weight = parsed.clamp(widget.min, widget.max).toDouble();
+    widget.onChanged(weight);
+  }
+
+  /// Ширина поля под текущий текст: измеряем строку и добавляем запас на курсор,
+  /// ограничивая снизу (компактно для 1–2 цифр) и сверху (для 3 цифр с дробью).
+  double _fieldWidth(String text, TextStyle style) {
+    final tp = TextPainter(
+      text: TextSpan(text: text.isEmpty ? '0.0' : text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final width = (tp.width + 16).clamp(52.0, 120.0).toDouble();
+    tp.dispose();
+    return width;
   }
 
   @override
@@ -79,25 +107,39 @@ class _PillStepperState extends State<PillStepper> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 60,
-                child: TextField(
-                  controller: controller,
-                  textAlign: TextAlign.center,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+[.,]?\d?')),
-                  ],
-                  onChanged: onTextChanged,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge!.copyWith(fontSize: 26),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
+              // Поле шириной по содержимому: короткое значение — компактно (и «кг»
+              // рядом), трёхзначное — поле плавно расширяется и не обрезается.
+              AnimatedSize(
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOut,
+                child: ListenableBuilder(
+                  listenable: controller,
+                  builder: (context, _) {
+                    final valueStyle = Theme.of(
+                      context,
+                    ).textTheme.titleLarge!.copyWith(fontSize: 26);
+                    return SizedBox(
+                      width: _fieldWidth(controller.text, valueStyle),
+                      child: TextField(
+                        controller: controller,
+                        textAlign: TextAlign.center,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+[.,]?\d?'),
+                          ),
+                        ],
+                        onChanged: onTextChanged,
+                        style: valueStyle,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
 
