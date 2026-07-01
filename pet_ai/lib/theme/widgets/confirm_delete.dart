@@ -25,9 +25,13 @@ Future<bool> confirmDelete(
   String title = 'Удалить?',
   String? message,
   String confirmLabel = 'Удалить',
+  bool ignorePreferences = false,
 }) async {
-  final skip = (await SharedPreferencesAsync().getBool(_skipDeleteKey)) ?? false;
-  if (skip) return true;
+  if (!ignorePreferences) {
+    final skip =
+        (await SharedPreferencesAsync().getBool(_skipDeleteKey)) ?? false;
+    if (skip) return true;
+  }
   if (!context.mounted) return false;
 
   final result = await showDialog<bool>(
@@ -36,6 +40,7 @@ Future<bool> confirmDelete(
       title: title,
       message: message,
       confirmLabel: confirmLabel,
+      useDontAsk: !ignorePreferences,
     ),
   );
   return result == true;
@@ -45,11 +50,13 @@ class _DeleteConfirmDialog extends StatefulWidget {
   final String title;
   final String? message;
   final String confirmLabel;
+  final bool useDontAsk;
 
   const _DeleteConfirmDialog({
     required this.title,
     required this.message,
     required this.confirmLabel,
+    this.useDontAsk = true,
   });
 
   @override
@@ -75,35 +82,37 @@ class _DeleteConfirmDialogState extends State<_DeleteConfirmDialog> {
             const SizedBox(height: 8),
           ],
           // «Больше не спрашивать»
-          InkWell(
-            onTap: () => setState(() => _dontAsk = !_dontAsk),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Checkbox(
-                      value: _dontAsk,
-                      activeColor: accent,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      onChanged: (v) => setState(() => _dontAsk = v ?? false),
+          if (widget.useDontAsk) ...[
+            InkWell(
+              onTap: () => setState(() => _dontAsk = !_dontAsk),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: _dontAsk,
+                        activeColor: accent,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        onChanged: (v) => setState(() => _dontAsk = v ?? false),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Больше не спрашивать',
-                      style: theme.textTheme.bodyMedium,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Больше не спрашивать',
+                        style: theme.textTheme.bodyMedium,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
       actions: [

@@ -124,6 +124,7 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'Выйти из аккаунта?',
       message:
           'Сессия на этом устройстве будет завершена и вам придется войти заново.',
+      ignorePreferences: true,
     );
     if (confirmed) {
       await UserService().delete();
@@ -584,22 +585,24 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 8),
           SettingsCard(
             children: [
-              SettingsRow(
-                icon: Icons.help_outline,
-                label: 'Помощь и FAQ',
-                onTap: null, // stub
-                iconColor: ac.primaryColor,
-                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
-              ),
-              SettingsCardDivider(),
-              SettingsRow(
-                icon: Icons.star_outline,
-                label: 'Оценить приложение',
-                onTap: null, // stub
-                iconColor: ac.primaryColor,
-                trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
-              ),
-              SettingsCardDivider(),
+              if (kDebugMode) ...[
+                SettingsRow(
+                  icon: Icons.help_outline,
+                  label: 'Помощь и FAQ',
+                  onTap: null, // stub
+                  iconColor: ac.primaryColor,
+                  trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
+                ),
+                SettingsCardDivider(),
+                SettingsRow(
+                  icon: Icons.star_outline,
+                  label: 'Оценить приложение',
+                  onTap: null, // stub
+                  iconColor: ac.primaryColor,
+                  trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
+                ),
+                SettingsCardDivider(),
+              ],
               SettingsRow(
                 icon: Icons.newspaper_rounded,
                 label: 'Пользовательское соглашение',
@@ -607,24 +610,27 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconColor: ac.primaryColor,
                 trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
               ),
+              SettingsCardDivider(),
               SettingsRow(
                 icon: Icons.shield_outlined,
                 label: 'Политика конфиденциальности',
                 onTap: () async => GetIt.instance<ApiService>().openPrivacy(),
                 iconColor: ac.primaryColor,
                 trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
+                last: _user == null,
               ),
               SettingsCardDivider(),
-              SettingsRow(
-                icon: Icons.logout,
-                label: 'Выйти из аккаунта',
-                onTap: _user != null ? _logout : null,
-                iconColor: _user != null
-                    ? ThemeColors.dangerZone
-                    : ThemeColors.border,
-                labelColor: _user != null ? ThemeColors.dangerZone : null,
-                last: true,
-              ),
+              if (_user != null)
+                SettingsRow(
+                  icon: Icons.logout,
+                  label: 'Выйти из аккаунта',
+                  onTap: _user != null ? () async => await _logout() : null,
+                  iconColor: _user != null
+                      ? ThemeColors.dangerZone
+                      : ThemeColors.border,
+                  labelColor: _user != null ? ThemeColors.dangerZone : null,
+                  last: true,
+                ),
             ],
           ),
           const SizedBox(height: 24),
