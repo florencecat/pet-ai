@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/services.dart';
 import 'package:http/io_client.dart';
 
 Future<HttpClient> createHttpClient() async {
