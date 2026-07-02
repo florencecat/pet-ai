@@ -782,6 +782,17 @@ class CloudSyncService extends ChangeNotifier {
     await _pb.collection(GetIt.instance<ApiService>().petsRoute).delete(petId);
   }
 
+  /// Fire-and-forget удаление питомца со всей историей из облака (при удалении
+  /// профиля). Уважает тумблер синхронизации; ошибки проглатываются, чтобы не
+  /// блокировать локальное удаление. Если питомец удалён при выключенной
+  /// синхронизации — он уедет с сервера при следующей полной выгрузке.
+  Future<void> deletePetRemote(String petId) async {
+    if (!isAuthenticated || !_syncEnabled) return;
+    try {
+      await _deleteRemotePet(petId);
+    } catch (_) {}
+  }
+
   static String _friendlyError(Object e) {
     if (e is ClientException) {
       if (e.statusCode == 0) return 'Нет подключения к сети';

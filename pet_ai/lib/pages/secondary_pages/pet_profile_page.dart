@@ -31,6 +31,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
   Pet? _profile;
   bool _loading = true;
   bool _paletteChanged = false;
+  // Профиль удалён — блокирует авто-сохранение при закрытии страницы (иначе
+  // PopScope повторно добавил бы удалённого питомца через saveProfile).
+  bool _deleted = false;
   // Bumped on each avatar pick so the Image widget re-resolves its FileImage.
   // The avatar path is deterministic (avatar_<id>.png), so FileImage equality
   // by path prevents re-resolution after the file is overwritten.
@@ -61,7 +64,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _saveProfile() async {
-    if (_profile == null) return;
+    if (_profile == null || _deleted) return;
     try { await PetService().saveProfile(_profile!); }
     catch (_) { }
     // Fire-and-forget cloud upsert профиля (owner = id пользователя).
@@ -229,6 +232,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
           'Все данные питомца будут удалены без возможности восстановления.',
     );
     if (!confirmed || !mounted) return;
+    // Ставим флаг до удаления, чтобы авто-save при закрытии страницы
+    // (PopScope) не воскресил профиль.
+    _deleted = true;
     await PetService().deleteProfile(_profile!.id);
     final hasProfiles = await PetService().hasProfiles();
     if (mounted) {

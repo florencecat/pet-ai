@@ -9,6 +9,7 @@ import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/services/file_storage_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -225,6 +226,13 @@ class PetService {
         await SharedPreferencesAsync().remove(_activeIdKey);
       }
     }
+
+    // Каскадная очистка данных питомца — диалог удаления обещает, что все
+    // данные удаляются безвозвратно.
+    await EventService().clearEvents(petId); // события + снятие уведомлений + облако
+    await FileStorageService().clearAll(petId); // локальные файлы документов
+    // Питомец со всей историей и файлами в облаке (fire-and-forget, уважает тумблер).
+    CloudSyncService.instance.deletePetRemote(petId);
   }
 
   Future<bool> hasProfiles() async {

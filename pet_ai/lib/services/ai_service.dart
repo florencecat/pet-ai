@@ -109,7 +109,7 @@ class ChatRepository {
 
   ChatRepository(this.box);
 
-  List<ChatMessage> get messages => box.values.toList();
+  List<ChatMessage> get messages => box.isOpen ? box.values.toList() : [];
 
   Future<void> add(ChatMessage msg) async {
     await box.add(msg);
