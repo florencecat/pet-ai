@@ -179,6 +179,10 @@ class CloudSyncService extends ChangeNotifier {
 
   /// Uploads a document (with its file) to the `files` collection.
   /// Returns the created record id, or null on failure / no auth.
+  ///
+  /// Низкоуровневый метод: тумблер синхронизации здесь НЕ проверяется, потому
+  /// что он переиспользуется явной полной выгрузкой ([pushAll]/[_syncDocuments]).
+  /// Фоновая загрузка (добавление документа) должна проверять [syncEnabled] сама.
   Future<String?> pushDocument(PetDocument doc, String petId) async {
     if (!isAuthenticated) return null;
     try {
@@ -250,7 +254,8 @@ class CloudSyncService extends ChangeNotifier {
     required bool completed,
     String? eventsJson,
   }) async {
-    if (!isAuthenticated) return remoteId;
+    // Фоновый пуш сообщения — уважает тумблер синхронизации.
+    if (!isAuthenticated || !_syncEnabled) return remoteId;
     final body = <String, dynamic>{
       'user': userId,
       'thread': thread,
@@ -276,7 +281,17 @@ class CloudSyncService extends ChangeNotifier {
   void deleteChat(String remoteId) => deleteAsync('chats', remoteId);
 
   /// Deletes all chat records for the current user (used by «clear history»).
+  /// Уважает тумблер синхронизации: при выключенной синхронизации серверная
+  /// копия чатов остаётся нетронутой (как замороженный бэкап).
   Future<void> deleteAllChats() async {
+    if (!isAuthenticated || !_syncEnabled) return;
+    await _deleteAllChatsRemote();
+  }
+
+  /// Безусловное (без учёта тумблера) удаление всех чатов пользователя.
+  /// Используется [wipeRemote], которая замещает/очищает серверную копию и
+  /// должна отрабатывать независимо от состояния синхронизации.
+  Future<void> _deleteAllChatsRemote() async {
     if (!isAuthenticated) return;
     try {
       final recs = await _pb
@@ -415,7 +430,7 @@ class CloudSyncService extends ChangeNotifier {
       for (final r in pets) {
         await _deleteRemotePet(r.id);
       }
-      await deleteAllChats();
+      await _deleteAllChatsRemote();
       _markSynced();
     } catch (e) {
       _lastError = _friendlyError(e);

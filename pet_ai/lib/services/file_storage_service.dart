@@ -216,11 +216,15 @@ class FileStorageService {
     docs.add(doc);
     await _persist(petId, docs);
 
-    // Fire-and-forget cloud upload — сохраняем полученный remoteId.
-    final remoteId = await CloudSyncService.instance.pushDocument(doc, petId);
-    if (remoteId != null) {
-      doc.remoteId = remoteId;
-      await _persist(petId, docs);
+    // Fire-and-forget cloud upload — только при включённой синхронизации,
+    // иначе документ остаётся локальным (уважает тумблер синхронизации).
+    final sync = CloudSyncService.instance;
+    if (sync.isAuthenticated && sync.syncEnabled) {
+      final remoteId = await sync.pushDocument(doc, petId);
+      if (remoteId != null) {
+        doc.remoteId = remoteId;
+        await _persist(petId, docs);
+      }
     }
     return doc;
   }
