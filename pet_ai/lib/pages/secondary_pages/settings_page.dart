@@ -696,7 +696,7 @@ class _SettingsPageState extends State<SettingsPage> {
               SettingsRow(
                 icon: Icons.bug_report_outlined,
                 label: 'Отправлять отчёты об ошибках',
-                subtitle: 'Помогает быстрее исправлять сбои',
+                subtitle: 'Обезличенные данные помогают исправлять сбои',
                 iconColor: ac.primaryColor,
                 trailing: Switch(
                   inactiveThumbColor: ac.primaryColor,

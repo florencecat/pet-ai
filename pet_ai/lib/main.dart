@@ -132,6 +132,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   DateTime _calendarInitialDate = DateTime.now();
   Color? _healthScoreColor;
 
+  /// Одноразовый показ уведомления о сборе диагностики за сессию.
+  bool _crashConsentChecked = false;
+
   @override
   void initState() {
     super.initState();
@@ -237,6 +240,76 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       });
     }
     _refreshHealthScore();
+    // Первичное уведомление о сборе диагностики показываем на главном экране —
+    // после онбординга (у нового пользователя) либо сразу (при обновлении).
+    if (hasProfile) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _maybeShowCrashConsent(),
+      );
+    }
+  }
+
+  /// Однократно уведомляет пользователя о том, что приложение может отправлять
+  /// обезличенные отчёты о сбоях (модель opt-out: включено по умолчанию, здесь
+  /// можно сразу отключить). Соответствует требованиям к прозрачности сбора
+  /// диагностических данных.
+  Future<void> _maybeShowCrashConsent() async {
+    if (_crashConsentChecked) return;
+    _crashConsentChecked = true;
+
+    final crash = CrashReportingService.instance;
+    if (await crash.isNoticeShown()) return;
+
+    final ctx = PetHealthApp.navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+
+    final keepEnabled = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (dctx) => AlertDialog(
+        title: const Text('Помогите улучшить приложение'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Приложение может отправлять обезличенные отчёты о сбоях, чтобы '
+              'мы быстрее находили и исправляли ошибки. Отчёты не содержат '
+              'ваших личных данных. Это можно изменить в любой момент '
+              'в настройках.',
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => GetIt.instance<ApiService>().openPrivacy(),
+              child: Text(
+                'Политика конфиденциальности',
+                style: TextStyle(
+                  color: Theme.of(dctx).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dctx, false),
+            child: const Text('Отключить'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dctx, true),
+            child: const Text('Разрешить'),
+          ),
+        ],
+      ),
+    );
+
+    // Явный отказ — выключаем сбор. null (жест «назад») трактуем как «оставить
+    // по умолчанию включённым» согласно модели opt-out.
+    if (keepEnabled == false) {
+      await crash.setEnabled(false);
+    }
+    await crash.markNoticeShown();
   }
 
   Future<void> _refreshHealthScore() async {

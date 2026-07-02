@@ -24,12 +24,14 @@ import 'package:pet_satellite/services/pb_service.dart';
 ///   - `type`         (text)   — 'flutter' | 'async' | 'manual'
 ///   - `platform`     (text)
 ///   - `app_version`  (text)
-///   - `user_id`      (text)   — id пользователя, если авторизован
 ///   - `fatal`        (bool)
+/// Отчёты обезличены — идентификатор пользователя намеренно не отправляется.
 /// Правило создания (createRule) должно быть пустым `""`, чтобы отчёты можно
 /// было отправлять и без авторизации.
 class CrashReportingService extends ChangeNotifier {
   static const _enabledKey = 'crash_reporting_enabled';
+  // Показывали ли пользователю уведомление о сборе диагностики (один раз).
+  static const _noticeShownKey = 'crash_reporting_notice_shown';
   static const _collection = 'error_reports';
 
   /// Максимальная длина стектрейса в символах (защита от гигантских записей).
@@ -107,6 +109,14 @@ class CrashReportingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Показывали ли пользователю первичное уведомление о сборе диагностики.
+  Future<bool> isNoticeShown() async =>
+      (await SharedPreferencesAsync().getBool(_noticeShownKey)) ?? false;
+
+  /// Отмечает, что уведомление о сборе диагностики показано (больше не покажем).
+  Future<void> markNoticeShown() async =>
+      SharedPreferencesAsync().setBool(_noticeShownKey, true);
+
   // ── Reporting ─────────────────────────────────────────────────────────────────
 
   /// Отправляет ошибку в PocketBase, если механизм включён.
@@ -136,7 +146,7 @@ class CrashReportingService extends ChangeNotifier {
         'type': type,
         'platform': _platformLabel(),
         'app_version': _appVersion,
-        'user': _pb.authStore.record?.id ?? '',
+        // Идентификатор пользователя намеренно не отправляем — отчёты обезличены.
         'fatal': fatal,
       };
       await _pb.collection(_collection).create(body: body);
