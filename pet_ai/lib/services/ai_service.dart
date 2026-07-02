@@ -438,8 +438,11 @@ class AIChatController extends ChangeNotifier {
 
   /// Fire-and-forget upsert сообщения [msg] текущего треда в облако.
   /// Полученный remoteId сохраняется обратно в сообщение для последующих правок.
+  /// Фоновый пуш — уважает тумблер синхронизации.
   void _pushMessage(ChatMessage msg) {
-    CloudSyncService.instance
+    final sync = CloudSyncService.instance;
+    if (!sync.isAuthenticated || !sync.syncEnabled) return;
+    sync
         .pushChat(
           remoteId: msg.remoteId,
           thread: _currentBoxName,
@@ -649,6 +652,48 @@ class AIChatController extends ChangeNotifier {
     await prefs.remove(_archivedBoxesKey);
     await prefs.setString(_currentBoxKey, _defaultBoxName);
     await CloudSyncService.instance.deleteAllChats();
+  }
+
+  /// Выгружает **все** локальные треды в облако — часть полной выгрузки
+  /// («Загрузить на сервер» / включение синхронизации), симметрично
+  /// [restoreThreadsFromCloud]. Идемпотентно: каждое сообщение апсертится по
+  /// своему remoteId, затем с сервера удаляются чаты, которых больше нет
+  /// локально (синхронизация офлайн-удалений). Тумблер здесь НЕ проверяется —
+  /// вызывается только из явной полной выгрузки.
+  static Future<void> pushAllThreadsToCloud() async {
+    final sync = CloudSyncService.instance;
+    if (!sync.isAuthenticated) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final archived = prefs.getStringList(_archivedBoxesKey) ?? [];
+    final current = prefs.getString(_currentBoxKey) ?? _defaultBoxName;
+    final boxNames = {...archived, current, _defaultBoxName};
+
+    final keepIds = <String>{};
+    for (final name in boxNames) {
+      final box = await Hive.openBox<ChatMessage>(name);
+      for (final m in box.values) {
+        final id = await sync.pushChat(
+          remoteId: m.remoteId,
+          thread: name,
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+          completed: m.completed,
+          eventsJson: m.eventsJson,
+        );
+        if (id == null) continue;
+        if (id != m.remoteId) {
+          m.remoteId = id;
+          try {
+            await m.save();
+          } catch (_) {}
+        }
+        keepIds.add(id);
+      }
+    }
+
+    await sync.deleteStaleChats(keepIds);
   }
 
   /// Восстанавливает всю историю чата из облака (новое устройство).

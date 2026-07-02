@@ -180,6 +180,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     try {
       await _sync.pushAll();
+      await AIChatController.pushAllThreadsToCloud();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Данные успешно отправлены на сервер')),
@@ -332,6 +333,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _enableWithPush(BuildContext context) async {
     try {
       await _sync.replaceRemoteWithLocal();
+      await AIChatController.pushAllThreadsToCloud();
       await _sync.setSyncEnabled(true);
       if (mounted) setState(() {});
       if (context.mounted) {

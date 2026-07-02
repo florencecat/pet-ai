@@ -245,6 +245,11 @@ class CloudSyncService extends ChangeNotifier {
   /// Upserts a chat message into the `chats` collection. Returns the record id
   /// (new on first push, unchanged on update), or the original [remoteId] on
   /// failure / no auth — so the caller can retry later.
+  ///
+  /// Низкоуровневый метод: тумблер синхронизации здесь НЕ проверяется, потому
+  /// что он переиспользуется явной полной выгрузкой
+  /// ([AIChatController.pushAllThreadsToCloud]). Фоновый пуш сообщения
+  /// ([AIChatController._pushMessage]) проверяет [syncEnabled] сам.
   Future<String?> pushChat({
     String? remoteId,
     required String thread,
@@ -254,8 +259,7 @@ class CloudSyncService extends ChangeNotifier {
     required bool completed,
     String? eventsJson,
   }) async {
-    // Фоновый пуш сообщения — уважает тумблер синхронизации.
-    if (!isAuthenticated || !_syncEnabled) return remoteId;
+    if (!isAuthenticated) return remoteId;
     final body = <String, dynamic>{
       'user': userId,
       'thread': thread,
@@ -298,6 +302,19 @@ class CloudSyncService extends ChangeNotifier {
           .collection('chats')
           .getFullList(filter: 'user = "$userId"');
       await Future.wait(recs.map((r) => _pb.collection('chats').delete(r.id)));
+    } catch (_) {}
+  }
+
+  /// Удаляет с сервера чаты пользователя, id которых нет в [keepIds] —
+  /// синхронизирует удаления, сделанные локально в офлайне. Ungated: часть
+  /// явной полной выгрузки ([AIChatController.pushAllThreadsToCloud]).
+  Future<void> deleteStaleChats(Set<String> keepIds) async {
+    if (!isAuthenticated) return;
+    try {
+      final recs = await _pb
+          .collection('chats')
+          .getFullList(filter: 'user = "$userId"', fields: 'id');
+      await _deleteStaleIds('chats', recs.map((r) => r.id), keepIds);
     } catch (_) {}
   }
 
