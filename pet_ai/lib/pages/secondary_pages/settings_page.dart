@@ -135,11 +135,51 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // ── Sync actions ──────────────────────────────────────────────────────────
 
+  /// Подтверждение полной синхронизации, замещающей данные (push/pull).
+  Future<bool> _confirmReplace(
+    BuildContext context, {
+    required String title,
+    required String content,
+    String confirmLabel = 'Загрузить',
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ThemeColors.dangerZone,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   Future<void> _syncPushAll(BuildContext context) async {
     final petId = await PetService().getActiveProfileId();
-    if (petId == null) return;
+    if (petId == null || !context.mounted) return;
+
+    final confirmed = await _confirmReplace(
+      context,
+      title: 'Загрузить на сервер?',
+      content:
+          'Данные на сервере будут приведены в соответствие с локальными. '
+          'Записи, удалённые на этом устройстве, будут удалены и на сервере.',
+    );
+    if (!confirmed) return;
+
     try {
-      await _sync.pushAll(petId);
+      await _sync.pushAll();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Данные успешно отправлены на сервер')),
@@ -159,31 +199,15 @@ class _SettingsPageState extends State<SettingsPage> {
     if (petId == null) return;
 
     if (context.mounted) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Загрузить с сервера?'),
-          content: const Text(
+      final confirmed = await _confirmReplace(
+        context,
+        title: 'Загрузить с сервера?',
+        content:
             'Локальные данные питомца будут заменены данными с сервера. '
             'Это действие нельзя отменить.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Отмена'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: ThemeColors.dangerZone,
-              ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Загрузить'),
-            ),
-          ],
-        ),
       );
 
-      if (confirmed != true) return;
+      if (!confirmed) return;
 
       try {
         await _sync.pullAll();
@@ -204,13 +228,125 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  /// Toggles background sync. Enabling immediately uploads current data to the
-  /// server (same as the «Загрузить на сервер» action).
+  /// Toggles background sync.
+  ///
+  /// Выключение — просто останавливает фоновый пуш.
+  ///
+  /// Включение — сперва спрашивает сервер, есть ли уже данные пользователя:
+  ///  • сервер пуст → включаем и выгружаем локальные данные;
+  ///  • на сервере есть данные → предлагаем скачать. Согласие — pull; отказ —
+  ///    предупреждаем об удалении и заменяем серверную копию локальной.
+  /// Тумблер включается только после успешного разрешения — сбой оставляет
+  /// синхронизацию выключенной.
   Future<void> _toggleSync(BuildContext context, bool enabled) async {
-    await _sync.setSyncEnabled(enabled);
-    if (!mounted) return;
-    setState(() {});
-    if (enabled && context.mounted) await _syncPushAll(context);
+    if (!enabled) {
+      await _sync.setSyncEnabled(false);
+      if (mounted) setState(() {});
+      return;
+    }
+
+    // Спрашиваем сервер о наличии данных (ошибку сети НЕ трактуем как «пусто»).
+    bool hasRemote;
+    try {
+      hasRemote = await _sync.hasRemoteData();
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось связаться с сервером')),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) return;
+
+    if (!hasRemote) {
+      // Сервер пуст — включаем и выгружаем текущие локальные данные.
+      await _enableWithPush(context);
+      return;
+    }
+
+    final download = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Данные на сервере'),
+        content: const Text(
+          'На сервере уже есть сохранённые данные. '
+          'Загрузить их на это устройство?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Не загружать'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Загрузить'),
+          ),
+        ],
+      ),
+    );
+    if (download == null || !context.mounted) return; // отменено — не включаем
+
+    if (download) {
+      await _enableWithPull(context);
+    } else {
+      final confirmed = await _confirmReplace(
+        context,
+        title: 'Заменить данные на сервере?',
+        content:
+            'Данные на сервере будут удалены и заменены данными этого '
+            'устройства. Это действие нельзя отменить.',
+        confirmLabel: 'Удалить и заменить',
+      );
+      if (!confirmed || !context.mounted) return; // тумблер не включаем
+      await _enableWithPush(context);
+    }
+  }
+
+  /// Скачивает данные с сервера и включает синхронизацию (adopt server).
+  Future<void> _enableWithPull(BuildContext context) async {
+    try {
+      await _sync.pullAll();
+      await AIChatController.restoreThreadsFromCloud();
+      await _sync.setSyncEnabled(true);
+      await _loadAll();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Данные загружены, синхронизация включена'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() {}); // тумблер остаётся выключенным
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_sync.lastError ?? 'Не удалось загрузить данные')),
+        );
+      }
+    }
+  }
+
+  /// Заменяет серверную копию локальными данными (или очищает её, если
+  /// локально пусто) и включает синхронизацию.
+  Future<void> _enableWithPush(BuildContext context) async {
+    try {
+      await _sync.replaceRemoteWithLocal();
+      await _sync.setSyncEnabled(true);
+      if (mounted) setState(() {});
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Синхронизация включена')),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() {}); // тумблер остаётся выключенным
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_sync.lastError ?? 'Ошибка синхронизации')),
+        );
+      }
+    }
   }
 
   // ── Debug actions ─────────────────────────────────────────────────────────

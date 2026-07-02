@@ -300,11 +300,14 @@ class CloudSyncService extends ChangeNotifier {
 
   // ── Full push ─────────────────────────────────────────────────────────────
 
-  /// Upload **all** local data for [petId].
+  /// Upload **all** local data of the current user.
   ///
-  /// Clears existing remote data for this user first, then re-uploads the
-  /// full local state. Awaitable; throws on unrecoverable error.
-  Future<void> pushAll(String petId) async {
+  /// Идемпотентно: каждая запись апсертится по своему стабильному id, после
+  /// чего с сервера удаляются только записи, которых больше нет локально.
+  /// До успешной загрузки ничего не стирается — обрыв посередине оставляет
+  /// на сервере прежние данные (возможно, с частью уже обновлённых).
+  /// Awaitable; throws on unrecoverable error.
+  Future<void> pushAll() async {
     if (!isAuthenticated) return;
     _setStatus(SyncStatus.syncing);
 
@@ -313,64 +316,40 @@ class CloudSyncService extends ChangeNotifier {
       final pets = await PetService().loadAllProfiles();
       if (pets.isEmpty) throw Exception('Нет профилей для выгрузки');
 
-      // Wipe remote state for this user, then re-upload everything.
-      await _deleteRemoteForUser(uid);
-
-      Future<void> push(String col, Map<String, dynamic> data) =>
-          _pb.collection(col).create(body: data);
-
       // ── Питомцы + их история ──────────────────────────────────────────────
       for (final p in pets) {
-        final files = <http.MultipartFile>[];
-        if (p.profileImage != null && await p.profileImage!.exists()) {
-          files.add(
-            await http.MultipartFile.fromPath(
-              'profile_image',
-              p.profileImage!.path,
-            ),
-          );
-        }
-        await _pb
-            .collection('pets')
-            .create(body: p.toPocketBase(uid), files: files);
+        await _upsertPet(p, uid);
 
-        for (final e in p.weightHistory.entries) {
-          await push('weights', e.toPocketBase(p.id));
-        }
-        for (final e in p.moodHistory.entries) {
-          await push('moods', e.toPocketBase(p.id));
-        }
-        for (final e in p.foodHistory.entries) {
-          await push('meals', e.toPocketBase(p.id));
-        }
-        for (final e in p.noteHistory.entries) {
-          await push('notes', e.toPocketBase(p.id));
-        }
-        for (final e in p.treatmentHistory.entries) {
-          await push('treatments', e.toPocketBase(p.id));
-        }
-        for (final r in p.pillReminders) {
-          await push('pills', r.toPocketBase(p.id));
-        }
+        await _syncCollection('weights', p.id, p.weightHistory.entries);
+        await _syncCollection('moods', p.id, p.moodHistory.entries);
+        await _syncCollection('meals', p.id, p.foodHistory.entries);
+        await _syncCollection('notes', p.id, p.noteHistory.entries);
+        await _syncCollection('treatments', p.id, p.treatmentHistory.entries);
+        await _syncCollection('pills', p.id, p.pillReminders);
 
         // Документы питомца.
-        final docs = await FileStorageService().loadDocuments(p.id);
-        for (final doc in docs) {
-          final rid = await pushDocument(doc, p.id);
-          if (rid != null && doc.remoteId != rid) {
-            doc.remoteId = rid;
-          }
-        }
-        if (docs.isNotEmpty) {
-          await FileStorageService().importDocuments(p.id, docs);
-        }
+        await _syncDocuments(p.id);
       }
 
       // ── События (общие для нескольких питомцев — пушим один раз) ──────────
       final events = await EventService().loadAllEventsFlat();
+      final eventIds = <String>{};
       for (final e in events) {
         if (e.petIds.isEmpty) continue;
-        await push('events', e.toPocketBase(e.petIds.first));
+        eventIds.add(e.id);
+        await _upsert('events', e.id, e.toPocketBase(e.petIds.first));
+      }
+      for (final p in pets) {
+        await _deleteStale('events', 'pets ~ "${p.id}"', eventIds);
+      }
+
+      // ── Питомцы, удалённые локально, удаляются и с сервера ────────────────
+      final localPetIds = pets.map((p) => p.id).toSet();
+      final remotePets = await _pb
+          .collection(GetIt.instance<ApiService>().petsRoute)
+          .getFullList(filter: 'user = "$uid"', fields: 'id');
+      for (final r in remotePets) {
+        if (!localPetIds.contains(r.id)) await _deleteRemotePet(r.id);
       }
 
       _markSynced();
@@ -384,16 +363,64 @@ class CloudSyncService extends ChangeNotifier {
   // ── Check remote ──────────────────────────────────────────────────────────
 
   /// Returns `true` if the server holds **any** records for the current user.
+  /// Сетевые ошибки проглатываются (→ false) — использовать там, где сбой
+  /// проверки не должен ничего ломать (онбординг предлагает восстановление).
   Future<bool> checkHasRemoteData() async {
     if (!isAuthenticated) return false;
-    final uid = userId ?? '';
     try {
-      final result = await _pb
-          .collection('pets')
-          .getList(page: 1, perPage: 1, filter: 'user = "$uid"');
-      return result.totalItems > 0;
+      return await hasRemoteData();
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Проверяет наличие серверных данных пользователя, **пробрасывая** ошибку
+  /// сети. В отличие от [checkHasRemoteData], позволяет вызывающей стороне
+  /// отличить «сервер пуст» от «не удалось проверить» — критично при включении
+  /// синхронизации, где на основе ответа принимается решение о заливке/очистке.
+  Future<bool> hasRemoteData() async {
+    final uid = userId ?? '';
+    final result = await _pb
+        .collection(GetIt.instance<ApiService>().petsRoute)
+        .getList(page: 1, perPage: 1, filter: 'user = "$uid"');
+    return result.totalItems > 0;
+  }
+
+  /// Приводит серверную копию в соответствие с локальными данными: выгружает
+  /// все локальные записи (идемпотентный апсерт) и удаляет с сервера то, чего
+  /// нет локально. Если локальных профилей нет — полностью очищает сервер.
+  /// Используется при включении синхронизации, когда пользователь решает
+  /// заменить данные на сервере данными этого устройства.
+  Future<void> replaceRemoteWithLocal() async {
+    if (!isAuthenticated) return;
+    final pets = await PetService().loadAllProfiles();
+    if (pets.isEmpty) {
+      await wipeRemote();
+    } else {
+      await pushAll();
+    }
+  }
+
+  /// Полностью удаляет серверную копию пользователя: питомцев со всей историей
+  /// (moods/meals/notes/treatments/pills/events каскадятся при удалении
+  /// питомца; weights и files — вручную) и все чаты.
+  Future<void> wipeRemote() async {
+    if (!isAuthenticated) return;
+    _setStatus(SyncStatus.syncing);
+    try {
+      final uid = userId!;
+      final pets = await _pb
+          .collection(GetIt.instance<ApiService>().petsRoute)
+          .getFullList(filter: 'user = "$uid"', fields: 'id');
+      for (final r in pets) {
+        await _deleteRemotePet(r.id);
+      }
+      await deleteAllChats();
+      _markSynced();
+    } catch (e) {
+      _lastError = _friendlyError(e);
+      _setStatus(SyncStatus.error);
+      rethrow;
     }
   }
 
@@ -617,30 +644,110 @@ class CloudSyncService extends ChangeNotifier {
     return items;
   }
 
-  /// Delete all records belonging to [uid]. Deleting a pet cascades to moods,
-  /// meals, notes, treatments, pills and events — but **not** weights
-  /// (`cascadeDelete: false` in the schema), so those are removed explicitly
-  /// to avoid orphaned duplicates on the next push.
-  Future<void> _deleteRemoteForUser(String uid) async {
-    final petCollection = GetIt.instance<ApiService>().petsRoute;
-    final pets = await _pb
-        .collection(petCollection)
-        .getFullList(filter: 'user = "$uid"');
-    if (pets.isEmpty) return;
-
-    for (final p in pets) {
-      // weights и files не каскадятся при удалении питомца — чистим вручную.
-      for (final col in const ['weights', 'files']) {
-        final items = await _pb
-            .collection(col)
-            .getFullList(filter: 'pet = "${p.id}"');
-        await Future.wait(items.map((i) => _pb.collection(col).delete(i.id)));
-      }
+  /// Апсертит профиль питомца вместе с аватаром. Multipart-файл нельзя
+  /// отправить дважды, поэтому для fallback-update он создаётся заново.
+  Future<void> _upsertPet(Pet p, String uid) async {
+    Future<List<http.MultipartFile>> avatar() async {
+      final img = p.profileImage;
+      if (img == null || !await img.exists()) return const [];
+      return [await http.MultipartFile.fromPath('profile_image', img.path)];
     }
 
-    await Future.wait(
-      pets.map((p) => _pb.collection(petCollection).delete(p.id)),
-    );
+    try {
+      await _pb
+          .collection('pets')
+          .create(body: p.toPocketBase(uid), files: await avatar());
+    } on ClientException catch (e) {
+      if (e.statusCode == 400 || e.statusCode == 409) {
+        await _pb
+            .collection('pets')
+            .update(p.id, body: p.toPocketBase(uid), files: await avatar());
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  /// Апсертит записи [entries] в [collection] и удаляет с сервера записи
+  /// этого питомца, которых больше нет локально.
+  Future<void> _syncCollection(
+    String collection,
+    String petId,
+    Iterable<PbEntity> entries,
+  ) async {
+    final localIds = <String>{};
+    for (final e in entries) {
+      final body = e.toPocketBase(petId);
+      final id = body['id'] as String?;
+      if (id != null) localIds.add(id);
+      await _upsert(collection, id, body);
+    }
+    await _deleteStale(collection, 'pet = "$petId"', localIds);
+  }
+
+  /// Синхронизирует документы питомца: выгружает отсутствующие на сервере и
+  /// удаляет с сервера записи, которых больше нет локально.
+  Future<void> _syncDocuments(String petId) async {
+    final storage = FileStorageService();
+    final docs = await storage.loadDocuments(petId);
+
+    final remote = await _pb
+        .collection('files')
+        .getFullList(filter: 'pet = "$petId"', fields: 'id');
+    final remoteIds = remote.map((r) => r.id).toSet();
+
+    var changed = false;
+    for (final doc in docs) {
+      // remoteId может указывать на запись, удалённую с другого устройства —
+      // такой документ выгружается заново.
+      if (doc.remoteId != null && remoteIds.contains(doc.remoteId)) continue;
+      final rid = await pushDocument(doc, petId);
+      if (rid != null && rid != doc.remoteId) {
+        doc.remoteId = rid;
+        changed = true;
+      }
+    }
+    if (changed) await storage.importDocuments(petId, docs);
+
+    final keep = docs.map((d) => d.remoteId).whereType<String>().toSet();
+    await _deleteStaleIds('files', remoteIds, keep);
+  }
+
+  /// Удаляет из [collection] записи по [filter], id которых нет в [keepIds].
+  Future<void> _deleteStale(
+    String collection,
+    String filter,
+    Set<String> keepIds,
+  ) async {
+    final remote = await _pb
+        .collection(collection)
+        .getFullList(filter: filter, fields: 'id');
+    await _deleteStaleIds(collection, remote.map((r) => r.id), keepIds);
+  }
+
+  Future<void> _deleteStaleIds(
+    String collection,
+    Iterable<String> remoteIds,
+    Set<String> keepIds,
+  ) async {
+    for (final id in remoteIds) {
+      if (keepIds.contains(id)) continue;
+      try {
+        await _pb.collection(collection).delete(id);
+      } on ClientException catch (e) {
+        // 404 — запись уже отсутствует на сервере, это не ошибка.
+        if (e.statusCode != 404) rethrow;
+      }
+    }
+  }
+
+  /// Удаляет питомца с сервера вместе с weights и files — эти коллекции не
+  /// каскадятся при удалении питомца (`cascadeDelete: false` в схеме).
+  Future<void> _deleteRemotePet(String petId) async {
+    for (final col in const ['weights', 'files']) {
+      await _deleteStale(col, 'pet = "$petId"', const {});
+    }
+    await _pb.collection(GetIt.instance<ApiService>().petsRoute).delete(petId);
   }
 
   static String _friendlyError(Object e) {
