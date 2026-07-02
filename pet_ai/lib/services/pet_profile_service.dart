@@ -123,19 +123,19 @@ class PetService {
       profiles.map((p) => p.id).toList(),
     );
 
-    final path = await FilePicker.platform.getDirectoryPath(
-      initialDirectory: 'Экспорт всех профилей',
-    );
-    final profilesFile = File('$path/profiles.json');
-    final eventsFile = File('$path/events.json');
-    await profilesFile.writeAsString(
-      jsonEncode(profiles.map((p) => p.toJson()).toList()),
-    );
-    await eventsFile.writeAsString(
-      jsonEncode(
-        events.values.map((l) => l.map((e) => e.toJson()).toList()).toList(),
-      ),
-    );
+    final path = await FilePicker.platform.getDirectoryPath();
+    if (path != null) {
+      final profilesFile = File('$path/profiles.json');
+      final eventsFile = File('$path/events.json');
+      await profilesFile.writeAsString(
+        jsonEncode(profiles.map((p) => p.toJson()).toList()),
+      );
+      await eventsFile.writeAsString(
+        jsonEncode(
+          events.values.map((l) => l.map((e) => e.toJson()).toList()).toList(),
+        ),
+      );
+    }
   }
 
   // ─── Активный профиль ─────────────────────────────────────────────────────
