@@ -128,29 +128,59 @@ class PillReminderService {
     );
   }
 
-  Future<void> markScheduleTakenFromEvent(Event event) async {
+  /// Синхронизирует приём препарата при переключении связанного события из
+  /// календаря (направление событие → препарат) за конкретный [day].
+  ///
+  /// Единственная точка синхронизации этого направления — вызывается из
+  /// [EventService.toggleCompleted] после того, как событие уже сохранено,
+  /// поэтому обратная запись в событие ([setCompletedOn]) НЕ выполняется
+  /// (`syncEvent: false`) — иначе возникла бы петля и вторая гонка по событиям.
+  ///
+  /// Crash-safe: пустой [Event.petIds] и удалённый препарат обрабатываются
+  /// без исключений (в отличие от прежнего `firstWhere`/`petIds.first`).
+  Future<void> applyEventCompletion(
+    Event event,
+    DateTime day,
+    bool completed,
+  ) async {
     if (event.source != EventSource.pill ||
         event.sourceId == null ||
-        event.sourceId!.isEmpty) {
+        event.sourceId!.isEmpty ||
+        event.petIds.isEmpty) {
       return;
     }
 
-    final profile = await PetService().loadProfile(event.petIds.first);
+    final petId = event.petIds.first;
+    final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
 
-    final pill = profile.pillReminders.firstWhere(
-      (p) => p.id == event.sourceId,
-    );
-    final index = pill.schedules.indexWhere(
+    final idx = profile.pillReminders.indexWhere((p) => p.id == event.sourceId);
+    if (idx < 0) return; // препарат удалён — синхронизировать нечего
+
+    // Сопоставляем конкретное расписание по времени события. Если совпадения
+    // нет (время события не привязано к расписанию) — отмечаем весь день.
+    final scheduleIndex = profile.pillReminders[idx].schedules.indexWhere(
       (s) => s.hour == event.dateTime.hour && s.minute == event.dateTime.minute,
     );
 
-    markScheduleTaken(
-      petId: profile.id,
-      reminderId: event.sourceId!,
-      date: event.dateTime,
-      scheduleIndex: index,
-    );
+    if (scheduleIndex >= 0) {
+      await _toggleSchedule(
+        petId: petId,
+        reminderId: event.sourceId!,
+        date: day,
+        scheduleIndex: scheduleIndex,
+        add: completed,
+        syncEvent: false,
+      );
+    } else {
+      await _toggleAllTaken(
+        petId: petId,
+        reminderId: event.sourceId!,
+        date: day,
+        add: completed,
+        syncEvent: false,
+      );
+    }
   }
 
   /// Marks a single [scheduleIndex] as taken for [date].
@@ -190,6 +220,9 @@ class PillReminderService {
     required String reminderId,
     required DateTime date,
     required bool add,
+    // false — не синхронизировать обратно связанное событие (когда вызов
+    // пришёл из направления событие → препарат; событие уже обновлено).
+    bool syncEvent = true,
   }) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
@@ -230,7 +263,7 @@ class PillReminderService {
     );
 
     // Синхронизируем связанное событие в календаре
-    if (old.eventId != null) {
+    if (syncEvent && old.eventId != null) {
       await EventService().setCompletedOn(old.eventId!, date, add);
     }
   }
@@ -290,6 +323,9 @@ class PillReminderService {
     required DateTime date,
     required int scheduleIndex,
     required bool add,
+    // false — не синхронизировать обратно связанное событие (вызов из
+    // направления событие → препарат; событие уже обновлено).
+    bool syncEvent = true,
   }) async {
     final profile = await PetService().loadProfile(petId);
     if (profile == null) return;
@@ -340,7 +376,7 @@ class PillReminderService {
     );
 
     // Sync linked calendar event: complete when all schedules are taken.
-    if (old.eventId != null) {
+    if (syncEvent && old.eventId != null) {
       await EventService().setCompletedOn(old.eventId!, date, allTaken);
     }
   }

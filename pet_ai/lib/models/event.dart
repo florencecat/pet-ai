@@ -4,7 +4,6 @@ import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
-import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }
@@ -431,16 +430,16 @@ class Event implements PbEntity {
   /// Выполнено ли событие в конкретный день
   bool isCompletedOn(DateTime day) => completedDates.contains(dateKey(day));
 
-  /// Переключает статус выполнения для конкретного дня
+  /// Переключает статус выполнения для конкретного дня.
+  /// Чистая мутация данных: синхронизацию со связанным препаратом выполняет
+  /// [EventService.toggleCompleted] (единственная точка), чтобы не плодить
+  /// параллельные load-modify-save одного профиля.
   void toggleCompletedOn(DateTime day) {
     final key = dateKey(day);
     if (completedDates.contains(key)) {
       completedDates.remove(key);
     } else {
       completedDates.add(key);
-    }
-    if (source == EventSource.pill) {
-      PillReminderService().markScheduleTakenFromEvent(this);
     }
   }
 

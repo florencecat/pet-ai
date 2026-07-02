@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'cloud_sync_service.dart';
 import 'notification_service.dart';
 import 'pet_profile_service.dart';
-import 'package:pet_satellite/models/pill.dart';
+import 'pill_reminder_service.dart';
 import 'package:pet_satellite/models/event.dart';
 
 class EventService {
@@ -155,12 +155,13 @@ class EventService {
     event.toggleCompletedOn(day);
     await saveEvent(event);
 
-    if (event.source == EventSource.pill && event.sourceId != null) {
-      await _syncToPillReminder(
-        petId: petId,
-        reminderId: event.sourceId!,
-        day: day,
-        completed: event.isCompletedOn(day),
+    // Направление событие → препарат. Единственная (awaited) точка синхронизации:
+    // событие уже сохранено выше, поэтому обратный вызов на событие не нужен.
+    if (event.source == EventSource.pill) {
+      await PillReminderService().applyEventCompletion(
+        event,
+        day,
+        event.isCompletedOn(day),
       );
     }
   }
@@ -183,32 +184,6 @@ class EventService {
       all[idx].completedDates.remove(key);
     }
     await _persistAll(all);
-  }
-
-  /// Синхронизирует статус выполнения в [Pill.takenDates]
-  /// при переключении события из календаря / листа событий.
-  Future<void> _syncToPillReminder({
-    required String petId,
-    required String reminderId,
-    required DateTime day,
-    required bool completed,
-  }) async {
-    final profile = await PetService().loadProfile(petId);
-    if (profile == null) return;
-    final idx = profile.pillReminders.indexWhere((r) => r.id == reminderId);
-    if (idx < 0) return;
-    final old = profile.pillReminders[idx];
-    final key = Pill.dateKey(day);
-    final dates = List<String>.from(old.takenDates);
-    if (completed && !dates.contains(key)) {
-      dates.add(key);
-    } else if (!completed) {
-      dates.remove(key);
-    } else {
-      return; // already in sync
-    }
-    profile.pillReminders[idx] = old.copyWith(takenDates: dates);
-    await PetService().saveProfile(profile);
   }
 
   /// Все события, которые приходятся на конкретный день (включая повторяющиеся)
