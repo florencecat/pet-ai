@@ -25,7 +25,6 @@ class _BirthdaySheetState extends State<BirthdaySheet>
   static const _pink = Color(0xFFEC92B6);
 
   bool _ageExpanded = true;
-  bool _upcomingExpanded = false;
 
   late final AnimationController _entrance;
   late final Animation<double> _heroScale;
@@ -125,7 +124,7 @@ class _BirthdaySheetState extends State<BirthdaySheet>
       title: 'День рождения',
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(),
-      initialSize: 0.75,
+      initialSize: 0.35,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -145,9 +144,16 @@ class _BirthdaySheetState extends State<BirthdaySheet>
                         end: Alignment.bottomRight,
                         colors: [_pink.withAlpha(60), _pink.withAlpha(20)],
                       ),
-                      border: Border.all(color: _pink.withAlpha(90), width: 1.5),
+                      border: Border.all(
+                        color: _pink.withAlpha(90),
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(Icons.cake_rounded, color: _pink, size: 46),
+                    child: const Icon(
+                      Icons.cake_rounded,
+                      color: _pink,
+                      size: 46,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -173,10 +179,11 @@ class _BirthdaySheetState extends State<BirthdaySheet>
                       final shown = value.round();
                       return Text(
                         '$shown ${_yearsWord(shown)}',
-                        style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                          color: _pink,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium!
+                            .copyWith(
+                              color: _pink,
+                              fontWeight: FontWeight.w600,
+                            ),
                       );
                     },
                   ),
@@ -229,43 +236,6 @@ class _BirthdaySheetState extends State<BirthdaySheet>
                         icon: Icons.people_alt_rounded,
                         label: 'В человеческих годах',
                         value: '≈ $_humanAge ${_yearsWord(_humanAge!)}',
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Следующие дни рождения (сворачиваемая секция) ────────────────
-          CollapsibleSection(
-            expanded: _upcomingExpanded,
-            onToggle: () =>
-                setState(() => _upcomingExpanded = !_upcomingExpanded),
-            titleContent: Text(
-              'Следующие дни рождения',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            body: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: GlassPlate(
-                padding: 0,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < 5; i++) ...[
-                      if (i > 0) const _RowDivider(),
-                      _InfoRow(
-                        icon: Icons.celebration_outlined,
-                        label: DateFormat('d MMMM yyyy', 'ru').format(
-                          DateTime(
-                            _nextBirthday.year + i,
-                            _birth.month,
-                            _birth.day,
-                          ),
-                        ),
-                        value: 'исполнится ${_ageAtNext + i}',
                       ),
                     ],
                   ],
@@ -446,9 +416,9 @@ class _InfoRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),
