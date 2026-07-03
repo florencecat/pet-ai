@@ -37,7 +37,9 @@ class GlassPlate extends StatelessWidget {
   Widget build(BuildContext context) {
     const borderRadius = BorderRadius.all(Radius.circular(24));
     final borderColor = color.withAlpha(180);
-    final fillColor = transparent ? color.withAlpha(180) : color;
+    final fillColor = transparent
+        ? (useShadow ? color.withAlpha(180) : color.withAlpha(128))
+        : color;
 
     final content = ClipRRect(
       borderRadius: borderRadius,
@@ -336,6 +338,7 @@ class GlassListTile extends StatelessWidget {
   final Widget? bottomBadge;
   final Widget? trailing;
   final VoidCallback? callback;
+  final bool useShadow;
 
   const GlassListTile({
     super.key,
@@ -347,6 +350,7 @@ class GlassListTile extends StatelessWidget {
     this.bottomBadge,
     this.trailing,
     this.callback,
+    this.useShadow = true,
   });
 
   @override
@@ -365,6 +369,7 @@ class GlassListTile extends StatelessWidget {
     }
 
     return GlassPlate(
+      useShadow: useShadow,
       child: Pressable(
         onTap: callback,
         haptic: HapticStrength.light,
@@ -753,9 +758,8 @@ class GlassGenderSelector extends StatelessWidget {
           child: GlassGenderButton(
             gender: Gender.male,
             selected: gender == Gender.male,
-            onTap: () => onChanged(
-              gender == Gender.male ? Gender.none : Gender.male,
-            ),
+            onTap: () =>
+                onChanged(gender == Gender.male ? Gender.none : Gender.male),
           ),
         ),
         const SizedBox(width: 10),
@@ -823,6 +827,61 @@ class GlassGenderButton extends StatelessWidget {
                 context,
               ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SoftGlassButton extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color? color;
+  final VoidCallback onTap;
+
+  const SoftGlassButton({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.color,
+    this.subtitle,
+   });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = this.color ?? context.watch<AppearanceController>().primaryColor;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: color.withAlpha(120),
+            width: 1.5,
+            strokeAlign: BorderSide.strokeAlignInside,
+          ),
+          color: color.withAlpha(20),
+        ),
+        child: Column(
+          spacing: 6,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 32),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (subtitle != null)
+              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                color: color,
+              ),)
           ],
         ),
       ),

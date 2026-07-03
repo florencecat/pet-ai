@@ -1,5 +1,25 @@
 import 'package:flutter/material.dart';
 
+class DragHandle extends StatelessWidget {
+  const DragHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        margin: const EdgeInsets.only(top: 12, bottom: 4),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade400,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+}
+
 // DraggableSheet is intentionally a plain StatelessWidget — it no longer wraps
 // a DraggableScrollableSheet.
 //
@@ -79,35 +99,14 @@ class DraggableSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Drag handle ───────────────────────────────────────────────
-            // Kept OUTSIDE the scroll view: showModalBottomSheet's enableDrag
-            // detects vertical drags on the sheet surface, but a wrapping
-            // SingleChildScrollView consumes them — so a drag on the handle
-            // or header wouldn't dismiss the sheet (this was the iOS bug
-            // where the sheet body scrolled bouncily instead of stretching
-            // the sheet down).
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(top: 12, bottom: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade400,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            // ── Header ────────────────────────────────────────────────────
+            // ── Handle ──────────────────────────────────────────────────────
+            DragHandle(),
+            // ── Header ──────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: _buildHeader(primaryColor, titleStyle),
             ),
-
             // ── Body ──────────────────────────────────────────────────────
-            // Flexible so the column hugs its content when small (sheet keeps
-            // wrapping to body height) but caps at the available height when
-            // the body overflows (then the body scrolls).
             Flexible(
               fit: FlexFit.loose,
               child: SingleChildScrollView(

@@ -335,89 +335,97 @@ class EventsPageState extends State<EventsPage> {
               GlassPlate(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TableCalendar(
-                    locale: 'ru_RU',
-                    startingDayOfWeek: StartingDayOfWeek.monday,
-                    focusedDay: _focusedDay,
-                    firstDay: DateTime.utc(2024),
-                    lastDay: DateTime.utc(2030),
-                    calendarFormat: _format,
-                    calendarBuilders: CalendarBuilders(
-                      markerBuilder: (context, day, events) {
-                        if (events.isEmpty) return const SizedBox();
-                        return Positioned(
-                          bottom: 4,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: events.take(3).map((event) {
-                              final e = event as Event;
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 2,
-                                ),
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: _markerColor(e),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                  child: Column(
+                    children: [
+                      TableCalendar(
+                        locale: 'ru_RU',
+                        startingDayOfWeek: StartingDayOfWeek.monday,
+                        focusedDay: _focusedDay,
+                        firstDay: DateTime.utc(2024),
+                        lastDay: DateTime.utc(2030),
+                        calendarFormat: _format,
+                        calendarBuilders: CalendarBuilders(
+                          markerBuilder: (context, day, events) {
+                            if (events.isEmpty) return const SizedBox();
+                            return Positioned(
+                              bottom: 4,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: events.take(3).map((event) {
+                                  final e = event as Event;
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                    ),
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: _markerColor(e),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            );
+                          },
+                        ),
+                        headerStyle: HeaderStyle(
+                          formatButtonVisible: false,
+                          titleTextStyle: Theme.of(
+                            context,
+                          ).textTheme.bodyLarge!,
+                        ),
+                        daysOfWeekStyle: DaysOfWeekStyle(
+                          weekdayStyle: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(inherit: true, fontSize: 13),
+                          weekendStyle: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(inherit: true, fontSize: 13),
+                        ),
+                        eventLoader: (day) => _events.where((e) {
+                          if (!e.occursOn(day)) return false;
+                          if (e.source == EventSource.pill) return false;
+                          if (e.isCompletedOn(day)) return false;
+                          return true;
+                        }).toList(),
+                        calendarStyle: CalendarStyle(
+                          todayDecoration: const BoxDecoration(
+                            color: Colors.transparent,
+                            shape: BoxShape.circle,
                           ),
-                        );
-                      },
-                    ),
-                    headerStyle: HeaderStyle(
-                      formatButtonVisible: false,
-                      titleTextStyle: Theme.of(context).textTheme.bodyLarge!,
-                    ),
-                    daysOfWeekStyle: DaysOfWeekStyle(
-                      weekdayStyle: Theme.of(context).textTheme.bodySmall!
-                          .copyWith(inherit: true, fontSize: 13),
-                      weekendStyle: Theme.of(context).textTheme.bodySmall!
-                          .copyWith(inherit: true, fontSize: 13),
-                    ),
-                    eventLoader: (day) => _events.where((e) {
-                      if (!e.occursOn(day)) return false;
-                      if (e.source == EventSource.pill) return false;
-                      if (e.isCompletedOn(day)) return false;
-                      return true;
-                    }).toList(),
-                    calendarStyle: CalendarStyle(
-                      todayDecoration: const BoxDecoration(
-                        color: Colors.transparent,
-                        shape: BoxShape.circle,
+                          selectedDecoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          todayTextStyle: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          selectedTextStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        selectedDayPredicate: (day) =>
+                            isSameDay(day, _selectedDay),
+                        onDaySelected: (selectedDay, focusedDay) async {
+                          setState(() {
+                            _selectedDay = selectedDay;
+                            _focusedDay = focusedDay;
+                          });
+                          refresh();
+                        },
+                        onPageChanged: (focusedDay) {
+                          setState(() => _focusedDay = focusedDay);
+                          refresh();
+                        },
+                        onFormatChanged: (format) {
+                          setState(() => _format = format);
+                        },
                       ),
-                      selectedDecoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      todayTextStyle: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      selectedTextStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
-                    onDaySelected: (selectedDay, focusedDay) async {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                      refresh();
-                    },
-                    onPageChanged: (focusedDay) {
-                      setState(() => _focusedDay = focusedDay);
-                      refresh();
-                    },
-                    onFormatChanged: (format) {
-                      setState(() => _format = format);
-                    },
+                      DragHandle()
+                    ],
                   ),
                 ),
               ),
