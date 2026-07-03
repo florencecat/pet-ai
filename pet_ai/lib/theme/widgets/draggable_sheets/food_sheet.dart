@@ -4,6 +4,7 @@ import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/appetite_stepper.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
@@ -14,38 +15,53 @@ import 'package:pet_satellite/theme/widgets/suggestion_list.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
-class FoodSheet extends StatefulWidget {
+class FoodDialog extends StatefulWidget {
   final Pet profile;
+  final MealHistory history;
 
-  const FoodSheet({super.key, required this.profile});
+  /// Редактируемая запись, либо null если создаётся новая.
+  final MealEntry? editEntry;
+
+  const FoodDialog({
+    super.key,
+    required this.profile,
+    required this.history,
+    this.editEntry,
+  });
 
   @override
-  State<FoodSheet> createState() => _FoodSheetState();
+  State<FoodDialog> createState() => _FoodDialogState();
 }
 
-class _FoodSheetState extends State<FoodSheet> {
-  late MealHistory _history;
-
+class _FoodDialogState extends State<FoodDialog> {
   // ── New-entry form state ─────────────────────────────────────────────────
   int _appetiteScore = 3;
   MealTime _mealTime = MealTime.morning;
   FoodKind _kind = FoodKind.natural;
   bool _isSaving = false;
 
-  /// Id редактируемой записи, либо null если форма создаёт новую.
-  String? _editingId;
-
   final _foodCtrl = TextEditingController();
   final _gramsCtrl = TextEditingController(text: '100');
   final _foodFocus = FocusNode();
   List<String> _suggestions = [];
 
+  MealHistory get _history => widget.history;
+  bool get _isEditing => widget.editEntry != null;
+
   @override
   void initState() {
     super.initState();
-    _history = widget.profile.foodHistory;
-    // Дефолт граммовки зависит от типа корма (см. _defaultGramsForKind).
-    _gramsCtrl.text = _defaultGramsForKind(_kind).toString();
+    final entry = widget.editEntry;
+    if (entry != null) {
+      _kind = entry.kind;
+      _mealTime = entry.mealTime;
+      _appetiteScore = entry.appetiteScore;
+      _foodCtrl.text = entry.foodName;
+      _gramsCtrl.text = entry.grams.toString();
+    } else {
+      // Дефолт граммовки зависит от типа корма (см. _defaultGramsForKind).
+      _gramsCtrl.text = _defaultGramsForKind(_kind).toString();
+    }
     _foodCtrl.addListener(_refreshSuggestions);
   }
 
@@ -56,8 +72,6 @@ class _FoodSheetState extends State<FoodSheet> {
     _foodFocus.dispose();
     super.dispose();
   }
-
-  bool get _isEditing => _editingId != null;
 
   int get _grams {
     final raw = int.tryParse(_gramsCtrl.text.trim()) ?? 0;
@@ -104,13 +118,15 @@ class _FoodSheetState extends State<FoodSheet> {
 
   bool get _showSuggestions => _suggestions.isNotEmpty;
 
-  // ── Save / edit ───────────────────────────────────────────────────────────
+  // ── Save ────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
     setState(() => _isSaving = true);
+
+    bool error = false;
     try {
       final entry = MealEntry(
-        id: _editingId,
+        id: widget.editEntry?.id,
         date: DateTime.now(),
         mealTime: _mealTime,
         appetiteScore: _appetiteScore,
@@ -119,50 +135,230 @@ class _FoodSheetState extends State<FoodSheet> {
         kind: _kind,
       );
       await PetService().updateFoodHistory(widget.profile.id, entry);
-      if (mounted) {
-        final fresh = await PetService().loadProfile(widget.profile.id);
-        if (fresh != null && mounted) {
-          _history = fresh.foodHistory;
-        }
-        _resetForm();
-      }
+    } catch (e) {
+      error = true;
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+        if (!error) Navigator.of(context).pop(true);
+      }
     }
   }
 
-  void _resetForm() {
-    setState(() {
-      _editingId = null;
-      _foodCtrl.clear();
-      _appetiteScore = 3;
-      _suggestions = [];
-      // Граммовку оставляем как удобный «последний» дефолт.
-    });
-    FocusScope.of(context).unfocus();
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.watch<AppearanceController>().primaryColor;
+
+    return AlertDialog(
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: _isSaving ? null : _save,
+          style: FilledButton.styleFrom(backgroundColor: accent),
+          child: Text(_isEditing ? 'Сохранить' : 'Добавить'),
+        ),
+      ],
+      title: Text(
+        _isEditing ? 'Редактирование' : 'Новая запись',
+        style: Theme.of(context).textTheme.titleLarge,
+        textAlign: TextAlign.center,
+      ),
+      content: InlineLoading(
+        isLoading: _isSaving,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Тип питания
+              Text('Пища', style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
+              _KindSelector(
+                value: _kind,
+                onChanged: (k) {
+                  setState(() {
+                    _kind = k;
+                    // При смене типа подставляем подходящий дефолт граммовки
+                    // (но не затираем значение при редактировании записи).
+                    if (!_isEditing) {
+                      _gramsCtrl.text = _defaultGramsForKind(k).toString();
+                    }
+                  });
+                  _refreshSuggestions();
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: _foodCtrl,
+                focusNode: _foodFocus,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: baseInputDecoration(
+                  _kind == FoodKind.natural
+                      ? 'Напр. курица, гречка'
+                      : 'Название корма',
+                  suffixIcon: _foodCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () {
+                            _foodCtrl.clear();
+                            _refreshSuggestions();
+                          },
+                        )
+                      : null,
+                ),
+              ),
+              // Анимируем появление/скрытие подсказок, чтобы диалог не «прыгал».
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: Alignment.topCenter,
+                child: _showSuggestions
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 8),
+                          SuggestionList(
+                            suggestions: _suggestions,
+                            icon: Icons.restaurant_menu,
+                            accent: _kind.color,
+                            onSelected: (name) {
+                              _foodCtrl.text = name;
+                              _foodCtrl.selection = TextSelection.collapsed(
+                                offset: name.length,
+                              );
+                              setState(() => _suggestions = []);
+                              _foodFocus.unfocus();
+                            },
+                          ),
+                        ],
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
+
+              const SizedBox(height: 16),
+
+              Text(
+                'Аппетит и граммовка',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: AppetiteStepper(
+                  value: _appetiteScore,
+                  onChanged: (v) => setState(() => _appetiteScore = v),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              _GramInput(
+                controller: _gramsCtrl,
+                onStep: _stepGrams,
+                onChanged: () => setState(() {}),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Время суток
+              Text('Время суток', style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
+              Row(
+                children: MealTime.values.map((mt) {
+                  final selected = _mealTime == mt;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _mealTime = mt),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: selected
+                              ? accent.withAlpha(200)
+                              : accent.withAlpha(20),
+                          border: Border.all(
+                            color: selected ? accent : accent.withAlpha(60),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              mt.icon,
+                              size: 18,
+                              color: selected ? Colors.white : accent,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              mt.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: selected ? Colors.white : accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FoodSheet extends StatefulWidget {
+  final Pet profile;
+
+  const FoodSheet({super.key, required this.profile});
+
+  @override
+  State<FoodSheet> createState() => _FoodSheetState();
+}
+
+class _FoodSheetState extends State<FoodSheet> {
+  late MealHistory _history;
+
+  @override
+  void initState() {
+    super.initState();
+    _history = widget.profile.foodHistory;
   }
 
-  void _startEdit(MealEntry e) {
-    setState(() {
-      _editingId = e.id;
-      _kind = e.kind;
-      _mealTime = e.mealTime;
-      _appetiteScore = e.appetiteScore;
-      _foodCtrl.text = e.foodName;
-      _gramsCtrl.text = e.grams.toString();
-    });
+  Future<void> _showAddDialog({MealEntry? editEntry}) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => FoodDialog(
+        profile: widget.profile,
+        history: _history,
+        editEntry: editEntry,
+      ),
+    );
+    if (saved == true) await _reload();
+  }
+
+  Future<void> _reload() async {
+    final fresh = await PetService().loadProfile(widget.profile.id);
+    if (fresh != null && mounted) {
+      setState(() => _history = fresh.foodHistory);
+    }
   }
 
   Future<void> _delete(MealEntry entry) async {
     final confirmed = await confirmDelete(context, title: 'Удалить запись?');
     if (!confirmed) return;
     await PetService().deleteFoodEntryById(widget.profile.id, entry.id);
-    if (mounted) {
-      setState(() {
-        _history.deleteById(entry.id);
-        if (_editingId == entry.id) _resetForm();
-      });
-    }
+    if (mounted) setState(() => _history.deleteById(entry.id));
   }
 
   @override
@@ -173,218 +369,70 @@ class _FoodSheetState extends State<FoodSheet> {
     return DraggableSheet(
       title: 'Дневник питания',
       centerTitle: true,
-      initialSize: 0.85,
+      initialSize: entries.isEmpty ? 0.2 : 0.6,
       maxSize: 0.85,
       onBack: () => Navigator.of(context).pop(true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Form ───────────────────────────────────────────────────────
-          GlassPlate(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Text(
-                      _isEditing ? 'Редактирование' : 'Новая запись',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Тип питания
-                  Text('Пища', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  _KindSelector(
-                    value: _kind,
-                    onChanged: (k) {
-                      setState(() {
-                        _kind = k;
-                        // При смене типа подставляем подходящий дефолт граммовки
-                        // (но не затираем значение при редактировании записи).
-                        if (!_isEditing) {
-                          _gramsCtrl.text = _defaultGramsForKind(k).toString();
-                        }
-                      });
-                      _refreshSuggestions();
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  TextField(
-                    controller: _foodCtrl,
-                    focusNode: _foodFocus,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: baseInputDecoration(
-                      _kind == FoodKind.natural
-                          ? 'Напр. курица, гречка'
-                          : 'Название корма',
-                      suffixIcon: _foodCtrl.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.close, size: 18),
-                              onPressed: () {
-                                _foodCtrl.clear();
-                                _refreshSuggestions();
-                              },
-                            )
-                          : null,
-                    ),
-                  ),
-                  if (_showSuggestions) ...[
-                    const SizedBox(height: 8),
-                    SuggestionList(
-                      suggestions: _suggestions,
-                      icon: Icons.restaurant_menu,
-                      accent: _kind.color,
-                      onSelected: (name) {
-                        _foodCtrl.text = name;
-                        _foodCtrl.selection = TextSelection.collapsed(
-                          offset: name.length,
-                        );
-                        setState(() => _suggestions = []);
-                        _foodFocus.unfocus();
-                      },
-                    ),
-                  ],
-
-                  const SizedBox(height: 16),
-
-                  Text('Аппетит и граммовка', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: AppetiteStepper(
-                      value: _appetiteScore,
-                      onChanged: (v) => setState(() => _appetiteScore = v),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                  _GramInput(
-                    controller: _gramsCtrl,
-                    onStep: _stepGrams,
-                    onChanged: () => setState(() {}),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Время суток
-                  Text(
-                    'Время суток',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: MealTime.values.map((mt) {
-                      final selected = _mealTime == mt;
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _mealTime = mt),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: selected
-                                  ? accent.withAlpha(200)
-                                  : accent.withAlpha(20),
-                              border: Border.all(
-                                color: selected ? accent : accent.withAlpha(60),
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  mt.icon,
-                                  size: 18,
-                                  color: selected ? Colors.white : accent,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  mt.label,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected ? Colors.white : accent,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Row(
-                    children: [
-                      if (_isEditing) ...[
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _isSaving ? null : _resetForm,
-                            child: const Text('Отмена'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: _isSaving ? null : _save,
-                          icon: _isSaving
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Icon(
-                                  _isEditing ? Icons.check : Icons.add,
-                                  size: 18,
-                                ),
-                          label: Text(_isEditing ? 'Сохранить' : 'Добавить'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── History list ───────────────────────────────────────────────
           if (entries.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: Column(
+            Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Icon(
+                  Icons.restaurant_outlined,
+                  size: 72,
+                  color: accent.withAlpha(192),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.restaurant_outlined,
-                      size: 56,
-                      color: accent.withAlpha(60),
-                    ),
-                    const SizedBox(height: 12),
                     Text(
-                      'Дневник питания пуст',
-                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        color: accent.withAlpha(120),
+                      'Дневник пуст.',
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                        inherit: true,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor
+                            .withAlpha(60),
+                      ),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.all(5),
+                      ),
+                      onPressed: () => _showAddDialog(),
+                      child: Row(
+                        spacing: 1,
+                        children: [
+                          Text(
+                            'Добавить',
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  inherit: true,
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withAlpha(192),
+                                ),
+                          ),
+                          Icon(Icons.chevron_right_rounded, size: 28),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
             )
           else ...[
+            SoftGlassButton(
+              icon: Icons.restaurant_menu_outlined,
+              title: 'Добавить запись',
+              subtitle: 'Ведите дневник питания',
+              onTap: () => _showAddDialog(),
+            ),
+            const SizedBox(height: 16),
             Text('История', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             GroupedHistoryList<MealEntry>(
@@ -397,7 +445,7 @@ class _FoodSheetState extends State<FoodSheet> {
               },
               itemBuilder: (context, e) => _FoodEntryCard(
                 entry: e,
-                onEdit: () => _startEdit(e),
+                onEdit: () => _showAddDialog(editEntry: e),
                 onDelete: () => _delete(e),
               ),
             ),
@@ -418,51 +466,61 @@ class _KindSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: FoodKind.values.map((k) {
-        final selected = value == k;
-        final color = k.color;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onChanged(k);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: selected ? color.withAlpha(220) : color.withAlpha(20),
-                border: Border.all(
-                  color: selected ? color : color.withAlpha(60),
+    // IntrinsicHeight + stretch выравнивает все чипы по самому высокому
+    // (лейблы «Влажный корм»/«Сухой корм» переносятся в две строки на узких
+    // экранах — иначе такой чип становится выше остальных).
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: FoodKind.values.map((k) {
+          final selected = value == k;
+          final color = k.color;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onChanged(k);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 2,
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    k.icon,
-                    size: 18,
-                    color: selected ? Colors.white : color,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: selected ? color.withAlpha(220) : color.withAlpha(20),
+                  border: Border.all(
+                    color: selected ? color : color.withAlpha(60),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    k.label,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      k.icon,
+                      size: 18,
                       color: selected ? Colors.white : color,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      k.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? Colors.white : color,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 }

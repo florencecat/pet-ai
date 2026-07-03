@@ -7,8 +7,10 @@ InputDecoration baseInputDecoration(String label, {Widget? suffixIcon}) {
     labelText: label,
     labelStyle: AppTheme.lightTheme.textTheme.bodyLarge!.copyWith(
       inherit: true,
-      color: ThemeColors.textPrimary.withAlpha(128)
+      color: ThemeColors.textPrimary.withAlpha(128),
     ),
+    alignLabelWithHint: true,
+
     floatingLabelBehavior: FloatingLabelBehavior.never,
     filled: true,
     fillColor: ThemeColors.white,

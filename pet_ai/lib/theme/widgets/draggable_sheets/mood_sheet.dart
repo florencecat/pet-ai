@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
-import 'package:pet_satellite/theme/widgets/chart_placeholder.dart';
+import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/models/history.dart';
@@ -15,6 +15,229 @@ import 'package:provider/provider.dart';
 import '../../../services/appearance_controller.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
+class MoodDialog extends StatefulWidget {
+  final Pet profile;
+
+  const MoodDialog({super.key, required this.profile});
+
+  @override
+  State<MoodDialog> createState() => _MoodDialogState();
+}
+
+class _MoodDialogState extends State<MoodDialog> {
+  bool _isSaving = false;
+  PetMood? selectedMood;
+  DayPart selectedDayPart = DayPartX.now();
+
+  Future<void> save() async {
+    if (selectedMood == null) return;
+
+    setState(() => _isSaving = true);
+
+    final entry = MoodEntry(
+      date: DateTime.now(),
+      mood: selectedMood!,
+      dayPart: selectedDayPart,
+    );
+
+    bool error = false;
+    try {
+      // Запись за тот же день и время суток перезаписывается (см. addOrReplace).
+      await PetService().updateMoodHistory(widget.profile.id, entry);
+    } catch (e) {
+      error = true;
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        if (!error) Navigator.of(context).pop(true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      // Шире стандартного, чтобы врап настроений умещался в одну строку.
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: selectedMood == null || _isSaving
+              ? null
+              : () {
+                  triggerHaptic(HapticStrength.medium);
+                  save();
+                },
+          style: FilledButton.styleFrom(
+            backgroundColor: context.watch<AppearanceController>().primaryColor,
+          ),
+          child: const Text('Сохранить'),
+        ),
+      ],
+      title: Text(
+        'Новая запись',
+        style: Theme.of(context).textTheme.titleLarge,
+        textAlign: TextAlign.center,
+      ),
+      content: InlineLoading(
+        isLoading: _isSaving,
+        child: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Время суток',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: DayPart.values.map((mt) {
+                    final selected = selectedDayPart == mt;
+                    return Expanded(
+                      child: Pressable(
+                        haptic: HapticStrength.selection,
+                        scale: 0.93,
+                        onTap: () => setState(() => selectedDayPart = mt),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: selected
+                                ? context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withAlpha(200)
+                                : context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withAlpha(20),
+                            border: Border.all(
+                              color: selected
+                                  ? context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .primaryColor
+                                        .withAlpha(60),
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                mt.icon,
+                                size: 18,
+                                color: selected
+                                    ? Colors.white
+                                    : context
+                                          .watch<AppearanceController>()
+                                          .primaryColor,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                mt.label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: selected
+                                      ? Colors.white
+                                      : context
+                                            .watch<AppearanceController>()
+                                            .primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Настроение',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: PetMood.values.map((mood) {
+                    final isSelected = selectedMood == mood;
+
+                    return Pressable(
+                      haptic: HapticStrength.selection,
+                      scale: 0.9,
+                      onTap: () {
+                        setState(() => selectedMood = mood);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelected
+                              ? context
+                                    .watch<AppearanceController>()
+                                    .primaryColor
+                              : context
+                                    .watch<AppearanceController>()
+                                    .primaryColor
+                                    .withValues(alpha: 0.1),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              mood.icon,
+                              size: 26,
+                              color: isSelected
+                                  ? ThemeColors.background
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor,
+                            ),
+                            Text(
+                              mood.label,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.titleSmall!
+                                  .copyWith(
+                                    inherit: true,
+                                    fontSize: 8,
+                                    color: isSelected
+                                        ? ThemeColors.background
+                                        : context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class MoodSheet extends StatefulWidget {
   final Pet profile;
 
@@ -27,11 +250,7 @@ class MoodSheet extends StatefulWidget {
 class _MoodSheetState extends State<MoodSheet> {
   HistoryPeriod period = HistoryPeriod.month;
 
-  bool change = false;
-
   late MoodHistory history;
-  PetMood? selectedMood;
-  DayPart selectedDayPart = DayPartX.now();
 
   @override
   void initState() {
@@ -39,26 +258,18 @@ class _MoodSheetState extends State<MoodSheet> {
     history = widget.profile.moodHistory;
   }
 
-  void save() async {
-    if (selectedMood == null) return;
-
-    final entry = MoodEntry(
-      date: DateTime.now(),
-      mood: selectedMood!,
-      dayPart: selectedDayPart,
+  Future<void> _showAddDialog() async {
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (_) => MoodDialog(profile: widget.profile),
     );
+    if (added == true) await _reload();
+  }
 
-    // Запись за тот же день и время суток перезаписывается (см. addOrReplace).
-    await PetService().updateMoodHistory(widget.profile.id, entry);
-
-    // Stay in sheet — reload history and reset selection
+  Future<void> _reload() async {
     final fresh = await PetService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
-      setState(() {
-        history = fresh.moodHistory;
-        selectedMood = null;
-        change = false;
-      });
+      setState(() => history = fresh.moodHistory);
     }
   }
 
@@ -72,245 +283,144 @@ class _MoodSheetState extends State<MoodSheet> {
   @override
   Widget build(BuildContext context) {
     final entries = history.filterByPeriod(period);
+    final accent = context.watch<AppearanceController>().primaryColor;
 
     return DraggableSheet(
       title: "История настроения",
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(true),
-      initialSize: 0.85,
+      initialSize: entries.isEmpty ? 0.2 : 0.6,
       maxSize: 0.85,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SegmentedButton<HistoryPeriod>(
-            style: SegmentedButton.styleFrom(
-              side: BorderSide(
-                color: context.watch<AppearanceController>().secondaryColor,
-                width: 2,
-              ),
-              foregroundColor: context
-                  .watch<AppearanceController>()
-                  .secondaryColor,
-              selectedBackgroundColor: context
-                  .watch<AppearanceController>()
-                  .secondaryColor,
-              selectedForegroundColor: Theme.of(context).colorScheme.surface,
-            ),
-            segments: const [
-              ButtonSegment(value: HistoryPeriod.month, label: Text("Месяц")),
-              ButtonSegment(value: HistoryPeriod.year, label: Text("Год")),
-              ButtonSegment(value: HistoryPeriod.all, label: Text("Все")),
-            ],
-            selected: {period},
-            onSelectionChanged: (value) {
-              setState(() {
-                period = value.first;
-              });
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Chart ─────────────────────────────────────────────────────────
           if (entries.isEmpty)
-            const ChartPlaceholder(message: "История настроения пуста")
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(5, 10, 10, 10),
-              child: _MoodFrequencyChart(entries: entries),
-            ),
-
-          const SizedBox(height: 8),
-
-          GlassPlate(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Новая запись',
-                    style: Theme.of(context).textTheme.titleMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-
-                  Text('Время суток', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: DayPart.values.map((mt) {
-                      final selected = selectedDayPart == mt;
-                      return Expanded(
-                        child: Pressable(
-                          haptic: HapticStrength.selection,
-                          scale: 0.93,
-                          onTap: () => setState(() => selectedDayPart = mt),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: selected
-                                  ? context
-                                        .watch<AppearanceController>()
-                                        .primaryColor
-                                        .withAlpha(200)
-                                  : context
-                                        .watch<AppearanceController>()
-                                        .primaryColor
-                                        .withAlpha(20),
-                              border: Border.all(
-                                color: selected
-                                    ? context
-                                          .watch<AppearanceController>()
-                                          .primaryColor
-                                    : context
-                                          .watch<AppearanceController>()
-                                          .primaryColor
-                                          .withAlpha(60),
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  mt.icon,
-                                  size: 18,
-                                  color: selected
-                                      ? Colors.white
-                                      : context
-                                            .watch<AppearanceController>()
-                                            .primaryColor,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  mt.label,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected
-                                        ? Colors.white
-                                        : context
-                                              .watch<AppearanceController>()
-                                              .primaryColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Text('Настроение', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: PetMood.values.map((mood) {
-                      final isSelected = selectedMood == mood;
-
-                      return Pressable(
-                        haptic: HapticStrength.selection,
-                        scale: 0.9,
-                        onTap: () {
-                          setState(() {
-                            selectedMood = mood;
-                            change = true;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isSelected
-                                ? context
-                                      .watch<AppearanceController>()
-                                      .primaryColor
-                                : context
-                                      .watch<AppearanceController>()
-                                      .primaryColor
-                                      .withValues(alpha: 0.1),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                mood.icon,
-                                size: 26,
-                                color: isSelected
-                                    ? ThemeColors.background
-                                    : context
-                                          .watch<AppearanceController>()
-                                          .secondaryColor,
-                              ),
-                              Text(
-                                mood.label,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.titleSmall!
-                                    .copyWith(
-                                      inherit: true,
-                                      fontSize: 8,
-                                      color: isSelected
-                                          ? ThemeColors.background
-                                          : context
-                                                .watch<AppearanceController>()
-                                                .secondaryColor,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      onPressed: change
-                          ? () {
-                        triggerHaptic(HapticStrength.medium);
-                        save();
-                      }
-                          : null,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Добавить'),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Icon(
+                  Icons.sentiment_neutral_rounded,
+                  size: 72,
+                  color: accent.withAlpha(192),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Дневник пуст.',
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                        inherit: true,
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor
+                            .withAlpha(60),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.all(5),
+                      ),
+                      onPressed: () => _showAddDialog(),
+                      child: Row(
+                        spacing: 1,
+                        children: [
+                          Text(
+                            'Добавить',
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  inherit: true,
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .primaryColor
+                                      .withAlpha(192),
+                                ),
+                          ),
+                          Icon(Icons.chevron_right_rounded, size: 28),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          else ...[
+            // ── Add button ────────────────────────────────────────────────────
+            SoftGlassButton(
+              icon: Icons.mood_outlined,
+              title: 'Добавить запись',
+              subtitle: 'Отмечайте настроение питомца',
+              onTap: _showAddDialog,
             ),
-          ),
 
-          // ── History list ──────────────────────────────────────────────────
-          if (history.entries.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
+            // ── History list ──────────────────────────────────────────────────
+            if (history.entries.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
                 'История',
                 style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.left,
               ),
-            ),
-            const SizedBox(height: 8),
-            GroupedHistoryList<MoodEntry>(
-              entries: history.entries,
-              // Внутри даты: утро → день → вечер, затем по времени.
-              sortWithinGroup: (a, b) {
-                final byPart = b.dayPart.index.compareTo(a.dayPart.index);
-                if (byPart != 0) return byPart;
-                return a.date.compareTo(b.date);
-              },
-              itemBuilder: (context, e) =>
-                  _MoodEntryCard(entry: e, onDelete: () => _deleteEntry(e)),
-            ),
+              const SizedBox(height: 8),
+              SegmentedButton<HistoryPeriod>(
+                style: SegmentedButton.styleFrom(
+                  side: BorderSide(
+                    color: context.watch<AppearanceController>().secondaryColor,
+                    width: 2,
+                  ),
+                  foregroundColor: context
+                      .watch<AppearanceController>()
+                      .secondaryColor,
+                  selectedBackgroundColor: context
+                      .watch<AppearanceController>()
+                      .secondaryColor,
+                  selectedForegroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surface,
+                ),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: HistoryPeriod.month,
+                    label: Text("Месяц"),
+                  ),
+                  ButtonSegment(value: HistoryPeriod.year, label: Text("Год")),
+                  ButtonSegment(value: HistoryPeriod.all, label: Text("Все")),
+                ],
+                selected: {period},
+                onSelectionChanged: (value) {
+                  setState(() {
+                    period = value.first;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Chart ─────────────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(5, 10, 10, 10),
+                child: _MoodFrequencyChart(entries: entries),
+              ),
+
+              Text(
+                'Список',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.left,
+              ),
+              const SizedBox(height: 8),
+              GroupedHistoryList<MoodEntry>(
+                entries: history.entries,
+                // Внутри даты: утро → день → вечер, затем по времени.
+                sortWithinGroup: (a, b) {
+                  final byPart = b.dayPart.index.compareTo(a.dayPart.index);
+                  if (byPart != 0) return byPart;
+                  return a.date.compareTo(b.date);
+                },
+                itemBuilder: (context, e) =>
+                    _MoodEntryCard(entry: e, onDelete: () => _deleteEntry(e)),
+              ),
+            ],
           ],
         ],
       ),
@@ -348,9 +458,10 @@ class _MoodEntryCard extends StatelessWidget {
               size: 14,
               color: context.watch<AppearanceController>().primaryColor,
             ),
-            Text(entry.dayPart.label, style: Theme.of(
-              context,
-            ).textTheme.bodySmall),
+            Text(
+              entry.dayPart.label,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
         trailing: IconButton(
@@ -472,11 +583,7 @@ class _MoodFrequencyChart extends StatelessWidget {
                   final mood = _order[i];
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Icon(
-                      mood.icon,
-                      size: 20,
-                      color: _colorFor(mood),
-                    ),
+                    child: Icon(mood.icon, size: 20, color: _colorFor(mood)),
                   );
                 },
               ),

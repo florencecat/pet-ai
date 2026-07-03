@@ -553,7 +553,7 @@ class HealthPageState extends State<HealthPage> {
                   ),
                   _HealthActionButton(
                     callback: () => _openMoodHistory(context),
-                    icon:_profile?.moodHistory.lastEntry != null
+                    icon: _profile?.moodHistory.lastEntry != null
                         ? _profile!.moodHistory.lastEntry!.mood.icon
                         : Icons.sentiment_very_satisfied_outlined,
                     iconColor: ThemeColors.moodIconColor,
@@ -754,18 +754,29 @@ class HealthPageState extends State<HealthPage> {
                                       padding: EdgeInsetsGeometry.all(5),
                                     ),
                                     onPressed: () => _openTreatments(context),
-                                    child: Text(
-                                      'Добавить',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge!
-                                          .copyWith(
-                                            inherit: true,
-                                            color: context
-                                                .watch<AppearanceController>()
-                                                .primaryColor
-                                                .withAlpha(192),
-                                          ),
+                                    child: Row(
+                                      spacing: 1,
+                                      children: [
+                                        Text(
+                                          'Добавить',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge!
+                                              .copyWith(
+                                                inherit: true,
+                                                color: context
+                                                    .watch<
+                                                      AppearanceController
+                                                    >()
+                                                    .primaryColor
+                                                    .withAlpha(192),
+                                              ),
+                                        ),
+                                        Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 28,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -862,18 +873,29 @@ class HealthPageState extends State<HealthPage> {
                                     ),
                                     onPressed: () =>
                                         _openPillReminders(context),
-                                    child: Text(
-                                      'Добавить',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge!
-                                          .copyWith(
-                                            inherit: true,
-                                            color: context
-                                                .watch<AppearanceController>()
-                                                .primaryColor
-                                                .withAlpha(192),
-                                          ),
+                                    child: Row(
+                                      spacing: 1,
+                                      children: [
+                                        Text(
+                                          'Добавить',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge!
+                                              .copyWith(
+                                                inherit: true,
+                                                color: context
+                                                    .watch<
+                                                      AppearanceController
+                                                    >()
+                                                    .primaryColor
+                                                    .withAlpha(192),
+                                              ),
+                                        ),
+                                        Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 28,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -1514,8 +1536,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                   ],
                 ),
               ),
-              if (widget.reminder.frequencyType ==
-                      PillFrequencyType.onDemand ||
+              if (widget.reminder.frequencyType == PillFrequencyType.onDemand ||
                   widget.reminder.schedules.length > 1)
                 // «По требованию» и многократные приёмы — открываем карточку
                 // (там журнал приёмов / отдельные тоглы), а не один чекбокс.

@@ -3,6 +3,7 @@ import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
@@ -11,28 +12,20 @@ import 'package:pet_satellite/theme/widgets/hold_to_talk_mic.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
-class NoteSheet extends StatefulWidget {
+class NoteDialog extends StatefulWidget {
   final Pet profile;
 
-  const NoteSheet({super.key, required this.profile});
+  const NoteDialog({super.key, required this.profile});
 
   @override
-  State<NoteSheet> createState() => _NoteSheetState();
+  State<NoteDialog> createState() => _NoteDialogState();
 }
 
-class _NoteSheetState extends State<NoteSheet> {
+class _NoteDialogState extends State<NoteDialog> {
   final TextEditingController _controller = TextEditingController();
 
   bool _isSaving = false;
   SymptomTag? _selectedSymptom;
-
-  late NoteHistory _history;
-
-  @override
-  void initState() {
-    super.initState();
-    _history = widget.profile.noteHistory;
-  }
 
   void _onVoiceText(String words) {
     setState(() {
@@ -49,33 +42,22 @@ class _NoteSheetState extends State<NoteSheet> {
 
     final noteText = text.isNotEmpty ? text : (_selectedSymptom?.label ?? '');
     setState(() => _isSaving = true);
+
+    bool error = false;
     try {
       await PetService().addNote(
         widget.profile.id,
         noteText,
         symptomId: _selectedSymptom?.id,
       );
-      if (mounted) {
-        // Stay in sheet — reload history and clear form
-        final updated = await PetService().loadProfile(widget.profile.id);
-        if (updated != null && mounted) {
-          setState(() {
-            _history = updated.noteHistory;
-            _controller.clear();
-            _selectedSymptom = null;
-          });
-        }
-      }
+    } catch (e) {
+      error = true;
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+        if (!error) Navigator.of(context).pop(true);
+      }
     }
-  }
-
-  Future<void> _delete(NoteEntry entry) async {
-    final confirmed = await confirmDelete(context, title: 'Удалить заметку?');
-    if (!confirmed) return;
-    await PetService().deleteNoteEntry(widget.profile.id, entry.date);
-    if (mounted) setState(() => _history.deleteEntry(entry.date));
   }
 
   @override
@@ -88,158 +70,191 @@ class _NoteSheetState extends State<NoteSheet> {
   Widget build(BuildContext context) {
     final hasContent =
         _controller.text.trim().isNotEmpty || _selectedSymptom != null;
+
+    return AlertDialog(
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: hasContent && !_isSaving ? _save : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: context.watch<AppearanceController>().primaryColor,
+          ),
+          child: const Text('Сохранить'),
+        ),
+      ],
+      title: Text(
+        'Новая заметка',
+        style: Theme.of(context).textTheme.titleLarge,
+        textAlign: TextAlign.center,
+      ),
+      content: InlineLoading(
+        isLoading: _isSaving,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Quick symptom chips ───────────────────────────────────────
+              Text(
+                'Быстрая фиксация симптома',
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: SymptomTags.all.map((tag) {
+                  return SoftGlassBadge(
+                    color: tag.color,
+                    icon: tag.icon,
+                    label: tag.label,
+                    selected: _selectedSymptom == tag,
+                    onChanged: (isSelected) {
+                      setState(() {
+                        _selectedSymptom = isSelected ? tag : null;
+                        _controller.text = isSelected ? tag.label : '';
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Text input + mic ──────────────────────────────────────────
+              TextField(
+                controller: _controller,
+                maxLines: 8,
+                minLines: 4,
+                keyboardType: TextInputType.multiline,
+                decoration: baseInputDecoration(
+                  'Своя заметка',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: HoldToTalkMic(
+                  onText: _onVoiceText,
+                  activeColor: ThemeColors.dangerZone,
+                  idleColor: context
+                      .watch<AppearanceController>()
+                      .secondaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class NoteSheet extends StatefulWidget {
+  final Pet profile;
+
+  const NoteSheet({super.key, required this.profile});
+
+  @override
+  State<NoteSheet> createState() => _NoteSheetState();
+}
+
+class _NoteSheetState extends State<NoteSheet> {
+  late NoteHistory _history;
+
+  @override
+  void initState() {
+    super.initState();
+    _history = widget.profile.noteHistory;
+  }
+
+  Future<void> _showAddDialog() async {
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (_) => NoteDialog(profile: widget.profile),
+    );
+    if (added == true) await _reload();
+  }
+
+  Future<void> _reload() async {
+    final updated = await PetService().loadProfile(widget.profile.id);
+    if (updated != null && mounted) {
+      setState(() => _history = updated.noteHistory);
+    }
+  }
+
+  Future<void> _delete(NoteEntry entry) async {
+    final confirmed = await confirmDelete(context, title: 'Удалить заметку?');
+    if (!confirmed) return;
+    await PetService().deleteNoteEntry(widget.profile.id, entry.date);
+    if (mounted) setState(() => _history.deleteEntry(entry.date));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final entries = List<NoteEntry>.from(_history.entries.reversed);
+    final color = context.watch<AppearanceController>().primaryColor;
 
     return DraggableSheet(
       title: 'Заметки',
       centerTitle: true,
-      initialSize: 0.85,
+      initialSize: entries.isEmpty ? 0.2 : 0.6,
       maxSize: 0.85,
       onBack: () => Navigator.of(context).pop(true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Quick symptom chips ───────────────────────────────────────
-          GlassPlate(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Быстрая фиксация симптома',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: SymptomTags.all.map((tag) {
-                      return SoftGlassBadge(
-                        color: tag.color,
-                        icon: tag.icon,
-                        label: tag.label,
-                        selected: _selectedSymptom == tag,
-                        onChanged: (isSelected) {
-                          setState(() {
-                            _selectedSymptom = isSelected ? tag : null;
-
-                            if (isSelected && _controller.text.isEmpty) {
-                              _controller.text = tag.label;
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Text input + mic ──────────────────────────────────────────
-          GlassPlate(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _controller,
-                    maxLines: 4,
-                    minLines: 2,
-                    keyboardType: TextInputType.multiline,
-                    decoration:
-                        baseInputDecoration(
-                          'Своя заметка (или уточнение к симптому) ...',
-                        ).copyWith(
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
-                        ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // ── Добавить ──────────────────────────────────────────
-                      FilledButton.icon(
-                        onPressed: hasContent && !_isSaving ? _save : null,
-                        icon: _isSaving
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.add, size: 18),
-                        label: const Text('Добавить'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor:
-                              context.watch<AppearanceController>().primaryColor,
-                          disabledBackgroundColor: context
-                              .watch<AppearanceController>()
-                              .secondaryColor
-                              .withAlpha(60),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                        ),
-                      ),
-                      HoldToTalkMic(
-                        onText: _onVoiceText,
-                        activeColor: ThemeColors.dangerZone,
-                        idleColor: context
-                            .watch<AppearanceController>()
-                            .secondaryColor,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── History ───────────────────────────────────────────────────
           if (entries.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Column(
+            Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Icon(Icons.notes, size: 72, color: color.withAlpha(192)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.notes,
-                      size: 52,
-                      color: context
-                          .watch<AppearanceController>()
-                          .primaryColor
-                          .withAlpha(60),
-                    ),
-                    const SizedBox(height: 10),
                     Text(
-                      'История дневника пуста',
-                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      'Нет заметок.',
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                        inherit: true,
                         color: context
                             .watch<AppearanceController>()
-                            .primaryColor
-                            .withAlpha(120),
+                            .secondaryColor
+                            .withAlpha(60),
+                      ),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.all(5),
+                      ),
+                      onPressed: _showAddDialog,
+                      child: Text(
+                        'Добавить',
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                          inherit: true,
+                          color: color.withAlpha(192),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
             )
           else ...[
-            Text('История', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            SoftGlassButton(
+              icon: Icons.note_add_outlined,
+              title: 'Добавить заметку',
+              subtitle: 'Фиксируйте симптомы и наблюдения',
+              onTap: _showAddDialog,
+            ),
+            const SizedBox(height: 16),
             ...entries.map(
               (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
