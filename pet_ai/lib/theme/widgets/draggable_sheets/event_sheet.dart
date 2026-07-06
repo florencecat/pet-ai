@@ -911,7 +911,7 @@ class _EventSheetState extends State<EventSheet> {
                               fontWeight: FontWeight.w600,
                               color: selected
                                   ? Colors.white
-                                  : ThemeColors.textPrimary,
+                                  : context.watch<AppearanceController>().secondaryColor,
                             ),
                           ),
                         ),
@@ -1190,7 +1190,7 @@ class _CompletionButton extends StatelessWidget {
                 Text(
                   isCompleted ? 'Выполнено' : 'Отметить выполненным',
                   style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                    color: isCompleted ? Colors.white : ThemeColors.textPrimary,
+                    color: isCompleted ? Colors.white : context.watch<AppearanceController>().secondaryColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

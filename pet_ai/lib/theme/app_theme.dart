@@ -16,7 +16,9 @@ class AppTheme {
         secondary: palette.darkShade,
       ),
       dividerColor: palette.mainColor,
-      textSelectionTheme: TextSelectionThemeData(cursorColor: palette.mainColor),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: palette.mainColor,
+      ),
       textTheme: base.textTheme.copyWith(
         bodyMedium: base.textTheme.bodyMedium!.copyWith(color: textColor),
         bodySmall: base.textTheme.bodySmall!.copyWith(color: textColor),
@@ -25,7 +27,9 @@ class AppTheme {
         titleMedium: base.textTheme.titleMedium!.copyWith(color: textColor),
         titleSmall: base.textTheme.titleSmall!.copyWith(color: textColor),
         headlineSmall: base.textTheme.headlineSmall!.copyWith(color: textColor),
-        headlineMedium: base.textTheme.headlineMedium!.copyWith(color: textColor),
+        headlineMedium: base.textTheme.headlineMedium!.copyWith(
+          color: textColor,
+        ),
         headlineLarge: base.textTheme.headlineLarge!.copyWith(color: textColor),
       ),
     );
@@ -50,6 +54,7 @@ class AppTheme {
       bodySmall: TextStyle(
         fontFamily: _fontFamily,
         fontSize: 12,
+        fontWeight: FontWeight.w500,
         color: ThemeColors.textPrimary,
       ),
       bodyLarge: TextStyle(

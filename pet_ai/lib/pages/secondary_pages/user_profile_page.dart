@@ -13,22 +13,86 @@ import 'package:provider/provider.dart';
 // ─── Russian cities ───────────────────────────────────────────────────────────
 
 const _kRussianCities = [
-  'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
-  'Нижний Новгород', 'Челябинск', 'Самара', 'Уфа', 'Ростов-на-Дону',
-  'Красноярск', 'Пермь', 'Воронеж', 'Волгоград', 'Краснодар',
-  'Саратов', 'Тюмень', 'Тольятти', 'Ижевск', 'Барнаул',
-  'Ульяновск', 'Иркутск', 'Хабаровск', 'Ярославль', 'Владивосток',
-  'Махачкала', 'Томск', 'Оренбург', 'Кемерово', 'Новокузнецк',
-  'Рязань', 'Астрахань', 'Набережные Челны', 'Пенза', 'Липецк',
-  'Тула', 'Киров', 'Чебоксары', 'Калининград', 'Брянск',
-  'Курск', 'Иваново', 'Магнитогорск', 'Тверь', 'Нижний Тагил',
-  'Ставрополь', 'Улан-Удэ', 'Белгород', 'Сочи', 'Якутск',
-  'Мурманск', 'Архангельск', 'Вологда', 'Симферополь', 'Владикавказ',
-  'Нальчик', 'Грозный', 'Саранск', 'Орёл', 'Смоленск',
-  'Чита', 'Сургут', 'Нижневартовск', 'Череповец', 'Владимир',
-  'Уссурийск', 'Нижнекамск', 'Петрозаводск', 'Кострома', 'Новороссийск',
-  'Таганрог', 'Йошкар-Ола', 'Комсомольск-на-Амуре', 'Балашиха', 'Подольск',
-  'Химки', 'Мытищи', 'Люберцы', 'Одинцово', 'Красногорск',
+  'Москва',
+  'Санкт-Петербург',
+  'Новосибирск',
+  'Екатеринбург',
+  'Казань',
+  'Нижний Новгород',
+  'Челябинск',
+  'Самара',
+  'Уфа',
+  'Ростов-на-Дону',
+  'Красноярск',
+  'Пермь',
+  'Воронеж',
+  'Волгоград',
+  'Краснодар',
+  'Саратов',
+  'Тюмень',
+  'Тольятти',
+  'Ижевск',
+  'Барнаул',
+  'Ульяновск',
+  'Иркутск',
+  'Хабаровск',
+  'Ярославль',
+  'Владивосток',
+  'Махачкала',
+  'Томск',
+  'Оренбург',
+  'Кемерово',
+  'Новокузнецк',
+  'Рязань',
+  'Астрахань',
+  'Набережные Челны',
+  'Пенза',
+  'Липецк',
+  'Тула',
+  'Киров',
+  'Чебоксары',
+  'Калининград',
+  'Брянск',
+  'Курск',
+  'Иваново',
+  'Магнитогорск',
+  'Тверь',
+  'Нижний Тагил',
+  'Ставрополь',
+  'Улан-Удэ',
+  'Белгород',
+  'Сочи',
+  'Якутск',
+  'Мурманск',
+  'Архангельск',
+  'Вологда',
+  'Симферополь',
+  'Владикавказ',
+  'Нальчик',
+  'Грозный',
+  'Саранск',
+  'Орёл',
+  'Смоленск',
+  'Чита',
+  'Сургут',
+  'Нижневартовск',
+  'Череповец',
+  'Владимир',
+  'Уссурийск',
+  'Нижнекамск',
+  'Петрозаводск',
+  'Кострома',
+  'Новороссийск',
+  'Таганрог',
+  'Йошкар-Ола',
+  'Комсомольск-на-Амуре',
+  'Балашиха',
+  'Подольск',
+  'Химки',
+  'Мытищи',
+  'Люберцы',
+  'Одинцово',
+  'Красногорск',
 ];
 
 const _kMockCode = '123456';
@@ -138,15 +202,14 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
     );
     // result == verified email; null == cancelled
     if (result != null && mounted) {
-      setState(() => _profile = _profile.copyWith(
-            email: result,
-            emailVerified: true,
-          ));
+      setState(
+        () => _profile = _profile.copyWith(email: result, emailVerified: true),
+      );
       await UserProfileService().save(_profile);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Почта подтверждена ✓')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Почта подтверждена ✓')));
       }
     }
   }
@@ -244,9 +307,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
                 _InfoRow(
                   icon: Icons.email_outlined,
                   label: _profile.email.isEmpty ? 'Добавить почту' : 'Адрес',
-                  value: _profile.email.isEmpty
-                      ? 'Не указана'
-                      : _profile.email,
+                  value: _profile.email.isEmpty ? 'Не указана' : _profile.email,
                   accent: ac.primaryColor,
                   muted: _profile.email.isEmpty,
                   trailing: _profile.emailVerified ? _VerifiedBadge() : null,
@@ -332,7 +393,7 @@ class _TextSheetBody extends StatelessWidget {
           controller: ctrl,
           autofocus: true,
           textCapitalization: capitalize,
-          decoration: baseInputDecoration(hint),
+          decoration: baseInputDecoration(context, hint),
         ),
         const SizedBox(height: 16),
         FilledButton(
@@ -359,18 +420,17 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: 2),
-        child: Text(
-          text.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: context
-                    .watch<AppearanceController>()
-                    .secondaryColor
-                    .withAlpha(160),
-                letterSpacing: 0.8,
-              ),
+    padding: const EdgeInsets.only(left: 4, bottom: 2),
+    child: Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: context.watch<AppearanceController>().secondaryColor.withAlpha(
+          160,
         ),
-      );
+        letterSpacing: 0.8,
+      ),
+    ),
+  );
 }
 
 // ─── Info row ─────────────────────────────────────────────────────────────────
@@ -422,11 +482,8 @@ class _InfoRow extends StatelessWidget {
                   Text(
                     value,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: muted
-                          ? secondary.withAlpha(100)
-                          : secondary,
-                      fontWeight:
-                          muted ? FontWeight.w400 : FontWeight.w500,
+                      color: muted ? secondary.withAlpha(100) : secondary,
+                      fontWeight: muted ? FontWeight.w400 : FontWeight.w500,
                     ),
                   ),
                 ],
@@ -465,27 +522,27 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: accent),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w500,
-                    ),
-              ),
-              const Spacer(),
-              Icon(Icons.chevron_right, size: 18, color: accent.withAlpha(140)),
-            ],
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: accent),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      );
+          const Spacer(),
+          Icon(Icons.chevron_right, size: 18, color: accent.withAlpha(140)),
+        ],
+      ),
+    ),
+  );
 }
 
 // ─── Verified badge ───────────────────────────────────────────────────────────
@@ -493,40 +550,40 @@ class _ActionRow extends StatelessWidget {
 class _VerifiedBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: ThemeColors.ok.mainColor.withAlpha(20),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: ThemeColors.ok.mainColor.withAlpha(80)),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: ThemeColors.ok.mainColor.withAlpha(20),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: ThemeColors.ok.mainColor.withAlpha(80)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.verified_outlined,
+          size: 13,
+          color: ThemeColors.ok.mainColor,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.verified_outlined,
-                size: 13, color: ThemeColors.ok.mainColor),
-            const SizedBox(width: 4),
-            Text(
-              'Подтверждена',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: ThemeColors.ok.mainColor,
-              ),
-            ),
-          ],
+        const SizedBox(width: 4),
+        Text(
+          'Подтверждена',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: ThemeColors.ok.mainColor,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 // ─── Separator ────────────────────────────────────────────────────────────────
 
 class _Separator extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Divider(
-        height: 1,
-        indent: 46,
-        color: ThemeColors.border.withAlpha(50),
-      );
+  Widget build(BuildContext context) =>
+      Divider(height: 1, indent: 46, color: ThemeColors.border.withAlpha(50));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -574,9 +631,9 @@ class _CitySheetState extends State<_CitySheet> {
       _suggestions = q.isEmpty
           ? []
           : _kRussianCities
-              .where((c) => c.toLowerCase().startsWith(q))
-              .take(6)
-              .toList();
+                .where((c) => c.toLowerCase().startsWith(q))
+                .take(6)
+                .toList();
     });
   }
 
@@ -597,6 +654,7 @@ class _CitySheetState extends State<_CitySheet> {
             autofocus: true,
             textCapitalization: TextCapitalization.words,
             decoration: baseInputDecoration(
+              context,
               'Город',
               suffixIcon: _ctrl.text.isNotEmpty
                   ? IconButton(
@@ -629,7 +687,8 @@ class _CitySheetState extends State<_CitySheet> {
               backgroundColor: widget.accent,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             child: const Text('Сохранить'),
           ),
@@ -721,10 +780,10 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
       centerTitle: true,
       onBack: _codeSent
           ? () => setState(() {
-                _codeSent = false;
-                _codeError = false;
-                _codeCtrl.clear();
-              })
+              _codeSent = false;
+              _codeError = false;
+              _codeCtrl.clear();
+            })
           : () => Navigator.pop(context),
       initialSize: 0.55,
       minSize: 0.4,
@@ -743,9 +802,9 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
             labelText: 'Адрес эл. почты',
-            labelStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey.shade500,
-                ),
+            labelStyle: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade500),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
@@ -767,7 +826,8 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
             backgroundColor: widget.accent,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
         ),
       ],
@@ -793,9 +853,9 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
               Expanded(
                 child: Text(
                   _emailCtrl.text.trim(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -814,15 +874,15 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
             if (_codeError) setState(() => _codeError = false);
           },
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                letterSpacing: 14,
-                fontWeight: FontWeight.w700,
-              ),
+            letterSpacing: 14,
+            fontWeight: FontWeight.w700,
+          ),
           decoration: InputDecoration(
             hintText: '000000',
             hintStyle: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  letterSpacing: 14,
-                  color: Colors.grey.shade300,
-                ),
+              letterSpacing: 14,
+              color: Colors.grey.shade300,
+            ),
             counterText: '',
             errorText: _codeError ? 'Неверный код' : null,
             filled: true,
@@ -867,7 +927,8 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
             backgroundColor: widget.accent,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
         ),
         const SizedBox(height: 8),

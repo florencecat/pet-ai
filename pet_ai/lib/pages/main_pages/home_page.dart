@@ -458,8 +458,9 @@ class HomePageState extends State<HomePage> {
     final topPadding = MediaQuery.of(context).padding.top;
     // Аватар адаптируется под ширину экрана (больше на планшетах), в разумных
     // пределах.
-    final double avatarDiameter =
-        (MediaQuery.sizeOf(context).width * 0.2).clamp(76.0, 128.0).toDouble();
+    final double avatarDiameter = (MediaQuery.sizeOf(context).width * 0.2)
+        .clamp(76.0, 128.0)
+        .toDouble();
 
     return Scaffold(
       backgroundColor: ThemeColors.white,

@@ -1345,7 +1345,10 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
                   Text(
                     'Рекомендаций больше нет',
                     style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: ThemeColors.textPrimary.withAlpha(160),
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor
+                          .withAlpha(160),
                     ),
                   ),
                 ],

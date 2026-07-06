@@ -60,7 +60,7 @@ class _AIChatPageState extends State<AIChatPage> {
               decoration: context
                   .watch<AppearanceController>()
                   .gradientDecoration,
-              child: const SafeArea(bottom: false,  child: _AuthGate()),
+              child: const SafeArea(bottom: false, child: _AuthGate()),
             ),
           );
         }
@@ -168,7 +168,9 @@ class _AuthGate extends StatelessWidget {
                         'Аккаунт нужен для работы ИИ-помощника и открывает '
                         'дополнительные возможности:',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: ThemeColors.textPrimary.withAlpha(180),
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor,
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -292,7 +294,10 @@ class _Benefit extends StatelessWidget {
                 Text(
                   subtitle,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: ThemeColors.textPrimary.withAlpha(160),
+                    color: context
+                        .watch<AppearanceController>()
+                        .secondaryColor
+                        .withAlpha(160),
                   ),
                 ),
               ],
@@ -716,7 +721,9 @@ class _WelcomeState extends StatelessWidget {
                     'прививки или поведение. Можно прикрепить запись (🧷) — '
                     'я учту её в ответе. О чём хочешь узнать?',
                     style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: ThemeColors.textPrimary,
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
                     ),
                   ),
                 ),
@@ -848,7 +855,9 @@ class _MessageBubble extends StatelessWidget {
       msg.content,
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
         inherit: true,
-        color: isUser ? ThemeColors.white : ThemeColors.textPrimary,
+        color: isUser
+            ? ThemeColors.white
+            : context.watch<AppearanceController>().secondaryColor,
       ),
     );
 
@@ -1023,9 +1032,7 @@ class _SuggestedEventCardState extends State<_SuggestedEventCard> {
                   Text(
                     _event.name,
                     style: theme.textTheme.titleSmall?.copyWith(
-                      decoration: cancelled
-                          ? TextDecoration.lineThrough
-                          : null,
+                      decoration: cancelled ? TextDecoration.lineThrough : null,
                       color: cancelled ? Colors.grey : null,
                     ),
                   ),
@@ -1462,6 +1469,7 @@ class _InputBarState extends State<_InputBar> {
                         minLines: 1,
                         textInputAction: TextInputAction.newline,
                         decoration: baseInputDecoration(
+                          context,
                           'Спросите о питомце...',
                         ),
                         onChanged: (_) => setState(() {}),

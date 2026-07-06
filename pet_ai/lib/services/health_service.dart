@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/models/event.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WeightInputFormatter extends TextInputFormatter {
@@ -470,13 +472,13 @@ class HealthBadgeTile extends StatelessWidget {
             badge.title,
             style: Theme.of(context).textTheme.titleSmall!.copyWith(
               fontWeight: FontWeight.w600,
-              color: ThemeColors.textPrimary,
+              color: context.watch<AppearanceController>().secondaryColor,
             ),
           ),
           subtitle: Text(
             badge.subtitle,
             style: Theme.of(context).textTheme.bodySmall!.copyWith(
-              color: ThemeColors.textPrimary.withAlpha(180),
+              color: context.watch<AppearanceController>().secondaryColor,
             ),
           ),
           trailing: canDismiss

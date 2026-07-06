@@ -438,7 +438,7 @@ class _PillForm extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: form.nameCtrl,
-          decoration: baseInputDecoration('Название препарата'),
+          decoration: baseInputDecoration(context, 'Название препарата'),
           textCapitalization: TextCapitalization.sentences,
         ),
         const SizedBox(height: 10),
@@ -679,7 +679,7 @@ class _DoseField extends StatelessWidget {
             // Перерисовываем, чтобы склонение единицы в дропдауне отражало
             // введённое количество (напр. «1 впрыск» → «3 впрыска»).
             onChanged: (_) => onChanged(),
-            decoration: baseInputDecoration('Доза'),
+            decoration: baseInputDecoration(context, 'Доза'),
           ),
         ),
         const SizedBox(width: 8),
@@ -728,7 +728,9 @@ class _DoseUnitDropdown extends StatelessWidget {
       onSelected: onChanged,
       enableFeedback: true,
       itemBuilder: (_) => units
-          .map((u) => PopupMenuItem(value: u, child: Text(_menuLabel(u, count))))
+          .map(
+            (u) => PopupMenuItem(value: u, child: Text(_menuLabel(u, count))),
+          )
           .toList(),
       child: Container(
         height: 56,
@@ -740,8 +742,11 @@ class _DoseUnitDropdown extends StatelessWidget {
               _fieldLabel(value, count),
               style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                 color: value.id == 'none'
-                    ? ThemeColors.textPrimary.withAlpha(128)
-                    : ThemeColors.textPrimary,
+                    ? context
+                          .watch<AppearanceController>()
+                          .secondaryColor
+                          .withAlpha(128)
+                    : context.watch<AppearanceController>().secondaryColor,
               ),
             ),
             Icon(Icons.expand_more, size: 22, color: accent),
@@ -790,7 +795,10 @@ class _IconPickerTile extends StatelessWidget {
                   Text(
                     'Иконка и вид',
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                      color: ThemeColors.textPrimary.withAlpha(128),
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor
+                          .withAlpha(128),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1373,7 +1381,9 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                               style: Theme.of(context).textTheme.bodySmall!
                                   .copyWith(
                                     color: isFirst
-                                        ? ThemeColors.textPrimary
+                                        ? context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor
                                         : ThemeColors.border,
                                   ),
                             ),
@@ -1567,7 +1577,9 @@ class _TodayToggle extends StatelessWidget {
                 Text(
                   time,
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
+                    color: isTaken
+                        ? Colors.white
+                        : context.watch<AppearanceController>().secondaryColor,
                   ),
                 ),
                 const Spacer(),
@@ -1586,7 +1598,9 @@ class _TodayToggle extends StatelessWidget {
                 Text(
                   isTaken ? 'Принято' : 'Отметить',
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: isTaken ? Colors.white : ThemeColors.textPrimary,
+                    color: isTaken
+                        ? Colors.white
+                        : context.watch<AppearanceController>().secondaryColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1837,9 +1851,7 @@ class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
       _time.hour,
       _time.minute,
     );
-    Navigator.of(
-      context,
-    ).pop((time: time, doseValue: _value, doseUnit: _unit));
+    Navigator.of(context).pop((time: time, doseValue: _value, doseUnit: _unit));
   }
 
   @override
@@ -1859,7 +1871,7 @@ class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
                     autofocus: true,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
-                    decoration: baseInputDecoration('Доза'),
+                    decoration: baseInputDecoration(context, 'Доза'),
                   ),
                 ),
                 const SizedBox(width: 8),

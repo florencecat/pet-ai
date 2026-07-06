@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/treatment.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/pill_icon.dart' show PillColors;
+import 'package:provider/provider.dart';
 
 /// Иконка обработки/прививки: глиф типа ([TreatmentKind.icon]) в выбранном
 /// цвете внутри мягкого круглого контейнера. Аналог [PillIcon] для препаратов.
@@ -172,8 +174,11 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                                   : null,
                             ),
                             child: selected
-                                ? const Icon(Icons.check,
-                                    color: Colors.white, size: 18)
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 18,
+                                  )
                                 : null,
                           ),
                         );
@@ -213,19 +218,24 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(k.icon,
-                                    size: 24,
-                                    color: selected ? c : ThemeColors.border),
+                                Icon(
+                                  k.icon,
+                                  size: 24,
+                                  color: selected ? c : ThemeColors.border,
+                                ),
                                 const SizedBox(height: 6),
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   child: Text(
                                     k.shortLabel,
                                     style: theme.textTheme.bodySmall!.copyWith(
                                       fontSize: 10,
                                       color: selected
-                                          ? ThemeColors.textPrimary
+                                          ? context
+                                                .watch<AppearanceController>()
+                                                .secondaryColor
                                           : ThemeColors.border,
                                     ),
                                     textAlign: TextAlign.center,
@@ -254,9 +264,9 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(
-                      TreatmentIconSelection(kind: _kind, color: _color),
-                    ),
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).pop(TreatmentIconSelection(kind: _kind, color: _color)),
                     style: FilledButton.styleFrom(
                       backgroundColor: widget.accent,
                       padding: const EdgeInsets.symmetric(vertical: 14),

@@ -552,7 +552,7 @@ class _MoodFrequencyChart extends StatelessWidget {
                 return BarTooltipItem(
                   '${rod.toY.toInt()}',
                   Theme.of(context).textTheme.titleSmall!.copyWith(
-                    color: ThemeColors.textPrimary,
+                    color: context.watch<AppearanceController>().secondaryColor,
                     fontWeight: FontWeight.bold,
                   ),
                   children: [

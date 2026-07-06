@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/pill.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 /// Curated iOS-style medication colour palette.
 class PillColors {
@@ -119,7 +121,8 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
     _kind = (widget.initialKind != null && widget.initialKind!.id.isNotEmpty)
         ? widget.initialKind!
         : PillKind.pill;
-    _color = widget.initialColor ?? PillColors.toValue(PillColors.palette.first);
+    _color =
+        widget.initialColor ?? PillColors.toValue(PillColors.palette.first);
   }
 
   @override
@@ -188,7 +191,9 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                               shape: BoxShape.circle,
                               color: c,
                               border: Border.all(
-                                color: selected ? Colors.white : Colors.transparent,
+                                color: selected
+                                    ? Colors.white
+                                    : Colors.transparent,
                                 width: 2.5,
                               ),
                               boxShadow: selected
@@ -202,8 +207,11 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                                   : null,
                             ),
                             child: selected
-                                ? const Icon(Icons.check,
-                                    color: Colors.white, size: 18)
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 18,
+                                  )
                                 : null,
                           ),
                         );
@@ -243,19 +251,24 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(k.icon,
-                                    size: 24,
-                                    color: selected ? c : ThemeColors.border),
+                                Icon(
+                                  k.icon,
+                                  size: 24,
+                                  color: selected ? c : ThemeColors.border,
+                                ),
                                 const SizedBox(height: 6),
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   child: Text(
                                     k.name,
                                     style: theme.textTheme.bodySmall!.copyWith(
                                       fontSize: 10,
                                       color: selected
-                                          ? ThemeColors.textPrimary
+                                          ? context
+                                                .watch<AppearanceController>()
+                                                .secondaryColor
                                           : ThemeColors.border,
                                     ),
                                     textAlign: TextAlign.center,
@@ -284,9 +297,9 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(
-                      PillIconSelection(kind: _kind, color: _color),
-                    ),
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).pop(PillIconSelection(kind: _kind, color: _color)),
                     style: FilledButton.styleFrom(
                       backgroundColor: widget.accent,
                       padding: const EdgeInsets.symmetric(vertical: 14),

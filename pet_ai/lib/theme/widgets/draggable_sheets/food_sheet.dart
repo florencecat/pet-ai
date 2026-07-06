@@ -198,6 +198,7 @@ class _FoodDialogState extends State<FoodDialog> {
                 focusNode: _foodFocus,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: baseInputDecoration(
+                  context,
                   _kind == FoodKind.natural
                       ? 'Напр. курица, гречка'
                       : 'Название корма',

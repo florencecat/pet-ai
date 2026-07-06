@@ -2,8 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/weight.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/chart_placeholder.dart';
+import 'package:provider/provider.dart';
 
 /// Reusable weight line chart.
 /// Pass a pre-filtered [entries] list; the widget handles rendering.
@@ -11,11 +13,7 @@ class WeightChart extends StatelessWidget {
   final List<WeightEntry> entries;
   final double height;
 
-  const WeightChart({
-    super.key,
-    required this.entries,
-    this.height = 200,
-  });
+  const WeightChart({super.key, required this.entries, this.height = 200});
 
   List<FlSpot> _buildSpots() {
     return List.generate(
@@ -30,7 +28,9 @@ class WeightChart extends StatelessWidget {
       return const ChartPlaceholder(message: 'История веса пока пуста');
     }
     if (entries.length <= 2) {
-      return const ChartPlaceholder(message: 'Слишком мало записей для графика');
+      return const ChartPlaceholder(
+        message: 'Слишком мало записей для графика',
+      );
     }
 
     final spots = _buildSpots();
@@ -38,8 +38,9 @@ class WeightChart extends StatelessWidget {
     final minW = entries.map((e) => e.weight).reduce((a, b) => a < b ? a : b);
     final maxW = entries.map((e) => e.weight).reduce((a, b) => a > b ? a : b);
     final range = maxW - minW;
-    final yInterval =
-        range > 0 ? (range / 5).ceilToDouble().clamp(0.5, 100.0) : 1.0;
+    final yInterval = range > 0
+        ? (range / 5).ceilToDouble().clamp(0.5, 100.0)
+        : 1.0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(5, 10, 10, 10),
@@ -51,10 +52,8 @@ class WeightChart extends StatelessWidget {
               show: true,
               drawVerticalLine: false,
               horizontalInterval: yInterval,
-              getDrawingHorizontalLine: (_) => const FlLine(
-                color: ThemeColors.primary,
-                strokeWidth: 0.5,
-              ),
+              getDrawingHorizontalLine: (_) =>
+                  const FlLine(color: ThemeColors.primary, strokeWidth: 0.5),
             ),
             borderData: FlBorderData(
               show: true,
@@ -105,17 +104,17 @@ class WeightChart extends StatelessWidget {
                   return LineTooltipItem(
                     '${spot.y.toStringAsFixed(1)} кг',
                     Theme.of(context).textTheme.titleSmall!.copyWith(
-                          color: ThemeColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                     children: date.isEmpty
                         ? null
                         : [
                             TextSpan(
                               text: '\n$date',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall!
+                              style: Theme.of(context).textTheme.bodySmall!
                                   .copyWith(color: ThemeColors.secondary),
                             ),
                           ],
@@ -133,8 +132,7 @@ class WeightChart extends StatelessWidget {
                 sideTitles: SideTitles(
                   reservedSize: 30,
                   showTitles: true,
-                  interval:
-                      (entries.length / 5).ceilToDouble().clamp(1, 9999),
+                  interval: (entries.length / 5).ceilToDouble().clamp(1, 9999),
                   getTitlesWidget: (value, meta) {
                     final index = value.toInt();
                     if (index >= entries.length) return const SizedBox();

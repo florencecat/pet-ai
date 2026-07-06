@@ -246,7 +246,7 @@ class GlassEventCard extends StatelessWidget {
               event.name,
               style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 inherit: true,
-                color: ThemeColors.textPrimary,
+                color: context.watch<AppearanceController>().secondaryColor,
                 decoration: _isCompleted ? TextDecoration.lineThrough : null,
               ),
             ),
@@ -262,7 +262,7 @@ class GlassEventCard extends StatelessWidget {
                     inherit: true,
                     color: overdue
                         ? const Color(0xFFB85C00)
-                        : ThemeColors.textPrimary,
+                        : context.watch<AppearanceController>().secondaryColor,
                     fontWeight: overdue ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
