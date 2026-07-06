@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  // Одно семейство «Rubik» — конкретное начертание выбирается по fontWeight,
+  // а pubspec сопоставляет вес → файл (400 Regular / 700 Bold / 900 Black).
+  static const _fontFamily = 'Rubik';
+
   /// Builds a theme from a pet palette: mainColor as primary, darkShade as text color.
   static ThemeData withPalette(ColorPalette palette) {
     final base = lightTheme;
@@ -39,34 +42,41 @@ class AppTheme {
 
     splashColor: ThemeColors.splash,
 
-    textTheme: TextTheme(
-      bodyMedium: GoogleFonts.rubik(
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(
+        fontFamily: _fontFamily,
         color: ThemeColors.textPrimary,
       ),
-      bodySmall: GoogleFonts.rubik(
+      bodySmall: TextStyle(
+        fontFamily: _fontFamily,
         fontSize: 12,
         color: ThemeColors.textPrimary,
       ),
-      bodyLarge: GoogleFonts.rubik(
+      bodyLarge: TextStyle(
+        fontFamily: _fontFamily,
         color: ThemeColors.textPrimary,
       ),
-      titleLarge: GoogleFonts.rubik(
+      titleLarge: TextStyle(
+        fontFamily: _fontFamily,
         fontSize: 20,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w900, // Black
         color: ThemeColors.textPrimary,
       ),
-      titleMedium: GoogleFonts.rubik(
+      titleMedium: TextStyle(
+        fontFamily: _fontFamily,
         fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700, // Bold
         color: ThemeColors.textPrimary,
       ),
-      titleSmall: GoogleFonts.rubik(
+      titleSmall: TextStyle(
+        fontFamily: _fontFamily,
         fontSize: 14,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w400, // Regular
         color: ThemeColors.textPrimary,
       ),
-      headlineMedium: GoogleFonts.rubik(
-        fontWeight: FontWeight.w800,
+      headlineMedium: TextStyle(
+        fontFamily: _fontFamily,
+        fontWeight: FontWeight.w900, // Black
         color: ThemeColors.textPrimary,
       ),
     ),
