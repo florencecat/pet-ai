@@ -13,8 +13,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 class WeightInputFormatter extends TextInputFormatter {
   final RegExp regex = RegExp(r'^\d+(\.\d?)?$');
 
-
-
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,

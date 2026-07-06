@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -230,9 +228,3 @@ const BoxDecoration pageGradientDecoration = BoxDecoration(
     ],
   ),
 );
-
-String generateId({int length = 15}) {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  final rng = Random.secure();
-  return List.generate(length, (_) => chars[rng.nextInt(chars.length)]).join();
-}

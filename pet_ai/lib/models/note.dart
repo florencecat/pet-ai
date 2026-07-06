@@ -5,7 +5,6 @@ import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
-import 'package:pet_satellite/theme/app_colors.dart';
 
 // ─── Предустановленные симптомы ──────────────────────────────────────────────
 

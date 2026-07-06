@@ -1,5 +1,13 @@
+import 'dart:math';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pocketbase/pocketbase.dart';
+
+String generateId({int length = 15}) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  final rng = Random.secure();
+  return List.generate(length, (_) => chars[rng.nextInt(chars.length)]).join();
+}
 
 abstract interface class PbEntity {
   Map<String, dynamic> toPocketBase(String petId);

@@ -11,7 +11,6 @@ import 'package:pet_satellite/models/event.dart';
 class EventService {
   // Глобальное хранилище всех событий (v2)
   static const _globalKey = 'pet_events_v2';
-  static const _migrationDoneKey = 'pet_events_v2_migrated';
 
   // ─── Внутренние ───────────────────────────────────────────────────────────
 

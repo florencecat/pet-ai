@@ -1,6 +1,5 @@
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/services/pb_service.dart';
-import 'package:pet_satellite/theme/app_colors.dart';
 
 class WeightEntry implements BaseEntry {
   static const codec = _WeightEntryCodec();

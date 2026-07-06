@@ -13,6 +13,7 @@ import 'package:pet_satellite/theme/widgets/pill_icon.dart';
 import 'package:pet_satellite/theme/widgets/toast.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
+import 'package:pet_satellite/services/pb_service.dart';
 
 // ─── Shared form state ────────────────────────────────────────────────────────
 
