@@ -566,9 +566,20 @@ class AIChatController extends ChangeNotifier {
             : SuggestedEvent.encodeList(suggested),
       );
       await _repo!.add(botMsg);
+      // «Печать» ответа: содержимое обновляем в памяти и уведомляем UI на каждый
+      // кадр (botMsg — тот же инстанс, что в боксе, поэтому UI видит изменения
+      // без записи на диск). На диск (Hive) пишем не чаще ~500 мс — иначе на один
+      // ответ уходят сотни записей (по записи на символ): износ флеша и лаги на
+      // слабых устройствах. Первая запись — сразу (чтобы при крахе не остался
+      // пустой пузырь), итоговый текст гарантированно сохраняем после цикла.
+      var lastPersistMs = 0;
       await for (final chunk in fakeStream(fullResponse)) {
         botMsg.content = chunk;
-        await botMsg.save();
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        if (nowMs - lastPersistMs >= 500) {
+          lastPersistMs = nowMs;
+          await botMsg.save();
+        }
         notifyListeners();
       }
       botMsg.completed = true;
