@@ -51,7 +51,7 @@ void main() async {
       termsUrl: 'https://pet-sputnik.ru',
     ),
   );
-  // PocketBase loads its auth token from SharedPreferences asynchronously.
+  // PocketBase loads its auth token from SecureStorage asynchronously.
   // Must complete before AuthService/CloudSyncService are constructed, or the
   // already-signed-in user will look anonymous to the backend → "Сессия истекла".
   final pbService = PocketBaseService(
