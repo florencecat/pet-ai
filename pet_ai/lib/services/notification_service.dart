@@ -155,6 +155,15 @@ class NotificationService {
   static const _kChannelGen = 'notif_channel_gen';
   static const _channelIdPrefix = 'pet_reminders_g';
 
+  // Отдельный «тихий» канал для напоминаний, попадающих в тихие часы: без звука,
+  // вибрации и всплытия (importance low). На Android O+ звук/вибрацию задаёт
+  // именно канал, поэтому беззвучность одной нотификации достижима только через
+  // такой канал. Его параметры постоянны → фиксированный id без поколений.
+  static const _quietChannelId = 'pet_reminders_quiet';
+  static const _quietChannelName = 'Напоминания (тихие часы)';
+  static const _quietChannelDesc =
+      'Беззвучные напоминания, попадающие в тихие часы';
+
   // Префиксы всех каналов, которые когда-либо создавало приложение — по ним
   // вычищаем устаревшие каналы (включая старые варианты pet_events_*).
   static const _ownedChannelPrefixes = ['pet_events', 'pet_reminders'];
@@ -215,7 +224,7 @@ class NotificationService {
     // устаревшие каналы от прежних поколений/вариантов.
     final settings = await NotificationSettings.load();
     await _ensureChannel(settings);
-    await _cleanupChannels(await _currentChannelId());
+    await _cleanupChannels({await _currentChannelId(), _quietChannelId});
 
     // Приложение запущено тапом по уведомлению из убитого состояния — сохраняем
     // намерение, чтобы обработать его после инициализации UI.
@@ -313,27 +322,41 @@ class NotificationService {
         enableVibration: s.vibrate,
       );
 
+  /// Тихий канал: всегда без звука, вибрации и всплытия (importance low).
+  AndroidNotificationChannel _buildQuietChannel() =>
+      const AndroidNotificationChannel(
+        _quietChannelId,
+        _quietChannelName,
+        description: _quietChannelDesc,
+        importance: Importance.low,
+        playSound: false,
+        enableVibration: false,
+      );
+
   AndroidFlutterLocalNotificationsPlugin? get _android => _notificationsPlugin
       .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin
       >();
 
-  /// Создаёт текущий канал, если его ещё нет (idempotent, дёшево).
+  /// Создаёт текущий (звуковой) и тихий каналы, если их ещё нет
+  /// (idempotent, дёшево).
   Future<void> _ensureChannel(NotificationSettings s) async {
     if (kIsWeb || !Platform.isAndroid) return;
     final id = await _currentChannelId();
     await _android?.createNotificationChannel(_buildChannel(id, s));
+    await _android?.createNotificationChannel(_buildQuietChannel());
   }
 
-  /// Удаляет все каналы приложения, кроме [keepId] — чистит «мусор» от прежних
-  /// поколений и старых вариантов канала.
-  Future<void> _cleanupChannels(String keepId) async {
+  /// Удаляет все каналы приложения, кроме [keepIds] — чистит «мусор» от прежних
+  /// поколений и старых вариантов канала. Тихий канал всегда должен быть в
+  /// [keepIds], иначе его снесёт (его id тоже под owned-префиксом).
+  Future<void> _cleanupChannels(Set<String> keepIds) async {
     if (kIsWeb || !Platform.isAndroid) return;
     final android = _android;
     if (android == null) return;
     final channels = await android.getNotificationChannels() ?? [];
     for (final c in channels) {
-      if (c.id == keepId) continue;
+      if (keepIds.contains(c.id)) continue;
       if (_ownedChannelPrefixes.any((p) => c.id.startsWith(p))) {
         await android.deleteNotificationChannel(c.id);
       }
@@ -342,15 +365,14 @@ class NotificationService {
 
   /// Применяет новые параметры канала: создаёт канал со свежим id (поколение +1,
   /// чтобы настройки точно вступили в силу) и удаляет прежние. Вызывающая сторона
-  /// затем пересобирает расписание на новый канал.
+  /// затем пересобирает расписание на новый канал. Тихий канал сохраняется.
   Future<void> applyChannelSettings(NotificationSettings s) async {
     if (kIsWeb || !Platform.isAndroid) return;
     final p = SharedPreferencesAsync();
     final gen = await p.getInt(_kChannelGen) ?? 0;
     await p.setInt(_kChannelGen, gen + 1);
-    final id = await _currentChannelId(); // уже новый id
-    await _android?.createNotificationChannel(_buildChannel(id, s));
-    await _cleanupChannels(id);
+    await _ensureChannel(s); // создаёт новый звуковой канал + тихий
+    await _cleanupChannels({await _currentChannelId(), _quietChannelId});
   }
 
   // ── Планирование ─────────────────────────────────────────────────────────
@@ -386,8 +408,11 @@ class NotificationService {
       );
     }
 
-    // Тихие часы: если время срабатывания попадает в интервал — не планируем.
-    if (s.isQuiet(scheduledTime)) return;
+    // Тихие часы: напоминание НЕ теряется — планируем его в отдельный тихий
+    // канал (без звука, вибрации и всплытия), чтобы не будить пользователя.
+    // Решение зависит только от времени суток срабатывания, а оно одинаково у
+    // всех повторов (у повтора тот же час/минута), поэтому вычисляем один раз.
+    final quiet = s.isQuiet(scheduledTime);
 
     if (scheduledTime.isBefore(DateTime.now()) &&
         event.repeat == model.RepeatInterval.none) {
@@ -405,17 +430,22 @@ class NotificationService {
       matchComponents = DateTimeComponents.dayOfMonthAndTime;
     }
 
-    final channelId = await _currentChannelId();
+    // В тихие часы — тихий канал и приглушённые параметры. На Android < O канал
+    // не действует, поэтому важны и сами флаги нотификации (playSound/priority).
+    final channelId = quiet ? _quietChannelId : await _currentChannelId();
     final androidDetails = AndroidNotificationDetails(
       channelId,
-      _channelName,
-      channelDescription: _channelDesc,
+      quiet ? _quietChannelName : _channelName,
+      channelDescription: quiet ? _quietChannelDesc : _channelDesc,
       icon: 'ic_notification',
-      importance:
-          s.highImportance ? Importance.high : Importance.defaultImportance,
-      priority: s.highImportance ? Priority.high : Priority.defaultPriority,
-      playSound: s.sound,
-      enableVibration: s.vibrate,
+      importance: quiet
+          ? Importance.low
+          : (s.highImportance ? Importance.high : Importance.defaultImportance),
+      priority: quiet
+          ? Priority.low
+          : (s.highImportance ? Priority.high : Priority.defaultPriority),
+      playSound: s.sound && !quiet,
+      enableVibration: s.vibrate && !quiet,
       actions: const [
         AndroidNotificationAction(
           'complete',
@@ -426,7 +456,7 @@ class NotificationService {
     );
 
     final iosDetails = DarwinNotificationDetails(
-      presentSound: s.sound,
+      presentSound: s.sound && !quiet,
       categoryIdentifier: _iosCategoryId,
     );
 
