@@ -3,6 +3,7 @@ import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:provider/provider.dart';
 
@@ -381,7 +382,7 @@ class GlassListTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (subtitle != null)
-                Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+                Text(subtitle!, style: context.subtitleStyle),
               ?bottomBadge,
             ],
           ),

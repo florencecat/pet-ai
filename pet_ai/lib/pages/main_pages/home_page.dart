@@ -851,13 +851,7 @@ class _PetTimeline extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: context
-                    .watch<AppearanceController>()
-                    .secondaryColor
-                    .withAlpha(192),
-                fontStyle: FontStyle.italic,
-              ),
+              style: context.subtitleStyle,
             ),
           ),
         ],
