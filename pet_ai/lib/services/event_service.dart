@@ -313,38 +313,4 @@ class EventService {
     final names = {for (final p in profiles) p.id: p.name};
     return _petLabel(e.petIds, names);
   }
-
-  // ─── Миграция ─────────────────────────────────────────────────────────────
-
-  /// Переносит события из старых per-pet ключей в глобальное хранилище v2.
-  /// Безопасно вызывать несколько раз — повторная миграция игнорируется.
-  Future<void> migrateFromLegacy(List<String> petIds) async {
-    final prefs = SharedPreferencesAsync();
-    final alreadyDone = await prefs.getBool(_migrationDoneKey) ?? false;
-    if (alreadyDone) return;
-
-    final allEvents = <Event>[];
-    for (final petId in petIds) {
-      final legacyData = await prefs.getStringList('pet_events:$petId');
-      if (legacyData == null) continue;
-
-      for (final item in legacyData) {
-        try {
-          final json = jsonDecode(item) as Map<String, dynamic>;
-          // Инжектируем petId если его нет
-          if (json['petIds'] == null || (json['petIds'] as List).isEmpty) {
-            json['petIds'] = [petId];
-          }
-          final event = Event.fromJson(json);
-          if (!allEvents.any((e) => e.id == event.id)) {
-            allEvents.add(event);
-          }
-        } catch (_) {}
-      }
-      await prefs.remove('pet_events:$petId');
-    }
-
-    await _persistAll(allEvents);
-    await prefs.setBool(_migrationDoneKey, true);
-  }
 }

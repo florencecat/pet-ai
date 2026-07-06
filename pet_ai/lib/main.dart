@@ -228,10 +228,6 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> _checkProfile() async {
-    // Однократная миграция событий из старого per-pet хранилища в глобальное v2
-    final profiles = await PetService().loadAllProfiles();
-    await EventService().migrateFromLegacy(profiles.map((p) => p.id).toList());
-
     final hasProfile = await PetService().hasProfiles();
     if (mounted) {
       setState(() {
