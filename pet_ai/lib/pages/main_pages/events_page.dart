@@ -72,8 +72,8 @@ class EventsPageState extends State<EventsPage> {
   Future<void> _loadEvents() async {
     setState(() => _isLoadingEvents = true);
 
-    final allProfiles = await PetService().loadAllProfiles();
-    final activeId = await PetService().getActiveProfileId();
+    final allProfiles = await PetProfileService().loadAllProfiles();
+    final activeId = await PetProfileService().getActiveProfileId();
 
     final petColors = <String, Color>{};
     final petNames = <String, String>{};
@@ -503,7 +503,7 @@ class EventsPageState extends State<EventsPage> {
                         onEdit: () => _openViewSheet(e),
                         onDelete: () => _deleteEvent(e),
                         onCompletedChanged: (val) async {
-                          final profileId = await PetService()
+                          final profileId = await PetProfileService()
                               .getActiveProfileId();
                           if (profileId != null) {
                             await EventService().toggleCompleted(

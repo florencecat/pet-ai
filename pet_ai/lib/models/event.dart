@@ -613,7 +613,7 @@ class _EventCodec extends PbCodec<Event> {
   const _EventCodec();
 
   Future<Event?> fromAIResponse(Map<String, dynamic> data) async {
-    final profileId = await PetService().getActiveProfileId();
+    final profileId = await PetProfileService().getActiveProfileId();
     if (profileId == null) return null;
 
     final name = (data['name'] as String?)?.trim();

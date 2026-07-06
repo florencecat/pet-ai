@@ -277,7 +277,7 @@ class EventService {
     if (!settings.enabled) return; // выключено → всё стёрто
 
     final all = await _loadAll();
-    final profiles = await PetService().loadAllProfiles();
+    final profiles = await PetProfileService().loadAllProfiles();
     final names = {for (final p in profiles) p.id: p.name};
 
     try {
@@ -308,7 +308,7 @@ class EventService {
   /// Разрешает подпись питомца для одиночного планирования (create/save).
   Future<String?> _resolveLabel(Event e) async {
     if (e.petIds.isEmpty) return null;
-    final profiles = await PetService().loadAllProfiles();
+    final profiles = await PetProfileService().loadAllProfiles();
     final names = {for (final p in profiles) p.id: p.name};
     return _petLabel(e.petIds, names);
   }

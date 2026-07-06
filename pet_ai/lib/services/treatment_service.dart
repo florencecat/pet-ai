@@ -21,7 +21,7 @@ class TreatmentService {
     int remindBeforeDays = 7,
     int? color,
   }) async {
-    final profile = await PetService().loadProfile(petId);
+    final profile = await PetProfileService().loadProfile(petId);
     if (profile == null) return null;
 
     // Создаём связанное событие на nextDate
@@ -59,7 +59,7 @@ class TreatmentService {
     );
 
     profile.treatmentHistory.add(entry);
-    await PetService().saveProfile(profile);
+    await PetProfileService().saveProfile(profile);
 
     // Fire-and-forget cloud push.
     CloudSyncService.instance.pushAsync(
@@ -73,7 +73,7 @@ class TreatmentService {
 
   /// Удалить запись о мероприятии (и связанное событие, если ещё актуально).
   Future<void> deleteTreatment(String petId, TreatmentEntry entry) async {
-    final profile = await PetService().loadProfile(petId);
+    final profile = await PetProfileService().loadProfile(petId);
     if (profile == null) return;
 
     final removed = profile.treatmentHistory.entries
@@ -88,7 +88,7 @@ class TreatmentService {
     profile.treatmentHistory.entries.removeWhere(
       (e) => e.date == entry.date && e.kind == entry.kind && e.name == entry.name,
     );
-    await PetService().saveProfile(profile);
+    await PetProfileService().saveProfile(profile);
 
     for (final id in removed) {
       CloudSyncService.instance.deleteAsync('treatments', id);

@@ -72,8 +72,8 @@ class _SettingsPageState extends State<SettingsPage> {
   void _onSyncChanged() => setState(() {});
 
   Future<void> _loadAll() async {
-    final profiles = await PetService().loadAllProfiles();
-    final user = await UserService().load();
+    final profiles = await PetProfileService().loadAllProfiles();
+    final user = await UserProfileService().load();
     final confirmDeleteEnabled = await isDeleteConfirmationEnabled();
     final autoCreateEntities = await isAutoCreateEntitiesEnabled();
 
@@ -127,7 +127,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ignorePreferences: true,
     );
     if (confirmed) {
-      await UserService().delete();
+      await UserProfileService().delete();
       GetIt.instance<PocketBaseService>().pb.authStore.clear();
       if (mounted) setState(() => _user = null);
     }
@@ -166,7 +166,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _syncPushAll(BuildContext context) async {
-    final petId = await PetService().getActiveProfileId();
+    final petId = await PetProfileService().getActiveProfileId();
     if (petId == null || !context.mounted) return;
 
     final confirmed = await _confirmReplace(
@@ -196,7 +196,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _syncPullAll(BuildContext context) async {
-    final petId = await PetService().getActiveProfileId();
+    final petId = await PetProfileService().getActiveProfileId();
     if (petId == null) return;
 
     if (context.mounted) {
@@ -389,9 +389,9 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profiles = await PetService().loadAllProfiles();
+    final profiles = await PetProfileService().loadAllProfiles();
     await EventService().clearEventsForAll(profiles.map((p) => p.id).toList());
-    await PetService().clearAll();
+    await PetProfileService().clearAll();
     await AIChatController.clearMessageHistory();
 
     GetIt.instance<PocketBaseService>().pb.authStore.clear();
@@ -412,7 +412,7 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profileId = await PetService().getActiveProfileId();
+    final profileId = await PetProfileService().getActiveProfileId();
     if (profileId != null) {
       await EventService().clearEvents(profileId);
     }
@@ -432,9 +432,9 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profileId = await PetService().getActiveProfileId();
+    final profileId = await PetProfileService().getActiveProfileId();
     if (profileId != null) {
-      await PetService().clearWeightHistory(profileId);
+      await PetProfileService().clearWeightHistory(profileId);
     }
 
     if (context.mounted) {
@@ -452,9 +452,9 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final profileId = await PetService().getActiveProfileId();
+    final profileId = await PetProfileService().getActiveProfileId();
     if (profileId != null) {
-      await PetService().clearMoodHistory(profileId);
+      await PetProfileService().clearMoodHistory(profileId);
     }
 
     if (context.mounted) {
@@ -524,7 +524,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     profile: p,
                     isLast: isLast && false, // always show divider before "add"
                     onTap: () async {
-                      await PetService().setActiveProfile(p.id);
+                      await PetProfileService().setActiveProfile(p.id);
                       await ac.reloadProfile();
                       if (context.mounted) {
                         await Navigator.push(
@@ -829,7 +829,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   label: 'Заполнить историю веса',
                   iconColor: Colors.blue,
                   onTap: () {
-                    PetService().fillWeightHistory();
+                    PetProfileService().fillWeightHistory();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('История веса заполнена')),
                     );
@@ -840,7 +840,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.data_object,
                   label: 'Экспорт данных',
                   iconColor: Colors.blue,
-                  onTap: () async => await PetService().exportAllProfiles(),
+                  onTap: () async => await PetProfileService().exportAllProfiles(),
                 ),
                 SettingsCardDivider(),
                 SettingsRow(

@@ -79,8 +79,8 @@ class HomePageState extends State<HomePage> {
       _isLoadingEvents = true;
     });
 
-    final user = await UserService().load();
-    final profile = await PetService().loadActiveProfile();
+    final user = await UserProfileService().load();
+    final profile = await PetProfileService().loadActiveProfile();
 
     if (profile == null) {
       if (mounted) {
@@ -91,7 +91,7 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    final multipleProfiles = await PetService().hasMultipleProfiles();
+    final multipleProfiles = await PetProfileService().hasMultipleProfiles();
 
     setState(() {
       _user = user;
@@ -229,7 +229,7 @@ class HomePageState extends State<HomePage> {
   }
 
   void _showProfileSwitcher(BuildContext context) async {
-    final profiles = await PetService().loadAllProfiles();
+    final profiles = await PetProfileService().loadAllProfiles();
     final activeId = _profile?.id;
 
     if (!context.mounted) return;
@@ -250,7 +250,7 @@ class HomePageState extends State<HomePage> {
         widget.onProfileSwitched?.call();
       }
     } else {
-      await PetService().setActiveProfile(result);
+      await PetProfileService().setActiveProfile(result);
       widget.onProfileSwitched?.call();
       await _initScreen();
     }
@@ -558,7 +558,7 @@ class HomePageState extends State<HomePage> {
                                     ],
                                   ),
                                 )
-                              : PetService().buildProfileDescription(
+                              : PetProfileService().buildProfileDescription(
                                   context,
                                   _profile,
                                 ),
@@ -1149,10 +1149,10 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                   onTap: isActive
                       ? () => Navigator.pop(context)
                       : () => Navigator.pop(context, profile.id),
-                  child: PetService().buildProfileDescription(
+                  child: PetProfileService().buildProfileDescription(
                     context,
                     profile,
-                    leading: PetService().buildProfileAvatar(
+                    leading: PetProfileService().buildProfileAvatar(
                       context,
                       profile,
                       size: 22,

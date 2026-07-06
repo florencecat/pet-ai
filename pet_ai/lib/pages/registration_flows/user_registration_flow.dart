@@ -114,7 +114,7 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
       _loading = true;
     });
 
-    final result = await UserService().requestAccess(email);
+    final result = await UserProfileService().requestAccess(email);
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -147,7 +147,7 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
       _codeError = false;
     });
 
-    final result = await UserService().verifyOTP(otpId: _otpId!, code: code);
+    final result = await UserProfileService().verifyOTP(otpId: _otpId!, code: code);
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -175,7 +175,7 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
       _serverError = null;
     });
 
-    final result = await UserService().resendOTP(_emailCtrl.text.trim());
+    final result = await UserProfileService().resendOTP(_emailCtrl.text.trim());
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -217,7 +217,7 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
       _serverError = null;
     });
 
-    await UserService().updateName(name);
+    await UserProfileService().updateName(name);
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -242,7 +242,7 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
       emailVerified: true,
     );
 
-    await UserService().save(profile);
+    await UserProfileService().save(profile);
     if (!mounted) return;
 
     await _checkAndOfferSync();
@@ -262,7 +262,7 @@ class _UserAuthFlowState extends State<UserAuthFlow> {
     );
     if (confirmed != true || !mounted) return;
 
-    final profiles = await PetService().loadAllProfiles();
+    final profiles = await PetProfileService().loadAllProfiles();
     if (profiles.isEmpty || !mounted) return;
 
     try {

@@ -201,7 +201,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     if (!mounted) return;
 
     // Stay in sheet — reload list and reset form
-    final fresh = await PetService().loadProfile(widget.profile.id);
+    final fresh = await PetProfileService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() {
         widget.profile.pillReminders
@@ -227,7 +227,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
           PillDetailSheet(profile: widget.profile, reminder: reminder),
     );
     if (updated == true && mounted) {
-      final fresh = await PetService().loadProfile(widget.profile.id);
+      final fresh = await PetProfileService().loadProfile(widget.profile.id);
       if (fresh != null && mounted) {
         setState(() {
           widget.profile.pillReminders
@@ -992,7 +992,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
   }
 
   Future<void> _reloadReminder() async {
-    final fresh = await PetService().loadProfile(widget.profile.id);
+    final fresh = await PetProfileService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       final updated = fresh.pillReminders.firstWhere(
         (r) => r.id == _reminder.id,

@@ -116,7 +116,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
     if (!mounted) return;
 
     // Stay in sheet — reload list and reset form
-    final fresh = await PetService().loadProfile(widget.profile.id);
+    final fresh = await PetProfileService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() {
         widget.profile.treatmentHistory.entries
@@ -447,7 +447,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
     );
 
     // Reload entries
-    final fresh = await PetService().loadProfile(widget.profile.id);
+    final fresh = await PetProfileService().loadProfile(widget.profile.id);
     if (!mounted) return;
     if (fresh != null) {
       final related = fresh.treatmentHistory.entries

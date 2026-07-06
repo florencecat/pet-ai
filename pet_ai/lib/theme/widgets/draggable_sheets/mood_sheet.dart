@@ -43,7 +43,7 @@ class _MoodDialogState extends State<MoodDialog> {
     bool error = false;
     try {
       // Запись за тот же день и время суток перезаписывается (см. addOrReplace).
-      await PetService().updateMoodHistory(widget.profile.id, entry);
+      await PetProfileService().updateMoodHistory(widget.profile.id, entry);
     } catch (e) {
       error = true;
     } finally {
@@ -267,7 +267,7 @@ class _MoodSheetState extends State<MoodSheet> {
   }
 
   Future<void> _reload() async {
-    final fresh = await PetService().loadProfile(widget.profile.id);
+    final fresh = await PetProfileService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() => history = fresh.moodHistory);
     }
@@ -276,7 +276,7 @@ class _MoodSheetState extends State<MoodSheet> {
   Future<void> _deleteEntry(MoodEntry entry) async {
     final confirmed = await confirmDelete(context, title: 'Удалить запись?');
     if (!confirmed) return;
-    await PetService().deleteMoodEntry(widget.profile.id, entry.date);
+    await PetProfileService().deleteMoodEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => history.deleteEntry(entry.date));
   }
 

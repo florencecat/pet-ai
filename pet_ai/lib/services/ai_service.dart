@@ -189,7 +189,7 @@ class AIChatController extends ChangeNotifier {
       _currentBoxName = prefs.getString(_currentBoxKey) ?? _defaultBoxName;
 
       final results = await Future.wait([
-        PetService().loadActiveProfile(),
+        PetProfileService().loadActiveProfile(),
         Hive.openBox<ChatMessage>(_currentBoxName),
       ]);
 

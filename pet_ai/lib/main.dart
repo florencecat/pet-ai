@@ -228,7 +228,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> _checkProfile() async {
-    final hasProfile = await PetService().hasProfiles();
+    final hasProfile = await PetProfileService().hasProfiles();
     if (mounted) {
       setState(() {
         _hasProfile = hasProfile;
@@ -309,7 +309,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> _refreshHealthScore() async {
-    final profile = await PetService().loadActiveProfile();
+    final profile = await PetProfileService().loadActiveProfile();
     if (profile == null) return;
     final events = await EventService().loadEvents(profile.id);
     final badges = await HealthAnalyzer.analyze(profile, events);

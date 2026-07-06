@@ -48,7 +48,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
   // ── Load ──────────────────────────────────────────────────────────────────
 
   Future<void> _loadProfile() async {
-    final profile = await PetService().loadActiveProfile();
+    final profile = await PetProfileService().loadActiveProfile();
     if (profile == null) {
       if (mounted) Navigator.of(context).pushReplacementNamed('/registration');
       return;
@@ -65,7 +65,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
   Future<void> _saveProfile() async {
     if (_profile == null || _deleted) return;
-    try { await PetService().saveProfile(_profile!); }
+    try { await PetProfileService().saveProfile(_profile!); }
     catch (_) { }
     // Fire-and-forget cloud upsert профиля (owner = id пользователя).
     final uid = CloudSyncService.instance.userId;
@@ -209,7 +209,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     final source = await _pickImageSource();
     if (source == null || !mounted) return;
 
-    final path = await PetService().pickProfileImage(
+    final path = await PetProfileService().pickProfileImage(
       _profile!.id,
       source: source,
     );
@@ -235,8 +235,8 @@ class _PetProfilePageState extends State<PetProfilePage> {
     // Ставим флаг до удаления, чтобы авто-save при закрытии страницы
     // (PopScope) не воскресил профиль.
     _deleted = true;
-    await PetService().deleteProfile(_profile!.id);
-    final hasProfiles = await PetService().hasProfiles();
+    await PetProfileService().deleteProfile(_profile!.id);
+    final hasProfiles = await PetProfileService().hasProfiles();
     if (mounted) {
       if (hasProfiles) {
         Navigator.of(context).pop();

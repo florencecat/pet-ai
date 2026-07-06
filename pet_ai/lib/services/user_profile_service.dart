@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Manages local persistence of [UserProfile] and delegates remote auth
 /// operations to [AuthService].
-class UserService {
+class UserProfileService {
   static const _key = 'user_profile_v1';
 
   // ── Local storage ─────────────────────────────────────────────────────────

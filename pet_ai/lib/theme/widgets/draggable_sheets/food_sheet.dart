@@ -134,7 +134,7 @@ class _FoodDialogState extends State<FoodDialog> {
         foodName: _foodCtrl.text.trim(),
         kind: _kind,
       );
-      await PetService().updateFoodHistory(widget.profile.id, entry);
+      await PetProfileService().updateFoodHistory(widget.profile.id, entry);
     } catch (e) {
       error = true;
     } finally {
@@ -348,7 +348,7 @@ class _FoodSheetState extends State<FoodSheet> {
   }
 
   Future<void> _reload() async {
-    final fresh = await PetService().loadProfile(widget.profile.id);
+    final fresh = await PetProfileService().loadProfile(widget.profile.id);
     if (fresh != null && mounted) {
       setState(() => _history = fresh.foodHistory);
     }
@@ -357,7 +357,7 @@ class _FoodSheetState extends State<FoodSheet> {
   Future<void> _delete(MealEntry entry) async {
     final confirmed = await confirmDelete(context, title: 'Удалить запись?');
     if (!confirmed) return;
-    await PetService().deleteFoodEntryById(widget.profile.id, entry.id);
+    await PetProfileService().deleteFoodEntryById(widget.profile.id, entry.id);
     if (mounted) setState(() => _history.deleteById(entry.id));
   }
 

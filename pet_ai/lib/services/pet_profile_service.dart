@@ -94,7 +94,7 @@ extension GenderX on Gender {
   }
 }
 
-class PetService {
+class PetProfileService {
   static const _profilesKey = 'pet_profiles';
   static const _activeIdKey = 'active_pet_id';
 

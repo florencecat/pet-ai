@@ -177,7 +177,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   Future<void> _pickPhoto(ImageSource source) async {
     try {
       // Единый механизм выбора + кадрирования (как в редактировании профиля).
-      final file = await PetService().pickAndCropImage(source: source);
+      final file = await PetProfileService().pickAndCropImage(source: source);
       if (file != null && mounted) {
         setState(() => _photo = file);
       }
@@ -221,15 +221,15 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     // Переносим выбранное фото в постоянный каталог приложения (id уже есть).
     if (_photo != null) {
       try {
-        final path = await PetService().saveAvatar(profile.id, _photo!.path);
+        final path = await PetProfileService().saveAvatar(profile.id, _photo!.path);
         profile.profileImage = File(path);
       } catch (_) {
         // Если не удалось — оставляем временный путь (не критично).
       }
     }
 
-    await PetService().saveProfile(profile);
-    await PetService().setActiveProfile(profile.id);
+    await PetProfileService().saveProfile(profile);
+    await PetProfileService().setActiveProfile(profile.id);
 
     // Push pet identity to cloud so it can be restored on a new device.
     // owner = id пользователя (createRule требует user = auth.id).

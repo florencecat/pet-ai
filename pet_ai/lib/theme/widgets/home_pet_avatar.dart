@@ -205,10 +205,10 @@ class _PetAvatarExpandedState extends State<_PetAvatarExpanded> {
   Future<void> _changePhoto() async {
     final source = await showPetImageSourceSheet(context);
     if (source == null || !mounted) return;
-    final path = await PetService().pickProfileImage(_pet.id, source: source);
+    final path = await PetProfileService().pickProfileImage(_pet.id, source: source);
     if (path == null || !mounted) return;
     _pet.profileImage = File(path);
-    await PetService().saveProfile(_pet);
+    await PetProfileService().saveProfile(_pet);
     if (!mounted) return;
     _changed = true;
     Navigator.of(context).pop(true);

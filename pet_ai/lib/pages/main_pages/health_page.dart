@@ -127,7 +127,7 @@ class HealthPageState extends State<HealthPage> {
       _isLoadingEvents = true;
     });
 
-    final profile = await PetService().loadActiveProfile();
+    final profile = await PetProfileService().loadActiveProfile();
     if (profile == null) {
       if (mounted) setState(() => _isLoadingProfile = false);
       return;
@@ -141,8 +141,8 @@ class HealthPageState extends State<HealthPage> {
 
     final weightStatus = profile.weightHistory.lastWeightString();
     final weightDynamics = profile.weightHistory.weightDynamic();
-    final foodStatus = await PetService().lastFoodString();
-    final moodStatus = await PetService().lastMoodString();
+    final foodStatus = await PetProfileService().lastFoodString();
+    final moodStatus = await PetProfileService().lastMoodString();
     final events = await EventService().loadEvents(profile.id);
     final dismissedBadgeIds = await HealthAnalyzer.loadDismissed(_profile!.id);
     final healthBadges = await HealthAnalyzer.analyze(_profile!, events);

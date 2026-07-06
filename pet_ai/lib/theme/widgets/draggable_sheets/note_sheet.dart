@@ -45,7 +45,7 @@ class _NoteDialogState extends State<NoteDialog> {
 
     bool error = false;
     try {
-      await PetService().addNote(
+      await PetProfileService().addNote(
         widget.profile.id,
         noteText,
         symptomId: _selectedSymptom?.id,
@@ -184,7 +184,7 @@ class _NoteSheetState extends State<NoteSheet> {
   }
 
   Future<void> _reload() async {
-    final updated = await PetService().loadProfile(widget.profile.id);
+    final updated = await PetProfileService().loadProfile(widget.profile.id);
     if (updated != null && mounted) {
       setState(() => _history = updated.noteHistory);
     }
@@ -193,7 +193,7 @@ class _NoteSheetState extends State<NoteSheet> {
   Future<void> _delete(NoteEntry entry) async {
     final confirmed = await confirmDelete(context, title: 'Удалить заметку?');
     if (!confirmed) return;
-    await PetService().deleteNoteEntry(widget.profile.id, entry.date);
+    await PetProfileService().deleteNoteEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => _history.deleteEntry(entry.date));
   }
 

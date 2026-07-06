@@ -345,7 +345,7 @@ class CloudSyncService extends ChangeNotifier {
 
     try {
       final uid = userId!;
-      final pets = await PetService().loadAllProfiles();
+      final pets = await PetProfileService().loadAllProfiles();
       if (pets.isEmpty) throw Exception('Нет профилей для выгрузки');
 
       // ── Питомцы + их история ──────────────────────────────────────────────
@@ -425,7 +425,7 @@ class CloudSyncService extends ChangeNotifier {
   /// заменить данные на сервере данными этого устройства.
   Future<void> replaceRemoteWithLocal() async {
     if (!isAuthenticated) return;
-    final pets = await PetService().loadAllProfiles();
+    final pets = await PetProfileService().loadAllProfiles();
     if (pets.isEmpty) {
       await wipeRemote();
     } else {
@@ -468,7 +468,7 @@ class CloudSyncService extends ChangeNotifier {
   Future<void> pullAll() async {
     final petIds = await fetchAllPets();
     if (petIds.isEmpty) {
-      final pets = await PetService().loadAllProfiles();
+      final pets = await PetProfileService().loadAllProfiles();
       petIds.addAll(pets.map((p) => p.id));
     }
     for (final petId in petIds) {
@@ -491,7 +491,7 @@ class CloudSyncService extends ChangeNotifier {
         petRecord = null;
       }
 
-      Pet? profile = await PetService().loadProfile(petId);
+      Pet? profile = await PetProfileService().loadProfile(petId);
       if (petRecord != null) {
         final remote = Pet.codec.fromPocketBase(petRecord.data);
         // Сохраняем уже скачанный локальный аватар, если на сервере его нет.
@@ -539,7 +539,7 @@ class CloudSyncService extends ChangeNotifier {
         Pill.codec,
       );
 
-      await PetService().saveProfile(profile);
+      await PetProfileService().saveProfile(profile);
 
       // ── Events ────────────────────────────────────────────────────────────
       final events = await _fetchAllAs(
@@ -585,14 +585,14 @@ class CloudSyncService extends ChangeNotifier {
         return;
       }
 
-      final existing = await PetService().loadAllProfiles();
+      final existing = await PetProfileService().loadAllProfiles();
       final existingIds = existing.map((p) => p.id).toSet();
       final restoredIds = <String>[];
 
       for (final pet in pets) {
         try {
           if (!existingIds.contains(pet.id)) {
-            await PetService().saveProfile(pet);
+            await PetProfileService().saveProfile(pet);
           }
           restoredIds.add(pet.id);
         } catch (_) {}
@@ -603,7 +603,7 @@ class CloudSyncService extends ChangeNotifier {
         return;
       }
 
-      await PetService().setActiveProfile(restoredIds.first);
+      await PetProfileService().setActiveProfile(restoredIds.first);
 
       // ── 2. Восстанавливаем историю для каждого питомца ───────────────────
       for (final petId in restoredIds) {
@@ -641,7 +641,7 @@ class CloudSyncService extends ChangeNotifier {
       final dir = await getTemporaryDirectory();
       final tmp = File('${dir.path}/avatar_dl_$petId');
       await tmp.writeAsBytes(resp.bodyBytes);
-      final saved = await PetService().saveAvatar(petId, tmp.path);
+      final saved = await PetProfileService().saveAvatar(petId, tmp.path);
       try {
         await tmp.delete();
       } catch (_) {}

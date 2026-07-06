@@ -66,7 +66,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    await UserService().save(_profile);
+    await UserProfileService().save(_profile);
     if (mounted) {
       setState(() => _saving = false);
       Navigator.pop(context, _profile);
@@ -142,7 +142,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
             email: result,
             emailVerified: true,
           ));
-      await UserService().save(_profile);
+      await UserProfileService().save(_profile);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Почта подтверждена ✓')),
@@ -302,7 +302,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
       message: 'Данные вашего аккаунта будут удалены с устройства.',
     );
     if (confirmed) {
-      await UserService().delete();
+      await UserProfileService().delete();
       if (mounted) Navigator.pop(context, null);
     }
   }

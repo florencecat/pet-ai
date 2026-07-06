@@ -118,8 +118,8 @@ class _EventSheetState extends State<EventSheet> {
   }
 
   Future<void> _loadProfiles() async {
-    final profiles = await PetService().loadAllProfiles();
-    final activeId = await PetService().getActiveProfileId();
+    final profiles = await PetProfileService().loadAllProfiles();
+    final activeId = await PetProfileService().getActiveProfileId();
 
     List<String> preselected;
     if (widget.mode == EventSheetMode.create) {

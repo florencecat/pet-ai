@@ -37,7 +37,7 @@ class _WeightDialogState extends State<WeightDialog> {
 
     bool error = false;
     try {
-      await PetService().updateWeightHistory(widget.profile.id, _weight);
+      await PetProfileService().updateWeightHistory(widget.profile.id, _weight);
     } catch (e) {
       error = true;
     } finally {
@@ -119,7 +119,7 @@ class _WeightSheetState extends State<WeightSheet> {
   }
 
   Future<void> _reload() async {
-    final updated = await PetService().loadProfile(widget.profile.id);
+    final updated = await PetProfileService().loadProfile(widget.profile.id);
     if (updated != null && mounted) {
       setState(() => _history = updated.weightHistory);
     }
@@ -128,7 +128,7 @@ class _WeightSheetState extends State<WeightSheet> {
   Future<void> _deleteEntry(WeightEntry entry) async {
     final confirmed = await confirmDelete(context, title: 'Удалить запись?');
     if (!confirmed) return;
-    await PetService().deleteWeightEntry(widget.profile.id, entry.date);
+    await PetProfileService().deleteWeightEntry(widget.profile.id, entry.date);
     if (mounted) setState(() => _history.deleteEntry(entry.date));
   }
 

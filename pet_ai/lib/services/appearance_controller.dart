@@ -43,7 +43,7 @@ class AppearanceController extends ChangeNotifier {
 
   Future<void> load() async {
     _usePetColor = await AppearanceService().getUsePetColor();
-    final profile = await PetService().loadActiveProfile();
+    final profile = await PetProfileService().loadActiveProfile();
     if (profile != null) _profilePalette = profile.palette;
     _loaded = true;
     notifyListeners();
@@ -63,7 +63,7 @@ class AppearanceController extends ChangeNotifier {
 
   /// Перезагружает цвет питомца (вызывать при смене активного профиля).
   Future<void> reloadProfile() async {
-    final profile = await PetService().loadActiveProfile();
+    final profile = await PetProfileService().loadActiveProfile();
     if (profile != null) _profilePalette = profile.palette;
     notifyListeners();
   }
