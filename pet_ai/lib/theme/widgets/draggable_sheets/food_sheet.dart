@@ -4,6 +4,7 @@ import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/appetite_stepper.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
@@ -677,10 +678,9 @@ class _FoodEntryCard extends StatelessWidget {
               ),
               Text(
                 '${entry.grams} г',
-                style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  color: accent,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: context.subtitleStyle.copyWith(
+                  color: accent.withAlpha(172),
+                )
               ),
             ],
           ),
@@ -704,6 +704,7 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color.withAlpha(172);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -711,10 +712,9 @@ class _Chip extends StatelessWidget {
         const SizedBox(width: 3),
         Text(
           label,
-          style: TextStyle(
+          style: context.subtitleStyle.copyWith(
             fontSize: 11,
             color: color,
-            fontWeight: FontWeight.w600,
           ),
         ),
       ],

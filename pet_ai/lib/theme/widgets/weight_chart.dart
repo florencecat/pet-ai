@@ -104,9 +104,7 @@ class WeightChart extends StatelessWidget {
                   return LineTooltipItem(
                     '${spot.y.toStringAsFixed(1)} кг',
                     Theme.of(context).textTheme.titleSmall!.copyWith(
-                      color: context
-                          .watch<AppearanceController>()
-                          .secondaryColor,
+                      color: Provider.of<AppearanceController>(context, listen: false).secondaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                     children: date.isEmpty

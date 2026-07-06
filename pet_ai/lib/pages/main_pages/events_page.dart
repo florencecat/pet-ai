@@ -7,6 +7,7 @@ import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
@@ -267,7 +268,7 @@ class EventsPageState extends State<EventsPage> {
                         ),
                         Text(
                           monthLabel,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: context.subtitleMediumStyle,
                         ),
                       ],
                     ),
@@ -381,7 +382,11 @@ class EventsPageState extends State<EventsPage> {
                           weekdayStyle: Theme.of(context).textTheme.bodySmall!
                               .copyWith(inherit: true, fontSize: 13),
                           weekendStyle: Theme.of(context).textTheme.bodySmall!
-                              .copyWith(inherit: true, fontSize: 13),
+                              .copyWith(
+                                inherit: true,
+                                fontSize: 13,
+                                color: context.subtitleColor,
+                              ),
                         ),
                         eventLoader: (day) => _events.where((e) {
                           if (!e.occursOn(day)) return false;
@@ -424,7 +429,7 @@ class EventsPageState extends State<EventsPage> {
                           setState(() => _format = format);
                         },
                       ),
-                      DragHandle()
+                      DragHandle(),
                     ],
                   ),
                 ),
@@ -1039,9 +1044,7 @@ class _EventSearchSheetState extends State<_EventSearchSheet> {
               _query.isEmpty
                   ? 'Все события (${results.length})'
                   : 'Найдено: ${results.length}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: ac.secondaryColor.withAlpha(160),
-              ),
+              style: context.subtitleStyle,
             ),
           ),
 

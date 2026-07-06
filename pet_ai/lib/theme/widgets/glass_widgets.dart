@@ -507,7 +507,7 @@ class _SoftGlassBadgeState extends State<SoftGlassBadge>
                     widget.labelStyle ??
                     TextStyle(
                       fontSize: widget.size,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w400,
                       color: selected ? Colors.white : color,
                     ),
               ),
@@ -880,7 +880,7 @@ class SoftGlassButton extends StatelessWidget {
             ),
             if (subtitle != null)
               Text(subtitle!, style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: color,
+                color: color.withAlpha(172),
               ),)
           ],
         ),

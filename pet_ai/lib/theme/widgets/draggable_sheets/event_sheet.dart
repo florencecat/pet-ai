@@ -4,6 +4,7 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
@@ -592,7 +593,7 @@ class _EventSheetState extends State<EventSheet> {
           ),
           subtitle: Text(
             'Без точного времени',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: context.subtitleStyle,
           ),
           value: _allDay,
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
@@ -620,7 +621,7 @@ class _EventSheetState extends State<EventSheet> {
           ),
           subtitle: Text(
             'Отслеживать статус выполнения и отправлять push-уведомление',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: context.subtitleStyle,
           ),
           value: _remind,
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
@@ -658,7 +659,7 @@ class _EventSheetState extends State<EventSheet> {
           ),
           subtitle: Text(
             'Сделать событие регулярным',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: context.subtitleStyle,
           ),
           value: _isRepeating,
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
@@ -688,12 +689,6 @@ class _EventSheetState extends State<EventSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
             children: [
-              Icon(
-                Icons.notifications_outlined,
-                size: 20,
-                color: context.watch<AppearanceController>().primaryColor,
-              ),
-              const SizedBox(width: 8),
               Text(
                 'Напомнить за',
                 style: Theme.of(context).textTheme.bodyLarge,

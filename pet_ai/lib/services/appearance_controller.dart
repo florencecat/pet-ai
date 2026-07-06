@@ -27,6 +27,9 @@ class AppearanceController extends ChangeNotifier {
       ? _profilePalette.darkShade
       : ThemeColors.defaultProfilePalette.darkShade;
 
+  Color get titleColor => secondaryColor;
+  Color get subtitleColor => secondaryColor.withAlpha(128);
+
   /// Градиентный фон страниц, адаптированный к текущему primaryColor.
   BoxDecoration get gradientDecoration => BoxDecoration(
     backgroundBlendMode: BlendMode.darken,

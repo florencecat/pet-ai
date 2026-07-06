@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
@@ -460,7 +461,7 @@ class _MoodEntryCard extends StatelessWidget {
             ),
             Text(
               entry.dayPart.label,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: context.subtitleStyle,
             ),
           ],
         ),

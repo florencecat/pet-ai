@@ -9,6 +9,7 @@ import 'package:pet_satellite/pages/secondary_pages/settings_page.dart';
 import 'package:pet_satellite/services/file_storage_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/skeleton.dart';
@@ -488,6 +489,7 @@ class HomePageState extends State<HomePage> {
                               _user != null
                                   ? '${_timeGreeting()}, ${_user!.name}!'
                                   : '${_timeGreeting()},',
+                              style: context.subtitleMediumStyle,
                             ),
                             Text(
                               'как там ${_profile!.name}?🐾',
@@ -587,7 +589,7 @@ class HomePageState extends State<HomePage> {
                 ),
                 subtitle: Text(
                   'Прививки, вес, аллергии и другие важные сведения',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: context.subtitleStyle,
                 ),
                 titleTextStyle: Theme.of(context).textTheme.bodySmall,
                 trailing: Icon(

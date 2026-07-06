@@ -15,6 +15,7 @@ import 'package:pet_satellite/services/health_service.dart';
 import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
@@ -545,10 +546,7 @@ class HealthPageState extends State<HealthPage> {
                     iconColor: ThemeColors.weightIconColor,
                     caption: _weightStatus,
                     bottomWidget: _weightDynamics != null
-                        ? dynamicsBadge(
-                            _weightDynamics!,
-                            Theme.of(context).textTheme.bodySmall!,
-                          )
+                        ? dynamicsBadge(_weightDynamics!, context.subtitleStyle)
                         : null,
                   ),
                   _HealthActionButton(
@@ -564,7 +562,7 @@ class HealthPageState extends State<HealthPage> {
                         ? Text(
                             '${formatSmartDate(_profile!.moodHistory.lastEntry!.date, pattern: 'd MMMM')}'
                             ' · ${_profile!.moodHistory.lastEntry!.dayPart.label}',
-                            style: Theme.of(context).textTheme.bodySmall!,
+                            style: context.subtitleStyle,
                           )
                         : null,
                   ),
@@ -643,12 +641,11 @@ class HealthPageState extends State<HealthPage> {
                 onPressed: () => _openWeightHistory(context),
                 label: Text(
                   'Детали',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge!.copyWith(color: context.subtitleColor),
                 ),
-                icon: Icon(
-                  Icons.chevron_right,
-                  color: context.watch<AppearanceController>().secondaryColor,
-                ),
+                icon: Icon(Icons.chevron_right, color: context.subtitleColor),
                 iconAlignment: IconAlignment.end,
               ),
               body: Column(
@@ -700,13 +697,13 @@ class HealthPageState extends State<HealthPage> {
                       iconAlignment: IconAlignment.end,
                       label: Text(
                         'Список',
-                        style: Theme.of(context).textTheme.bodyLarge,
+                        style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                          color: context.subtitleColor,
+                        ),
                       ),
                       icon: Icon(
                         Icons.chevron_right,
-                        color: context
-                            .watch<AppearanceController>()
-                            .secondaryColor,
+                        color: context.subtitleColor,
                       ),
                       onPressed: _profile != null
                           ? () => _openTreatments(context)
@@ -818,13 +815,13 @@ class HealthPageState extends State<HealthPage> {
                       iconAlignment: IconAlignment.end,
                       label: Text(
                         'Список',
-                        style: Theme.of(context).textTheme.bodyLarge,
+                        style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                          color: context.subtitleColor,
+                        ),
                       ),
                       icon: Icon(
                         Icons.chevron_right,
-                        color: context
-                            .watch<AppearanceController>()
-                            .secondaryColor,
+                        color: context.subtitleColor,
                       ),
                       onPressed: _profile != null
                           ? () => _openPillReminders(context)
