@@ -243,7 +243,7 @@ class EventService {
   }) async {
     final now = from ?? DateTime.now();
     final events = await loadEvents(petId);
-    final sorted = events.where((e) => e.dateTime.isAfter(now)).toList()
+    final sorted = events.where((e) => e.dateTime.isAfter(now) || e.occursOn(now)).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return sorted.take(limit).toList();
   }
