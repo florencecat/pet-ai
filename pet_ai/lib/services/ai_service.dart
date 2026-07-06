@@ -512,7 +512,11 @@ class AIChatController extends ChangeNotifier {
 
       final authService = GetIt.instance<AuthService>();
       final body = jsonEncode({
-        "message": context.toString(),
+        // Контракт бэкенда: поле `message` — строка. Кладём ВАЛИДНЫЙ JSON
+        // диалога (jsonEncode), а не Dart-представление списка (context.toString()):
+        // так спецсимволы в сообщениях (кавычки, скобки, переводы строк)
+        // корректно экранируются и не ломают структуру/парсинг на сервере.
+        "message": jsonEncode(context),
         if (attachment != null) "attachment": attachment.data,
       });
 
