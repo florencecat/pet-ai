@@ -39,12 +39,7 @@ extension DayPartX on DayPart {
 }
 
 // Настроение
-enum PetMood {
-  happy,
-  calm,
-  sick,
-  playful,
-}
+enum PetMood { happy, calm, sick, playful }
 
 extension PetMoodX on PetMood {
   String get label {
@@ -110,7 +105,10 @@ class MoodEntry implements BaseEntry {
     return MoodEntry(
       id: json["id"] as String?,
       date: date,
-      mood: PetMood.values.firstWhere((e) => e.name == json["mood"]),
+      mood: PetMood.values.firstWhere(
+        (e) => e.name == json["mood"],
+        orElse: () => PetMood.calm,
+      ),
       dayPart: json["dayPart"] != null
           ? DayPart.values.firstWhere(
               (e) => e.name == json["dayPart"],
@@ -175,8 +173,7 @@ class MoodHistory extends History<MoodEntry> {
   }
 
   /// Возвращает записи, отсортированные по (дата, время суток, время).
-  List<MoodEntry> get sortedByDateAndPart =>
-      [...entries]..sort(_compare);
+  List<MoodEntry> get sortedByDateAndPart => [...entries]..sort(_compare);
 
   static int _compare(MoodEntry a, MoodEntry b) {
     final ad = DateTime(a.date.year, a.date.month, a.date.day);
@@ -217,20 +214,24 @@ class MoodHistory extends History<MoodEntry> {
 
   bool hasTodayEntry() {
     final now = DateTime.now();
-    return entries.any((e) =>
-        e.date.year == now.year &&
-        e.date.month == now.month &&
-        e.date.day == now.day);
+    return entries.any(
+      (e) =>
+          e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.date.day == now.day,
+    );
   }
 
   /// Проверяет, есть ли запись за сегодня с указанным временем суток.
   bool hasTodayEntryForPart(DayPart part) {
     final now = DateTime.now();
-    return entries.any((e) =>
-        e.date.year == now.year &&
-        e.date.month == now.month &&
-        e.date.day == now.day &&
-        e.dayPart == part);
+    return entries.any(
+      (e) =>
+          e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.date.day == now.day &&
+          e.dayPart == part,
+    );
   }
 
   static final moodSerializer = HistorySerializer<MoodEntry>(

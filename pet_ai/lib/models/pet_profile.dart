@@ -53,13 +53,13 @@ class Pet implements PbEntity {
     this.chipNumber = '',
     this.profileImage,
   }) : id = generateId(),
-        weightHistory = WeightHistory.empty(),
-        moodHistory = MoodHistory.empty(),
-        noteHistory = NoteHistory.empty(),
-        treatmentHistory = TreatmentHistory.empty(),
-        foodHistory = MealHistory.empty(),
-        pillReminders = [],
-        palette = ThemeColors.defaultProfilePalette;
+       weightHistory = WeightHistory.empty(),
+       moodHistory = MoodHistory.empty(),
+       noteHistory = NoteHistory.empty(),
+       treatmentHistory = TreatmentHistory.empty(),
+       foodHistory = MealHistory.empty(),
+       pillReminders = [],
+       palette = ThemeColors.defaultProfilePalette;
 
   Pet.deserialize({
     required this.id,
@@ -92,7 +92,7 @@ class Pet implements PbEntity {
     'species': species.toJson(),
     'breed': breed.toJson(),
     'birthDate': birthDate?.toIso8601String(),
-    'gender': gender.caption,
+    'gender': gender.name,
     'castrated': castrated,
     'castratedDate': castratedDate?.toIso8601String(),
     'coat': coat,
@@ -121,7 +121,7 @@ class Pet implements PbEntity {
     'species': species.toJson(),
     'breed': breed.toJson(),
     'birthDate': birthDate?.toIso8601String(),
-    'gender': gender.caption,
+    'gender': gender.name,
     'castrated': castrated,
     'castratedDate': castratedDate?.toIso8601String(),
     'coat': coat,
@@ -147,7 +147,10 @@ class Pet implements PbEntity {
           ? DateTime.parse(json['birthDate'])
           : null,
       gender: json['gender'] != null
-          ? Gender.values.firstWhere((g) => g.caption == json['gender'])
+          ? Gender.values.firstWhere(
+              (g) => g.name == json['gender'],
+              orElse: () => Gender.none,
+            )
           : Gender.none,
       castrated: json['castrated'] as bool? ?? false,
       castratedDate: json['castratedDate'] != null
@@ -164,43 +167,43 @@ class Pet implements PbEntity {
           : null,
       weightHistory: json['weightHistory'] != null
           ? WeightHistory(
-        entries: WeightHistory.weightSerializer
-            .fromJsonList(json['weightHistory'])
-            .entries,
-      )
+              entries: WeightHistory.weightSerializer
+                  .fromJsonList(json['weightHistory'])
+                  .entries,
+            )
           : WeightHistory.empty(),
       moodHistory: json['moodHistory'] != null
           ? MoodHistory(
-        entries: MoodHistory.moodSerializer
-            .fromJsonList(json['moodHistory'])
-            .entries,
-      )
+              entries: MoodHistory.moodSerializer
+                  .fromJsonList(json['moodHistory'])
+                  .entries,
+            )
           : MoodHistory.empty(),
       noteHistory: json['noteHistory'] != null
           ? NoteHistory(
-        entries: NoteHistory.noteSerializer
-            .fromJsonList(json['noteHistory'])
-            .entries,
-      )
+              entries: NoteHistory.noteSerializer
+                  .fromJsonList(json['noteHistory'])
+                  .entries,
+            )
           : NoteHistory.empty(),
       treatmentHistory: json['treatmentHistory'] != null
           ? TreatmentHistory(
-        entries: TreatmentHistory.treatmentSerializer
-            .fromJsonList(json['treatmentHistory'])
-            .entries,
-      )
+              entries: TreatmentHistory.treatmentSerializer
+                  .fromJsonList(json['treatmentHistory'])
+                  .entries,
+            )
           : TreatmentHistory.empty(),
       foodHistory: json['foodHistory'] != null
           ? MealHistory(
-        entries: MealHistory.foodSerializer
-            .fromJsonList(json['foodHistory'])
-            .entries,
-      )
+              entries: MealHistory.foodSerializer
+                  .fromJsonList(json['foodHistory'])
+                  .entries,
+            )
           : MealHistory.empty(),
       pillReminders:
-      (json['pillReminders'] as List<dynamic>?)
-          ?.map((e) => Pill.fromJson(e as Map<String, dynamic>))
-          .toList() ??
+          (json['pillReminders'] as List<dynamic>?)
+              ?.map((e) => Pill.fromJson(e as Map<String, dynamic>))
+              .toList() ??
           [],
       palette: json['palette'] != null
           ? ColorPalette.fromJson(json['palette'])
