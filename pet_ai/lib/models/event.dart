@@ -83,6 +83,38 @@ extension RemindBeforeVariantX on RemindBeforeVariant {
 /// и применить контекстно-корректное поведение (синхронизация статуса, UI).
 enum EventSource { manual, pill, treatment, note, ai }
 
+extension EventSourceX on EventSource {
+  String get caption {
+    switch (this) {
+      case EventSource.manual: return '';
+      case EventSource.pill: return 'Из таблетки';
+      case EventSource.treatment: return 'Из обработки';
+      case EventSource.note: return 'Из заметок';
+      case EventSource.ai: return 'Сделано с помощью ИИ';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case EventSource.pill: return const Color(0xFF5C6BC0);
+      case EventSource.treatment: return const Color(0xFF00897B);
+      case EventSource.manual:
+      case EventSource.note:
+      case EventSource.ai: return ThemeColors.border;
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case EventSource.manual: return Icons.circle ;
+      case EventSource.pill: return Icons.medication_outlined;
+      case EventSource.treatment: return Icons.vaccines_outlined;
+      case EventSource.note: return Icons.note_outlined;
+      case EventSource.ai: return Icons.auto_awesome;
+    }
+  }
+}
+
 /// Иконка + цвет для единообразного отображения события в списках.
 /// Получается через [Event.style] независимо от источника создания.
 class EventStyle {
@@ -240,6 +272,8 @@ class Event implements PbEntity {
 
   bool remind;
 
+  String get caption => category.name.isNotEmpty ? category.name : source.caption;
+
   /// Даты выполнения в формате "yyyy-MM-dd" — отдельно для каждого вхождения
   Set<String> completedDates;
 
@@ -350,21 +384,6 @@ class Event implements PbEntity {
       sourceId = null;
 
   bool get completable => remind && source != EventSource.note;
-
-  String get categoryCaption {
-    switch (source) {
-      case EventSource.note:
-        return 'Заметка';
-      case EventSource.pill:
-        return 'Приём лекарств';
-      case EventSource.treatment:
-        return 'Обработка';
-      case EventSource.ai:
-        return 'Сделано с помощью ИИ';
-      case EventSource.manual:
-        return category.name;
-    }
-  }
 
   /// Единый стиль отображения события (иконка + цвет) — определяется по
   /// источнику создания, чтобы списки получали оформление единообразно,

@@ -166,7 +166,7 @@ class HomePageState extends State<HomePage> {
 
   void _openNotes(BuildContext context) async {
     if (_profile == null) return;
-    final updated = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -174,7 +174,7 @@ class HomePageState extends State<HomePage> {
       backgroundColor: Colors.transparent,
       builder: (_) => NoteSheet(profile: _profile!),
     );
-    if (updated == true) await _initScreen();
+    _initScreen();
   }
 
   void _openDocuments(BuildContext context) async {
@@ -395,15 +395,14 @@ class HomePageState extends State<HomePage> {
   }
 
   /// Прошедшие (за последние 30 дней) вхождения событий, не отмеченные
-  /// выполненными. Препараты/обработки исключены — они на странице здоровья.
+  /// выполненными.
   List<_TimelineItem> _buildMissedItems() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final items = <_TimelineItem>[];
 
     for (final e in _allEvents) {
-      if (e.source == EventSource.pill) continue;
-      if (e.source == EventSource.treatment) continue;
+      if (e.source == EventSource.note) continue;
 
       if (e.repeat == RepeatInterval.none) {
         final cutoff = today.subtract(const Duration(days: 30));
@@ -831,6 +830,7 @@ class _PetTimeline extends StatelessWidget {
     if (historyItems.isNotEmpty) {
       widgets.add(_buildSeparator(context));
 
+      // ── Прошедшие события ──
       for (int i = 0; i < historyItems.length; i++) {
         final item = historyItems[i];
         final isLast = i == historyItems.length - 1;

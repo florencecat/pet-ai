@@ -173,7 +173,7 @@ class _EventSheetState extends State<EventSheet> {
 
   Future<void> _createEvent(BuildContext context, Event event) async {
     await EventService().createEvent(event);
-    if (context.mounted) Navigator.of(context).pop(true);
+    if (context.mounted) Navigator.of(context).pop(event.dateTime);
   }
 
   Future<void> _editEvent(BuildContext context, Event event) async {
@@ -591,10 +591,7 @@ class _EventSheetState extends State<EventSheet> {
             'Весь день',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          subtitle: Text(
-            'Без точного времени',
-            style: context.subtitleStyle,
-          ),
+          subtitle: Text('Без точного времени', style: context.subtitleStyle),
           value: _allDay,
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
           onChanged: (val) => setState(() {
@@ -906,7 +903,9 @@ class _EventSheetState extends State<EventSheet> {
                               fontWeight: FontWeight.w600,
                               color: selected
                                   ? Colors.white
-                                  : context.watch<AppearanceController>().secondaryColor,
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor,
                             ),
                           ),
                         ),
@@ -963,54 +962,26 @@ class _SourceTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, icon, color, gradient) = switch (source) {
-      EventSource.pill => (
-        'Препарат',
-        Icons.medication_outlined,
-        const Color(0xFF5C6BC0),
-        null,
-      ),
-      EventSource.treatment => (
-        'Прививка / обработка',
-        Icons.vaccines_outlined,
-        const Color(0xFF00897B),
-        null,
-      ),
-      EventSource.note => (
-        'Из заметки',
-        Icons.note_outlined,
-        ThemeColors.border,
-        null,
-      ),
-      EventSource.ai => (
-        'Сделано с помощью ИИ',
-        Icons.auto_awesome,
-        ThemeColors.border,
-        ThemeColors.gradientColors,
-      ),
-      _ => ('', Icons.circle, ThemeColors.border, null),
-    };
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withAlpha(64),
-        gradient: LinearGradient(
-          colors: ThemeColors.gradientColors,
-        ),
+        color: source.color.withAlpha(64),
+        gradient: source == EventSource.ai
+            ? LinearGradient(colors: ThemeColors.gradientColors)
+            : null,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withAlpha(50)),
+        border: Border.all(color: source.color.withAlpha(50)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color.withAlpha(180)),
+          Icon(source.icon, size: 12, color: source.color.withAlpha(180)),
           const SizedBox(width: 4),
           Text(
-            label,
+            source.caption,
             style: TextStyle(
               fontSize: 11,
-              color: color.withAlpha(200),
+              color: source.color.withAlpha(200),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1185,7 +1156,9 @@ class _CompletionButton extends StatelessWidget {
                 Text(
                   isCompleted ? 'Выполнено' : 'Отметить выполненным',
                   style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                    color: isCompleted ? Colors.white : context.watch<AppearanceController>().secondaryColor,
+                    color: isCompleted
+                        ? Colors.white
+                        : context.watch<AppearanceController>().secondaryColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

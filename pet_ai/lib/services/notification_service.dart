@@ -467,7 +467,7 @@ class NotificationService {
 
     // Информативное содержимое: «Питомец · Категория» в заголовке, наименование
     // (с отсрочкой) — в теле.
-    final categoryName = event.categoryCaption.trim();
+    final categoryName = event.caption.trim();
     final hasPet = petLabel != null && petLabel.isNotEmpty;
     final String title;
     if (hasPet && categoryName.isNotEmpty) {

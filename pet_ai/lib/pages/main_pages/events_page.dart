@@ -186,7 +186,7 @@ class EventsPageState extends State<EventsPage> {
   }
 
   void _openCreateSheet() async {
-    await showModalBottomSheet<bool>(
+    final created = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -195,7 +195,10 @@ class EventsPageState extends State<EventsPage> {
       builder: (_) =>
           EventSheet.create(dateTime: _selectedDay ?? DateTime.now()),
     );
-    _refresh();
+    if (created != null) {
+      _selectedDay = created;
+      _refresh();
+    }
   }
 
   void _openViewSheet(Event event) async {
@@ -208,6 +211,20 @@ class EventsPageState extends State<EventsPage> {
       builder: (_) => EventSheet(event: event, completionDate: _selectedDay),
     );
     _refresh();
+  }
+
+  void _openEditSheet(Event event) async {
+    final edited = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventSheet.edit(event: event),
+    );
+    if (edited != null && edited) {
+      _refresh();
+    }
   }
 
   Future<void> _deleteEvent(Event event) async {
@@ -505,7 +522,7 @@ class EventsPageState extends State<EventsPage> {
                         petBadges: _petBadgesFor(e),
                         selectedDate: _selectedDay,
                         onTap: () => _openViewSheet(e),
-                        onEdit: () => _openViewSheet(e),
+                        onEdit: () => _openEditSheet(e),
                         onDelete: () => _deleteEvent(e),
                         onCompletedChanged: (val) async {
                           final profileId = await PetProfileService()
@@ -706,7 +723,7 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
                   _ActionBtn(
                     icon: Icons.check,
                     color: ThemeColors.positiveDynamics,
-                    label: 'Выполнено',
+                    label: 'Выполнить',
                     onTap: () {
                       _close();
                       widget.onCompletedChanged?.call(
@@ -920,7 +937,7 @@ class _EventTileCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              event.category.name,
+                              event.caption,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             if (petBadges.isNotEmpty) ...[
