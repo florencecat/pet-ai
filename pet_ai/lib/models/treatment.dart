@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
+import 'package:pet_satellite/models/remindable.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 
 /// Тип медицинского мероприятия
@@ -78,7 +79,7 @@ extension TreatmentKindX on TreatmentKind {
   }
 }
 
-class TreatmentEntry implements BaseEntry {
+class TreatmentEntry with Remindable implements BaseEntry {
   static const codec = _TreatmentEntryCodec();
 
   @override
@@ -91,8 +92,11 @@ class TreatmentEntry implements BaseEntry {
   /// Дата следующего такого мероприятия. Пользователь может задать сам
   /// или принять значение по умолчанию.
   final DateTime nextDate;
-  /// За сколько дней до nextDate напоминать.
-  final int remindBeforeDays;
+  /// За сколько единиц ([remindBeforeVariant]) до nextDate напоминать.
+  @override
+  final int remindBeforeValue;
+  @override
+  final RemindBeforeVariant remindBeforeVariant;
   /// id связанного PetEvent (для возможной отмены/перепланирования).
   final String? eventId;
 
@@ -105,10 +109,17 @@ class TreatmentEntry implements BaseEntry {
     required this.kind,
     required this.nextDate,
     this.name = '',
-    this.remindBeforeDays = 7,
+    this.remindBeforeValue = 7,
+    this.remindBeforeVariant = RemindBeforeVariant.days,
     this.eventId,
     this.color,
   }) : id = id ?? generateId();
+
+  /// Legacy-представление «за сколько ДНЕЙ» — для отображения и PocketBase-схемы,
+  /// где хранится только `remind_before_days`.
+  int get remindBeforeDays => remindBeforeVariant == RemindBeforeVariant.days
+      ? remindBeforeValue
+      : remindOffset.inDays;
 
   String get displayName {
     if (kind == TreatmentKind.vaccine && name.isNotEmpty) {
@@ -130,7 +141,13 @@ class TreatmentEntry implements BaseEntry {
       ),
       name: json['name'] as String? ?? '',
       nextDate: DateTime.parse(json['nextDate'] as String),
-      remindBeforeDays: json['remindBeforeDays'] as int? ?? 7,
+      // Новый формат (value+variant), с откатом на legacy remindBeforeDays.
+      remindBeforeValue:
+          json['remindBeforeValue'] as int? ?? json['remindBeforeDays'] as int? ?? 7,
+      remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
+        (v) => v.name == (json['remindBeforeVariant'] as String?),
+        orElse: () => RemindBeforeVariant.days,
+      ),
       eventId: json['eventId'] as String?,
       color: (json['color'] as num?)?.toInt(),
     );
@@ -143,7 +160,8 @@ class TreatmentEntry implements BaseEntry {
     'kind': kind.name,
     'name': name,
     'nextDate': nextDate.toIso8601String(),
-    'remindBeforeDays': remindBeforeDays,
+    'remindBeforeValue': remindBeforeValue,
+    'remindBeforeVariant': remindBeforeVariant.name,
     'eventId': eventId,
     'color': color,
   };
@@ -156,7 +174,8 @@ class TreatmentEntry implements BaseEntry {
     'kind': kind.name,
     'name': name,
     'next': nextDate.toIso8601String(),
-    'remind_before_days': remindBeforeDays,
+    'remind_before_value': remindBeforeValue,
+    'remind_before_variant': remindBeforeVariant.name,
     'color': color,
   };
 }
@@ -174,7 +193,9 @@ class _TreatmentEntryCodec extends PbCodec<TreatmentEntry> {
     ),
     name: data['name'] as String? ?? '',
     nextDate: DateTime.parse(data['next'] as String),
-    remindBeforeDays: (data['remind_before_days'] as num?)?.toInt() ?? 7,
+    // В PocketBase-схеме пока только дни; variant восстанавливается как days.
+    remindBeforeValue: (data['remind_before_days'] as num?)?.toInt() ?? 7,
+    remindBeforeVariant: RemindBeforeVariant.days,
     color: (data['color'] as num?)?.toInt(),
   );
 }

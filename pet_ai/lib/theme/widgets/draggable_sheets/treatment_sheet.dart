@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_satellite/models/remindable.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -9,6 +10,7 @@ import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/remind_before_picker.dart';
 import 'package:pet_satellite/theme/widgets/treatment_icon.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -35,7 +37,8 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
   final _nameCtrl = TextEditingController();
   DateTime _date = DateTime.now();
   late DateTime _nextDate;
-  int _remindBeforeDays = 7;
+  int _remindBeforeValue = 7;
+  RemindBeforeVariant _remindBeforeVariant = RemindBeforeVariant.days;
   bool _saving = false;
 
   @override
@@ -110,7 +113,8 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
       date: _date,
       nextDate: _nextDate,
       name: _nameCtrl.text.trim(),
-      remindBeforeDays: _remindBeforeDays,
+      remindBeforeValue: _remindBeforeValue,
+      remindBeforeVariant: _remindBeforeVariant,
       color: _color,
     );
     if (!mounted) return;
@@ -125,7 +129,8 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
         _nameCtrl.clear();
         _date = DateTime.now();
         _nextDate = _date.add(_kind.defaultInterval);
-        _remindBeforeDays = 7;
+        _remindBeforeValue = 7;
+        _remindBeforeVariant = RemindBeforeVariant.days;
         _saving = false;
       });
     } else {
@@ -230,50 +235,13 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.alarm,
-                        size: 18,
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Напомнить за (дн.):',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline),
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                        onPressed: _remindBeforeDays > 0
-                            ? () => setState(() => _remindBeforeDays -= 1)
-                            : null,
-                      ),
-                      SizedBox(
-                        width: 32,
-                        child: Text(
-                          '$_remindBeforeDays',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge!
-                              .copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        color: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                        onPressed: _remindBeforeDays < 60
-                            ? () => setState(() => _remindBeforeDays += 1)
-                            : null,
-                      ),
-                    ],
+                  RemindBeforePicker(
+                    value: _remindBeforeValue,
+                    variant: _remindBeforeVariant,
+                    onValueChanged: (v) =>
+                        setState(() => _remindBeforeValue = v),
+                    onVariantChanged: (v) =>
+                        setState(() => _remindBeforeVariant = v),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -413,7 +381,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
   final _nameCtrl = TextEditingController();
   DateTime _editDate = DateTime.now();
   DateTime _editNextDate = DateTime.now().add(const Duration(days: 365));
-  int _editRemindDays = 7;
+  int _editRemindValue = 7;
+  RemindBeforeVariant _editRemindVariant = RemindBeforeVariant.days;
   bool _editSaving = false;
 
   @override
@@ -439,7 +408,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
       _nameCtrl.text = entry.name;
       _editDate = entry.date;
       _editNextDate = entry.nextDate;
-      _editRemindDays = entry.remindBeforeDays;
+      _editRemindValue = entry.remindBeforeValue;
+      _editRemindVariant = entry.remindBeforeVariant;
     });
   }
 
@@ -463,7 +433,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
       date: _editDate,
       nextDate: _editNextDate,
       name: _nameCtrl.text.trim(),
-      remindBeforeDays: _editRemindDays,
+      remindBeforeValue: _editRemindValue,
+      remindBeforeVariant: _editRemindVariant,
       color: preservedColor,
     );
 
@@ -651,7 +622,9 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                   _InfoRow(
                     icon: Icons.alarm,
                     iconColor: accent,
-                    label: 'Напомнить за ${latest.remindBeforeDays} дн.',
+                    label: latest.hasRemindBefore
+                        ? 'Напомнить ${latest.remindBeforeLabel}'
+                        : 'Без напоминания',
                   ),
                 ],
               ),
@@ -713,40 +686,13 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Icon(Icons.alarm, size: 18, color: accent),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Напомнить за (дн.):',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          color: accent,
-                          onPressed: _editRemindDays > 0
-                              ? () => setState(() => _editRemindDays -= 1)
-                              : null,
-                        ),
-                        SizedBox(
-                          width: 32,
-                          child: Text(
-                            '$_editRemindDays',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyLarge!
-                                .copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline),
-                          color: accent,
-                          onPressed: _editRemindDays < 60
-                              ? () => setState(() => _editRemindDays += 1)
-                              : null,
-                        ),
-                      ],
+                    RemindBeforePicker(
+                      value: _editRemindValue,
+                      variant: _editRemindVariant,
+                      onValueChanged: (v) =>
+                          setState(() => _editRemindValue = v),
+                      onVariantChanged: (v) =>
+                          setState(() => _editRemindVariant = v),
                     ),
                     const SizedBox(height: 10),
                     SizedBox(

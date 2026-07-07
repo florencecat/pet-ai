@@ -11,14 +11,16 @@ class TreatmentService {
   ///
   /// [date] — дата выполненного мероприятия.
   /// [nextDate] — дата следующего такого мероприятия.
-  /// [remindBeforeDays] — за сколько дней напомнить.
+  /// [remindBeforeValue]/[remindBeforeVariant] — за сколько (дней/часов/минут)
+  /// до [nextDate] напомнить.
   Future<TreatmentEntry?> addTreatment({
     required String petId,
     required TreatmentKind kind,
     required DateTime date,
     required DateTime nextDate,
     String name = '',
-    int remindBeforeDays = 7,
+    int remindBeforeValue = 7,
+    RemindBeforeVariant remindBeforeVariant = RemindBeforeVariant.days,
     int? color,
   }) async {
     final profile = await PetProfileService().loadProfile(petId);
@@ -38,7 +40,10 @@ class TreatmentService {
       name: eventName,
       category: EventCategories.vaccination,
       dateTime: eventDateTime,
-      remindBeforeValue: remindBeforeDays * 24 * 60,
+      // Смещение напоминания задаётся напрямую value+variant (раньше здесь была
+      // ошибка remindBeforeDays*24*60 при варианте «дни» → 1440× слишком рано).
+      remindBeforeValue: remindBeforeValue,
+      remindBeforeVariant: remindBeforeVariant,
       petIds: [petId],
       source: EventSource.treatment,
       // Иконка/цвет события = выбранные пользователем вид и цвет обработки.
@@ -53,7 +58,8 @@ class TreatmentService {
       kind: kind,
       name: name,
       nextDate: nextDate,
-      remindBeforeDays: remindBeforeDays,
+      remindBeforeValue: remindBeforeValue,
+      remindBeforeVariant: remindBeforeVariant,
       eventId: event.id,
       color: color,
     );

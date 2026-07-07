@@ -35,7 +35,9 @@ class PillReminderService {
             : [],
         // Курс препарата заканчивается — событие перестаёт повторяться.
         repeatEndDate: reminder.endDate,
-        remindBeforeValue: 0,
+        // «Напомнить за» до каждого приёма — переносится с препарата на событие.
+        remindBeforeValue: reminder.remindBeforeValue,
+        remindBeforeVariant: reminder.remindBeforeVariant,
         petIds: [petId],
         // Связываем событие с напоминанием для двусторонней синхронизации статуса
         source: EventSource.pill,
@@ -78,6 +80,8 @@ class PillReminderService {
         e.repeatEndDate = updated.endDate;
         e.styleKindId = updated.kind?.id;
         e.color = updated.color;
+        e.remindBeforeValue = updated.remindBeforeValue;
+        e.remindBeforeVariant = updated.remindBeforeVariant;
         await EventService().saveEvent(e);
       }
     }

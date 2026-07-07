@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/pill.dart';
+import 'package:pet_satellite/models/remindable.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -10,6 +11,7 @@ import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pill_icon.dart';
+import 'package:pet_satellite/theme/widgets/remind_before_picker.dart';
 import 'package:pet_satellite/theme/widgets/toast.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -32,6 +34,9 @@ class _PillFormState {
   DateTime startDate;
   bool hasEndDate;
   DateTime endDate;
+  // «Напомнить за» до каждого приёма.
+  int remindBeforeValue;
+  RemindBeforeVariant remindBeforeVariant;
 
   _PillFormState({
     String name = '',
@@ -46,6 +51,8 @@ class _PillFormState {
     DateTime? startDate,
     this.hasEndDate = false,
     DateTime? endDate,
+    this.remindBeforeValue = 0,
+    this.remindBeforeVariant = RemindBeforeVariant.minutes,
   }) : nameCtrl = TextEditingController(text: name),
        doseAmountCtrl = TextEditingController(text: doseAmount),
        doseUnit = doseUnit ?? DoseUnit.forKind(kind).first,
@@ -69,6 +76,8 @@ class _PillFormState {
     startDate: r.startDate,
     hasEndDate: r.endDate != null,
     endDate: r.endDate ?? DateTime.now().add(const Duration(days: 30)),
+    remindBeforeValue: r.remindBeforeValue,
+    remindBeforeVariant: r.remindBeforeVariant,
   );
 
   int get doseValue => int.tryParse(doseAmountCtrl.text.trim()) ?? 0;
@@ -192,6 +201,8 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       startDate: _form.startDate,
       endDate: _form.hasEndDate ? _form.endDate : null,
       takenDates: const [],
+      remindBeforeValue: _form.remindBeforeValue,
+      remindBeforeVariant: _form.remindBeforeVariant,
     );
 
     await PillReminderService().add(
@@ -572,6 +583,19 @@ class _PillForm extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          RemindBeforePicker(
+            value: form.remindBeforeValue,
+            variant: form.remindBeforeVariant,
+            onValueChanged: (v) {
+              form.remindBeforeValue = v;
+              onChanged();
+            },
+            onVariantChanged: (v) {
+              form.remindBeforeVariant = v;
+              onChanged();
+            },
           ),
         ],
 
@@ -1073,6 +1097,8 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
       startDate: form.startDate,
       endDate: form.hasEndDate ? form.endDate : null,
       clearEndDate: !form.hasEndDate,
+      remindBeforeValue: form.remindBeforeValue,
+      remindBeforeVariant: form.remindBeforeVariant,
     );
 
     await PillReminderService().update(

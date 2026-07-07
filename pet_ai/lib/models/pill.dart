@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/models/remindable.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
@@ -204,10 +205,13 @@ class DoseUnit {
   }
 
   static String declensionByUnit(int count, DoseUnit unit) {
-    switch(unit.id) {
-      case 'spray': return declension(count, 'впрыск', 'впрыска', 'впрысков');
-      case 'application': return declension(count, 'нанесение', 'нанесения', 'нанесений');
-      default: return unit.label;
+    switch (unit.id) {
+      case 'spray':
+        return declension(count, 'впрыск', 'впрыска', 'впрысков');
+      case 'application':
+        return declension(count, 'нанесение', 'нанесения', 'нанесений');
+      default:
+        return unit.label;
     }
   }
 
@@ -236,7 +240,8 @@ class PillIntake {
 
   String get doseLabel => doseValue == 0
       ? ''
-      : '$doseValue ${DoseUnit.declensionByUnit(doseValue, doseUnit)}'.trimRight();
+      : '$doseValue ${DoseUnit.declensionByUnit(doseValue, doseUnit)}'
+            .trimRight();
 
   Map<String, dynamic> toJson() => {
     'time': time.toIso8601String(),
@@ -328,7 +333,7 @@ class PillSchedule {
   int get hashCode => Object.hash(hour, minute);
 }
 
-class Pill implements PbEntity {
+class Pill with Remindable implements PbEntity {
   static const codec = _PillReminderCodec();
 
   final String id;
@@ -357,6 +362,12 @@ class Pill implements PbEntity {
   final List<PillIntake> intakes;
   final String? eventId; // linked PetEvent for notifications
 
+  /// «Напомнить за» до каждого приёма (по умолчанию — точно во время приёма).
+  @override
+  final int remindBeforeValue;
+  @override
+  final RemindBeforeVariant remindBeforeVariant;
+
   const Pill({
     required this.id,
     required this.name,
@@ -373,6 +384,8 @@ class Pill implements PbEntity {
     this.takenSchedules = const {},
     this.intakes = const [],
     this.eventId,
+    this.remindBeforeValue = 0,
+    this.remindBeforeVariant = RemindBeforeVariant.minutes,
   });
 
   // ── Backward-compat accessors ─────────────────────────────────────────────
@@ -386,7 +399,8 @@ class Pill implements PbEntity {
   /// доза не задана.
   String get doseLabel => doseValue == 0
       ? ''
-      : '$doseValue ${DoseUnit.declensionByUnit(doseValue, doseUnit)}'.trimRight();
+      : '$doseValue ${DoseUnit.declensionByUnit(doseValue, doseUnit)}'
+            .trimRight();
 
   bool get isActive {
     if (endDate == null) return true;
@@ -510,6 +524,8 @@ class Pill implements PbEntity {
     Map<String, List<int>>? takenSchedules,
     List<PillIntake>? intakes,
     String? eventId,
+    int? remindBeforeValue,
+    RemindBeforeVariant? remindBeforeVariant,
   }) => Pill(
     id: id,
     name: name ?? this.name,
@@ -526,6 +542,8 @@ class Pill implements PbEntity {
     takenSchedules: takenSchedules ?? this.takenSchedules,
     intakes: intakes ?? this.intakes,
     eventId: eventId ?? this.eventId,
+    remindBeforeValue: remindBeforeValue ?? this.remindBeforeValue,
+    remindBeforeVariant: remindBeforeVariant ?? this.remindBeforeVariant,
   );
 
   // ── Serialization ─────────────────────────────────────────────────────────
@@ -592,6 +610,11 @@ class Pill implements PbEntity {
       takenSchedules: _parseTakenSchedules(json['takenSchedules']),
       intakes: _parseIntakes(json['intakes'], frequencyType, takenDates),
       eventId: json['eventId'] as String?,
+      remindBeforeValue: json['remindBeforeValue'] as int? ?? 0,
+      remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
+        (v) => v.name == (json['remindBeforeVariant'] as String?),
+        orElse: () => RemindBeforeVariant.minutes,
+      ),
     );
   }
 
@@ -604,10 +627,7 @@ class Pill implements PbEntity {
   ) {
     if (raw is List) {
       return raw
-          .map(
-            (e) =>
-                PillIntake.fromJson((e as Map).cast<String, dynamic>()),
-          )
+          .map((e) => PillIntake.fromJson((e as Map).cast<String, dynamic>()))
           .toList();
     }
     if (frequencyType == PillFrequencyType.onDemand) {
@@ -679,6 +699,8 @@ class Pill implements PbEntity {
     'takenSchedules': takenSchedules,
     'intakes': intakes.map((i) => i.toJson()).toList(),
     'eventId': eventId,
+    'remindBeforeValue': remindBeforeValue,
+    'remindBeforeVariant': remindBeforeVariant.name,
   };
 
   @override
@@ -705,6 +727,8 @@ class Pill implements PbEntity {
     "taken_dates": frequencyType == PillFrequencyType.onDemand
         ? intakes.map((i) => i.toJson()).toList()
         : takenDates,
+    'remind_before_value': remindBeforeValue,
+    'remind_before_variant': remindBeforeVariant.name,
   };
 }
 
@@ -736,9 +760,11 @@ class _PillReminderCodec extends PbCodec<Pill> {
     final rawSchedules = data['schedules'];
     final schedules = (rawSchedules is List && rawSchedules.isNotEmpty)
         ? rawSchedules
-              .map((s) => PillSchedule.fromJson(
-                    (s as Map).map((k, v) => MapEntry(k.toString(), v)),
-                  ))
+              .map(
+                (s) => PillSchedule.fromJson(
+                  (s as Map).map((k, v) => MapEntry(k.toString(), v)),
+                ),
+              )
               .toList()
         : const [PillSchedule(hour: 9, minute: 0)];
 

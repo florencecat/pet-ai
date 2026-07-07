@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
+import 'package:pet_satellite/models/remindable.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+
+// RemindBeforeVariant/Remindable живут в remindable.dart; ре-экспортируем, чтобы
+// импортёры event.dart (UI, сервисы) видели их без отдельного импорта.
+export 'package:pet_satellite/models/remindable.dart';
 
 enum RepeatInterval { none, daily, weekly, monthly, custom }
 
@@ -37,43 +42,6 @@ extension RepeatIntervalX on RepeatInterval {
       case 'none':
       default:
         return RepeatInterval.none;
-    }
-  }
-}
-
-enum RemindBeforeVariant { days, hours, minutes }
-
-extension RemindBeforeVariantX on RemindBeforeVariant {
-  String get label {
-    switch (this) {
-      case RemindBeforeVariant.days:
-        return 'дней';
-      case RemindBeforeVariant.hours:
-        return 'часов';
-      case RemindBeforeVariant.minutes:
-        return 'минут';
-    }
-  }
-
-  String declension(int count) {
-    switch (this) {
-      case RemindBeforeVariant.days:
-        return dayDeclension(count);
-      case RemindBeforeVariant.hours:
-        return hourDeclension(count);
-      case RemindBeforeVariant.minutes:
-        return minuteDeclension(count);
-    }
-  }
-
-  Duration duration(int count) {
-    switch (this) {
-      case RemindBeforeVariant.days:
-        return Duration(days: count);
-      case RemindBeforeVariant.hours:
-        return Duration(hours: count);
-      case RemindBeforeVariant.minutes:
-        return Duration(minutes: count);
     }
   }
 }
@@ -262,7 +230,7 @@ class EventCategories {
   }
 }
 
-class Event implements PbEntity {
+class Event with Remindable implements PbEntity {
   static const codec = _EventCodec();
 
   final String id;
@@ -294,7 +262,9 @@ class Event implements PbEntity {
   /// Событие на весь день — время не указывается (хранится 00:00).
   bool allDay;
 
+  @override
   RemindBeforeVariant remindBeforeVariant;
+  @override
   int remindBeforeValue;
 
   /// Откуда создано событие (вручную, препарат, вакцина, заметка).

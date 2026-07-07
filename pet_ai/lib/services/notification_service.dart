@@ -403,9 +403,8 @@ class NotificationService {
       );
       scheduledTime = base.subtract(Duration(days: event.remindBeforeValue));
     } else {
-      scheduledTime = event.dateTime.subtract(
-        event.remindBeforeVariant.duration(event.remindBeforeValue),
-      );
+      // Смещение «за N единиц» вычисляет сам Remindable.
+      scheduledTime = event.reminderTimeFor(event.dateTime);
     }
 
     // Тихие часы: напоминание НЕ теряется — планируем его в отдельный тихий
