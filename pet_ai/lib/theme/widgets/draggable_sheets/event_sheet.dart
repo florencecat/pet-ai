@@ -416,7 +416,8 @@ class _EventSheetState extends State<EventSheet> {
               _InfoRow(
                 icon: Icons.notifications_outlined,
                 iconColor: accent,
-                label: 'Напоминание за ${event.remindBeforeValue} мин',
+                label:
+                    'Напоминание за ${event.remindBeforeValue} ${event.remindBeforeVariant.declension(event.remindBeforeValue)}',
               ),
             ],
             if (event.petIds.isNotEmpty && _profilesLoaded) ...[
