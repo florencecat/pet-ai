@@ -522,7 +522,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   final isLast = i == _profiles.length - 1;
                   return _PetRow(
                     profile: p,
-                    isLast: isLast && false, // always show divider before "add"
+                    isLast: false,
                     onTap: () async {
                       await PetProfileService().setActiveProfile(p.id);
                       await ac.reloadProfile();
