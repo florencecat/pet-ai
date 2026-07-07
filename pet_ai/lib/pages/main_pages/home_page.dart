@@ -174,7 +174,7 @@ class HomePageState extends State<HomePage> {
       backgroundColor: Colors.transparent,
       builder: (_) => NoteSheet(profile: _profile!),
     );
-    _initScreen();
+    await _initScreen();
   }
 
   void _openDocuments(BuildContext context) async {
