@@ -15,6 +15,7 @@ import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/pet_image_source_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
+import 'package:pet_satellite/theme/widgets/switch.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -65,8 +66,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
 
   Future<void> _saveProfile() async {
     if (_profile == null || _deleted) return;
-    try { await PetProfileService().saveProfile(_profile!); }
-    catch (_) { }
+    try {
+      await PetProfileService().saveProfile(_profile!);
+    } catch (_) {}
     // Fire-and-forget cloud upsert профиля (owner = id пользователя).
     final uid = CloudSyncService.instance.userId;
     if (uid != null) {
@@ -77,8 +79,9 @@ class _PetProfilePageState extends State<PetProfilePage> {
   Future<void> _savePalette() async {
     if (_profile == null) return;
     final appearance = mounted ? context.read<AppearanceController>() : null;
-    try { appearance?.updatePetPalette(_profile!.palette); }
-    catch (_) { }
+    try {
+      appearance?.updatePetPalette(_profile!.palette);
+    } catch (_) {}
   }
 
   // ── Field editors ─────────────────────────────────────────────────────────
@@ -282,10 +285,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          title: Text(
-            'Профиль питомца',
-            style: theme.textTheme.titleMedium,
-          ),
+          title: Text('Профиль питомца', style: theme.textTheme.titleMedium),
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -818,10 +818,8 @@ Future<void> _showGenderSheet(
     context: context,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black54,
-    builder: (ctx) => _GenderSheet(
-      initial: current,
-      onChanged: onGenderChanged,
-    ),
+    builder: (ctx) =>
+        _GenderSheet(initial: current, onChanged: onGenderChanged),
   );
 }
 
@@ -1171,9 +1169,8 @@ class _CastrationSheetState extends State<_CastrationSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Стерилизован(а)', style: theme.textTheme.bodyMedium),
-                Switch(
+                OutlinedSwitch(
                   value: _castrated,
-                  activeThumbColor: ac.primaryColor,
                   onChanged: (v) => setState(() {
                     _castrated = v;
                     if (!v) {

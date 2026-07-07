@@ -12,6 +12,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dar
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pill_icon.dart';
 import 'package:pet_satellite/theme/widgets/remind_before_picker.dart';
+import 'package:pet_satellite/theme/widgets/switch.dart';
 import 'package:pet_satellite/theme/widgets/toast.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -624,14 +625,10 @@ class _PillForm extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
-            Switch(
-              value: form.hasEndDate,
-              activeThumbColor: accent,
-              onChanged: (v) {
-                form.hasEndDate = v;
-                onChanged();
-              },
-            ),
+            OutlinedSwitch(value: form.hasEndDate, onChanged: (v) {
+              form.hasEndDate = v;
+              onChanged();
+            })
           ],
         ),
         if (form.hasEndDate) ...[

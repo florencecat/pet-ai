@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/theme/widgets/switch.dart';
 import 'package:provider/provider.dart';
 
 import 'package:pet_satellite/models/history_filter.dart';
@@ -135,18 +136,7 @@ class _FilterRow extends StatelessWidget {
           Expanded(
             child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
           ),
-          Switch(
-            value: value,
-            activeThumbColor: accent,
-            inactiveThumbColor: accent,
-            trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
-              if (states.contains(WidgetState.selected)) {
-                return Colors.transparent;
-              }
-              return accent;
-            }),
-            onChanged: onChanged,
-          ),
+          OutlinedSwitch(value: value, onChanged: onChanged)
         ],
       ),
     );

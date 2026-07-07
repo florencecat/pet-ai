@@ -23,6 +23,7 @@ import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/theme/widgets/settings_widgets.dart';
+import 'package:pet_satellite/theme/widgets/switch.dart';
 import 'package:provider/provider.dart';
 import '../../services/pet_profile_service.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -322,7 +323,9 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) setState(() {}); // тумблер остаётся выключенным
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_sync.lastError ?? 'Не удалось загрузить данные')),
+          SnackBar(
+            content: Text(_sync.lastError ?? 'Не удалось загрузить данные'),
+          ),
         );
       }
     }
@@ -337,9 +340,9 @@ class _SettingsPageState extends State<SettingsPage> {
       await _sync.setSyncEnabled(true);
       if (mounted) setState(() {});
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Синхронизация включена')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Синхронизация включена')));
       }
     } catch (_) {
       if (mounted) setState(() {}); // тумблер остаётся выключенным
@@ -517,9 +520,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 )
               else ...[
                 ..._profiles.asMap().entries.map((entry) {
-                  final i = entry.key;
                   final p = entry.value;
-                  final isLast = i == _profiles.length - 1;
                   return _PetRow(
                     profile: p,
                     isLast: false,
@@ -609,18 +610,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: 'Создавать события автоматически',
                 subtitle: 'Без подтверждения, сразу после ответа ИИ',
                 iconColor: ac.primaryColor,
-                trailing: Switch(
-                  inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
-                    states,
-                  ) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.transparent;
-                    }
-                    return ac.primaryColor;
-                  }),
+                trailing: OutlinedSwitch(
                   value: _autoCreateEntities,
-                  activeThumbColor: ac.primaryColor,
                   onChanged: (v) async {
                     await setAutoCreateEntitiesEnabled(v);
                     if (mounted) setState(() => _autoCreateEntities = v);
@@ -674,18 +665,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: 'Подтверждать удаление',
                 subtitle: 'Спрашивать перед удалением записей',
                 iconColor: ac.primaryColor,
-                trailing: Switch(
-                  inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
-                    states,
-                  ) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.transparent;
-                    }
-                    return ac.primaryColor;
-                  }),
+                trailing: OutlinedSwitch(
                   value: _confirmDeleteEnabled,
-                  activeThumbColor: ac.primaryColor,
                   onChanged: (v) async {
                     await setDeleteConfirmationEnabled(v);
                     if (mounted) setState(() => _confirmDeleteEnabled = v);
@@ -698,21 +679,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: 'Отправлять отчёты об ошибках',
                 subtitle: 'Обезличенные данные помогают исправлять сбои',
                 iconColor: ac.primaryColor,
-                trailing: Switch(
-                  inactiveThumbColor: ac.primaryColor,
-                  trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
-                    states,
-                  ) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.transparent;
-                    }
-                    return ac.primaryColor;
-                  }),
+                trailing: OutlinedSwitch(
                   value: _crash.enabled,
-                  activeThumbColor: ac.primaryColor,
                   onChanged: (v) => _crash.setEnabled(v),
                 ),
-                last: true,
               ),
             ],
           ),
@@ -840,7 +810,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.data_object,
                   label: 'Экспорт данных',
                   iconColor: Colors.blue,
-                  onTap: () async => await PetProfileService().exportAllProfiles(),
+                  onTap: () async =>
+                      await PetProfileService().exportAllProfiles(),
                 ),
                 SettingsCardDivider(),
                 SettingsRow(
@@ -969,21 +940,8 @@ class _SyncCard extends StatelessWidget {
             ),
       label: 'Облачная синхронизация',
       subtitle: _statusLabel,
-      trailing: isAuthenticated
-          ? Switch(
-              value: syncEnabled,
-              activeThumbColor: syncEnabled ? _statusColor : primaryColor,
-              inactiveThumbColor: primaryColor,
-              trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
-                states,
-              ) {
-                if (states.contains(WidgetState.selected)) {
-                  return Colors.transparent;
-                }
-                return primaryColor;
-              }),
-              onChanged: onToggle,
-            )
+      trailing: isAuthenticated && sync.isSyncing != true
+          ? OutlinedSwitch(value: syncEnabled, onChanged: onToggle, activeThumbColor: _statusColor)
           : null,
     );
   }
