@@ -216,7 +216,10 @@ class CloudSyncService extends ChangeNotifier {
       for (final r in recs) {
         final fname = r.data['file'] as String?;
         if (fname == null || fname.isEmpty) continue;
-        final resp = await http.get(_pb.files.getUrl(r, fname));
+        final fileToken = await _pb.files.getToken();
+        final resp = await http.get(
+          _pb.files.getUrl(r, fname, token: fileToken),
+        );
         if (resp.statusCode != 200) continue;
         final catId = r.data['category'] as String?;
         docs.add(
@@ -224,7 +227,8 @@ class CloudSyncService extends ChangeNotifier {
             petId: petId,
             remoteId: r.id,
             name: r.data['caption'] as String? ?? fname,
-            date: DateTime.tryParse(r.data['date'] as String? ?? '') ??
+            date:
+                DateTime.tryParse(r.data['date'] as String? ?? '') ??
                 DateTime.now(),
             fileName: fname,
             bytes: resp.bodyBytes,
@@ -512,11 +516,13 @@ class CloudSyncService extends ChangeNotifier {
 
       final petFilter = 'pet = "$petId"';
 
-      final weightEntries = await _fetchAllAs('weights', petFilter, WeightEntry.codec);
-      weightEntries.sort((a, b) => a.date.compareTo(b.date));
-      profile.weightHistory = WeightHistory(
-        entries: weightEntries,
+      final weightEntries = await _fetchAllAs(
+        'weights',
+        petFilter,
+        WeightEntry.codec,
       );
+      weightEntries.sort((a, b) => a.date.compareTo(b.date));
+      profile.weightHistory = WeightHistory(entries: weightEntries);
       profile.moodHistory = MoodHistory(
         entries: await _fetchAllAs('moods', petFilter, MoodEntry.codec),
       );
@@ -533,11 +539,7 @@ class CloudSyncService extends ChangeNotifier {
           TreatmentEntry.codec,
         ),
       );
-      profile.pillReminders = await _fetchAllAs(
-        'pills',
-        petFilter,
-        Pill.codec,
-      );
+      profile.pillReminders = await _fetchAllAs('pills', petFilter, Pill.codec);
 
       await PetProfileService().saveProfile(profile);
 
@@ -554,7 +556,6 @@ class CloudSyncService extends ChangeNotifier {
       await _pullDocuments(petId);
 
       _markSynced();
-
     } catch (e) {
       _lastError = _friendlyError(e);
       _setStatus(SyncStatus.error);
@@ -635,7 +636,8 @@ class CloudSyncService extends ChangeNotifier {
     String petId,
   ) async {
     try {
-      final url = _pb.files.getUrl(record, filename);
+      final fileToken = await _pb.files.getToken();
+      final url = _pb.files.getUrl(record, filename, token: fileToken);
       final resp = await http.get(url);
       if (resp.statusCode != 200) return null;
       final dir = await getTemporaryDirectory();
