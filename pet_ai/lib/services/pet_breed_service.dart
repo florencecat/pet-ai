@@ -53,7 +53,9 @@ class PetBreed {
 
 class PetBreedService {
   static PetBreed breedById(PetSpecies species, String id) {
-    return breedsBySpecies(species).firstWhere((b) => b.id == id);
+    return breedsBySpecies(
+      species,
+    ).firstWhere((b) => b.id == id, orElse: () => PetBreed.empty());
   }
 
   /// Looks up a breed across both built-in and user-created lists.
@@ -107,10 +109,7 @@ class PetBreedService {
         .toList();
   }
 
-  static Future<PetBreed> saveCustomBreed(
-    String speciesId,
-    String name,
-  ) async {
+  static Future<PetBreed> saveCustomBreed(String speciesId, String name) async {
     final prefs = await SharedPreferences.getInstance();
     final key = '$_customKey$speciesId';
     final list = prefs.getStringList(key) ?? [];
@@ -136,7 +135,6 @@ class PetBreedService {
         return [];
     }
   }
-
 
   static List<PetBreed> dogBreeds() => [
     PetBreed.dog(id: '7qx1sd25jnvcm5f', name: 'Абиссинская'),
@@ -177,7 +175,7 @@ class PetBreedService {
     PetBreed.dog(id: '9oh0qwq7ihg7a03', name: 'Сибирский хаски'),
     PetBreed.dog(id: 'rf3xu3mqc8rfzyb', name: 'Вельш-корги пемброк'),
     PetBreed.dog(id: '6c8d9852aj0ckrx', name: 'Шиба-ину'),
-    PetBreed.dog(id: '3uz5khjr1yj5by1', name: 'Метис')
+    PetBreed.dog(id: '3uz5khjr1yj5by1', name: 'Метис'),
   ];
 
   static List<PetBreed> catBreeds() => [
@@ -214,7 +212,7 @@ class PetBreedService {
     PetBreed.cat(id: 'trarxajcfpe4842', name: 'Мейн-кун'),
     PetBreed.cat(id: 'pnpu8kq9c0kqpo9', name: 'Сфинкс'),
     PetBreed.cat(id: 'yms3e0medxlf8av', name: 'Бенгальская'),
-    PetBreed.cat(id: 'rhzr9bz6ek9m2ta', name: 'Метис')
+    PetBreed.cat(id: 'rhzr9bz6ek9m2ta', name: 'Метис'),
   ];
 
   static List<PetBreed> rabbitBreeds() => [
@@ -244,7 +242,7 @@ class PetBreedService {
   static List<PetBreed> popularRabbitBreeds() => [
     PetBreed.rabbit(id: 'cdstx9zf5keijgl', name: 'Вислоухий'),
     PetBreed.rabbit(id: '62g408tmiwjyhq8', name: 'Карликовый'),
-    PetBreed.rabbit(id: 'saxh73763u2g61h', name: 'Ангорский')
+    PetBreed.rabbit(id: 'saxh73763u2g61h', name: 'Ангорский'),
   ];
 
   static List<PetBreed> carrotBreeds() => [
