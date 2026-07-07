@@ -1,3 +1,15 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile =
+    rootProject.file("key.properties")
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(
+        FileInputStream(keystorePropertiesFile)
+    )
+}
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -9,6 +21,20 @@ android {
     namespace = "com.petsputnik.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
+    signingConfigs {
+        create("release") {
+            keyAlias =
+                keystoreProperties["keyAlias"] as String
+            keyPassword =
+                keystoreProperties["keyPassword"] as String
+            storeFile = rootProject.file(
+                keystoreProperties["storeFile"] as String
+            )
+            storePassword =
+                keystoreProperties["storePassword"] as String
+        }
+    }
 
     compileOptions {
         // Core library desugaring is required by flutter_local_notifications
@@ -33,7 +59,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

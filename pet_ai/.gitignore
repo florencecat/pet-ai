@@ -49,3 +49,8 @@ pubspec.lock
 
 .env
 .env.local
+
+# Android signing keys
+android/key.properties
+android/keys/*.jks
+android/keys/*.keystore
