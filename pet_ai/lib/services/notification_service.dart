@@ -386,6 +386,12 @@ class NotificationService {
     final s = settings ?? await NotificationSettings.load();
     if (!s.enabled) return;
 
+    // курс завершён — не планируем
+    final end = event.repeatEndDate;
+    if (end != null && DateTime.now().isAfter(DateTime(end.year, end.month, end.day, 23, 59, 59))) {
+      return;
+    }
+
     final id = event.id.hashCode;
 
     // Вычисляем время напоминания (с учётом отсрочки).
