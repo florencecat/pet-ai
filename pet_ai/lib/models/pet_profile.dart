@@ -219,6 +219,11 @@ class Pet implements PbEntity {
     'user': ownerId,
     'species': species.id,
     'breed': breed.id,
+    // Имя кастомной породы (id 'custom_…') существует только локально и
+    // отсутствует во встроенных списках. Передаём его отдельно, чтобы порода
+    // не терялась при переносе на новое устройство; встроенные породы
+    // восстанавливаются по id, поэтому для них поле не нужно.
+    if (breed.id.startsWith('custom_')) 'breed_custom_name': breed.name,
     'gender': gender.name,
     'castrated': castrated,
     'castration_date': castratedDate,
@@ -241,9 +246,18 @@ class _PetCodec extends PbCodec<Pet> {
     final species = BuiltInSpecies.byId(speciesId) ?? BuiltInSpecies.other;
 
     final breedId = data['breed'] as String? ?? '';
-    final breed = breedId.isNotEmpty
+    var breed = breedId.isNotEmpty
         ? PetBreedService.breedById(species, breedId)
         : PetBreed.empty();
+    // Кастомная порода отсутствует во встроенных списках → breedById вернул
+    // пустую. Восстанавливаем её имя из breed_name (см. toPocketBase), иначе на
+    // новом устройстве порода потерялась бы без следа.
+    if (breed.isEmpty && breedId.isNotEmpty) {
+      final customName = (data['breed_custom_name'] as String?)?.trim() ?? '';
+      if (customName.isNotEmpty) {
+        breed = PetBreed(id: breedId, name: customName, speciesId: species.id);
+      }
+    }
 
     final gender = data['gender'] != null
         ? Gender.values.firstWhere(
