@@ -815,6 +815,11 @@ class _PillReminderCodec extends PbCodec<Pill> {
       takenDates: takenDates,
       takenSchedules: Pill._parseTakenSchedules(data['taken_schedules']),
       intakes: intakes,
+      remindBeforeValue: (data['remind_before_value'] as num?)?.toInt() ?? 0,
+      remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
+        (v) => v.name == (data['remind_before_variant'] as String?),
+        orElse: () => RemindBeforeVariant.minutes,
+      ),
     );
   }
 }

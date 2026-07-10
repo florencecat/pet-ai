@@ -226,7 +226,7 @@ class Pet implements PbEntity {
     if (breed.id.startsWith('custom_')) 'breed_custom_name': breed.name,
     'gender': gender.name,
     'castrated': castrated,
-    'castration_date': castratedDate,
+    'castration_date': castratedDate?.toIso8601String(),
     'coat': coat,
     'notes': notes,
     'allergies': allergies,
