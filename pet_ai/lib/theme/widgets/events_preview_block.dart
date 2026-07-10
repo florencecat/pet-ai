@@ -45,7 +45,7 @@ class EventPreviewBlock extends StatelessWidget {
                   'Нет запланированных событий',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary.withAlpha(128),
-                    fontSize: 16,
+
                   ),
                 ),
               ],

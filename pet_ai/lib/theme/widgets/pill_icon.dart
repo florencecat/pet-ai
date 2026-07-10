@@ -264,7 +264,7 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                                   child: Text(
                                     k.name,
                                     style: theme.textTheme.bodySmall!.copyWith(
-                                      fontSize: 10,
+
                                       color: selected
                                           ? context
                                                 .watch<AppearanceController>()

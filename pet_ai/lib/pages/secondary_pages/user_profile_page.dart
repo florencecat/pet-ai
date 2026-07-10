@@ -568,7 +568,7 @@ class _VerifiedBadge extends StatelessWidget {
         Text(
           'Подтверждена',
           style: TextStyle(
-            fontSize: 12,
+
             fontWeight: FontWeight.w600,
             color: ThemeColors.ok.mainColor,
           ),

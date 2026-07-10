@@ -900,7 +900,7 @@ class _EventSheetState extends State<EventSheet> {
                           child: Text(
                             WeekDays.labels[day]!,
                             style: TextStyle(
-                              fontSize: 12,
+
                               fontWeight: FontWeight.w600,
                               color: selected
                                   ? Colors.white
@@ -946,7 +946,7 @@ class _CategoryTag extends StatelessWidget {
           Text(
             category.name,
             style: TextStyle(
-              fontSize: 12,
+
               fontWeight: FontWeight.w600,
               color: category.color,
             ),
@@ -981,7 +981,7 @@ class _SourceTag extends StatelessWidget {
           Text(
             source.caption,
             style: TextStyle(
-              fontSize: 11,
+
               color: source.color.withAlpha(200),
               fontWeight: FontWeight.w500,
             ),
@@ -1073,7 +1073,7 @@ class _PetsInfoRow extends StatelessWidget {
                 child: Text(
                   p.name.isEmpty ? 'Питомец' : p.name,
                   style: TextStyle(
-                    fontSize: 12,
+
                     fontWeight: FontWeight.w600,
                     color: p.palette.mainColor,
                   ),

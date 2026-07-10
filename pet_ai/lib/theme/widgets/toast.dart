@@ -92,7 +92,7 @@ class _ToastCardState extends State<_ToastCard>
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+
                 fontWeight: FontWeight.w500,
               ),
             ),

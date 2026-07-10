@@ -321,7 +321,7 @@ class GlassBadge extends StatelessWidget {
       label: Text(
         name,
         style: TextStyle(
-          fontSize: 12,
+
           fontWeight: FontWeight.w600,
           color: color.withAlpha(200),
         ),

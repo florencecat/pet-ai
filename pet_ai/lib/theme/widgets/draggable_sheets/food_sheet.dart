@@ -299,7 +299,7 @@ class _FoodDialogState extends State<FoodDialog> {
                             Text(
                               mt.label,
                               style: TextStyle(
-                                fontSize: 11,
+
                                 fontWeight: FontWeight.w600,
                                 color: selected ? Colors.white : accent,
                               ),
@@ -511,7 +511,7 @@ class _KindSelector extends StatelessWidget {
                       k.label,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 10,
+
                         fontWeight: FontWeight.w600,
                         color: selected ? Colors.white : color,
                       ),
@@ -589,7 +589,7 @@ class _GramInput extends StatelessWidget {
                   'г',
                   style: Theme.of(
                     context,
-                  ).textTheme.titleLarge!.copyWith(fontSize: 20, color: color),
+                  ).textTheme.titleLarge!.copyWith( color: color),
                 ),
               ],
             ),
@@ -645,7 +645,7 @@ class _FoodEntryCard extends StatelessWidget {
             child: Text(
               '${entry.appetiteScore}',
               style: TextStyle(
-                fontSize: 18,
+
                 fontWeight: FontWeight.bold,
                 color: _appetiteColor,
               ),
@@ -713,7 +713,7 @@ class _Chip extends StatelessWidget {
         Text(
           label,
           style: context.subtitleStyle.copyWith(
-            fontSize: 11,
+
             color: color,
           ),
         ),

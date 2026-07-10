@@ -231,7 +231,7 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                                   child: Text(
                                     k.shortLabel,
                                     style: theme.textTheme.bodySmall!.copyWith(
-                                      fontSize: 10,
+
                                       color: selected
                                           ? context
                                                 .watch<AppearanceController>()

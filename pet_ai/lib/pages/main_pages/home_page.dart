@@ -496,7 +496,6 @@ class HomePageState extends State<HomePage> {
                                   .copyWith(
                                     inherit: true,
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 22,
                                   ),
                             ),
                           ],
@@ -876,7 +875,6 @@ class _PetTimeline extends StatelessWidget {
                 '···',
                 style: TextStyle(
                   color: context.watch<AppearanceController>().secondaryColor,
-                  fontSize: 18,
                   height: 1,
                 ),
               ),
@@ -922,7 +920,6 @@ class _PetTimeline extends StatelessWidget {
                   dateLabel,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    fontSize: 11,
                     height: 1.2,
                     color: item.isCompleted
                         ? context.watch<AppearanceController>().secondaryColor
@@ -937,7 +934,6 @@ class _PetTimeline extends StatelessWidget {
                     timeLabel,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                      fontSize: 10,
                       height: 1.1,
                       color: item.isCompleted
                           ? context
@@ -1215,8 +1211,6 @@ class _ProfileSwitcherSheet extends StatelessWidget {
     );
   }
 }
-
-// ─── Карточка для ветеринара ──────────────────────────────────────────────────
 
 class _VetCardSheet extends StatelessWidget {
   final Pet profile;

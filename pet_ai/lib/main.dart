@@ -360,6 +360,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       // its FAB and bottom content above the glass navbar automatically.
       body: MediaQuery(
         data: MediaQuery.of(context).copyWith(
+          textScaler: MediaQuery.of(
+            context,
+          ).textScaler.clamp(minScaleFactor: 0.8, maxScaleFactor: 1.1),
           padding: MediaQuery.of(context).padding.copyWith(
             bottom:
                 MediaQuery.of(context).padding.bottom +

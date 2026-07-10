@@ -528,7 +528,7 @@ class _PillForm extends StatelessWidget {
                         Text(
                           label,
                           style: TextStyle(
-                            fontSize: 13,
+
                             fontWeight: FontWeight.w600,
                             color: accent,
                           ),
@@ -574,7 +574,7 @@ class _PillForm extends StatelessWidget {
                       Text(
                         'Добавить',
                         style: TextStyle(
-                          fontSize: 13,
+
                           color: accent,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1453,7 +1453,7 @@ class _PillDetailSheetState extends State<PillDetailSheet> {
                                   Text(
                                     'Принято',
                                     style: TextStyle(
-                                      fontSize: 12,
+
                                       fontWeight: FontWeight.w600,
                                       color: ThemeColors.ok.mainColor,
                                     ),

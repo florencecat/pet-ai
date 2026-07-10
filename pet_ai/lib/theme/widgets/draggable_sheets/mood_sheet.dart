@@ -147,7 +147,7 @@ class _MoodDialogState extends State<MoodDialog> {
                               Text(
                                 mt.label,
                                 style: TextStyle(
-                                  fontSize: 11,
+
                                   fontWeight: FontWeight.w600,
                                   color: selected
                                       ? Colors.white

@@ -396,14 +396,7 @@ class EventsPageState extends State<EventsPage> {
                           ).textTheme.bodyLarge!,
                         ),
                         daysOfWeekStyle: DaysOfWeekStyle(
-                          weekdayStyle: Theme.of(context).textTheme.bodySmall!
-                              .copyWith(inherit: true, fontSize: 13),
-                          weekendStyle: Theme.of(context).textTheme.bodySmall!
-                              .copyWith(
-                                inherit: true,
-                                fontSize: 13,
-                                color: context.subtitleColor,
-                              ),
+                          weekdayStyle: Theme.of(context).textTheme.bodySmall!,
                         ),
                         eventLoader: (day) => _events.where((e) {
                           if (!e.occursOn(day)) return false;
@@ -597,7 +590,6 @@ class _PetSelectorChip extends StatelessWidget {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 220),
               style: TextStyle(
-                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: selected ? Colors.white : color.withAlpha(200),
               ),
@@ -821,7 +813,6 @@ class _ActionBtn extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
               fontWeight: FontWeight.w600,
               color: color,
             ),

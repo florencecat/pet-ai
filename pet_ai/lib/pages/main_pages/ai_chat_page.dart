@@ -748,7 +748,7 @@ class _WelcomeState extends StatelessWidget {
                   child: Text(
                     reply,
                     style: const TextStyle(
-                      fontSize: 13,
+
                       color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),

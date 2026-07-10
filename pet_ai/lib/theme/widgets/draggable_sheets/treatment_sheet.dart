@@ -589,7 +589,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                     child: Text(
                       countdownText,
                       style: TextStyle(
-                        fontSize: 13,
+
                         fontWeight: FontWeight.w600,
                         color: countdownColor,
                       ),

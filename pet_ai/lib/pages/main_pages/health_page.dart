@@ -978,7 +978,7 @@ class _HealthScoreBadge extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall!.copyWith(
                     color: score.palette.darkShade.withAlpha(160),
                     fontWeight: FontWeight.w700,
-                    fontSize: 10,
+
                   ),
                 ),
                 Text(
@@ -1166,7 +1166,7 @@ class _StatChip extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            fontSize: 10,
+
             color: color,
             fontWeight: FontWeight.w700,
           ),
@@ -1765,7 +1765,7 @@ class _HealthCelebrationOverlayState extends State<_HealthCelebrationOverlay>
                               'Всё в порядке',
                               style: TextStyle(
                                 color: widget.color,
-                                fontSize: 18,
+
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
