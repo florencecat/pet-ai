@@ -242,7 +242,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     final hasProfiles = await PetProfileService().hasProfiles();
     if (mounted) {
       if (hasProfiles) {
-        Navigator.of(context).pop();
+        Navigator.of(context, rootNavigator: true).pop();
       } else {
         Navigator.of(context).pushReplacementNamed('/registration');
       }

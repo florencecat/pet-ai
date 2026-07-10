@@ -732,13 +732,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 SettingsRow(
                   icon: Icons.logout,
                   label: 'Выйти из аккаунта',
-                  onTap: _user != null ? () async => await _logout() : null,
-                  iconColor: _user != null
-                      ? ThemeColors.dangerZone
-                      : ThemeColors.border,
-                  labelColor: _user != null ? ThemeColors.dangerZone : null,
+                  onTap: () async => await _logout(),
+                  iconColor: ThemeColors.dangerZone,
+                  labelColor: ThemeColors.dangerZone,
                   last: true,
-                ),
+                )
             ],
           ),
           const SizedBox(height: 24),

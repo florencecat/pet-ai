@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:pet_satellite/models/user_profile.dart';
+import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/services/cloud_sync_service.dart';
+import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/services/file_storage_service.dart';
+import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
@@ -214,6 +221,67 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
     }
   }
 
+  /// Безвозвратно удаляет аккаунт: сначала все данные на сервере
+  /// (питомцы/история/файлы/чаты), затем саму запись пользователя, затем
+  /// локальные данные. Удаление сетевое — при сбое ничего локально не трогаем и
+  /// показываем ошибку, чтобы не отрапортовать об удалении ложно (данные
+  /// пользователя не должны остаться на сервере).
+  Future<void> _deleteAccount(BuildContext context) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить аккаунт?',
+      message:
+          'Все данные — питомцы, история, документы и переписка с ИИ — будут '
+          'безвозвратно удалены с сервера и с этого устройства. Восстановить '
+          'их будет невозможно.',
+      ignorePreferences: true,
+    );
+    if (!confirmed || !context.mounted) return;
+
+    // Модальный индикатор на время сетевого удаления (несколько секунд).
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final sync = GetIt.instance<CloudSyncService>();
+
+    try {
+      await sync.wipeRemote();
+      await UserProfileService().deleteAccount();
+    } catch (_) {
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              sync.lastError ?? 'Не удалось удалить аккаунт — проверьте связь',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Сервер очищен — стираем локальные данные (файлы документов, события,
+    // профили, историю чата и локальный профиль пользователя).
+    final profiles = await PetProfileService().loadAllProfiles();
+    for (final p in profiles) {
+      await FileStorageService().clearAll(p.id);
+    }
+    await EventService().clearEventsForAll(profiles.map((p) => p.id).toList());
+    await PetProfileService().clearAll();
+    await AIChatController.clearMessageHistory();
+    await UserProfileService().delete();
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // закрыть индикатор
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil('/registration', (_) => false);
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -348,24 +416,12 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
               icon: Icons.delete_outline,
               label: 'Удалить профиль',
               accent: ThemeColors.dangerZone,
-              onTap: _confirmDelete,
+              onTap: () async => await _deleteAccount(context),
             ),
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _confirmDelete() async {
-    final confirmed = await confirmDelete(
-      context,
-      title: 'Удалить профиль?',
-      message: 'Данные вашего аккаунта будут удалены с устройства.',
-    );
-    if (confirmed) {
-      await UserProfileService().delete();
-      if (mounted) Navigator.pop(context, null);
-    }
   }
 }
 
@@ -567,9 +623,7 @@ class _VerifiedBadge extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           'Подтверждена',
-          style: TextStyle(
-
-            fontWeight: FontWeight.w600,
+          style: context.subtitleStyle.copyWith(
             color: ThemeColors.ok.mainColor,
           ),
         ),

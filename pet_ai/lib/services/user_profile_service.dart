@@ -72,4 +72,10 @@ class UserProfileService {
   /// Requests a new OTP (resend).
   Future<AuthResult> resendOTP(String email) =>
       GetIt.instance<AuthService>().resendOTP(email);
+
+  /// Permanently deletes the remote account (users record) and clears the
+  /// session. Local data must be cleared separately by the caller.
+  /// Rethrows on failure so the caller can avoid a false "deleted" state.
+  Future<void> deleteAccount() =>
+      GetIt.instance<AuthService>().deleteAccount();
 }

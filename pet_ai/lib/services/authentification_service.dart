@@ -106,10 +106,17 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Permanently deletes the authenticated user's account record on the server
+  /// and clears the local session.
+  Future<void> deleteAccount() async {
+    final record = pbService.pb.authStore.record;
+    if (record == null) return;
+    await pbService.pb.collection(_usersCollection).delete(record.id);
+    pbService.pb.authStore.clear();
+  }
+
   /// Verifies the [code] against the [otpId] returned by [register],
   /// [loginWithOTP], or [resendOTP].
-  ///
-  /// On success, [pb].authStore is populated — the user is now authenticated.
   Future<AuthResult> verifyOTP({
     required String otpId,
     required String code,
