@@ -392,7 +392,7 @@ class NotificationService {
       return;
     }
 
-    final id = event.id.hashCode;
+    final id = _notificationId(event.id);
 
     // Вычисляем время напоминания (с учётом отсрочки).
     // Для события «на весь день» отсчёт от полуночи (event.dateTime = 00:00)
@@ -536,12 +536,34 @@ class NotificationService {
     return from.add(Duration(days: daysAhead));
   }
 
+  /// Стабильный 32-битный id уведомления для события [eventId], опционально со
+  /// [slot] custom-дня (0..6).
+  ///
+  /// String.hashCode строки в Dart не гарантирует стабильность между запусками
+  /// и может выходить за пределы Java int, который требует плагин. Поэтому
+  /// считаем свой FNV-1a и резервируем под каждое событие блок из 8 id (младшие
+  /// 3 бита — номер слота): базовый id выровнен по 8, а слоты custom-дней одного
+  /// события не пересекаются с базовым id другого.
+  static int _notificationId(String eventId, [int slot = 0]) {
+    var hash = 0x811c9dc5;
+    for (final unit in eventId.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
+    }
+    return (hash & 0x7ffffff8) | (slot & 0x7);
+  }
+
+  /// Тестовый доступ к [_notificationId]: id должны быть детерминированы и не
+  /// пересекаться блоками между разными событиями.
+  @visibleForTesting
+  static int notificationIdFor(String eventId, [int slot = 0]) =>
+      _notificationId(eventId, slot);
+
   Future<void> cancelNotification(String eventId) async {
-    final id = eventId.hashCode;
-    await _notificationsPlugin.cancel(id);
-    // Также отменяем возможные custom-day уведомления (id+0..id+6).
-    for (int i = 1; i < 7; i++) {
-      await _notificationsPlugin.cancel(id + i);
+    final id = _notificationId(eventId);
+    // Отменяем весь зарезервированный за событием блок (базовый id + слоты
+    // custom-дней). id выровнен по 8, поэтому id..id+7 не заденут чужие события.
+    for (int slot = 0; slot < 8; slot++) {
+      await _notificationsPlugin.cancel(id + slot);
     }
   }
 
