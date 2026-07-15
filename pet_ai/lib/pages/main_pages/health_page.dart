@@ -203,20 +203,14 @@ class HealthPageState extends State<HealthPage> {
     if (mounted) await _initScreen();
   }
 
-  void _openTreatments(
-    BuildContext context, {
-    TreatmentKind kind = TreatmentKind.rabies,
-  }) async {
-    if (_profile == null) return;
-    await showModalBottomSheet<bool>(
+  void _createTreatment(BuildContext context) async {
+    final added = await showAdaptiveDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => TreatmentSheet(profile: _profile!, presetKind: kind),
+      builder: (_) => CreateTreatmentDialog(profile: _profile!),
     );
-    if (mounted) await _initScreen();
+    if (added != null && added && mounted) {
+      await _initScreen();
+    }
   }
 
   void _openTreatment(BuildContext context, TreatmentEntry entry) async {
@@ -522,6 +516,13 @@ class HealthPageState extends State<HealthPage> {
 
             // ── Nearest upcoming health event ─────────────────────────────
             if (topAlert != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'Важное',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
               _AlertBanner(badge: topAlert),
               const SizedBox(height: 16),
             ],
@@ -696,7 +697,7 @@ class HealthPageState extends State<HealthPage> {
                   ? TextButton.icon(
                       iconAlignment: IconAlignment.end,
                       label: Text(
-                        'Список',
+                        'Добавить',
                         style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                           color: context.subtitleColor,
                         ),
@@ -706,7 +707,7 @@ class HealthPageState extends State<HealthPage> {
                         color: context.subtitleColor,
                       ),
                       onPressed: _profile != null
-                          ? () => _openTreatments(context)
+                          ? () => _createTreatment(context)
                           : null,
                     )
                   : null,
@@ -750,7 +751,7 @@ class HealthPageState extends State<HealthPage> {
                                     style: TextButton.styleFrom(
                                       padding: EdgeInsetsGeometry.all(5),
                                     ),
-                                    onPressed: () => _openTreatments(context),
+                                    onPressed: () => _createTreatment(context),
                                     child: Row(
                                       spacing: 1,
                                       children: [
@@ -978,7 +979,6 @@ class _HealthScoreBadge extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall!.copyWith(
                     color: score.palette.darkShade.withAlpha(160),
                     fontWeight: FontWeight.w700,
-
                   ),
                 ),
                 Text(
@@ -1166,7 +1166,6 @@ class _StatChip extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.bodySmall!.copyWith(
-
             color: color,
             fontWeight: FontWeight.w700,
           ),
@@ -1239,7 +1238,7 @@ class _TreatmentStatusTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             children: [
-              SoftRoundedIcon(icon: kind.icon, color: kind.color, size: 22),
+              SoftRoundedIcon(icon: kind.icon, color: lastEntry?.displayColor ?? kind.color, size: 22),
 
               const SizedBox(width: 12),
               // Label + dates
@@ -1261,6 +1260,7 @@ class _TreatmentStatusTile extends StatelessWidget {
                         label:
                             'Следующая ${DateFormat('d MMMM yyyy', 'ru-RU').format(lastEntry!.nextDate)}',
                         selected: false,
+                        onChanged: (v) => onTap(),
                       ),
                     ] else ...[
                       const SizedBox(height: 4),

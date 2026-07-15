@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pill_icon.dart' show PillColors;
 import 'package:provider/provider.dart';
 
@@ -125,11 +126,10 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
               // ── Live preview ──────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: TreatmentIcon(
-                  kind: _kind,
-                  colorValue: _color,
-                  fallback: widget.accent,
-                  size: 88,
+                child: SoftRoundedIcon(
+                  icon: _kind.icon,
+                  color: Color(_color),
+                  size: 48,
                 ),
               ),
               Text(_kind.shortLabel, style: theme.textTheme.titleMedium),

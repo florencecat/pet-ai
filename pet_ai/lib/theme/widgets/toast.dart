@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:provider/provider.dart';
 
 /// Короткое всплывающее сообщение поверх всего (включая модальные листы).
 ///
@@ -77,7 +79,7 @@ class _ToastCardState extends State<_ToastCard>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withAlpha(224),
+              color: context.watch<AppearanceController>().secondaryColor,
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(

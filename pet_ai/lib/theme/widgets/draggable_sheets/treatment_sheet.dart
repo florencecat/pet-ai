@@ -6,34 +6,64 @@ import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/treatment_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
+import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/remind_before_picker.dart';
+import 'package:pet_satellite/theme/widgets/toast.dart';
 import 'package:pet_satellite/theme/widgets/treatment_icon.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
-// ─── Sheet: добавление + история всех обработок ──────────────────────────────
+enum TreatmentDialogPurpose { create, append, edit }
 
-class TreatmentSheet extends StatefulWidget {
+class CreateTreatmentDialog extends StatefulWidget {
   final Pet profile;
-  final TreatmentKind presetKind;
+  final TreatmentDialogPurpose purpose;
 
-  const TreatmentSheet({
+  // append to category
+  final TreatmentKind? kind;
+  final Color? color;
+  final String? name;
+
+  // edit existing
+  final TreatmentEntry? editingEntry;
+
+  const CreateTreatmentDialog({super.key, required this.profile})
+    : kind = null,
+      color = null,
+      name = null,
+      editingEntry = null,
+      purpose = TreatmentDialogPurpose.create;
+
+  const CreateTreatmentDialog.append({
     super.key,
     required this.profile,
-    this.presetKind = TreatmentKind.rabies,
-  });
+    required this.kind,
+    required this.color,
+    required this.name,
+  }) : purpose = TreatmentDialogPurpose.append,
+       editingEntry = null;
+
+  const CreateTreatmentDialog.edit({
+    super.key,
+    required this.profile,
+    required this.editingEntry,
+  }) : kind = null,
+       color = null,
+       name = null,
+       purpose = TreatmentDialogPurpose.edit;
 
   @override
-  State<TreatmentSheet> createState() => _TreatmentSheetState();
+  State<StatefulWidget> createState() => _CreateTreatmentState();
 }
 
-class _TreatmentSheetState extends State<TreatmentSheet> {
-  TreatmentKind _kind = TreatmentKind.rabies;
-  int? _color;
+class _CreateTreatmentState extends State<CreateTreatmentDialog> {
+  late TreatmentKind _kind = TreatmentKind.rabies;
+  late int? _color;
   final _nameCtrl = TextEditingController();
   DateTime _date = DateTime.now();
   late DateTime _nextDate;
@@ -41,18 +71,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
   RemindBeforeVariant _remindBeforeVariant = RemindBeforeVariant.days;
   bool _saving = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _kind = widget.presetKind;
-    _nextDate = _date.add(_kind.defaultInterval);
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    super.dispose();
-  }
+  late String _dialogTitle;
 
   Future<void> _openIconPicker() async {
     final accent = context.read<AppearanceController>().primaryColor;
@@ -100,9 +119,7 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
 
   Future<void> _save() async {
     if (_kind == TreatmentKind.vaccine && _nameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Введите Название')));
+      showAppToast(context, 'Введите название прививки');
       return;
     }
 
@@ -119,232 +136,122 @@ class _TreatmentSheetState extends State<TreatmentSheet> {
     );
     if (!mounted) return;
 
-    // Stay in sheet — reload list and reset form
-    final fresh = await PetProfileService().loadProfile(widget.profile.id);
-    if (fresh != null && mounted) {
-      setState(() {
-        widget.profile.treatmentHistory.entries
-          ..clear()
-          ..addAll(fresh.treatmentHistory.entries);
-        _nameCtrl.clear();
-        _date = DateTime.now();
-        _nextDate = _date.add(_kind.defaultInterval);
-        _remindBeforeValue = 7;
-        _remindBeforeVariant = RemindBeforeVariant.days;
-        _saving = false;
-      });
-    } else {
-      if (mounted) setState(() => _saving = false);
-    }
+    setState(() => _saving = false);
+
+    Navigator.of(context).pop(true);
   }
 
-  void _openDetail(TreatmentEntry entry) async {
-    // Collect all entries of the same kind (+name for vaccines)
-    final related =
-        widget.profile.treatmentHistory.entries
-            .where(
-              (e) =>
-                  e.kind == entry.kind &&
-                  (entry.kind != TreatmentKind.vaccine || e.name == entry.name),
-            )
-            .toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
+  @override
+  void initState() {
+    super.initState();
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => TreatmentDetailSheet(
-        profile: widget.profile,
-        kind: entry.kind,
-        vaccineName: entry.kind == TreatmentKind.vaccine ? entry.name : null,
-        entries: related,
-        onDeleted: (deleted) {
-          setState(() {
-            widget.profile.treatmentHistory.entries.removeWhere(
-              (e) =>
-                  e.date == deleted.date &&
-                  e.kind == deleted.kind &&
-                  e.name == deleted.name,
-            );
-          });
-        },
-      ),
-    );
+    switch (widget.purpose) {
+      case TreatmentDialogPurpose.create:
+        _dialogTitle = 'Новая обработка';
+        _color = _kind.color.toARGB32();
+        _nextDate = _date.add(_kind.defaultInterval);
+        break;
+      case TreatmentDialogPurpose.append:
+        _dialogTitle = 'Добавить обработку';
+        _kind = widget.kind!;
+        _color = widget.color!.toARGB32();
+        _nextDate = _date.add(_kind.defaultInterval);
+        _nameCtrl.text = widget.name!;
+        break;
+      case TreatmentDialogPurpose.edit:
+        _dialogTitle = widget.editingEntry!.name;
+        _kind = widget.editingEntry!.kind;
+        _color = widget.editingEntry!.displayColor.toARGB32();
+        _date = widget.editingEntry!.date;
+        _nextDate = widget.editingEntry!.nextDate;
+        _nameCtrl.text = widget.editingEntry!.name;
+        _remindBeforeValue = widget.editingEntry!.remindBeforeValue;
+        _remindBeforeVariant = widget.editingEntry!.remindBeforeVariant;
+        break;
+    }
+
+    if (widget.purpose == TreatmentDialogPurpose.append) {}
+
+    if (widget.editingEntry != null &&
+        widget.purpose == TreatmentDialogPurpose.edit) {}
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final entries = List.of(widget.profile.treatmentHistory.entries)
-      ..sort((a, b) => b.date.compareTo(a.date));
-
-    return DraggableSheet(
-      title: 'Прививки и обработки',
-      centerTitle: true,
-      onBack: () => Navigator.of(context).pop(true),
-      initialSize: 0.85,
-      minSize: 0.4,
-      maxSize: 1.0,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ─── Форма добавления ──────────────────────────────────────────
-          GlassPlate(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Тип мероприятия',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 6),
-                  _IconPickerTile(
-                    kind: _kind,
-                    color: _color,
-                    onTap: _openIconPicker,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _nameCtrl,
-                    decoration: baseInputDecoration(context, 'Название'),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _DateField(
-                          label: 'Когда сделано',
-                          icon: Icons.event,
-                          date: _date,
-                          onTap: () => _pickDate(isNext: false),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _DateField(
-                          label: 'Следующее',
-                          icon: Icons.notifications_active_outlined,
-                          date: _nextDate,
-                          onTap: () => _pickDate(isNext: true),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  RemindBeforePicker(
-                    value: _remindBeforeValue,
-                    variant: _remindBeforeVariant,
-                    onValueChanged: (v) =>
-                        setState(() => _remindBeforeValue = v),
-                    onVariantChanged: (v) =>
-                        setState(() => _remindBeforeVariant = v),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add, size: 18),
-                      label: const Text('Добавить'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: context
-                            .watch<AppearanceController>()
-                            .primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    return AlertDialog(
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          style: FilledButton.styleFrom(
+            backgroundColor: context.watch<AppearanceController>().primaryColor,
           ),
-
-          const SizedBox(height: 16),
-
-          // ─── История ────────────────────────────────────────────────────
-          if (entries.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text(
-                'Записей пока нет',
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
+          child: const Text('Сохранить'),
+        ),
+      ],
+      title: Text(
+        _dialogTitle,
+        style: Theme.of(context).textTheme.titleLarge,
+        textAlign: TextAlign.center,
+      ),
+      content: InlineLoading(
+        isLoading: _saving,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 12,
+          children: [
+            if (widget.purpose != TreatmentDialogPurpose.edit) ...[
+              _IconPickerTile(
+                kind: _kind,
+                color: _color,
+                onTap: widget.purpose != TreatmentDialogPurpose.append
+                    ? _openIconPicker
+                    : null,
               ),
-            )
-          else ...[
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 6),
-              child: Text(
-                'История',
-                style: Theme.of(context).textTheme.titleMedium,
+              TextField(
+                controller: _nameCtrl,
+                decoration: baseInputDecoration(context, 'Название'),
               ),
-            ),
-            ...entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: GlassPlate(
-                  padding: 0,
-                  child: InkWell(
-                    onTap: () => _openDetail(entry),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          TreatmentIcon(
-                            kind: entry.kind,
-                            colorValue: entry.color,
-                            fallback: entry.kind.color,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  entry.displayName,
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                                Text(
-                                  'Сделано: ${formatSmartDate(entry.date)}  •  '
-                                  'Следующее: ${formatSmartDate(entry.nextDate)}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(
-                            Icons.chevron_right,
-                            color: ThemeColors.border,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: _DateField(
+                    label: 'Когда сделано',
+                    icon: Icons.event,
+                    date: _date,
+                    onTap: () => _pickDate(isNext: false),
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _DateField(
+                    label: 'Следующее',
+                    icon: Icons.notifications_active_outlined,
+                    date: _nextDate,
+                    onTap: () => _pickDate(isNext: true),
+                  ),
+                ),
+              ],
+            ),
+            RemindBeforePicker(
+              value: _remindBeforeValue,
+              variant: _remindBeforeVariant,
+              onValueChanged: (v) => setState(() => _remindBeforeValue = v),
+              onVariantChanged: (v) => setState(() => _remindBeforeVariant = v),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -379,11 +286,6 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
   // ── Edit mode ─────────────────────────────────────────────────────────────
   TreatmentEntry? _editingEntry; // which entry is being edited
   final _nameCtrl = TextEditingController();
-  DateTime _editDate = DateTime.now();
-  DateTime _editNextDate = DateTime.now().add(const Duration(days: 365));
-  int _editRemindValue = 7;
-  RemindBeforeVariant _editRemindVariant = RemindBeforeVariant.days;
-  bool _editSaving = false;
 
   @override
   void initState() {
@@ -402,43 +304,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
       ? 'Прививка: ${widget.vaccineName}'
       : widget.kind.label;
 
-  void _startEdit(TreatmentEntry entry) {
-    setState(() {
-      _editingEntry = entry;
-      _nameCtrl.text = entry.name;
-      _editDate = entry.date;
-      _editNextDate = entry.nextDate;
-      _editRemindValue = entry.remindBeforeValue;
-      _editRemindVariant = entry.remindBeforeVariant;
-    });
-  }
-
-  void _cancelEdit() {
-    setState(() {
-      _editingEntry = null;
-      _nameCtrl.clear();
-    });
-  }
-
-  Future<void> _saveEdit() async {
-    if (_editingEntry == null) return;
-    setState(() => _editSaving = true);
-
-    // Delete old, create new — сохраняем выбранный цвет записи.
-    final preservedColor = _editingEntry!.color;
-    await TreatmentService().deleteTreatment(widget.profile.id, _editingEntry!);
-    await TreatmentService().addTreatment(
-      petId: widget.profile.id,
-      kind: widget.kind,
-      date: _editDate,
-      nextDate: _editNextDate,
-      name: _nameCtrl.text.trim(),
-      remindBeforeValue: _editRemindValue,
-      remindBeforeVariant: _editRemindVariant,
-      color: preservedColor,
-    );
-
-    // Reload entries
+  Future<void> _initScreen() async {
     final fresh = await PetProfileService().loadProfile(widget.profile.id);
     if (!mounted) return;
     if (fresh != null) {
@@ -460,61 +326,72 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
           ..clear()
           ..addAll(related);
         _editingEntry = null;
-        _editSaving = false;
         _nameCtrl.clear();
       });
-    } else {
-      setState(() => _editSaving = false);
     }
   }
 
-  Future<void> _pickEditDate({required bool isNext}) async {
-    final initial = isNext ? _editNextDate : _editDate;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(1900),
-      lastDate: DateTime(2100),
-      locale: const Locale('ru'),
-    );
-    if (picked == null) return;
-    setState(() {
-      if (isNext) {
-        _editNextDate = picked;
-      } else {
-        _editDate = picked;
-        _editNextDate = picked.add(widget.kind.defaultInterval);
-        if (_editNextDate.isBefore(_editDate)) {
-          _editNextDate = _editDate.add(widget.kind.defaultInterval);
-        }
-      }
-    });
-  }
-
   Future<void> _delete(TreatmentEntry entry) async {
+    final last = _entries.length == 1;
     final confirmed = await confirmDelete(
       context,
-      title: 'Удалить запись?',
-      message: 'Запись и связанное напоминание будут удалены.',
+      title: 'Удалить единственную запись?',
+      ignorePreferences: last,
+      message: last
+          ? 'Будет удалена вся категория обработок.'
+          : 'Запись и связанное напоминание будут удалены.',
     );
     if (!confirmed) return;
     await TreatmentService().deleteTreatment(widget.profile.id, entry);
     widget.onDeleted(entry);
     if (mounted) {
-      setState(
-        () => _entries.removeWhere(
-          (e) =>
-              e.date == entry.date &&
-              e.kind == entry.kind &&
-              e.name == entry.name,
-        ),
-      );
+      if (last) {
+        Navigator.of(context).pop();
+      } else {
+        setState(
+          () => _entries.removeWhere(
+            (e) =>
+                e.date == entry.date &&
+                e.kind == entry.kind &&
+                e.name == entry.name,
+          ),
+        );
+      }
+    }
+  }
+
+  void _createTreatment(BuildContext context, TreatmentEntry entry) async {
+    final added = await showAdaptiveDialog<bool>(
+      context: context,
+      builder: (_) => CreateTreatmentDialog.append(
+        profile: widget.profile,
+        kind: entry.kind,
+        color: entry.displayColor,
+        name: entry.name
+      ),
+    );
+    if (added != null && added && mounted) {
+      await _initScreen();
+    }
+  }
+
+  void _editTreatment(BuildContext context, TreatmentEntry entry) async {
+    final added = await showAdaptiveDialog<bool>(
+      context: context,
+      builder: (_) => CreateTreatmentDialog.edit(
+        profile: widget.profile,
+        editingEntry: entry,
+      ),
+    );
+    if (added != null && added && mounted) {
+      await _initScreen();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final accent = context.watch<AppearanceController>().primaryColor;
+    final secondaryColor = context.watch<AppearanceController>().secondaryColor;
     final latest = _entries.isNotEmpty ? _entries.first : null;
     // Цвет иконки берём из последней записи (или цвет типа по умолчанию).
     final kindColor = latest?.displayColor ?? widget.kind.color;
@@ -560,11 +437,10 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
           Center(
             child: Column(
               children: [
-                TreatmentIcon(
-                  kind: widget.kind,
-                  colorValue: latest?.color,
-                  fallback: widget.kind.color,
-                  size: 72,
+                SoftRoundedIcon(
+                  icon: widget.kind.icon,
+                  color: kindColor,
+                  size: 36,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -589,7 +465,6 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                     child: Text(
                       countdownText,
                       style: TextStyle(
-
                         fontWeight: FontWeight.w600,
                         color: countdownColor,
                       ),
@@ -604,6 +479,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
 
           // ── Следующая дата ───────────────────────────────────────────────
           if (latest != null && _editingEntry == null) ...[
+            Text('Последняя запись'),
+            const SizedBox(height: 8),
             GlassPlate(
               padding: 0,
               child: Column(
@@ -612,7 +489,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                     icon: Icons.event_available,
                     iconColor: accent,
                     label:
-                        'Следующее: ${DateFormat('d MMMM yyyy', 'ru').format(latest.nextDate)}',
+                        'Следующее по плану: ${DateFormat('d MMMM yyyy', 'ru').format(latest.nextDate)}',
                   ),
                   Divider(
                     height: 1,
@@ -623,7 +500,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                     icon: Icons.alarm,
                     iconColor: accent,
                     label: latest.hasRemindBefore
-                        ? 'Напомнить ${latest.remindBeforeLabel}'
+                        ? 'Напоминание ${latest.remindBeforeLabel}'
                         : 'Без напоминания',
                   ),
                 ],
@@ -632,96 +509,12 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
             const SizedBox(height: 16),
           ],
 
-          // ── Форма редактирования ────────────────────────────────────────
-          if (_editingEntry != null) ...[
-            GlassPlate(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Редактирование',
-                            style: Theme.of(context).textTheme.titleSmall!
-                                .copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 20),
-                          onPressed: _cancelEdit,
-                          color: ThemeColors.border,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (widget.kind == TreatmentKind.vaccine) ...[
-                      TextField(
-                        controller: _nameCtrl,
-                        decoration: baseInputDecoration(context, 'Название'),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _DateField(
-                            label: 'Когда сделано',
-                            icon: Icons.event,
-                            date: _editDate,
-                            onTap: () => _pickEditDate(isNext: false),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _DateField(
-                            label: 'Следующее',
-                            icon: Icons.notifications_active_outlined,
-                            date: _editNextDate,
-                            onTap: () => _pickEditDate(isNext: true),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    RemindBeforePicker(
-                      value: _editRemindValue,
-                      variant: _editRemindVariant,
-                      onValueChanged: (v) =>
-                          setState(() => _editRemindValue = v),
-                      onVariantChanged: (v) =>
-                          setState(() => _editRemindVariant = v),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _editSaving ? null : _saveEdit,
-                        icon: _editSaving
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.save_outlined, size: 18),
-                        label: const Text('Сохранить'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: accent,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+          SoftGlassButton(
+            icon: Icons.add_circle_outline_rounded,
+            title: 'Добавить новую запись',
+            subtitle: 'В категорию "${widget.kind.label}"',
+            onTap: () => _createTreatment(context, latest!),
+          ),
 
           // ── История записей ──────────────────────────────────────────────
           if (_entries.isNotEmpty) ...[
@@ -738,17 +531,33 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                   children: [
                     // Timeline column
                     SizedBox(
-                      width: 32,
+                      width: 54,
                       child: Column(
                         children: [
+                          Text(
+                            formatSmartDate(
+                              entry.date,
+                              pattern: entry.date.year == DateTime.now().year
+                                  ? 'd MMMM'
+                                  : 'd MMMM yyyy',
+                              locale: 'ru',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  height: 1.2,
+                                  color: i == 0 ? kindColor : secondaryColor,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
                           Container(
-                            width: 12,
-                            height: 12,
+                            width: 10,
+                            height: 10,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: i == 0 ? kindColor : ThemeColors.border,
+                              color: i == 0 ? kindColor : secondaryColor,
                               border: Border.all(
-                                color: (i == 0 ? kindColor : ThemeColors.border)
+                                color: (i == 0 ? kindColor : secondaryColor)
                                     .withAlpha(60),
                                 width: 2,
                               ),
@@ -759,7 +568,17 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                               child: Center(
                                 child: Container(
                                   width: 2,
-                                  color: ThemeColors.border.withAlpha(80),
+                                  decoration: BoxDecoration(
+                                    gradient: i == 0
+                                        ? LinearGradient(
+                                            begin: AlignmentGeometry.topCenter,
+                                            end: AlignmentGeometry.bottomCenter,
+                                            stops: [0.4, 1.0],
+                                            colors: [kindColor, secondaryColor],
+                                          )
+                                        : null,
+                                    color: i != 0 ? secondaryColor : null,
+                                  ),
                                 ),
                               ),
                             ),
@@ -786,10 +605,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        DateFormat(
-                                          'd MMMM yyyy',
-                                          'ru',
-                                        ).format(entry.date),
+                                        entry.name,
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleSmall!
@@ -800,13 +616,12 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '→ ${DateFormat('d MMMM yyyy', 'ru').format(entry.nextDate)}',
+                                        'Следующая по плану: '
+                                        '${formatSmartDate(entry.nextDate, pattern: 'd MMMM yyyy', locale: 'ru')}',
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodySmall!
-                                            .copyWith(
-                                              color: ThemeColors.border,
-                                            ),
+                                            .copyWith(color: context.subtitleColor),
                                       ),
                                     ],
                                   ),
@@ -819,7 +634,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                                       size: 18,
                                       color: accent.withAlpha(180),
                                     ),
-                                    onPressed: () => _startEdit(entry),
+                                    onPressed: () =>
+                                        _editTreatment(context, entry),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(
                                       minWidth: 32,
@@ -872,7 +688,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
 class _IconPickerTile extends StatelessWidget {
   final TreatmentKind kind;
   final int? color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _IconPickerTile({
     required this.kind,
@@ -893,11 +709,9 @@ class _IconPickerTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            TreatmentIcon(
-              kind: kind,
-              colorValue: color,
-              fallback: kind.color,
-              size: 44,
+            SoftRoundedIcon(
+              icon: kind.icon,
+              color: Color(color!),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -921,11 +735,12 @@ class _IconPickerTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              color: ThemeColors.border,
-              size: 22,
-            ),
+            if (onTap != null)
+              const Icon(
+                Icons.chevron_right,
+                color: ThemeColors.border,
+                size: 22,
+              ),
           ],
         ),
       ),
