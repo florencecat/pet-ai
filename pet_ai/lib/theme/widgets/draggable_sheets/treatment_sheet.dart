@@ -427,9 +427,8 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
       title: 'История',
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(true),
-      initialSize: 0.75,
-      minSize: 0.4,
-      maxSize: 0.95,
+      initialSize: null,
+      maxSize: 0.85,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

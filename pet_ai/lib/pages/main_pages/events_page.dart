@@ -1012,9 +1012,8 @@ class _EventSearchSheetState extends State<_EventSearchSheet> {
       title: 'Поиск событий',
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(),
-      initialSize: 0.9,
-      minSize: 0.5,
-      maxSize: 1.0,
+      initialSize: null,
+      maxSize: 0.7,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

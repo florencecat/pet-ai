@@ -203,8 +203,8 @@ class _NoteSheetState extends State<NoteSheet> {
     return DraggableSheet(
       title: 'Заметки',
       centerTitle: true,
-      initialSize: entries.isEmpty ? 0.2 : 0.6,
-      maxSize: 0.85,
+      initialSize: null,
+      maxSize: 0.75,
       onBack: () => Navigator.of(context).pop(true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

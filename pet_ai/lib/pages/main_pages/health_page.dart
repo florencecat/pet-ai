@@ -264,6 +264,8 @@ class HealthPageState extends State<HealthPage> {
     if (mounted) await _initScreen();
   }
 
+  /// Открывает тот же sheet препаратов, но сразу на карточке курса — «назад»
+  /// внутри sheet ведёт к списку.
   void _openPillReminder(BuildContext context, Pill reminder) async {
     if (_profile == null) return;
     await showModalBottomSheet<bool>(
@@ -272,7 +274,8 @@ class HealthPageState extends State<HealthPage> {
       useSafeArea: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => PillDetailSheet(profile: _profile!, reminder: reminder),
+      builder: (_) =>
+          PillReminderSheet(profile: _profile!, initialReminder: reminder),
     );
     if (mounted) await _initScreen();
   }

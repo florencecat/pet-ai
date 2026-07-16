@@ -47,7 +47,11 @@ class DraggableSheet extends StatelessWidget {
   // Sizing as a fraction of screen height. `initialSize` sets the resting
   // height the sheet opens at; `maxSize` caps how tall it may grow. `minSize`
   // is kept for API compatibility only (drag-to-dismiss handles shrinking).
-  final double initialSize;
+  //
+  // `initialSize == null` — высоты покоя нет, sheet подгоняется под контент (в
+  // пределах `maxSize`). Тогда смена контента меняет высоту sheet, и решать,
+  // анимировать ли это, — задача body (например, обернуть его в AnimatedSize).
+  final double? initialSize;
   final double minSize;
   final double maxSize;
 
@@ -79,10 +83,14 @@ class DraggableSheet extends StatelessWidget {
     // list pushes the content past the screen and the sheet snaps to full
     // height instead of staying at its intended size. With a stable minHeight
     // the overflowing body scrolls *inside* the sheet instead.
-    final minHeight = (screenHeight * initialSize).clamp(
-      0.0,
-      screenHeight * maxSize,
-    );
+    //
+    // `initialSize == null` — это поведение осознанно отключается: minHeight
+    // нулевой, и sheet тянется по контенту вплоть до `maxSize` (дальше контент
+    // всё так же скроллится внутри).
+    final initial = initialSize;
+    final minHeight = initial == null
+        ? 0.0
+        : (screenHeight * initial).clamp(0.0, screenHeight * maxSize);
 
     return ConstrainedBox(
       constraints: BoxConstraints(

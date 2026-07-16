@@ -143,8 +143,8 @@ class _WeightSheetState extends State<WeightSheet> {
       onBack: () => Navigator.of(context).pop(true),
       title: 'История веса',
       centerTitle: true,
-      initialSize: entries.isEmpty ? 0.2 : 0.6,
-      maxSize: 0.85,
+      initialSize: null,
+      maxSize: 0.75,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

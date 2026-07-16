@@ -290,8 +290,8 @@ class _MoodSheetState extends State<MoodSheet> {
       title: "История настроения",
       centerTitle: true,
       onBack: () => Navigator.of(context).pop(true),
-      initialSize: entries.isEmpty ? 0.2 : 0.6,
-      maxSize: 0.85,
+      initialSize: null,
+      maxSize: 0.7,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -514,6 +514,8 @@ class _MoodFrequencyChart extends StatelessWidget {
     // Округляем верх до удобного значения, чтобы подписи оси были целыми.
     final maxY = (maxCount + 1).toDouble();
 
+    final accent = context.watch<AppearanceController>().secondaryColor;
+
     return SizedBox(
       height: 200,
       child: BarChart(
@@ -553,14 +555,14 @@ class _MoodFrequencyChart extends StatelessWidget {
                 return BarTooltipItem(
                   '${rod.toY.toInt()}',
                   Theme.of(context).textTheme.titleSmall!.copyWith(
-                    color: context.watch<AppearanceController>().secondaryColor,
+                    color: accent,
                     fontWeight: FontWeight.bold,
                   ),
                   children: [
                     TextSpan(
                       text: '\n${mood.label}',
                       style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                        color: ThemeColors.secondary,
+                        color: accent,
                       ),
                     ),
                   ],

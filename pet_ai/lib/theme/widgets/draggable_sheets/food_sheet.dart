@@ -371,8 +371,8 @@ class _FoodSheetState extends State<FoodSheet> {
     return DraggableSheet(
       title: 'Дневник питания',
       centerTitle: true,
-      initialSize: entries.isEmpty ? 0.2 : 0.6,
-      maxSize: 0.85,
+      initialSize: null,
+      maxSize: 0.7,
       onBack: () => Navigator.of(context).pop(true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
