@@ -643,8 +643,8 @@ class _SwipeableEventTile extends StatefulWidget {
 
 class _SwipeableEventTileState extends State<_SwipeableEventTile>
     with SingleTickerProviderStateMixin {
-  static const double _btnSize = 52.0;
-  static const double _btnGap = 10.0;
+  static const double _btnWidth = 66.0;
+  static const double _btnGap = 8.0;
   static const double _sidePad = 12.0;
 
   late final double _actionsCount;
@@ -659,7 +659,7 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
 
     _actionsCount = widget.event.completable ? 3 : 2;
     _actionWidth =
-        _btnSize * _actionsCount + _sidePad * 2 + _btnGap * (_actionsCount - 1);
+        _btnWidth * _actionsCount + _sidePad * 2 + _btnGap * (_actionsCount - 1);
 
     _ctrl = AnimationController(
       vsync: this,
@@ -709,6 +709,7 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
             bottom: 0,
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: _btnGap,
               children: [
                 if (widget.event.completable)
@@ -766,7 +767,7 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
   }
 }
 
-// ── Round action button ──────────────────────────────────────────────────────
+// ── Full-height capsule action button (iOS-style) ────────────────────────────
 
 class _ActionBtn extends StatelessWidget {
   final IconData icon;
@@ -788,36 +789,38 @@ class _ActionBtn extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       haptic: isDelete ? HapticStrength.heavy : HapticStrength.medium,
-      scale: 0.9,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: _SwipeableEventTileState._btnSize,
-            height: _SwipeableEventTileState._btnSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withAlpha(80),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+      scale: 0.94,
+      child: Container(
+        width: _SwipeableEventTileState._btnWidth,
+        decoration: BoxDecoration(
+          color: color,
+          // Полукруглые торцы → вертикальная «капсула» во всю высоту карточки.
+          borderRadius: BorderRadius.circular(
+            _SwipeableEventTileState._btnWidth / 2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  fontSize: 11,
                 ),
-              ],
+              ),
             ),
-            child: Icon(icon, color: Colors.white, size: 22),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
