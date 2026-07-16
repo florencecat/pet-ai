@@ -129,6 +129,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   final _homeKey = GlobalKey<HomePageState>();
   final _healthKey = GlobalKey<HealthPageState>();
   final _eventsKey = GlobalKey<EventsPageState>();
+  final _chatKey = GlobalKey<AIChatPageState>();
   DateTime _calendarInitialDate = DateTime.now();
   Color? _healthScoreColor;
 
@@ -142,6 +143,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     // Тап по уведомлению при живом приложении — открыть/отметить событие.
     NotificationService.onOpenEvent = _handleOpenEvent;
     NotificationService.onCompleteEvent = _handleCompleteEvent;
+    PetProfileService.activeProfileChanged.addListener(_onProfileSwitched);
     _checkProfile();
     _bootstrapNotifications();
   }
@@ -151,6 +153,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     NotificationService.onOpenEvent = null;
     NotificationService.onCompleteEvent = null;
+    PetProfileService.activeProfileChanged.removeListener(_onProfileSwitched);
     super.dispose();
   }
 
@@ -308,6 +311,21 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     await crash.markNoticeShown();
   }
 
+  /// Единая реакция на смену активного питомца — из любого места приложения
+  /// (см. [PetProfileService.activeProfileChanged]).
+  ///
+  /// Все вкладки живут в IndexedStack и сами не пересоздаются, а палитра и
+  /// контроллер чата держат данные прежнего питомца, поэтому обновляем их явно.
+  void _onProfileSwitched() {
+    if (!mounted) return;
+    _checkProfile(); // внутри — _refreshHealthScore()
+    context.read<AppearanceController>().reloadProfile();
+    _homeKey.currentState?.refresh();
+    _healthKey.currentState?.refresh();
+    _eventsKey.currentState?.refresh();
+    _chatKey.currentState?.reloadPet();
+  }
+
   Future<void> _refreshHealthScore() async {
     final profile = await PetProfileService().loadActiveProfile();
     if (profile == null) return;
@@ -332,14 +350,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
         key: _homeKey,
         onOpenCalendar: _onOpenCalendar,
         onOpenCalendarByEvent: _onOpenCalendarByEvent,
-        onProfileSwitched: () {
-          _checkProfile();
-          _refreshHealthScore();
-          context.read<AppearanceController>().reloadProfile();
-        },
       ),
       HealthPage(key: _healthKey, onHealthChanged: _refreshHealthScore),
-      const AIChatPage(),
+      AIChatPage(key: _chatKey),
       EventsPage(key: _eventsKey, initialDate: _calendarInitialDate),
     ];
 

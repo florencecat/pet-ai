@@ -94,9 +94,31 @@ extension GenderX on Gender {
   }
 }
 
+/// Уведомляет о смене активного питомца. Вынесен в отдельный класс, чтобы
+/// [fire] был доступен только сервису: наружу отдаётся [Listenable], у которого
+/// есть лишь add/removeListener (у ChangeNotifier notifyListeners защищён).
+class _ActiveProfileNotifier extends ChangeNotifier {
+  void fire() => notifyListeners();
+}
+
 class PetProfileService {
   static const _profilesKey = 'pet_profiles';
   static const _activeIdKey = 'active_pet_id';
+
+  static final _activeProfile = _ActiveProfileNotifier();
+
+  /// Сигнал «активный питомец сменился».
+  ///
+  /// Активный профиль меняется из нескольких мест: переключатель на главной,
+  /// список в настройках, регистрация нового питомца, удаление активного и
+  /// восстановление из облака. Обновлять при этом нужно всегда одно и то же —
+  /// палитру, статус здоровья, содержимое вкладок и контекст чата. Полагаться на
+  /// то, что каждая площадка не забудет это сделать, не выходит (и не выходило:
+  /// настройки обновляли только палитру, а удаление — вообще ничего), поэтому
+  /// сигнал шлёт сам сервис, а [MainPage] слушает его и обновляет всё разом.
+  ///
+  /// Слушателям id не нужен: все перечитывают активный профиль сами.
+  static Listenable get activeProfileChanged => _activeProfile;
 
   // ─── Чтение/запись всей коллекции ────────────────────────────────────────
 
@@ -153,6 +175,7 @@ class PetProfileService {
       throw ArgumentError('Профиль с id=$petId не найден');
     }
     await SharedPreferencesAsync().setString(_activeIdKey, petId);
+    _activeProfile.fire();
   }
 
   /// Возвращает активный профиль. Если активный id не задан или устарел —
@@ -225,6 +248,10 @@ class PetProfileService {
       } else {
         await SharedPreferencesAsync().remove(_activeIdKey);
       }
+      // Удаление активного переключает профиль в обход [setActiveProfile],
+      // поэтому сигналим и отсюда — иначе палитра, статус здоровья и чат
+      // остались бы от удалённого питомца.
+      _activeProfile.fire();
     }
 
     // Каскадная очистка данных питомца — диалог удаления обещает, что все

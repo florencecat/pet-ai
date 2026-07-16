@@ -27,11 +27,15 @@ class AIChatPage extends StatefulWidget {
   const AIChatPage({super.key});
 
   @override
-  State<AIChatPage> createState() => _AIChatPageState();
+  State<AIChatPage> createState() => AIChatPageState();
 }
 
-class _AIChatPageState extends State<AIChatPage> {
+class AIChatPageState extends State<AIChatPage> {
   late final Future<AIChatController> _future;
+
+  /// Разрешённый контроллер — нужен, чтобы обновить питомца, не дожидаясь
+  /// [_future] в каждом вызове.
+  AIChatController? _controller;
 
   @override
   void initState() {
@@ -39,11 +43,18 @@ class _AIChatPageState extends State<AIChatPage> {
     _future = _createController();
   }
 
+  /// Перечитывает питомца в контроллере. Вызывает [MainPage] при смене профиля:
+  /// вкладка чата живёт в IndexedStack и не пересоздаётся, поэтому контроллер
+  /// (а с ним имя в приветствии и контекст запроса) иначе остался бы от
+  /// прежнего питомца.
+  Future<void> reloadPet() async => _controller?.reloadPet();
+
   Future<AIChatController> _createController() async {
     final controller = AIChatController(
       basePath: GetIt.instance<ApiService>().aiUrl,
     );
     await controller.init();
+    _controller = controller;
     return controller;
   }
 

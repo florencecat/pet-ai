@@ -32,13 +32,11 @@ import 'package:pet_satellite/models/pet_profile.dart';
 class HomePage extends StatefulWidget {
   final VoidCallback onOpenCalendar;
   final ValueChanged<DateTime> onOpenCalendarByEvent;
-  final VoidCallback? onProfileSwitched;
 
   const HomePage({
     super.key,
     required this.onOpenCalendar,
     required this.onOpenCalendarByEvent,
-    this.onProfileSwitched,
   });
 
   @override
@@ -245,15 +243,13 @@ class HomePageState extends State<HomePage> {
 
     if (result == null) return;
 
+    // Обновление вкладок, палитры и контекста чата вешать сюда не нужно: и
+    // регистрация, и setActiveProfile сигналят о смене активного питомца, а
+    // MainPage на этот сигнал обновляет всё разом (_onProfileSwitched).
     if (result == '__create_new__') {
-      if (context.mounted) {
-        await Navigator.pushNamed(context, '/registration');
-        widget.onProfileSwitched?.call();
-      }
+      if (context.mounted) await Navigator.pushNamed(context, '/registration');
     } else {
       await PetProfileService().setActiveProfile(result);
-      widget.onProfileSwitched?.call();
-      await _initScreen();
     }
   }
 

@@ -242,6 +242,21 @@ class AIChatController extends ChangeNotifier {
 
   String get petName => _pet?.name ?? 'питомец';
 
+  /// Перечитывает активного питомца.
+  ///
+  /// [_pet] загружается один раз в [init], а контроллер живёт всё время работы
+  /// приложения — поэтому при смене профиля его надо обновить явно. Иначе чат
+  /// продолжит здороваться именем прежнего питомца ([petName]) и отправлять в
+  /// запрос его же контекст (PetContextBuilder.build) — до перезапуска
+  /// приложения. Вызывается из [AIChatPageState] по сигналу
+  /// [PetProfileService.activeProfileChanged].
+  Future<void> reloadPet() async {
+    final pet = await PetProfileService().loadActiveProfile();
+    if (pet == null || pet.id == _pet?.id) return;
+    _pet = pet;
+    notifyListeners();
+  }
+
   /// Loads all archived threads, newest first.
   Future<List<ArchivedThread>> loadArchivedThreads() async {
     final prefs = await SharedPreferences.getInstance();

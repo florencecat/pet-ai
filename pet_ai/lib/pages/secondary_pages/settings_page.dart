@@ -524,9 +524,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   return _PetRow(
                     profile: p,
                     isLast: false,
+                    // Палитру, статус здоровья и контекст чата обновит MainPage
+                    // по сигналу из сервиса — и при переключении здесь, и при
+                    // удалении питомца внутри PetProfilePage. Локально остаётся
+                    // перечитать только сам список настроек.
                     onTap: () async {
                       await PetProfileService().setActiveProfile(p.id);
-                      await ac.reloadProfile();
                       if (context.mounted) {
                         await Navigator.push(
                           context,
@@ -543,7 +546,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.add_circle_outline,
                   label: 'Добавить питомца',
                   iconColor: ac.primaryColor,
-                  onTap: () => Navigator.pushNamed(context, '/registration'),
+                  // Дожидаемся регистрации и перечитываем список — иначе новый
+                  // питомец не появлялся в настройках до перезахода.
+                  onTap: () async {
+                    await Navigator.pushNamed(context, '/registration');
+                    await _loadAll();
+                  },
                   last: true,
                 ),
               ],
