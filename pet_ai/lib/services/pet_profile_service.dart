@@ -596,6 +596,7 @@ class PetProfileService {
     Widget? trailing,
     TextStyle? titleTheme,
     TextStyle? subTitleTheme,
+    List<Widget>? additional,
   }) {
     String description = pet?.breed.name ?? '';
     if (description.isEmpty) {
@@ -606,16 +607,23 @@ class PetProfileService {
       description = '$description · ${formatPetAge(duration)}';
     }
 
+    final subtitleText = Text(
+      description.isEmpty ? 'Порода и возраст' : description,
+      style: subTitleTheme ?? Theme.of(context).textTheme.bodySmall,
+    );
+
     return ListTile(
       leading: leading,
       trailing: trailing,
       title: Row(
         spacing: 6,
         children: [
-          Text(
-            pet == null || pet.name.isEmpty ? 'Без имени' : pet.name,
-            style: titleTheme ?? Theme.of(context).textTheme.titleLarge,
-            overflow: TextOverflow.ellipsis,
+          Flexible(
+            child: Text(
+              pet == null || pet.name.isEmpty ? 'Без имени' : pet.name,
+              style: titleTheme ?? Theme.of(context).textTheme.titleLarge,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           if (pet != null && pet.gender.icon != null)
             Container(
@@ -634,10 +642,17 @@ class PetProfileService {
             ),
         ],
       ),
-      subtitle: Text(
-        description.isEmpty ? 'Порода и возраст' : description,
-        style: subTitleTheme ?? Theme.of(context).textTheme.bodySmall,
-      ),
+      // [additional] — доп. виджеты под подписью (напр. бейдж кастрации).
+      subtitle: additional == null || additional.isEmpty
+          ? subtitleText
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                subtitleText,
+                const SizedBox(height: 6),
+                ...additional,
+              ],
+            ),
     );
   }
 }

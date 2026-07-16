@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pet_satellite/models/species.dart';
+import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
@@ -33,43 +34,6 @@ const _kSpeciesOptions = [
   _SpeciesOption(BuiltInSpecies.rabbit, '🐇'),
   _SpeciesOption(BuiltInSpecies.other, '🐦'),
 ];
-
-// ─── Age formatting ───────────────────────────────────────────────────────────
-
-String _formatAge(DateTime birth) {
-  final now = DateTime.now();
-  int years = now.year - birth.year;
-  int months = now.month - birth.month;
-  if (months < 0) {
-    years--;
-    months += 12;
-  }
-  if (now.day < birth.day && months > 0) {
-    months--;
-  }
-  if (years == 0 && months == 0) return 'меньше месяца';
-  final y = years > 0 ? '$years ${_yr(years)}' : '';
-  final m = months > 0 ? '$months ${_mo(months)}' : '';
-  return [y, m].where((s) => s.isNotEmpty).join(' ');
-}
-
-String _yr(int n) {
-  final m = n % 10;
-  final h = n % 100;
-  if (h >= 11 && h <= 14) return 'лет';
-  if (m == 1) return 'год';
-  if (m >= 2 && m <= 4) return 'года';
-  return 'лет';
-}
-
-String _mo(int n) {
-  final m = n % 10;
-  final h = n % 100;
-  if (h >= 11 && h <= 14) return 'мес.';
-  if (m == 1) return 'мес.';
-  if (m >= 2 && m <= 4) return 'мес.';
-  return 'мес.';
-}
 
 // ─── Widget helpers ───────────────────────────────────────────────────────────
 
@@ -113,12 +77,21 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
   // Step 3
   File? _photo;
 
+  // Step 4 — необязательные доп. данные (собираются здесь, применяются в _finish)
+  final _weightCtrl = TextEditingController();
+  final _allergiesCtrl = TextEditingController();
+  final _chronicCtrl = TextEditingController();
+  final Set<TreatmentKind> _treatments = {};
+
   // Cloud restore / finish loading
   bool _isFinishing = false;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _weightCtrl.dispose();
+    _allergiesCtrl.dispose();
+    _chronicCtrl.dispose();
     super.dispose();
   }
 
@@ -219,6 +192,30 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
       castrated: _castrated,
       profileImage: _photo,
     );
+
+    // ── Необязательные доп. данные с финального шага ──────────────────────
+    final weight = double.tryParse(
+      _weightCtrl.text.trim().replaceAll(',', '.'),
+    );
+    if (weight != null && weight > 0) {
+      profile.weightHistory.addWeight(weight);
+    }
+
+    final now = DateTime.now();
+    for (final kind in _treatments) {
+      // Отмеченные мероприятия считаем сделанными сегодня; следующую дату
+      // рассчитываем по стандартному интервалу вида обработки.
+      profile.treatmentHistory.add(
+        TreatmentEntry(
+          date: now,
+          kind: kind,
+          nextDate: now.add(kind.defaultInterval),
+        ),
+      );
+    }
+
+    profile.allergies = _allergiesCtrl.text.trim();
+    profile.chronicConditions = _chronicCtrl.text.trim();
 
     // Переносим выбранное фото в постоянный каталог приложения (id уже есть).
     if (_photo != null) {
@@ -389,6 +386,13 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
           gender: _gender,
           castrated: _castrated,
           photo: _photo,
+          weightCtrl: _weightCtrl,
+          allergiesCtrl: _allergiesCtrl,
+          chronicCtrl: _chronicCtrl,
+          treatments: _treatments,
+          onTreatmentToggle: (kind) => setState(() {
+            if (!_treatments.remove(kind)) _treatments.add(kind);
+          }),
           onBack: _back,
           onFinish: _finish,
         );
@@ -1144,7 +1148,7 @@ class _Step3 extends StatelessWidget {
 
 // ─── Step 4: Summary ──────────────────────────────────────────────────────────
 
-class _Step4 extends StatelessWidget {
+class _Step4 extends StatefulWidget {
   final String petName;
   final PetSpecies species;
   final PetBreed breed;
@@ -1152,6 +1156,11 @@ class _Step4 extends StatelessWidget {
   final Gender gender;
   final bool castrated;
   final File? photo;
+  final TextEditingController weightCtrl;
+  final TextEditingController allergiesCtrl;
+  final TextEditingController chronicCtrl;
+  final Set<TreatmentKind> treatments;
+  final ValueChanged<TreatmentKind> onTreatmentToggle;
   final VoidCallback onBack;
   final Future<void> Function() onFinish;
 
@@ -1163,35 +1172,43 @@ class _Step4 extends StatelessWidget {
     required this.gender,
     required this.castrated,
     required this.photo,
+    required this.weightCtrl,
+    required this.allergiesCtrl,
+    required this.chronicCtrl,
+    required this.treatments,
+    required this.onTreatmentToggle,
     required this.onBack,
     required this.onFinish,
   });
 
-  String get _genderSymbol {
-    switch (gender) {
-      case Gender.male:
-        return '♂';
-      case Gender.female:
-        return '♀';
-      case Gender.none:
-        return '';
-    }
-  }
+  @override
+  State<_Step4> createState() => _Step4State();
+}
 
-  String _buildSubtitle() {
-    final parts = <String>[];
-    if (!breed.isEmpty) {
-      parts.add(breed.name);
-    } else {
-      parts.add(species.name);
-    }
-    if (_genderSymbol.isNotEmpty) parts.add(_genderSymbol);
-    if (birthDate != null) parts.add(_formatAge(birthDate!));
-    return parts.join(' · ');
-  }
+class _Step4State extends State<_Step4> {
+  // Виды обработок для быстрой отметки при регистрации. «Прочая прививка»
+  // требует названия — её добавляют позже в профиле.
+  static const _quickTreatments = [
+    TreatmentKind.rabies,
+    TreatmentKind.ticks,
+    TreatmentKind.worms,
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+
+    // Превью-профиль для переиспользуемых виджетов карточки питомца.
+    final previewPet = Pet(
+      name: widget.petName,
+      species: widget.species,
+      breed: widget.breed,
+      birthDate: widget.birthDate,
+      gender: widget.gender,
+      castrated: widget.castrated,
+      profileImage: widget.photo,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1202,7 +1219,7 @@ class _Step4 extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Знакомьтесь,\n${petName.isNotEmpty ? petName : "питомец"}',
+                  'Знакомьтесь,\n${widget.petName.isNotEmpty ? widget.petName : "питомец"}',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 6),
@@ -1215,70 +1232,34 @@ class _Step4 extends StatelessWidget {
 
                 // ── Hero card ─────────────────────────────────────────────
                 _card(
-                  child: Row(
-                    children: [
-                      // Avatar
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: photo != null
-                            ? Image.file(
-                                photo!,
-                                width: 72,
-                                height: 72,
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: context
-                                      .watch<AppearanceController>()
-                                      .primaryColor
-                                      .withAlpha(128),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    species.emoji,
-                                    style: const TextStyle(fontSize: 34),
-                                  ),
-                                ),
-                              ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              petName.isNotEmpty ? petName : 'Без имени',
-                              style: Theme.of(context).textTheme.titleMedium!
-                                  .copyWith(fontWeight: FontWeight.w700),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 6,
+                  ),
+                  child: PetProfileService().buildProfileDescription(
+                    context,
+                    previewPet,
+                    leading: PetProfileService().buildProfileAvatar(
+                      context,
+                      previewPet,
+                      size: 28,
+                    ),
+                    titleTheme: Theme.of(context).textTheme.titleMedium!
+                        .copyWith(fontWeight: FontWeight.w700),
+                    additional: widget.castrated
+                        ? [
+                            SoftGlassBadge(
+                              color: ac.secondaryColor,
+                              label: 'Кастрирован',
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _buildSubtitle(),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            if (castrated) ...[
-                              const SizedBox(height: 6),
-                              SoftGlassBadge(
-                                color: context
-                                    .watch<AppearanceController>()
-                                    .secondaryColor,
-                                label: 'Кастрирован',
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
+                          ]
+                        : null,
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // ── "Хотите добавить?" dashed cards ───────────────────────
+                // ── "Хотите добавить?" ────────────────────────────────────
                 Text(
                   'Хотите добавить?',
                   style: Theme.of(
@@ -1286,30 +1267,150 @@ class _Step4 extends StatelessWidget {
                   ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 10),
-                _DashedOptionalCard(
+
+                // Текущий вес
+                _OptionalExpandCard(
                   icon: Icons.monitor_weight_outlined,
                   label: 'Текущий вес',
                   color: const Color(0xFFE8B86A),
+                  filled: widget.weightCtrl.text.trim().isNotEmpty,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: widget.weightCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          onChanged: (_) => setState(() {}),
+                          cursorColor: ac.secondaryColor,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                          decoration: const InputDecoration(
+                            hintText: 'Например, 4.2',
+                            isDense: true,
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'кг',
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: ac.secondaryColor.withAlpha(172),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
-                _DashedOptionalCard(
+
+                // История прививок / обработок
+                _OptionalExpandCard(
                   icon: Icons.vaccines_outlined,
                   label: 'История прививок',
                   color: const Color(0xFF6FB888),
+                  filled: widget.treatments.isNotEmpty,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Отметьте недавно сделанные — рассчитаем следующую дату.',
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: ac.secondaryColor.withAlpha(172),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _quickTreatments.map((kind) {
+                          final selected = widget.treatments.contains(kind);
+                          return GestureDetector(
+                            onTap: () => widget.onTreatmentToggle(kind),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 160),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? kind.color.withAlpha(38)
+                                    : ThemeColors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: selected
+                                      ? kind.color
+                                      : ac.primaryColor.withAlpha(92),
+                                  width: selected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    selected ? Icons.check : kind.icon,
+                                    size: 16,
+                                    color: selected
+                                        ? kind.color
+                                        : ac.secondaryColor.withAlpha(172),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    kind.shortLabel,
+                                    style: Theme.of(context).textTheme.bodySmall!
+                                        .copyWith(
+                                          color: selected
+                                              ? kind.color
+                                              : ac.secondaryColor,
+                                          fontWeight: selected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
-                _DashedOptionalCard(
+
+                // Аллергии и хронические болезни
+                _OptionalExpandCard(
                   icon: Icons.warning_amber_rounded,
                   label: 'Аллергии и хроники',
                   color: const Color(0xFFD599C0),
+                  filled:
+                      widget.allergiesCtrl.text.trim().isNotEmpty ||
+                      widget.chronicCtrl.text.trim().isNotEmpty,
+                  child: Column(
+                    children: [
+                      _OnboardingField(
+                        controller: widget.allergiesCtrl,
+                        label: 'Аллергии',
+                        hint: 'Например, курица, пыльца',
+                        onChanged: () => setState(() {}),
+                      ),
+                      const SizedBox(height: 10),
+                      _OnboardingField(
+                        controller: widget.chronicCtrl,
+                        label: 'Хронические болезни',
+                        hint: 'Например, МКБ',
+                        onChanged: () => setState(() {}),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         ),
         _BottomBar(
-          onNext: () => onFinish(),
-          onBack: onBack,
+          onNext: () => widget.onFinish(),
+          onBack: widget.onBack,
           label: 'Готово',
           nextIcon: Icons.check_rounded,
         ),
@@ -1318,54 +1419,144 @@ class _Step4 extends StatelessWidget {
   }
 }
 
-class _DashedOptionalCard extends StatelessWidget {
+// ─── Раскрывающаяся карточка доп. данных ─────────────────────────────────────
+
+class _OptionalExpandCard extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final bool filled;
+  final Widget child;
 
-  const _DashedOptionalCard({
+  const _OptionalExpandCard({
     required this.icon,
     required this.label,
     required this.color,
+    required this.filled,
+    required this.child,
   });
 
   @override
+  State<_OptionalExpandCard> createState() => _OptionalExpandCardState();
+}
+
+class _OptionalExpandCardState extends State<_OptionalExpandCard> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    final active = widget.filled || _expanded;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: ThemeColors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: context.watch<AppearanceController>().primaryColor.withAlpha(
-            92,
-          ),
+          color: active
+              ? widget.color.withAlpha(128)
+              : ac.primaryColor.withAlpha(92),
           width: 1.5,
-          // Dashed look via decoration pattern
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withAlpha(30),
-              borderRadius: BorderRadius.circular(10),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: widget.color.withAlpha(30),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(widget.icon, size: 18, color: widget.color),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    widget.label,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const Spacer(),
+                  if (widget.filled && !_expanded)
+                    Icon(Icons.check_circle, size: 22, color: widget.color)
+                  else
+                    AnimatedRotation(
+                      turns: _expanded ? 0.25 : 0.0,
+                      duration: const Duration(milliseconds: 180),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 22,
+                        color: ac.primaryColor.withAlpha(128),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            child: Icon(icon, size: 18, color: color),
           ),
-          const SizedBox(width: 12),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          const Spacer(),
-          Icon(
-            Icons.add_circle_outline,
-            size: 20,
-            color: context.watch<AppearanceController>().primaryColor.withAlpha(
-              92,
-            ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _expanded
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: widget.child,
+                  )
+                : const SizedBox(width: double.infinity),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Поле ввода на онбординге ────────────────────────────────────────────────
+
+class _OnboardingField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final VoidCallback onChanged;
+
+  const _OnboardingField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    return TextField(
+      controller: controller,
+      onChanged: (_) => onChanged(),
+      cursorColor: ac.secondaryColor,
+      style: Theme.of(context).textTheme.bodyMedium,
+      minLines: 1,
+      maxLines: 3,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        isDense: true,
+        labelStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          color: ac.secondaryColor.withAlpha(172),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ac.primaryColor.withAlpha(92)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ac.secondaryColor),
+        ),
       ),
     );
   }
