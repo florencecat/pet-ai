@@ -54,6 +54,10 @@ class HealthPageState extends State<HealthPage> {
 
   List<HealthBadge> _healthBadges = [];
 
+  /// Скрытые пользователем бейджи, которые всё ещё актуальны — для секции
+  /// «от которых отказались» в листе рекомендаций.
+  List<HealthBadge> _dismissedBadges = [];
+
   // Period for the inline weight chart
   HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
 
@@ -93,6 +97,16 @@ class HealthPageState extends State<HealthPage> {
   Future<void> _dismissBadge(String id) async {
     if (_profile == null) return;
     _dismissedBadgeIds.add(id);
+    await HealthAnalyzer.saveDismissed(
+      _dismissedBadgeIds.toList(),
+      _profile!.id,
+    );
+  }
+
+  /// Возвращает ранее скрытый бейдж обратно в список актуальных.
+  Future<void> _restoreBadge(String id) async {
+    if (_profile == null) return;
+    _dismissedBadgeIds.remove(id);
     await HealthAnalyzer.saveDismissed(
       _dismissedBadgeIds.toList(),
       _profile!.id,
@@ -147,6 +161,15 @@ class HealthPageState extends State<HealthPage> {
     final events = await EventService().loadEvents(profile.id);
     final dismissedBadgeIds = await HealthAnalyzer.loadDismissed(_profile!.id);
     final healthBadges = await HealthAnalyzer.analyze(_profile!, events);
+    final allBadges = await HealthAnalyzer.analyze(
+      _profile!,
+      events,
+      includeDismissed: true,
+    );
+    final dismissedSet = dismissedBadgeIds.toSet();
+    final dismissedBadges = allBadges
+        .where((b) => b.id != null && dismissedSet.contains(b.id))
+        .toList();
 
     if (!mounted) return;
     setState(() {
@@ -156,8 +179,9 @@ class HealthPageState extends State<HealthPage> {
       _weightDynamics = weightDynamics;
       _foodStatus = foodStatus;
       _moodStatus = moodStatus;
-      _dismissedBadgeIds = dismissedBadgeIds.toSet();
+      _dismissedBadgeIds = dismissedSet;
       _healthBadges = healthBadges;
+      _dismissedBadges = dismissedBadges;
     });
   }
 
@@ -295,16 +319,29 @@ class HealthPageState extends State<HealthPage> {
       enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _RecommendationsSheet(
-        badges: visible,
+        active: visible,
+        dismissed: _dismissedBadges,
         onDismiss: _profile != null ? _dismissBadge : null,
+        onRestore: _profile != null ? _restoreBadge : null,
       ),
     );
     if (!mounted || _profile == null) return;
     // Re-analyze after the sheet has closed so the status transition and its
     // celebration overlay don't render on top of the sheet's scrim.
     final newBadges = await HealthAnalyzer.analyze(_profile!, _events);
+    final allBadges = await HealthAnalyzer.analyze(
+      _profile!,
+      _events,
+      includeDismissed: true,
+    );
     if (!mounted) return;
-    setState(() => _healthBadges = newBadges);
+    final newDismissed = allBadges
+        .where((b) => b.id != null && _dismissedBadgeIds.contains(b.id))
+        .toList();
+    setState(() {
+      _healthBadges = newBadges;
+      _dismissedBadges = newDismissed;
+    });
     widget.onHealthChanged?.call();
     if (!wasOk && _isOkScore(newBadges)) {
       _playCelebration();
@@ -1292,34 +1329,60 @@ class _TreatmentStatusTile extends StatelessWidget {
 // ─── Шит «Все рекомендации» ───────────────────────────────────────────────────
 
 class _RecommendationsSheet extends StatefulWidget {
-  final List<HealthBadge> badges;
+  final List<HealthBadge> active;
+  final List<HealthBadge> dismissed;
   final Future<void> Function(String id)? onDismiss;
+  final Future<void> Function(String id)? onRestore;
 
-  const _RecommendationsSheet({required this.badges, this.onDismiss});
+  const _RecommendationsSheet({
+    required this.active,
+    required this.dismissed,
+    this.onDismiss,
+    this.onRestore,
+  });
 
   @override
   State<_RecommendationsSheet> createState() => _RecommendationsSheetState();
 }
 
 class _RecommendationsSheetState extends State<_RecommendationsSheet> {
-  late List<HealthBadge> _badges;
+  late List<HealthBadge> _active;
+  late List<HealthBadge> _dismissed;
+
+  /// Секция «от которых отказались» по умолчанию свёрнута.
+  bool _dismissedExpanded = false;
 
   @override
   void initState() {
     super.initState();
-    _badges = List.from(widget.badges);
+    _active = List.from(widget.active);
+    _dismissed = List.from(widget.dismissed);
   }
 
   Future<void> _dismiss(HealthBadge badge) async {
     if (badge.id == null || widget.onDismiss == null) return;
     await widget.onDismiss!(badge.id!);
-    if (mounted) {
-      setState(() => _badges.removeWhere((b) => b.id == badge.id));
-    }
+    if (!mounted) return;
+    setState(() {
+      _active.removeWhere((b) => b.id == badge.id);
+      _dismissed.insert(0, badge);
+    });
+  }
+
+  Future<void> _restore(HealthBadge badge) async {
+    if (badge.id == null || widget.onRestore == null) return;
+    await widget.onRestore!(badge.id!);
+    if (!mounted) return;
+    setState(() {
+      _dismissed.removeWhere((b) => b.id == badge.id);
+      _active.add(badge);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEmpty = _active.isEmpty && _dismissed.isEmpty;
+
     return DraggableSheet(
       title: 'Рекомендации',
       centerTitle: true,
@@ -1327,51 +1390,143 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
       minSize: 0.4,
       maxSize: 1.0,
       onBack: () => Navigator.of(context).pop(),
-      body: _badges.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.favorite,
-                    size: 64,
-                    color: ThemeColors.ok.mainColor.withAlpha(180),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Всё в порядке',
-                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: ThemeColors.ok.mainColor,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Рекомендаций больше нет',
-                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: context
-                          .watch<AppearanceController>()
-                          .secondaryColor
-                          .withAlpha(160),
-                    ),
-                  ),
-                ],
-              ),
-            )
+      body: isEmpty
+          ? _emptyState(context)
           : Column(
-              children: _badges
-                  .map(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Актуальные ────────────────────────────────────────────
+                if (_active.isNotEmpty) ...[
+                  if (_dismissed.isNotEmpty)
+                    _sectionLabel(context, 'Актуальные'),
+                  ..._active.map(
                     (b) => HealthBadgeTile(
                       badge: b,
                       onDismiss: (b.id != null && widget.onDismiss != null)
                           ? () => _dismiss(b)
                           : null,
                     ),
-                  )
-                  .toList(),
+                  ),
+                ] else if (_dismissed.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'Актуальных рекомендаций нет',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor
+                            .withAlpha(160),
+                      ),
+                    ),
+                  ),
+
+                // ── От которых отказались (свёрнуто, скрыто если пусто) ────
+                if (_dismissed.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  CollapsibleSection(
+                    expanded: _dismissedExpanded,
+                    onToggle: () => setState(
+                      () => _dismissedExpanded = !_dismissedExpanded,
+                    ),
+                    titleContent: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'От которых отказались',
+                            style: Theme.of(context).textTheme.titleMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (!_dismissedExpanded) ...[
+                          const SizedBox(width: 8),
+                          _countBadge(context, _dismissed.length),
+                        ],
+                      ],
+                    ),
+                    body: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: _dismissed
+                            .map(
+                              (b) => HealthBadgeTile(
+                                badge: b,
+                                onRestore: widget.onRestore != null
+                                    ? () => _restore(b)
+                                    : null,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
     );
   }
+
+  Widget _sectionLabel(BuildContext context, String text) => Padding(
+    padding: const EdgeInsets.only(left: 4, top: 4, bottom: 2),
+    child: Text(
+      text,
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
+    ),
+  );
+
+  Widget _countBadge(BuildContext context, int count) {
+    final color = context.watch<AppearanceController>().secondaryColor;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withAlpha(28),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Text(
+        '$count',
+        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 48),
+    child: Column(
+      children: [
+        Icon(
+          Icons.favorite,
+          size: 64,
+          color: ThemeColors.ok.mainColor.withAlpha(180),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Всё в порядке',
+          style: Theme.of(context).textTheme.titleLarge!.copyWith(
+            fontWeight: FontWeight.w700,
+            color: ThemeColors.ok.mainColor,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Рекомендаций больше нет',
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+            color: context
+                .watch<AppearanceController>()
+                .secondaryColor
+                .withAlpha(160),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ─── Тайл таблетки ───────────────────────────────────────────────────────────

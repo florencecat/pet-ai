@@ -99,14 +99,21 @@ class HealthAnalyzer {
     return prefs.getStringList(_dismissedKey(petId)) ?? [];
   }
 
-  static Future<List<HealthBadge>> analyze(Pet profile, List<Event> events) async {
+  /// Формирует список бейджей. По умолчанию скрытые пользователем бейджи
+  /// исключаются; при [includeDismissed] возвращаются все (нужно для секции
+  /// «от которых отказались» — из результата берутся бейджи со скрытым id).
+  static Future<List<HealthBadge>> analyze(
+    Pet profile,
+    List<Event> events, {
+    bool includeDismissed = false,
+  }) async {
     final badges = <HealthBadge>[];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     final dismissedBadgeIds = await loadDismissed(profile.id);
     void addBadge(HealthBadge badge) {
-      if (!dismissedBadgeIds.contains(badge.id)) {
+      if (includeDismissed || !dismissedBadgeIds.contains(badge.id)) {
         badges.add(badge);
       }
     }
@@ -373,7 +380,7 @@ class HealthAnalyzer {
     }
 
     // ── Если нечего показать — общий "всё хорошо" ──────────────────────
-    if (badges.isEmpty) {
+    if (!includeDismissed && badges.isEmpty) {
       addBadge(
         const HealthBadge(
           title: 'Всё в порядке',
@@ -447,12 +454,22 @@ class HealthBadgeTile extends StatelessWidget {
   /// If provided, a dismiss button is shown for dismissable badges.
   final VoidCallback? onDismiss;
 
-  const HealthBadgeTile({super.key, required this.badge, this.onDismiss});
+  /// If provided, a restore button is shown instead — returns a previously
+  /// dismissed badge back to the active list.
+  final VoidCallback? onRestore;
+
+  const HealthBadgeTile({
+    super.key,
+    required this.badge,
+    this.onDismiss,
+    this.onRestore,
+  });
 
   @override
   Widget build(BuildContext context) {
     final color = badge.severity.palette.mainColor;
     final canDismiss = onDismiss != null && badge.id != null;
+    final canRestore = onRestore != null && badge.id != null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: SoftGlassPlate(
@@ -481,7 +498,14 @@ class HealthBadgeTile extends StatelessWidget {
               color: context.watch<AppearanceController>().secondaryColor,
             ),
           ),
-          trailing: canDismiss
+          trailing: canRestore
+              ? IconButton(
+                  icon: const Icon(Icons.restore, size: 20),
+                  color: context.watch<AppearanceController>().primaryColor,
+                  tooltip: 'Вернуть в актуальные',
+                  onPressed: onRestore,
+                )
+              : canDismiss
               ? IconButton(
                   icon: const Icon(Icons.close, size: 18),
                   color: context.watch<AppearanceController>().secondaryColor,
