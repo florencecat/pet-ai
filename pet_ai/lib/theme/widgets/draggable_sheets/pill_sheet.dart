@@ -905,7 +905,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
         // ── Missed (30 days) ─────────────────────────────────────────────────
         if (missedDays.isNotEmpty) ...[
           Text(
-            'Пропущено (30 дней)',
+            'Пропущенные за последний месяц',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -1583,7 +1583,6 @@ class _TodayToggle extends StatelessWidget {
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),

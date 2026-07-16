@@ -368,6 +368,15 @@ class Pill with Remindable implements PbEntity {
   @override
   final RemindBeforeVariant remindBeforeVariant;
 
+  @override
+  bool operator ==(Object other) {
+    if (other is Pill) return id == other.id;
+    return false;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
   const Pill({
     required this.id,
     required this.name,
