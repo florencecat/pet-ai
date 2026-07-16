@@ -525,7 +525,7 @@ class Event with Remindable implements PbEntity {
     'id': id,
     'name': name,
     'category': category.id,
-    'datetime': dateTime.toIso8601String(),
+    'datetime': dateTime.toUtc().toIso8601String(),
     'pets': petIds,
     'repeat_interval': repeat.name,
     // repeat_days в схеме — multi-select со строковыми значениями "1".."7".
@@ -610,7 +610,7 @@ class _EventCodec extends PbCodec<Event> {
       name: (name == null || name.isEmpty) ? 'Напоминание' : name,
       category: EventCategories.fromAiId(data['category'] as String?),
       dateTime:
-          DateTime.tryParse(data['datetime'] as String? ?? '') ??
+          DateTime.tryParse(data['datetime'] as String? ?? '')?.toLocal() ??
           DateTime.now(),
       petIds: [profileId],
       repeat: RepeatIntervalX.fromAi(data['repeat'] as String?),
@@ -624,7 +624,7 @@ class _EventCodec extends PbCodec<Event> {
     id: data['id'] as String,
     name: data['name'] as String,
     category: EventCategories.byId(data['category'] as String),
-    dateTime: DateTime.parse(data['datetime'] as String),
+    dateTime: DateTime.parse(data['datetime'] as String).toLocal(),
     completedDates:
         (data['completed_dates'] as List<dynamic>?)
             ?.map((e) => e.toString())
