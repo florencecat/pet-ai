@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/remindable.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:pet_satellite/theme/widgets/animated_option_picker.dart';
 
 /// Переиспользуемый контрол «Напомнить за N (дн./час./мин.)».
 ///
@@ -71,26 +72,21 @@ class RemindBeforePicker extends StatelessWidget {
               : null,
         ),
         const SizedBox(width: 8),
-        PopupMenuButton<RemindBeforeVariant>(
-          initialValue: variant,
+        AnimatedOptionPicker<RemindBeforeVariant>(
+          value: variant,
           enabled: canPickVariant,
-          itemBuilder: (_) => variants
-              .map((v) => PopupMenuItem(value: v, child: Text(v.label)))
+          showChevron: canPickVariant,
+          accentColor: accent,
+          options: variants
+              .map((v) => PickerOption(value: v, label: v.label))
               .toList(),
-          onSelected: (v) {
+          onChanged: (v) {
             if (v != variant) onValueChanged(0);
             onVariantChanged(v);
           },
-          enableFeedback: true,
-          child: Row(
-            children: [
-              Text(
-                variant.declension(value),
-                style: theme.textTheme.bodyLarge,
-              ),
-              if (canPickVariant)
-                Icon(Icons.expand_more, size: 24, color: accent),
-            ],
+          child: Text(
+            variant.declension(value),
+            style: theme.textTheme.bodyLarge,
           ),
         ),
       ],

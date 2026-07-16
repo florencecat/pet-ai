@@ -12,6 +12,7 @@ import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pill_icon.dart';
+import 'package:pet_satellite/theme/widgets/animated_option_picker.dart';
 import 'package:pet_satellite/theme/widgets/remind_before_picker.dart';
 import 'package:pet_satellite/theme/widgets/switch.dart';
 import 'package:pet_satellite/theme/widgets/toast.dart';
@@ -1391,34 +1392,27 @@ class _DoseUnitDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<DoseUnit>(
-      initialValue: value,
-      onSelected: onChanged,
-      enableFeedback: true,
-      itemBuilder: (_) => units
-          .map(
-            (u) => PopupMenuItem(value: u, child: Text(_menuLabel(u, count))),
-          )
+    return AnimatedOptionPicker<DoseUnit>(
+      value: value,
+      accentColor: accent,
+      onChanged: onChanged,
+      options: units
+          .map((u) => PickerOption(value: u, label: _menuLabel(u, count)))
           .toList(),
       child: Container(
         height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _fieldLabel(value, count),
-              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                color: value.id == 'none'
-                    ? context
-                          .watch<AppearanceController>()
-                          .secondaryColor
-                          .withAlpha(128)
-                    : context.watch<AppearanceController>().secondaryColor,
-              ),
-            ),
-            Icon(Icons.expand_more, size: 22, color: accent),
-          ],
+        padding: const EdgeInsets.only(left: 14),
+        alignment: Alignment.center,
+        child: Text(
+          _fieldLabel(value, count),
+          style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+            color: value.id == 'none'
+                ? context
+                      .watch<AppearanceController>()
+                      .secondaryColor
+                      .withAlpha(128)
+                : context.watch<AppearanceController>().secondaryColor,
+          ),
         ),
       ),
     );
