@@ -129,34 +129,35 @@ class DraggableSheet extends StatelessWidget {
     );
   }
 
+  /// Шапка: «назад» слева, [actions] справа, [title] — строго по центру.
+  ///
+  /// Row со Spacer'ами по бокам центрировать не умеет: он ставит заголовок в
+  /// середину *остатка* между leading и trailing, поэтому центр уезжает на
+  /// (leading - trailing) / 2. Пока по краям были одинаковые 48px (кнопка либо
+  /// SizedBox-заглушка), это совпадало с центром, но с любым actions шире
+  /// кнопки — разъезжается.
+  ///
+  /// NavigationToolbar (на нём же построен AppBar) считает центр по всей ширине
+  /// шапки и сдвигает заголовок, только если тот иначе наехал бы на leading или
+  /// trailing — заодно отпадают заглушки для выравнивания.
   Widget _buildHeader(Color primaryColor, TextStyle? titleStyle) {
-    final hasBack = onBack != null;
     final hasActions = actions != null && actions!.isNotEmpty;
 
     return SizedBox(
       height: 48,
-      child: Row(
-        children: [
-          if (hasBack)
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              color: primaryColor,
-              onPressed: onBack,
-            )
-          else if (centerTitle && hasActions)
-            const SizedBox(width: kMinInteractiveDimension),
-
-          if (centerTitle) const Spacer(),
-
-          if (title != null) Text(title!, style: titleStyle),
-
-          if (centerTitle) const Spacer(),
-
-          if (hasActions)
-            ...actions!
-          else if (centerTitle && hasBack)
-            const SizedBox(width: kMinInteractiveDimension),
-        ],
+      child: NavigationToolbar(
+        centerMiddle: centerTitle,
+        leading: onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                color: primaryColor,
+                onPressed: onBack,
+              )
+            : null,
+        middle: title != null ? Text(title!, style: titleStyle) : null,
+        trailing: hasActions
+            ? Row(mainAxisSize: MainAxisSize.min, children: actions!)
+            : null,
       ),
     );
   }
