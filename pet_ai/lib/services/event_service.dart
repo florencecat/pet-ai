@@ -171,17 +171,20 @@ class EventService {
   Future<void> setCompletedOn(
     String eventId,
     DateTime day,
-    bool completed,
   ) async {
     final all = await _loadAll();
     final idx = all.indexWhere((e) => e.id == eventId);
     if (idx < 0) return;
     final key = Event.dateKey(day);
+
+    final completed = all[idx].completedDates.contains(key);
+
     if (completed) {
-      all[idx].completedDates.add(key);
-    } else {
       all[idx].completedDates.remove(key);
+    } else {
+      all[idx].completedDates.add(key);
     }
+
     await _persistAll(all);
   }
 

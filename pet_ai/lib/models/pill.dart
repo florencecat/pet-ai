@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/remindable.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
@@ -310,7 +311,9 @@ class PillSchedule {
   final int hour;
   final int minute;
 
-  const PillSchedule({required this.hour, required this.minute});
+  String? eventId;
+
+  PillSchedule({required this.hour, required this.minute, this.eventId});
 
   String get label =>
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
@@ -320,10 +323,17 @@ class PillSchedule {
   factory PillSchedule.fromTimeOfDay(TimeOfDay t) =>
       PillSchedule(hour: t.hour, minute: t.minute);
 
-  Map<String, dynamic> toJson() => {'hour': hour, 'minute': minute};
+  Map<String, dynamic> toJson() => {
+    'hour': hour,
+    'minute': minute,
+    'eventId': eventId,
+  };
 
-  factory PillSchedule.fromJson(Map<String, dynamic> json) =>
-      PillSchedule(hour: json['hour'] as int, minute: json['minute'] as int);
+  factory PillSchedule.fromJson(Map<String, dynamic> json) => PillSchedule(
+    hour: json['hour'] as int,
+    minute: json['minute'] as int,
+    eventId: json['eventId'],
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -775,7 +785,7 @@ class _PillReminderCodec extends PbCodec<Pill> {
                 ),
               )
               .toList()
-        : const [PillSchedule(hour: 9, minute: 0)];
+        : [PillSchedule(hour: 9, minute: 0)];
 
     final frequencyType = PillFrequencyType.values.firstWhere(
       (f) => f.name == data['frequency'],

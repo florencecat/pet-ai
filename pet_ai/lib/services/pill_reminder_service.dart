@@ -11,53 +11,54 @@ class PillReminderService {
 
     // Препараты «по требованию» не имеют фиксированного расписания, поэтому
     // календарное событие для них не создаём.
-    Pill saved = reminder;
     if (reminder.frequencyType != PillFrequencyType.onDemand) {
-      final eventDateTime = DateTime(
-        reminder.startDate.year,
-        reminder.startDate.month,
-        reminder.startDate.day,
-        reminder.hour,
-        reminder.minute,
-      );
+      for (final schedule in reminder.schedules) {
+        final eventDateTime = DateTime(
+          reminder.startDate.year,
+          reminder.startDate.month,
+          reminder.startDate.day,
+          schedule.hour,
+          schedule.minute,
+        );
 
-      final repeat = reminder.frequencyType == PillFrequencyType.daily
-          ? RepeatInterval.daily
-          : RepeatInterval.custom;
+        final repeat = reminder.frequencyType == PillFrequencyType.daily
+            ? RepeatInterval.daily
+            : RepeatInterval.custom;
 
-      final event = Event(
-        name: reminder.name,
-        category: EventCategories.health,
-        dateTime: eventDateTime,
-        repeat: repeat,
-        customDays: reminder.frequencyType == PillFrequencyType.weekdays
-            ? reminder.weekdays
-            : [],
-        // Курс препарата заканчивается — событие перестаёт повторяться.
-        repeatEndDate: reminder.endDate,
-        // «Напомнить за» до каждого приёма — переносится с препарата на событие.
-        remindBeforeValue: reminder.remindBeforeValue,
-        remindBeforeVariant: reminder.remindBeforeVariant,
-        petIds: [petId],
-        // Связываем событие с напоминанием для двусторонней синхронизации статуса
-        source: EventSource.pill,
-        sourceId: reminder.id,
-        // Иконка/цвет события = выбранные пользователем вид и цвет препарата.
-        styleKindId: reminder.kind?.id,
-        color: reminder.color,
-      );
+        final event = Event(
+          name: reminder.name,
+          category: EventCategories.health,
+          dateTime: eventDateTime,
+          repeat: repeat,
+          customDays: reminder.frequencyType == PillFrequencyType.weekdays
+              ? reminder.weekdays
+              : [],
+          // Курс препарата заканчивается — событие перестаёт повторяться.
+          repeatEndDate: reminder.endDate,
+          // «Напомнить за» до каждого приёма — переносится с препарата на событие.
+          remindBeforeValue: reminder.remindBeforeValue,
+          remindBeforeVariant: reminder.remindBeforeVariant,
+          petIds: [petId],
+          // Связываем событие с напоминанием для двусторонней синхронизации статуса
+          source: EventSource.pill,
+          sourceId: reminder.id,
+          // Иконка/цвет события = выбранные пользователем вид и цвет препарата.
+          styleKindId: reminder.kind?.id,
+          color: reminder.color,
+        );
 
-      await EventService().createEvent(event);
-      saved = reminder.copyWith(eventId: event.id);
+        await EventService().createEvent(event);
+        schedule.eventId = event.id;
+      }
     }
 
-    profile.pillReminders.add(saved);
+    profile.pillReminders.add(reminder);
     await PetProfileService().saveProfile(profile);
 
     // Fire-and-forget cloud push.
-    CloudSyncService.instance.pushAsync('pills', saved, petId);
+    CloudSyncService.instance.pushAsync('pills', reminder, petId);
 
-    return saved;
+    return reminder;
   }
 
   /// Replaces an existing reminder in-place and persists the profile.
@@ -95,11 +96,9 @@ class PillReminderService {
     await PetProfileService().saveProfile(profile);
     CloudSyncService.instance.deleteAsync('pills', reminder.id);
 
-    if (reminder.eventId != null) {
-      final all = await EventService().loadEvents(petId);
-      for (final e in all.where((e) => e.id == reminder.eventId)) {
-        await EventService().deleteEvent(e);
-      }
+    final all = await EventService().loadEvents(petId);
+    for (final e in all.where((e) => e.sourceId == reminder.id)) {
+      await EventService().deleteEvent(e);
     }
   }
 
@@ -267,8 +266,10 @@ class PillReminderService {
     );
 
     // Синхронизируем связанное событие в календаре
-    if (syncEvent && old.eventId != null) {
-      await EventService().setCompletedOn(old.eventId!, date, add);
+    for (final schedule in profile.pillReminders[idx].schedules) {
+      if (syncEvent && schedule.eventId != null) {
+        await EventService().setCompletedOn(schedule.eventId!, date);
+      }
     }
   }
 
@@ -380,8 +381,9 @@ class PillReminderService {
     );
 
     // Sync linked calendar event: complete when all schedules are taken.
-    if (syncEvent && old.eventId != null) {
-      await EventService().setCompletedOn(old.eventId!, date, allTaken);
+    final schedule = profile.pillReminders[idx].schedules[scheduleIndex];
+    if (syncEvent && schedule.eventId != null) {
+      await EventService().setCompletedOn(schedule.eventId!, date);
     }
   }
 }

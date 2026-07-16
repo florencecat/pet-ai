@@ -133,7 +133,7 @@ Pill goodPillEntity() {
     doseUnit: DoseUnit.capsule,
     frequencyType: PillFrequencyType.weekdays,
     weekdays: const [1, 3, 5],
-    schedules: const [
+    schedules: [
       PillSchedule(hour: 9, minute: 0),
       PillSchedule(hour: 21, minute: 30),
     ],
@@ -161,7 +161,7 @@ Pill goodOnDemandPillEntity() {
     doseUnit: DoseUnit.none,
     frequencyType: PillFrequencyType.onDemand,
     weekdays: const [],
-    schedules: const [PillSchedule(hour: 9, minute: 0)],
+    schedules: [PillSchedule(hour: 9, minute: 0)],
     startDate: DateTime(2025, 1, 1),
     takenDates: const [],
     takenSchedules: const {},
