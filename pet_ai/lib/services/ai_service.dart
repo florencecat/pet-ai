@@ -519,8 +519,10 @@ class AIChatController extends ChangeNotifier {
           "role": "system",
           "content":
               "Ты ветеринарный ассистент. Отвечай кратко, понятно и по делу. "
-              "Учитывай контекст питомца: $petContext"
-              "${attachment != null ? "\nПользователь прикрепил данные (${attachment.type}): ${jsonEncode(attachment.data)}" : ""}",
+              "Используй приведённые данные о питомце и не переспрашивай то, "
+              "что в них уже есть (обработки, прививки, препараты, аллергии и т.п.).\n\n"
+              "Данные о питомце:\n$petContext"
+              "${attachment != null ? "\n\nПользователь прикрепил данные (${attachment.type}): ${jsonEncode(attachment.data)}" : ""}",
         },
         ...limitedHistory.map((e) => {"role": e.role, "content": e.content}),
       ];

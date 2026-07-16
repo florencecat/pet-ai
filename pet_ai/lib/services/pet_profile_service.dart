@@ -22,16 +22,122 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/meal.dart';
+import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
 class PetContextBuilder {
+  /// Собирает полный актуальный контекст питомца для ИИ-ассистента:
+  /// профиль, факты здоровья, последние обработки/прививки, активные
+  /// препараты и тревожные симптомы из заметок. Пустые поля опускаются,
+  /// чтобы не слать ассистенту «null» и не путать его.
   static String build(Pet pet) {
-    return """
-      Имя: ${pet.name}
-      Вид: ${pet.breed}
-      Дата рождения: ${pet.birthDate}
-      Вес: ${pet.weightHistory.lastWeight} кг
-    """;
+    final lines = <String>[];
+
+    // ── Базовый профиль ──────────────────────────────────────────────────
+    lines.add(
+      'Имя: ${pet.name.trim().isEmpty ? "не указано" : pet.name.trim()}',
+    );
+    lines.add(
+      'Вид: ${pet.species.name}'
+      '${pet.breed.isEmpty ? "" : ", порода ${pet.breed.name}"}',
+    );
+    if (pet.birthDate != null) {
+      final age = formatPetAge(pet.birthDate!.difference(DateTime.now()));
+      lines.add('Возраст: $age (род. ${_fmtDate(pet.birthDate!)})');
+    }
+    final genderBits = <String>[];
+    if (pet.gender != Gender.none) genderBits.add(pet.gender.caption);
+    if (pet.castrated) genderBits.add('кастрирован/стерилизован');
+    if (genderBits.isNotEmpty) lines.add('Пол: ${genderBits.join(", ")}');
+    if (pet.coat.trim().isNotEmpty) lines.add('Окрас: ${pet.coat.trim()}');
+    lines.add('Вес: ${pet.weightHistory.lastWeightString()}');
+
+    final mood = pet.moodHistory.lastEntry;
+    if (mood != null) {
+      lines.add('Настроение: ${mood.mood.label} (${_fmtDate(mood.date)})');
+    }
+    final meal = pet.foodHistory.lastEntry;
+    if (meal != null && meal.foodName.trim().isNotEmpty) {
+      lines.add(
+        'Последнее кормление: ${meal.foodName.trim()} (${_fmtDate(meal.date)})',
+      );
+    }
+
+    // ── Факты здоровья из профиля ────────────────────────────────────────
+    if (pet.allergies.trim().isNotEmpty) {
+      lines.add('Аллергии: ${pet.allergies.trim()}');
+    }
+    if (pet.chronicConditions.trim().isNotEmpty) {
+      lines.add('Хронические болезни: ${pet.chronicConditions.trim()}');
+    }
+    if (pet.notes.trim().isNotEmpty) {
+      lines.add('Заметки о питомце: ${pet.notes.trim()}');
+    }
+    if (pet.vetClinic.trim().isNotEmpty) {
+      lines.add('Ветклиника: ${pet.vetClinic.trim()}');
+    }
+    if (pet.chipNumber.trim().isNotEmpty) {
+      lines.add('Чип: ${pet.chipNumber.trim()}');
+    }
+
+    // ── Обработки и прививки (последняя запись по каждому виду) ───────────
+    final latestTreatment = <String, TreatmentEntry>{};
+    for (final t in pet.treatmentHistory.entries) {
+      // «Прочие прививки» разделяем по названию, остальные — по виду.
+      final key = t.kind == TreatmentKind.vaccine
+          ? 'vaccine:${t.name}'
+          : t.kind.name;
+      final existing = latestTreatment[key];
+      if (existing == null || t.date.isAfter(existing.date)) {
+        latestTreatment[key] = t;
+      }
+    }
+    if (latestTreatment.isNotEmpty) {
+      lines.add('Обработки и прививки:');
+      final sorted = latestTreatment.values.toList()
+        ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
+      for (final t in sorted) {
+        lines.add(
+          '- ${t.displayName}: последняя ${_fmtDate(t.date)}, '
+          'следующая ${_fmtDate(t.nextDate)}',
+        );
+      }
+    }
+
+    // ── Активные курсы препаратов ────────────────────────────────────────
+    final activePills = pet.pillReminders.where((p) => p.isActive).toList();
+    if (activePills.isNotEmpty) {
+      lines.add('Препараты (активные курсы):');
+      for (final p in activePills) {
+        final bits = <String>[];
+        if (p.kind != null) bits.add(p.kind!.name);
+        if (p.doseLabel.isNotEmpty) bits.add(p.doseLabel);
+        bits.add(p.frequencyLabel);
+        if (p.timeLabel.isNotEmpty) bits.add(p.timeLabel);
+        lines.add('- ${p.name} (${bits.join(", ")})');
+      }
+    }
+
+    // ── Тревожные симптомы из заметок (записи с негативными тэгами) ───────
+    final symptomNotes =
+        pet.noteHistory.entries.where((n) => n.symptomId != null).toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+    if (symptomNotes.isNotEmpty) {
+      lines.add('Тревожные симптомы из заметок (последние):');
+      for (final n in symptomNotes.take(5)) {
+        final tag = n.symptomTag?.label ?? 'Симптом';
+        final txt = n.note.trim();
+        final detail = txt.isNotEmpty && txt != tag ? ': $txt' : '';
+        lines.add('- ${_fmtDate(n.date)} — $tag$detail');
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  static String _fmtDate(DateTime d) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(d.day)}.${two(d.month)}.${d.year}';
   }
 }
 
