@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/ai_service.dart';
+import 'package:pet_satellite/services/authentification_service.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
@@ -700,8 +702,10 @@ class _Step1 extends StatelessWidget {
                 ],
 
                 // ── Восстановить из облака ────────────────────────────────
-                const SizedBox(height: 24),
-                _RestoreCloudLink(onTap: onRestore),
+                if (!GetIt.instance<AuthService>().isAuthenticated) ...[
+                  const SizedBox(height: 24),
+                  _RestoreCloudLink(onTap: onRestore),
+                ]
               ],
             ),
           ),
