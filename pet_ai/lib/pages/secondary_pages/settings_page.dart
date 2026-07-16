@@ -11,6 +11,7 @@ import 'package:pet_satellite/pages/secondary_pages/user_profile_page.dart';
 import 'package:pet_satellite/pages/registration_flows/user_registration_flow.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/api_service.dart';
+import 'package:pet_satellite/config/feature_flags.dart';
 import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/crash_reporting_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -645,14 +646,18 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 8),
           SettingsCard(
             children: [
-              _SyncCard(
-                sync: _sync,
-                isAuthenticated: _user != null,
-                primaryColor: ac.primaryColor,
-                syncEnabled: _sync.syncEnabled,
-                onToggle: (v) => _toggleSync(context, v),
-              ),
-              SettingsCardDivider(),
+              // Свич облачной синхронизации скрыт за фич-гейтом, пока фича
+              // не готова (сама реализация синхронизации остаётся).
+              if (FeatureFlags.isEnabled(Feature.cloudSync)) ...[
+                _SyncCard(
+                  sync: _sync,
+                  isAuthenticated: _user != null,
+                  primaryColor: ac.primaryColor,
+                  syncEnabled: _sync.syncEnabled,
+                  onToggle: (v) => _toggleSync(context, v),
+                ),
+                SettingsCardDivider(),
+              ],
               SettingsRow(
                 icon: Icons.download_outlined,
                 label: 'Экспорт данных',

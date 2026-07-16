@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pet_satellite/config/feature_flags.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/user_profile.dart';
@@ -706,7 +707,10 @@ class _Step1 extends StatelessWidget {
                 ],
 
                 // ── Восстановить из облака ────────────────────────────────
-                if (!GetIt.instance<AuthService>().isAuthenticated) ...[
+                // Пока синхронизация «пилится», скачивание с сервера не
+                // предусмотрено — прячем предложение за фич-гейтом.
+                if (FeatureFlags.isEnabled(Feature.cloudSync) &&
+                    !GetIt.instance<AuthService>().isAuthenticated) ...[
                   const SizedBox(height: 24),
                   _RestoreCloudLink(onTap: onRestore),
                 ]

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:pet_satellite/config/feature_flags.dart';
 import 'package:pet_satellite/models/user_profile.dart';
 import 'package:pet_satellite/services/ai_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
@@ -350,15 +351,18 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
                   accent: ac.primaryColor,
                   onTap: _editName,
                 ),
-                _Separator(),
-                _InfoRow(
-                  icon: Icons.location_on_outlined,
-                  label: 'Город',
-                  value: _profile.city.isEmpty ? 'Не указан' : _profile.city,
-                  accent: ac.primaryColor,
-                  muted: _profile.city.isEmpty,
-                  onTap: _editCity,
-                ),
+                // Поле «Город» скрыто за фич-гейтом, пока фича не готова.
+                if (FeatureFlags.isEnabled(Feature.userCity)) ...[
+                  _Separator(),
+                  _InfoRow(
+                    icon: Icons.location_on_outlined,
+                    label: 'Город',
+                    value: _profile.city.isEmpty ? 'Не указан' : _profile.city,
+                    accent: ac.primaryColor,
+                    muted: _profile.city.isEmpty,
+                    onTap: _editCity,
+                  ),
+                ],
               ],
             ),
           ),

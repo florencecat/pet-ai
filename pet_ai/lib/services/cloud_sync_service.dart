@@ -45,7 +45,9 @@ class CloudSyncService extends ChangeNotifier {
 
   /// Whether background sync to the server is enabled. Persisted across runs.
   /// While enabled (and authenticated) local changes are pushed to the server.
-  bool _syncEnabled = true;
+  /// Off by default — sync is opt-in and its toggle may be hidden behind a
+  /// feature gate, so it must never turn on by itself after authentication.
+  bool _syncEnabled = false;
 
   PocketBase get _pb => _pbService.pb;
 
@@ -59,7 +61,7 @@ class CloudSyncService extends ChangeNotifier {
   /// Call once at startup so the UI reflects state across restarts.
   Future<void> init() async {
     final prefs = SharedPreferencesAsync();
-    _syncEnabled = (await prefs.getBool(_syncEnabledKey)) ?? true;
+    _syncEnabled = (await prefs.getBool(_syncEnabledKey)) ?? false;
     final lastIso = await prefs.getString(_lastSyncKey);
     _lastSync = lastIso != null ? DateTime.tryParse(lastIso) : null;
     // Восстанавливаем «зелёный» статус, если синхронизация уже была.
