@@ -220,7 +220,7 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
               ),
               TextField(
                 controller: _nameCtrl,
-                decoration: baseInputDecoration(context, 'Название'),
+                decoration: baseInputDecoration(context, hint: 'Название'),
               ),
             ],
             Row(

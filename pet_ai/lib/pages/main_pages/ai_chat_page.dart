@@ -1470,7 +1470,7 @@ class _InputBarState extends State<_InputBar> {
                         textInputAction: TextInputAction.newline,
                         decoration: baseInputDecoration(
                           context,
-                          'Спросите о питомце...',
+                          hint: 'Спросите о питомце...',
                         ),
                         onChanged: (_) => setState(() {}),
                       ),

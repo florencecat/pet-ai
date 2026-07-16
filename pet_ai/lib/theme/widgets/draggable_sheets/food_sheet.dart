@@ -200,7 +200,7 @@ class _FoodDialogState extends State<FoodDialog> {
                 textCapitalization: TextCapitalization.sentences,
                 decoration: baseInputDecoration(
                   context,
-                  _kind == FoodKind.natural
+                  hint: _kind == FoodKind.natural
                       ? 'Напр. курица, гречка'
                       : 'Название корма',
                   suffixIcon: _foodCtrl.text.isNotEmpty

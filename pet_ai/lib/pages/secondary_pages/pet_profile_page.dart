@@ -10,6 +10,7 @@ import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
+import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/pet_image_source_sheet.dart';
@@ -920,19 +921,7 @@ class _TextSheetState extends State<_TextSheet> {
                     ? TextInputType.multiline
                     : TextInputType.text),
             textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              hintText: widget.hint,
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
+            decoration: baseInputDecoration(context, hint: widget.hint),
             maxLength: widget.limit,
           ),
           const SizedBox(height: 16),

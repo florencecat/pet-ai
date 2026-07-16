@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 
 class DraggableBottomSheet extends StatefulWidget {
   final Map<String, String> allItems;
@@ -71,12 +72,11 @@ class _DraggableBottomSheetState extends State<DraggableBottomSheet> {
           ),
           TextField(
             controller: _searchCtrl,
-            decoration: InputDecoration(
+            decoration: baseInputDecoration(
+              context,
               prefixIcon: const Icon(Icons.search),
-              hintText: widget.hintText,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              hint: widget.hintText,
+              useBorder: true
             ),
           ),
           if (widget.onAddCustomItem != null) ...[

@@ -450,7 +450,7 @@ class _PillForm extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: form.nameCtrl,
-          decoration: baseInputDecoration(context, 'Название препарата'),
+          decoration: baseInputDecoration(context, hint: 'Название препарата'),
           textCapitalization: TextCapitalization.sentences,
         ),
         const SizedBox(height: 10),
@@ -700,7 +700,7 @@ class _DoseField extends StatelessWidget {
             // Перерисовываем, чтобы склонение единицы в дропдауне отражало
             // введённое количество (напр. «1 впрыск» → «3 впрыска»).
             onChanged: (_) => onChanged(),
-            decoration: baseInputDecoration(context, 'Доза'),
+            decoration: baseInputDecoration(context, hint: 'Доза'),
           ),
         ),
         const SizedBox(width: 8),
@@ -1894,7 +1894,7 @@ class _OnDemandIntakeDialogState extends State<_OnDemandIntakeDialog> {
                     autofocus: true,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
-                    decoration: baseInputDecoration(context, 'Доза'),
+                    decoration: baseInputDecoration(context, hint: 'Доза'),
                   ),
                 ),
                 const SizedBox(width: 8),

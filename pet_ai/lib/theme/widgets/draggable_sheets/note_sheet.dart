@@ -133,7 +133,7 @@ class _NoteDialogState extends State<NoteDialog> {
                 maxLines: 8,
                 minLines: 4,
                 keyboardType: TextInputType.multiline,
-                decoration: baseInputDecoration(context, 'Своя заметка'),
+                decoration: baseInputDecoration(context, hint: 'Своя заметка'),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 8),

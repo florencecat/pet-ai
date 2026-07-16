@@ -449,7 +449,7 @@ class _TextSheetBody extends StatelessWidget {
           controller: ctrl,
           autofocus: true,
           textCapitalization: capitalize,
-          decoration: baseInputDecoration(context, hint),
+          decoration: baseInputDecoration(context, hint: hint),
         ),
         const SizedBox(height: 16),
         FilledButton(
@@ -709,7 +709,7 @@ class _CitySheetState extends State<_CitySheet> {
             textCapitalization: TextCapitalization.words,
             decoration: baseInputDecoration(
               context,
-              'Город',
+              hint: 'Город',
               suffixIcon: _ctrl.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.close, size: 18),

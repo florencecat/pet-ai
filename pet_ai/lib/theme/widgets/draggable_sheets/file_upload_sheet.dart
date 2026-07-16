@@ -229,7 +229,7 @@ class _FileUploadDialogState extends State<FileUploadDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: baseInputDecoration(context, 'Название документа'),
+                decoration: baseInputDecoration(context, hint: 'Название документа'),
                 style: Theme.of(context).textTheme.bodyMedium,
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Введите название' : null,
@@ -245,7 +245,7 @@ class _FileUploadDialogState extends State<FileUploadDialog> {
                 controller: _dateController,
                 decoration: baseInputDecoration(
                   context,
-                  'Дата документа',
+                  hint: 'Дата документа',
                   suffixIcon: Icon(
                     Icons.calendar_today,
                     color: Theme.of(context).dividerColor,
