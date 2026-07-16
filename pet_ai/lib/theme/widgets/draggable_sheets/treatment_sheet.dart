@@ -411,9 +411,9 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
         editingEntry: entry,
       ),
     );
-    if (changed != null && changed && context.mounted) {
+    if (changed != null && changed) {
       await _initScreen();
-      if (_entries.isEmpty) {
+      if (_entries.isEmpty && context.mounted) {
         Navigator.of(context).pop(true);
       }
     }
