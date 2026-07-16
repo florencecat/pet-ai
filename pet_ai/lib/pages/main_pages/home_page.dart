@@ -843,12 +843,7 @@ class _PetTimeline extends StatelessWidget {
         children: [
           _LineColumn(showLine: true, dot: true),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: context.subtitleStyle,
-            ),
-          ),
+          Expanded(child: Text(message, style: context.subtitleStyle)),
         ],
       ),
     );
@@ -1242,13 +1237,16 @@ class _VetCardSheet extends StatelessWidget {
                   _infoRow(context, 'Пол', profile.gender.caption),
                   _infoRow(context, 'Возраст', _formatAge()),
                   _infoRow(context, 'Дата рождения', _formatBirthDate()),
-                  _infoRow(context, 'Аллергии', profile.allergies),
-                  _infoRow(
-                    context,
-                    'Хронические заболевания',
-                    profile.chronicConditions,
-                  ),
-                  _infoRow(context, 'Ветеринар', profile.vetClinic),
+                  if (profile.allergies.isNotEmpty)
+                    _infoRow(context, 'Аллергии', profile.allergies),
+                  if (profile.chronicConditions.isNotEmpty)
+                    _infoRow(
+                      context,
+                      'Хронические заболевания',
+                      profile.chronicConditions,
+                    ),
+                  if (profile.vetClinic.isNotEmpty)
+                    _infoRow(context, 'Ветеринар', profile.vetClinic),
                   _infoRow(context, 'Стерилизация', _formatCastration()),
                 ],
               ),
@@ -1315,7 +1313,6 @@ class _VetCardSheet extends StatelessWidget {
 
   Widget _infoRow(BuildContext context, String label, String value) {
     Color textColor = context.watch<AppearanceController>().secondaryColor;
-    if (value.isEmpty) value = '—';
 
     if (value.startsWith('+')) {
       textColor = ThemeColors.ok.mainColor;
