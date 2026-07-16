@@ -1409,21 +1409,14 @@ class _PillReminderTileState extends State<_PillReminderTile> {
   }
 
   Future<void> _toggleTaken() async {
-    final wasTaken = _takenToday;
-    setState(() => _takenToday = !wasTaken);
-    if (!wasTaken) {
-      await PillReminderService().markTaken(
-        petId: widget.petId,
-        reminderId: widget.reminder.id,
-        date: DateTime.now(),
-      );
-    } else {
-      await PillReminderService().markUntaken(
-        petId: widget.petId,
-        reminderId: widget.reminder.id,
-        date: DateTime.now(),
-      );
-    }
+    final taken = !_takenToday;
+    setState(() => _takenToday = taken);
+    await PillReminderService().setDayTaken(
+      petId: widget.petId,
+      reminderId: widget.reminder.id,
+      date: DateTime.now(),
+      taken: taken,
+    );
     widget.onReload();
   }
 

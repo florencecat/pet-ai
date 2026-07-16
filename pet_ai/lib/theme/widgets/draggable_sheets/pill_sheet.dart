@@ -32,7 +32,11 @@ class _PillFormState {
   bool doseUnitTouched;
   PillFrequencyType frequency;
   Set<int> weekdays;
-  List<TimeOfDay> schedules;
+
+  /// Времена приёма как есть, а не TimeOfDay: у расписания есть стабильный id и
+  /// ссылка на своё событие, и при правке курса их нужно сохранить — иначе
+  /// отметки о приёме и уведомления отвяжутся.
+  List<PillSchedule> schedules;
   DateTime startDate;
   bool hasEndDate;
   DateTime endDate;
@@ -49,7 +53,7 @@ class _PillFormState {
     this.doseUnitTouched = false,
     this.frequency = PillFrequencyType.daily,
     Set<int>? weekdays,
-    List<TimeOfDay>? schedules,
+    List<PillSchedule>? schedules,
     DateTime? startDate,
     this.hasEndDate = false,
     DateTime? endDate,
@@ -59,7 +63,7 @@ class _PillFormState {
        doseAmountCtrl = TextEditingController(text: doseAmount),
        doseUnit = doseUnit ?? DoseUnit.forKind(kind).first,
        weekdays = weekdays ?? {1, 2, 3, 4, 5},
-       schedules = schedules ?? [const TimeOfDay(hour: 9, minute: 0)],
+       schedules = schedules ?? [PillSchedule(hour: 9, minute: 0)],
        startDate = startDate ?? DateTime.now(),
        endDate = endDate ?? DateTime.now().add(const Duration(days: 30));
 
@@ -74,7 +78,8 @@ class _PillFormState {
     doseUnitTouched: r.doseUnit.id != 'none',
     frequency: r.frequencyType,
     weekdays: Set.of(r.weekdays),
-    schedules: r.schedules.map((s) => s.toTimeOfDay()).toList(),
+    // Копия списка, но сами расписания те же — id и eventId переживают правку.
+    schedules: List.of(r.schedules),
     startDate: r.startDate,
     hasEndDate: r.endDate != null,
     endDate: r.endDate ?? DateTime.now().add(const Duration(days: 30)),
@@ -140,17 +145,42 @@ class _PillDialogState extends State<PillDialog> {
       context: context,
       initialTime: const TimeOfDay(hour: 9, minute: 0),
     );
-    if (picked != null && !_form.schedules.contains(picked)) {
-      setState(() => _form.schedules.add(picked));
-    }
+    if (picked == null) return;
+    final added = PillSchedule.fromTimeOfDay(picked);
+    if (_isDuplicate(added)) return;
+    setState(() => _form.schedules.add(added));
   }
 
-  Future<void> _editSchedule(int index) async {
+  Future<void> _editSchedule(PillSchedule schedule) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: _form.schedules[index],
+      initialTime: schedule.toTimeOfDay(),
     );
-    if (picked != null) setState(() => _form.schedules[index] = picked);
+    if (picked == null) return;
+
+    // copyWith сохраняет id и eventId — правится только время.
+    final edited = schedule.copyWith(hour: picked.hour, minute: picked.minute);
+    // Время не изменилось (== у PillSchedule сравнивает время суток).
+    if (edited == schedule) return;
+    if (_isDuplicate(edited, except: schedule)) return;
+
+    final idx = _form.schedules.indexOf(schedule);
+    if (idx < 0) return;
+    setState(() => _form.schedules[idx] = edited);
+  }
+
+  /// Есть ли уже такое время приёма в курсе. [except] — правимое расписание,
+  /// которое не должно считаться дублем самого себя.
+  ///
+  /// Два приёма в одно время — это два события в календаре на один момент и
+  /// две отметки, которые пользователь не различит, поэтому не заводим их ни
+  /// при добавлении, ни при правке.
+  bool _isDuplicate(PillSchedule schedule, {PillSchedule? except}) {
+    final clash = _form.schedules.any(
+      (s) => s == schedule && !identical(s, except),
+    );
+    if (clash) showAppToast(context, 'Время ${schedule.label} уже добавлено');
+    return clash;
   }
 
   Future<void> _pickDate({required bool isEnd}) async {
@@ -204,14 +234,14 @@ class _PillDialogState extends State<PillDialog> {
     setState(() => _saving = true);
 
     final name = _form.nameCtrl.text.trim();
-    final schedules =
-        (List.of(_form.schedules)..sort(
-              (a, b) => a.hour != b.hour
-                  ? a.hour.compareTo(b.hour)
-                  : a.minute.compareTo(b.minute),
-            ))
-            .map((t) => PillSchedule.fromTimeOfDay(t))
-            .toList();
+    // Пересоздавать расписания нельзя: вместе с ними потерялись бы id (а с ним
+    // отметки о приёме) и eventId (связь с событием календаря).
+    final schedules = List.of(_form.schedules)
+      ..sort(
+        (a, b) => a.hour != b.hour
+            ? a.hour.compareTo(b.hour)
+            : a.minute.compareTo(b.minute),
+      );
     final weekdays = _form.frequency == PillFrequencyType.weekdays
         ? (List.of(_form.weekdays)..sort())
         : <int>[];
@@ -251,7 +281,6 @@ class _PillDialogState extends State<PillDialog> {
         schedules: schedules,
         startDate: _form.startDate,
         endDate: _form.hasEndDate ? _form.endDate : null,
-        takenDates: const [],
         remindBeforeValue: _form.remindBeforeValue,
         remindBeforeVariant: _form.remindBeforeVariant,
       );
@@ -462,32 +491,25 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     await _reload();
   }
 
-  Future<void> _toggleSchedule(int scheduleIndex) async {
+  Future<void> _toggleSchedule(PillSchedule schedule) async {
     final reminder = _selected!;
     final today = DateTime.now();
-    if (reminder.isScheduleTakenOnDay(today, scheduleIndex)) {
-      await PillReminderService().markScheduleUntaken(
-        petId: widget.profile.id,
-        reminderId: reminder.id,
-        date: today,
-        scheduleIndex: scheduleIndex,
-      );
-    } else {
-      await PillReminderService().markScheduleTaken(
-        petId: widget.profile.id,
-        reminderId: reminder.id,
-        date: today,
-        scheduleIndex: scheduleIndex,
-      );
-    }
+    await PillReminderService().setScheduleTaken(
+      petId: widget.profile.id,
+      reminderId: reminder.id,
+      date: today,
+      scheduleId: schedule.id,
+      taken: !reminder.isScheduleTakenOnDay(today, schedule.id),
+    );
     await _reload();
   }
 
   Future<void> _markTaken(DateTime day) async {
-    await PillReminderService().markTaken(
+    await PillReminderService().setDayTaken(
       petId: widget.profile.id,
       reminderId: _selected!.id,
       date: day,
+      taken: true,
     );
     await _reload();
   }
@@ -885,20 +907,17 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
             ],
           ] else
             // One toggle per schedule — each is toggled independently.
-            ...reminder.schedules.asMap().entries.map((entry) {
-              final i = entry.key;
-              final s = entry.value;
-              final taken = reminder.isScheduleTakenOnDay(today, i);
-              return Padding(
+            ...reminder.schedules.map(
+              (s) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _TodayToggle(
-                  isTaken: taken,
+                  isTaken: reminder.isScheduleTakenOnDay(today, s.id),
                   time: s.label,
                   accent: accent,
-                  onTap: () => _toggleSchedule(i),
+                  onTap: () => _toggleSchedule(s),
                 ),
-              );
-            }),
+              ),
+            ),
           const SizedBox(height: 4),
         ],
 
@@ -1059,7 +1078,7 @@ class _PillForm extends StatelessWidget {
   final _PillFormState form;
   final Color accent;
   final VoidCallback onAddSchedule;
-  final void Function(int index) onEditSchedule;
+  final void Function(PillSchedule schedule) onEditSchedule;
   final Future<void> Function({required bool isEnd}) onPickDate;
   final VoidCallback onChanged;
 
@@ -1156,13 +1175,9 @@ class _PillForm extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              ...form.schedules.asMap().entries.map((entry) {
-                final i = entry.key;
-                final t = entry.value;
-                final label =
-                    '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+              ...form.schedules.map((schedule) {
                 return InkWell(
-                  onTap: () => onEditSchedule(i),
+                  onTap: () => onEditSchedule(schedule),
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1180,7 +1195,7 @@ class _PillForm extends StatelessWidget {
                         Icon(Icons.access_time, size: 14, color: accent),
                         const SizedBox(width: 5),
                         Text(
-                          label,
+                          schedule.label,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: accent,
@@ -1190,7 +1205,7 @@ class _PillForm extends StatelessWidget {
                           const SizedBox(width: 6),
                           GestureDetector(
                             onTap: () {
-                              form.schedules.removeAt(i);
+                              form.schedules.remove(schedule);
                               onChanged();
                             },
                             child: Icon(

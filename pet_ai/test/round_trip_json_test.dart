@@ -54,8 +54,6 @@ void main() {
       final p = goodPillEntity();
       final restored = Pill.fromJson(jsonRoundTrip(p.toJson()));
       validatePill(p, restored);
-      // eventId — локальная связь, живёт только в локальном JSON.
-      expect(restored.eventId, p.eventId);
     });
 
     test('pocketbase', () {

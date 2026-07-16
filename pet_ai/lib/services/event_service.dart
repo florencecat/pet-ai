@@ -165,24 +165,28 @@ class EventService {
     }
   }
 
-  /// Устанавливает статус выполнения события напрямую по ID (без переключения).
-  /// Вызывается из [PillReminderService] при отметке препарата принятым,
-  /// чтобы синхронизировать событие в календаре.
+  /// Приводит статус выполнения события к [completed] за [day] — по ID и без
+  /// переключения. Вызывается из сервисов препаратов и обработок, когда отметка
+  /// проставлена на их стороне и событие в календаре нужно подтянуть следом.
+  ///
+  /// Идемпотентна намеренно: вызывающий знает нужное состояние, а не дельту.
+  /// Переключение здесь приводило к рассинхрону — например, [PillReminderService]
+  /// снимал отметку разом со всех расписаний, и события, уже отмеченные
+  /// выполненными, вместо этого становились невыполненными.
   Future<void> setCompletedOn(
     String eventId,
     DateTime day,
+    bool completed,
   ) async {
     final all = await _loadAll();
     final idx = all.indexWhere((e) => e.id == eventId);
     if (idx < 0) return;
     final key = Event.dateKey(day);
 
-    final completed = all[idx].completedDates.contains(key);
-
     if (completed) {
-      all[idx].completedDates.remove(key);
-    } else {
       all[idx].completedDates.add(key);
+    } else {
+      all[idx].completedDates.remove(key);
     }
 
     await _persistAll(all);

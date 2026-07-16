@@ -134,17 +134,26 @@ Pill goodPillEntity() {
     frequencyType: PillFrequencyType.weekdays,
     weekdays: const [1, 3, 5],
     schedules: [
-      PillSchedule(hour: 9, minute: 0),
-      PillSchedule(hour: 21, minute: 30),
+      PillSchedule(
+        id: 'sch_morning',
+        hour: 9,
+        minute: 0,
+        eventId: 'evt_pill_morning',
+      ),
+      PillSchedule(
+        id: 'sch_evening',
+        hour: 21,
+        minute: 30,
+        eventId: 'evt_pill_evening',
+      ),
     ],
     startDate: DateTime(2025, 1, 1),
     endDate: DateTime(2025, 3, 1),
-    takenDates: const ['2025-01-06'],
+    // Отметки о приёме — по id расписаний, а не по их позиции в списке.
     takenSchedules: const {
-      '2025-01-06': [0, 1],
+      '2025-01-06': ['sch_morning', 'sch_evening'],
     },
     intakes: const [],
-    eventId: 'evt_pill_1',
     remindBeforeValue: 30,
     remindBeforeVariant: RemindBeforeVariant.minutes,
   );
@@ -161,9 +170,8 @@ Pill goodOnDemandPillEntity() {
     doseUnit: DoseUnit.none,
     frequencyType: PillFrequencyType.onDemand,
     weekdays: const [],
-    schedules: [PillSchedule(hour: 9, minute: 0)],
+    schedules: [PillSchedule(id: 'sch_od', hour: 9, minute: 0)],
     startDate: DateTime(2025, 1, 1),
-    takenDates: const [],
     takenSchedules: const {},
     intakes: [
       PillIntake(
@@ -178,9 +186,6 @@ Pill goodOnDemandPillEntity() {
   );
 }
 
-/// eventId сознательно НЕ проверяется здесь: это локальная связь с PetEvent, она
-/// не выгружается в облако (в toPocketBase поля event нет). Проверяем её отдельно
-/// в JSON-тесте, где она обязана сохраняться.
 void validatePill(Pill a, Pill b) {
   expect(a.id, b.id);
   expect(a.name, b.name);
@@ -190,14 +195,26 @@ void validatePill(Pill a, Pill b) {
   expect(a.doseUnit, b.doseUnit);
   expect(a.frequencyType, b.frequencyType);
   expect(a.weekdays, b.weekdays);
-  expect(a.schedules, b.schedules);
+  validateSchedules(a.schedules, b.schedules);
   expect(a.startDate, b.startDate);
   expect(a.endDate, b.endDate);
-  expect(a.takenDates, b.takenDates);
   expect(a.takenSchedules, b.takenSchedules);
   validateIntakes(a.intakes, b.intakes);
   expect(a.remindBeforeValue, b.remindBeforeValue);
   expect(a.remindBeforeVariant, b.remindBeforeVariant);
+}
+
+/// Расписания сравниваем поимённо, а не через ==: оно у [PillSchedule] задано
+/// по времени суток, поэтому потерю id или eventId не заметило бы. А это ровно
+/// то, что ломает отметки о приёме (id) и уведомления (eventId).
+void validateSchedules(List<PillSchedule> a, List<PillSchedule> b) {
+  expect(a.length, b.length);
+  for (var i = 0; i < a.length; i++) {
+    expect(a[i].id, b[i].id);
+    expect(a[i].hour, b[i].hour);
+    expect(a[i].minute, b[i].minute);
+    expect(a[i].eventId, b[i].eventId);
+  }
 }
 
 // PillIntake не переопределяет ==, поэтому сравниваем поэлементно по полям.

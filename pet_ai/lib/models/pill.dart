@@ -183,7 +183,7 @@ class DoseUnit {
       case 'unku1v40f48p4l4': // Инъекция
         return const [ml, unit, mg, none];
       case '2k0u98csxnvsh8o': // Ингалятор
-        return const [spray, unit, none];
+        return const [ml, spray, unit, none];
       case 'mon5i8j2s9xoho7': // Спрей
         return const [spray, application, none];
       case 's2akauj574a7mrx': // Порошок
@@ -307,34 +307,63 @@ const _weekdayShort = {
   7: 'Вс',
 };
 
+/// Одно время приёма в курсе. У каждого — своё событие календаря и свои
+/// отметки о приёме.
 class PillSchedule {
+  /// Стабильный идентификатор. По нему хранятся отметки приёма
+  /// ([Pill.takenSchedules]) и ищется расписание в сервисе.
+  ///
+  /// Раньше отметки были привязаны к позиции в списке, поэтому удаление или
+  /// перестановка времени молча переносила их на соседнее расписание. Id
+  /// переживает правку курса — и отметки вместе с ним.
+  final String id;
+
   final int hour;
   final int minute;
 
+  /// Событие календаря этого времени приёма — связь для двусторонней
+  /// синхронизации отметок и для уведомлений. null — события ещё нет.
   String? eventId;
 
-  PillSchedule({required this.hour, required this.minute, this.eventId});
+  PillSchedule({
+    String? id,
+    required this.hour,
+    required this.minute,
+    this.eventId,
+  }) : id = id ?? generateId();
 
   String get label =>
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
   TimeOfDay toTimeOfDay() => TimeOfDay(hour: hour, minute: minute);
 
+  /// Новое расписание на время [t] — с новым id и ещё без события.
   factory PillSchedule.fromTimeOfDay(TimeOfDay t) =>
       PillSchedule(hour: t.hour, minute: t.minute);
 
+  PillSchedule copyWith({int? hour, int? minute}) => PillSchedule(
+    id: id,
+    hour: hour ?? this.hour,
+    minute: minute ?? this.minute,
+    eventId: eventId,
+  );
+
   Map<String, dynamic> toJson() => {
+    'id': id,
     'hour': hour,
     'minute': minute,
     'eventId': eventId,
   };
 
   factory PillSchedule.fromJson(Map<String, dynamic> json) => PillSchedule(
+    id: json['id'] as String?,
     hour: json['hour'] as int,
     minute: json['minute'] as int,
-    eventId: json['eventId'],
+    eventId: json['eventId'] as String?,
   );
 
+  /// Равенство по времени суток, а не по id: используется, чтобы не заводить
+  /// два одинаковых времени приёма в одном курсе.
   @override
   bool operator ==(Object other) =>
       other is PillSchedule && other.hour == hour && other.minute == minute;
@@ -361,16 +390,14 @@ class Pill with Remindable implements PbEntity {
   final DateTime startDate;
   final DateTime? endDate;
 
-  /// Legacy per-day taken flag (kept for backward compat reading old saves).
-  final List<String> takenDates;
-
-  /// Per-schedule taken state: dateKey → list of schedule indices that were taken.
-  final Map<String, List<int>> takenSchedules;
+  /// Отметки о приёме: dateKey → id расписаний ([PillSchedule.id]), принятых в
+  /// этот день. Единственный источник правды о приёме для видов с расписанием;
+  /// для «по требованию» вместо него — [intakes].
+  final Map<String, List<String>> takenSchedules;
 
   /// Журнал приёмов для вида «по требованию» (каждый приём — время + доза).
   /// Для остальных видов всегда пустой.
   final List<PillIntake> intakes;
-  final String? eventId; // linked PetEvent for notifications
 
   /// «Напомнить за» до каждого приёма (по умолчанию — точно во время приёма).
   @override
@@ -399,10 +426,8 @@ class Pill with Remindable implements PbEntity {
     required this.schedules,
     required this.startDate,
     this.endDate,
-    required this.takenDates,
     this.takenSchedules = const {},
     this.intakes = const [],
-    this.eventId,
     this.remindBeforeValue = 0,
     this.remindBeforeVariant = RemindBeforeVariant.minutes,
   });
@@ -463,40 +488,29 @@ class Pill with Remindable implements PbEntity {
     return result;
   }
 
-  /// Returns true when every schedule for [day] is marked as taken.
+  /// Id расписаний, отмеченных принятыми в [day].
+  List<String> takenScheduleIdsOn(DateTime day) =>
+      takenSchedules[dateKey(day)] ?? const [];
+
+  /// Приняты ли все приёмы за [day]. «По требованию» считается принятым, если
+  /// за день есть хотя бы одна отметка в журнале.
   bool isTakenOnDay(DateTime day) {
-    final key = dateKey(day);
     if (frequencyType == PillFrequencyType.onDemand) {
-      if (intakesOnDay(day).isNotEmpty) return true;
-      return takenDates.contains(key); // legacy on-demand saves
+      return intakesOnDay(day).isNotEmpty;
     }
-    if (takenSchedules.containsKey(key)) {
-      return (takenSchedules[key]?.length ?? 0) >= schedules.length;
-    }
-    // Backward compat: fall back to legacy per-day flag.
-    return takenDates.contains(key);
+    return schedules.isNotEmpty &&
+        takenScheduleIdsOn(day).length >= schedules.length;
   }
 
-  /// Whether a specific schedule [scheduleIndex] is marked as taken on [day].
-  bool isScheduleTakenOnDay(DateTime day, int scheduleIndex) {
-    final key = dateKey(day);
-    return takenSchedules[key]?.contains(scheduleIndex) ?? false;
-  }
+  /// Отмечено ли принятым конкретное расписание в [day].
+  bool isScheduleTakenOnDay(DateTime day, String scheduleId) =>
+      takenScheduleIdsOn(day).contains(scheduleId);
 
-  /// Number of individual schedules marked as taken on [day].
-  int countTakenOnDay(DateTime day) {
-    final key = dateKey(day);
-    if (frequencyType == PillFrequencyType.onDemand) {
-      final c = intakesOnDay(day).length;
-      if (c > 0) return c;
-      return takenDates.contains(key) ? 1 : 0; // legacy on-demand saves
-    }
-    if (takenSchedules.containsKey(key)) {
-      return takenSchedules[key]?.length ?? 0;
-    }
-    // Backward compat: if legacy flag set, treat all schedules as taken.
-    return takenDates.contains(key) ? schedules.length : 0;
-  }
+  /// Сколько приёмов отмечено за [day].
+  int countTakenOnDay(DateTime day) =>
+      frequencyType == PillFrequencyType.onDemand
+      ? intakesOnDay(day).length
+      : takenScheduleIdsOn(day).length;
 
   DateTime? nextScheduledDate() {
     final now = DateTime.now();
@@ -539,10 +553,8 @@ class Pill with Remindable implements PbEntity {
     DateTime? startDate,
     DateTime? endDate,
     bool clearEndDate = false,
-    List<String>? takenDates,
-    Map<String, List<int>>? takenSchedules,
+    Map<String, List<String>>? takenSchedules,
     List<PillIntake>? intakes,
-    String? eventId,
     int? remindBeforeValue,
     RemindBeforeVariant? remindBeforeVariant,
   }) => Pill(
@@ -557,10 +569,8 @@ class Pill with Remindable implements PbEntity {
     schedules: schedules ?? this.schedules,
     startDate: startDate ?? this.startDate,
     endDate: clearEndDate ? null : (endDate ?? this.endDate),
-    takenDates: takenDates ?? this.takenDates,
     takenSchedules: takenSchedules ?? this.takenSchedules,
     intakes: intakes ?? this.intakes,
-    eventId: eventId ?? this.eventId,
     remindBeforeValue: remindBeforeValue ?? this.remindBeforeValue,
     remindBeforeVariant: remindBeforeVariant ?? this.remindBeforeVariant,
   );
@@ -608,9 +618,6 @@ class Pill with Remindable implements PbEntity {
       (f) => f.name == json['frequencyType'],
       orElse: () => PillFrequencyType.daily,
     );
-    final takenDates =
-        (json['takenDates'] as List<dynamic>?)?.cast<String>() ?? const [];
-
     return Pill(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -625,10 +632,8 @@ class Pill with Remindable implements PbEntity {
       endDate: json['endDate'] != null
           ? DateTime.parse(json['endDate'] as String)
           : null,
-      takenDates: takenDates,
       takenSchedules: _parseTakenSchedules(json['takenSchedules']),
-      intakes: _parseIntakes(json['intakes'], frequencyType, takenDates),
-      eventId: json['eventId'] as String?,
+      intakes: _parseIntakes(json['intakes']),
       remindBeforeValue: json['remindBeforeValue'] as int? ?? 0,
       remindBeforeVariant: RemindBeforeVariant.values.firstWhere(
         (v) => v.name == (json['remindBeforeVariant'] as String?),
@@ -637,32 +642,20 @@ class Pill with Remindable implements PbEntity {
     );
   }
 
-  /// Parses the on-demand intake log. Falls back to migrating legacy on-demand
-  /// saves (which only stored per-day dateKeys in [takenDates]).
-  static List<PillIntake> _parseIntakes(
-    dynamic raw,
-    PillFrequencyType frequencyType,
-    List<String> legacyTakenDates,
-  ) {
-    if (raw is List) {
-      return raw
-          .map((e) => PillIntake.fromJson((e as Map).cast<String, dynamic>()))
-          .toList();
-    }
-    if (frequencyType == PillFrequencyType.onDemand) {
-      return legacyTakenDates
-          .map((k) => DateTime.tryParse(k))
-          .whereType<DateTime>()
-          .map((d) => PillIntake(time: d))
-          .toList();
-    }
-    return const [];
+  /// Журнал приёмов «по требованию».
+  static List<PillIntake> _parseIntakes(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => PillIntake.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
   }
 
-  static Map<String, List<int>> _parseTakenSchedules(dynamic raw) {
-    if (raw == null) return {};
-    final map = raw as Map<String, dynamic>;
-    return map.map((k, v) => MapEntry(k, (v as List<dynamic>).cast<int>()));
+  /// Отметки приёма: dateKey → id расписаний.
+  static Map<String, List<String>> _parseTakenSchedules(dynamic raw) {
+    if (raw is! Map) return {};
+    return raw.cast<String, dynamic>().map(
+      (k, v) => MapEntry(k, (v as List<dynamic>).cast<String>()),
+    );
   }
 
   /// Reads the dose value, preferring the structured [doseValue] key and
@@ -714,10 +707,8 @@ class Pill with Remindable implements PbEntity {
     'minute': minute,
     'startDate': startDate.toIso8601String(),
     'endDate': endDate?.toIso8601String(),
-    'takenDates': takenDates,
     'takenSchedules': takenSchedules,
     'intakes': intakes.map((i) => i.toJson()).toList(),
-    'eventId': eventId,
     'remindBeforeValue': remindBeforeValue,
     'remindBeforeVariant': remindBeforeVariant.name,
   };
@@ -740,12 +731,11 @@ class Pill with Remindable implements PbEntity {
     "end": endDate?.toIso8601String(),
     // Времена приёма и история отметок (json-поля).
     "schedules": schedules.map((s) => s.toJson()).toList(),
+    // Отметки приёма: dateKey → id расписаний.
     "taken_schedules": takenSchedules,
-    // Для «по требованию» в taken_dates лежит журнал приёмов (объекты
-    // {time, dose}); для остальных видов — список dateKey-строк.
-    "taken_dates": frequencyType == PillFrequencyType.onDemand
-        ? intakes.map((i) => i.toJson()).toList()
-        : takenDates,
+    // Журнал приёмов «по требованию» (объекты {time, dose}); у видов с
+    // расписанием отметки лежат в taken_schedules, поэтому здесь пусто.
+    "taken_dates": intakes.map((i) => i.toJson()).toList(),
     'remind_before_value': remindBeforeValue,
     'remind_before_variant': remindBeforeVariant.name,
   };
@@ -792,28 +782,12 @@ class _PillReminderCodec extends PbCodec<Pill> {
       orElse: () => PillFrequencyType.daily,
     );
 
-    // taken_dates: для «по требованию» — журнал приёмов (объекты {time, dose}),
-    // для остальных видов — список dateKey-строк. Поддерживаем оба формата и
-    // миграцию старых on-demand-записей (строки → приём в полночь).
-    final rawTakenDates = data['taken_dates'] as List<dynamic>? ?? const [];
-    final List<String> takenDates;
-    final List<PillIntake> intakes;
-    if (frequencyType == PillFrequencyType.onDemand) {
-      takenDates = const [];
-      intakes = rawTakenDates
-          .map((e) {
-            if (e is Map) {
-              return PillIntake.fromJson(e.cast<String, dynamic>());
-            }
-            final d = DateTime.tryParse(e.toString());
-            return d != null ? PillIntake(time: d) : null;
-          })
-          .whereType<PillIntake>()
-          .toList();
-    } else {
-      takenDates = rawTakenDates.map((e) => e.toString()).toList();
-      intakes = const [];
-    }
+    // taken_dates несёт журнал приёмов «по требованию» ({time, dose}); у видов
+    // с расписанием отметки лежат в taken_schedules, поэтому список пуст.
+    final intakes = (data['taken_dates'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map((e) => PillIntake.fromJson(e.cast<String, dynamic>()))
+        .toList();
 
     return Pill(
       id: data['id'] as String,
@@ -831,7 +805,6 @@ class _PillReminderCodec extends PbCodec<Pill> {
       endDate: data['end'] != null && (data['end'] as String).isNotEmpty
           ? DateTime.tryParse(data['end'] as String)
           : null,
-      takenDates: takenDates,
       takenSchedules: Pill._parseTakenSchedules(data['taken_schedules']),
       intakes: intakes,
       remindBeforeValue: (data['remind_before_value'] as num?)?.toInt() ?? 0,
