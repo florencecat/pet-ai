@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
-import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 
@@ -376,7 +375,7 @@ class _CountdownCard extends StatelessWidget {
                     '${DateFormat('EEEE, d MMMM', 'ru').format(nextDate)} · '
                     'исполнится $ageAtNext',
                     style: theme.textTheme.bodySmall!.copyWith(
-                      color: ThemeColors.border,
+                      color: context.watch<AppearanceController>().secondaryColor,
                     ),
                   ),
                 ],
@@ -434,6 +433,6 @@ class _RowDivider extends StatelessWidget {
     height: 1,
     indent: 46,
     endIndent: 0,
-    color: ThemeColors.border.withAlpha(60),
+    color: context.watch<AppearanceController>().secondaryColor.withAlpha(60),
   );
 }

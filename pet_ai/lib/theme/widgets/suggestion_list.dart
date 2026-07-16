@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
+import 'package:provider/provider.dart';
 
 /// Выпадающий список автодополнения. Единый стиль для всех полей с подсказками
 /// (город в профиле, корм в дневнике питания и т.д.).
@@ -58,7 +59,7 @@ class SuggestionList extends StatelessWidget {
                 Divider(
                   height: 1,
                   indent: 42,
-                  color: ThemeColors.border.withAlpha(50),
+                  color: context.watch<AppearanceController>().secondaryColor.withAlpha(50),
                 ),
             ],
           );

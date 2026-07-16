@@ -363,7 +363,7 @@ class _EventSheetState extends State<EventSheet> {
               style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                 fontWeight: FontWeight.w700,
                 decoration: isCompleted ? TextDecoration.lineThrough : null,
-                color: isCompleted ? ThemeColors.border : null,
+                color: isCompleted ? context.watch<AppearanceController>().secondaryColor : null,
               ),
             ),
 
@@ -1024,7 +1024,7 @@ class _InfoRow extends StatelessWidget {
                     sublabel!,
                     style: Theme.of(
                       context,
-                    ).textTheme.bodySmall!.copyWith(color: ThemeColors.border),
+                    ).textTheme.bodySmall!.copyWith(color: context.watch<AppearanceController>().secondaryColor),
                   ),
                 ],
               ],
@@ -1095,7 +1095,7 @@ class _RowDivider extends StatelessWidget {
     height: 1,
     indent: 46,
     endIndent: 0,
-    color: ThemeColors.border.withAlpha(60),
+    color: context.watch<AppearanceController>().secondaryColor.withAlpha(60),
   );
 }
 
@@ -1119,7 +1119,7 @@ class _CompletionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         color: isCompleted ? accent : Colors.white,
         border: Border.all(
-          color: isCompleted ? accent : ThemeColors.border.withAlpha(100),
+          color: isCompleted ? accent : context.watch<AppearanceController>().secondaryColor.withAlpha(100),
         ),
         boxShadow: isCompleted
             ? [

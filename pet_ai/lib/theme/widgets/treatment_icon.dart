@@ -117,7 +117,7 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: ThemeColors.border.withAlpha(120),
+                    color: context.watch<AppearanceController>().secondaryColor.withAlpha(120),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -211,7 +211,7 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                               border: Border.all(
                                 color: selected
                                     ? c
-                                    : ThemeColors.border.withAlpha(60),
+                                    : context.watch<AppearanceController>().secondaryColor.withAlpha(60),
                                 width: selected ? 2 : 1,
                               ),
                             ),
@@ -221,7 +221,7 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                                 Icon(
                                   k.icon,
                                   size: 24,
-                                  color: selected ? c : ThemeColors.border,
+                                  color: selected ? c : context.watch<AppearanceController>().secondaryColor,
                                 ),
                                 const SizedBox(height: 6),
                                 Padding(
@@ -236,7 +236,7 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                                           ? context
                                                 .watch<AppearanceController>()
                                                 .secondaryColor
-                                          : ThemeColors.border,
+                                          : context.watch<AppearanceController>().secondaryColor,
                                     ),
                                     textAlign: TextAlign.center,
                                     maxLines: 2,

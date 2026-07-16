@@ -140,7 +140,9 @@ class _PillDialogState extends State<PillDialog> {
       context: context,
       initialTime: const TimeOfDay(hour: 9, minute: 0),
     );
-    if (picked != null) setState(() => _form.schedules.add(picked));
+    if (picked != null && !_form.schedules.contains(picked)) {
+      setState(() => _form.schedules.add(picked));
+    }
   }
 
   Future<void> _editSchedule(int index) async {
@@ -233,49 +235,93 @@ class _PillDialogState extends State<PillDialog> {
           remindBeforeVariant: _form.remindBeforeVariant,
         ),
       );
+      if (!mounted) return;
+      setState(() => _saving = false);
+      Navigator.of(context).pop(true);
     } else {
+      final newPill = Pill(
+        id: generateId(),
+        name: name,
+        kind: _form.kind,
+        color: _form.color,
+        doseValue: _form.doseValue,
+        doseUnit: _form.doseUnit,
+        frequencyType: _form.frequency,
+        weekdays: weekdays,
+        schedules: schedules,
+        startDate: _form.startDate,
+        endDate: _form.hasEndDate ? _form.endDate : null,
+        takenDates: const [],
+        remindBeforeValue: _form.remindBeforeValue,
+        remindBeforeVariant: _form.remindBeforeVariant,
+      );
       await PillReminderService().add(
         petId: widget.profile.id,
-        reminder: Pill(
-          id: generateId(),
-          name: name,
-          kind: _form.kind,
-          color: _form.color,
-          doseValue: _form.doseValue,
-          doseUnit: _form.doseUnit,
-          frequencyType: _form.frequency,
-          weekdays: weekdays,
-          schedules: schedules,
-          startDate: _form.startDate,
-          endDate: _form.hasEndDate ? _form.endDate : null,
-          takenDates: const [],
-          remindBeforeValue: _form.remindBeforeValue,
-          remindBeforeVariant: _form.remindBeforeVariant,
-        ),
+        reminder: newPill,
       );
+      if (!mounted) return;
+      setState(() => _saving = false);
+      Navigator.of(context).pop(newPill);
     }
+  }
 
+  Future<void> _delete() async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить напоминание?',
+      message: 'Вся история приёмов тоже будет удалена.',
+    );
+    if (!confirmed) return;
+    await PillReminderService().delete(
+      petId: widget.profile.id,
+      reminder: widget.editing!,
+    );
     if (!mounted) return;
-    setState(() => _saving = false);
     Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
     final accent = context.watch<AppearanceController>().primaryColor;
+    final isEdit = widget.purpose == PillDialogPurpose.edit;
 
     return AlertDialog(
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Отмена'),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          style: FilledButton.styleFrom(backgroundColor: accent),
-          child: const Text('Сохранить'),
-        ),
-      ],
+      actionsAlignment: isEdit
+          ? MainAxisAlignment.spaceBetween
+          : MainAxisAlignment.end,
+      actions: isEdit
+          ? [
+              IconButton(
+                onPressed: _delete,
+                icon: Icon(Icons.delete, color: ThemeColors.dangerZone),
+              ),
+              Row(
+                spacing: 8,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Отмена'),
+                  ),
+                  FilledButton(
+                    onPressed: _saving ? null : _save,
+                    style: FilledButton.styleFrom(backgroundColor: accent),
+                    child: const Text('Сохранить'),
+                  ),
+                ],
+              ),
+            ]
+          : [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                style: FilledButton.styleFrom(backgroundColor: accent),
+                child: const Text('Сохранить'),
+              ),
+            ],
       title: Text(
         widget.purpose == PillDialogPurpose.edit
             ? widget.editing!.name
@@ -346,12 +392,16 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       widget.profile.pillReminders
         ..clear()
         ..addAll(fresh.pillReminders);
-      final selected = _selected;
-      if (selected != null) {
-        _selected = fresh.pillReminders.firstWhere(
-          (r) => r.id == selected.id,
-          orElse: () => selected,
-        );
+      if (!widget.profile.pillReminders.contains(_selected)) {
+        setState(() => _selected = null);
+      } else {
+        final selected = _selected;
+        if (selected != null) {
+          _selected = fresh.pillReminders.firstWhere(
+            (r) => r.id == selected.id,
+            orElse: () => selected,
+          );
+        }
       }
     });
   }
@@ -359,11 +409,16 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
   // ── Создание / редактирование ────────────────────────────────────────────
 
   Future<void> _createPill() async {
-    final added = await showAdaptiveDialog<bool>(
+    final created = await showAdaptiveDialog<Pill>(
       context: context,
       builder: (_) => PillDialog(profile: widget.profile),
     );
-    if (added == true && mounted) await _reload();
+    if (created != null && mounted) {
+      await _reload();
+      setState(() {
+        _selected = created;
+      });
+    }
   }
 
   Future<void> _editPill() async {
@@ -437,23 +492,6 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
     await _reload();
   }
 
-  Future<void> _delete() async {
-    final confirmed = await confirmDelete(
-      context,
-      title: 'Удалить напоминание?',
-      message: 'Вся история приёмов тоже будет удалена.',
-    );
-    if (!confirmed) return;
-    await PillReminderService().delete(
-      petId: widget.profile.id,
-      reminder: _selected!,
-    );
-    if (!mounted) return;
-    // Курса больше нет — возвращаемся к списку.
-    setState(() => _selected = null);
-    await _reload();
-  }
-
   // ── Helpers карточки ─────────────────────────────────────────────────────
 
   List<DateTime> _scheduledDays(Pill reminder, int days) {
@@ -509,26 +547,11 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
       onBack: selected == null
           ? () => Navigator.of(context).pop(true)
           : () => setState(() => _selected = null),
-      // Высоты покоя нет — sheet подгоняется под текущую страницу: короткий
-      // список не висит в пустоте, длинная карточка растёт до maxSize и дальше
-      // скроллится. Смену высоты между страницами анимирует _pageSwitcher.
       initialSize: null,
       maxSize: 0.95,
       actions: selected == null
           ? null
-          : [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                color: accent,
-                onPressed: _editPill,
-                tooltip: 'Редактировать',
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                color: ThemeColors.dangerZone,
-                onPressed: _delete,
-              ),
-            ],
+          : [TextButton(onPressed: _editPill, child: Text('Редактировать'))],
       body: _pageSwitcher(
         selected == null
             // Ключ различает страницы: по нему же выбирается сторона въезда.
@@ -639,9 +662,9 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
             child: Text(
               'Напоминаний пока нет',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                color: context.watch<AppearanceController>().secondaryColor,
+              ),
             ),
           ),
 
@@ -687,9 +710,9 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
           if (!expanded)
             Text(
               '( ${reminders.length} )',
-              style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                color: accent.withAlpha(192),
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium!.copyWith(color: accent.withAlpha(192)),
             ),
         ],
       ),
@@ -750,9 +773,9 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                 const SizedBox(height: 4),
                 Text(
                   reminder.doseLabel,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    color: context.watch<AppearanceController>().secondaryColor,
+                  ),
                 ),
               ],
             ],
@@ -777,7 +800,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                 Divider(
                   height: 1,
                   indent: 46,
-                  color: ThemeColors.border.withAlpha(60),
+                  color: context
+                      .watch<AppearanceController>()
+                      .secondaryColor
+                      .withAlpha(60),
                 ),
               ],
               _DetailRow(
@@ -788,7 +814,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
               Divider(
                 height: 1,
                 indent: 46,
-                color: ThemeColors.border.withAlpha(60),
+                color: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(60),
               ),
               // Show each time as a separate row (skip for on-demand — no schedule).
               if (!isOnDemand) ...[
@@ -807,7 +836,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                         Divider(
                           height: 1,
                           indent: 46,
-                          color: ThemeColors.border.withAlpha(60),
+                          color: context
+                              .watch<AppearanceController>()
+                              .secondaryColor
+                              .withAlpha(60),
                         ),
                     ],
                   );
@@ -815,7 +847,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                 Divider(
                   height: 1,
                   indent: 46,
-                  color: ThemeColors.border.withAlpha(60),
+                  color: context
+                      .watch<AppearanceController>()
+                      .secondaryColor
+                      .withAlpha(60),
                 ),
               ],
               _DetailRow(
@@ -887,7 +922,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                       Divider(
                         height: 1,
                         indent: 16,
-                        color: ThemeColors.border.withAlpha(60),
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor
+                            .withAlpha(60),
                       ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -906,7 +944,9 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                                         ? context
                                               .watch<AppearanceController>()
                                               .secondaryColor
-                                        : ThemeColors.border,
+                                        : context
+                                              .watch<AppearanceController>()
+                                              .secondaryColor,
                                   ),
                             ),
                           ),
@@ -994,7 +1034,10 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
         // ── Журнал приёмов «по требованию» (последние 30 дней) ───────────────
         if (isOnDemand && journalIntakes.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text('Журнал приёмов', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Журнал приёмов',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           _IntakeList(
             intakes: journalIntakes,
@@ -1071,6 +1114,7 @@ class _PillForm extends StatelessWidget {
         const SizedBox(height: 6),
         Wrap(
           spacing: 6,
+          runSpacing: 6,
           children: PillFrequencyType.values.map((f) {
             return SoftGlassBadge(
               color: accent,
@@ -1138,7 +1182,6 @@ class _PillForm extends StatelessWidget {
                         Text(
                           label,
                           style: TextStyle(
-
                             fontWeight: FontWeight.w600,
                             color: accent,
                           ),
@@ -1184,7 +1227,6 @@ class _PillForm extends StatelessWidget {
                       Text(
                         'Добавить',
                         style: TextStyle(
-
                           color: accent,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1235,10 +1277,13 @@ class _PillForm extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
-            OutlinedSwitch(value: form.hasEndDate, onChanged: (v) {
-              form.hasEndDate = v;
-              onChanged();
-            })
+            OutlinedSwitch(
+              value: form.hasEndDate,
+              onChanged: (v) {
+                form.hasEndDate = v;
+                onChanged();
+              },
+            ),
           ],
         ),
         if (form.hasEndDate) ...[
@@ -1417,9 +1462,9 @@ class _IconPickerTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right,
-              color: ThemeColors.border,
+              color: context.watch<AppearanceController>().secondaryColor,
               size: 22,
             ),
           ],
@@ -1445,6 +1490,7 @@ class _ReminderListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
+      useShadow: false,
       padding: 0,
       child: InkWell(
         onTap: onTap,
@@ -1483,9 +1529,9 @@ class _ReminderListTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: ThemeColors.border,
+                color: context.watch<AppearanceController>().secondaryColor,
                 size: 20,
               ),
             ],
@@ -1521,7 +1567,9 @@ class _TodayToggle extends StatelessWidget {
         border: Border.all(
           color: isTaken
               ? ThemeColors.ok.mainColor
-              : ThemeColors.border.withAlpha(100),
+              : context.watch<AppearanceController>().secondaryColor.withAlpha(
+                  100,
+                ),
         ),
         boxShadow: isTaken
             ? [
@@ -1546,7 +1594,9 @@ class _TodayToggle extends StatelessWidget {
                 Icon(
                   Icons.access_time,
                   size: 18,
-                  color: isTaken ? Colors.white : ThemeColors.border,
+                  color: isTaken
+                      ? Colors.white
+                      : context.watch<AppearanceController>().secondaryColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -1647,7 +1697,10 @@ class _IntakeList extends StatelessWidget {
               Divider(
                 height: 1,
                 indent: 16,
-                color: ThemeColors.border.withAlpha(60),
+                color: context
+                    .watch<AppearanceController>()
+                    .secondaryColor
+                    .withAlpha(60),
               ),
             _IntakeRow(
               intake: intakes[i],
@@ -1690,9 +1743,9 @@ class _IntakeRow extends StatelessWidget {
           if (intake.doseLabel.isNotEmpty)
             Text(
               '(${intake.doseLabel})',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium!.copyWith(color: ThemeColors.border),
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                color: context.watch<AppearanceController>().secondaryColor,
+              ),
             ),
         ],
       ),
@@ -1700,7 +1753,11 @@ class _IntakeRow extends StatelessWidget {
       trailing: IconButton(
         constraints: BoxConstraints(maxWidth: 36, maxHeight: 36),
         onPressed: onRemove,
-        icon: Icon(Icons.close, size: 12, color: ThemeColors.border),
+        icon: Icon(
+          Icons.close,
+          size: 12,
+          color: context.watch<AppearanceController>().secondaryColor,
+        ),
       ),
     );
 
@@ -1719,7 +1776,7 @@ class _IntakeRow extends StatelessWidget {
     //                 intake.dose,
     //                 style: Theme.of(
     //                   context,
-    //                 ).textTheme.bodySmall!.copyWith(color: ThemeColors.border),
+    //                 ).textTheme.bodySmall!.copyWith(color: context.watch<AppearanceController>().secondaryColor),
     //               ),
     //             ],
     //           ],
@@ -1730,7 +1787,7 @@ class _IntakeRow extends StatelessWidget {
     //         behavior: HitTestBehavior.opaque,
     //         child: const Padding(
     //           padding: EdgeInsets.all(4),
-    //           child: Icon(Icons.close, size: 18, color: ThemeColors.border),
+    //           child: Icon(Icons.close, size: 18, color: context.watch<AppearanceController>().secondaryColor),
     //         ),
     //       ),
     //     ],
@@ -1953,9 +2010,11 @@ class _DetailRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     sublabel!,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall!.copyWith(color: ThemeColors.border),
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
+                    ),
                   ),
                 ],
               ],

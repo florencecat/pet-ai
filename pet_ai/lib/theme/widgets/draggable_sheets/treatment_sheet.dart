@@ -141,6 +141,30 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
     Navigator.of(context).pop(true);
   }
 
+  Future<void> _delete() async {
+    final last =
+        widget.profile.treatmentHistory.entries
+            .where((e) => e.kind == widget.editingEntry!.kind)
+            .length ==
+        1;
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Удалить запись?',
+      ignorePreferences: last,
+      message: last
+          ? 'Это последняя запись, вместе с ней удалится вся категория обработок.'
+          : 'Запись и связанное напоминание будут удалены.',
+    );
+    if (!confirmed) return;
+    await TreatmentService().deleteTreatment(
+      widget.profile.id,
+      widget.editingEntry!,
+    );
+    if (mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -184,20 +208,53 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.purpose == TreatmentDialogPurpose.edit;
+
     return AlertDialog(
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Отмена'),
-        ),
-        FilledButton(
-          onPressed: _save,
-          style: FilledButton.styleFrom(
-            backgroundColor: context.watch<AppearanceController>().primaryColor,
-          ),
-          child: const Text('Сохранить'),
-        ),
-      ],
+      actionsAlignment: isEdit
+          ? MainAxisAlignment.spaceBetween
+          : MainAxisAlignment.end,
+      actions: isEdit
+          ? [
+              IconButton(
+                onPressed: _delete,
+                icon: Icon(Icons.delete, color: ThemeColors.dangerZone),
+              ),
+              Row(
+                spacing: 8,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Отмена'),
+                  ),
+                  FilledButton(
+                    onPressed: _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: context
+                          .watch<AppearanceController>()
+                          .primaryColor,
+                    ),
+                    child: const Text('Сохранить'),
+                  ),
+                ],
+              ),
+            ]
+          : [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: context
+                      .watch<AppearanceController>()
+                      .primaryColor,
+                ),
+                child: const Text('Сохранить'),
+              ),
+            ],
       title: Text(
         _dialogTitle,
         style: Theme.of(context).textTheme.titleLarge,
@@ -331,35 +388,6 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
     }
   }
 
-  Future<void> _delete(TreatmentEntry entry) async {
-    final last = _entries.length == 1;
-    final confirmed = await confirmDelete(
-      context,
-      title: 'Удалить единственную запись?',
-      ignorePreferences: last,
-      message: last
-          ? 'Будет удалена вся категория обработок.'
-          : 'Запись и связанное напоминание будут удалены.',
-    );
-    if (!confirmed) return;
-    await TreatmentService().deleteTreatment(widget.profile.id, entry);
-    widget.onDeleted(entry);
-    if (mounted) {
-      if (last) {
-        Navigator.of(context).pop();
-      } else {
-        setState(
-          () => _entries.removeWhere(
-            (e) =>
-                e.date == entry.date &&
-                e.kind == entry.kind &&
-                e.name == entry.name,
-          ),
-        );
-      }
-    }
-  }
-
   void _createTreatment(BuildContext context, TreatmentEntry entry) async {
     final added = await showAdaptiveDialog<bool>(
       context: context,
@@ -367,7 +395,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
         profile: widget.profile,
         kind: entry.kind,
         color: entry.displayColor,
-        name: entry.name
+        name: entry.name,
       ),
     );
     if (added != null && added && mounted) {
@@ -376,15 +404,18 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
   }
 
   void _editTreatment(BuildContext context, TreatmentEntry entry) async {
-    final added = await showAdaptiveDialog<bool>(
+    final changed = await showAdaptiveDialog<bool>(
       context: context,
       builder: (_) => CreateTreatmentDialog.edit(
         profile: widget.profile,
         editingEntry: entry,
       ),
     );
-    if (added != null && added && mounted) {
+    if (changed != null && changed && context.mounted) {
       await _initScreen();
+      if (_entries.isEmpty) {
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
@@ -398,7 +429,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
 
     // Next date countdown
     String? countdownText;
-    Color countdownColor = ThemeColors.border;
+    Color countdownColor = context.watch<AppearanceController>().secondaryColor;
     if (latest != null) {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -493,7 +524,10 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                   Divider(
                     height: 1,
                     indent: 46,
-                    color: ThemeColors.border.withAlpha(60),
+                    color: context
+                        .watch<AppearanceController>()
+                        .secondaryColor
+                        .withAlpha(60),
                   ),
                   _InfoRow(
                     icon: Icons.alarm,
@@ -589,73 +623,27 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: GlassPlate(
-                          padding: 0,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
+                        child: GlassCard(
+                          padding: 2,
+                          callback: () => _editTreatment(context, entry),
+                          child: ListTile(
+                            title: Text(
+                              entry.name,
+                              style: Theme.of(context).textTheme.bodyLarge!
+                                  .copyWith(
+                                    color: i == 0 ? kindColor : null,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        entry.name,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall!
-                                            .copyWith(
-                                              color: i == 0 ? kindColor : null,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Следующая по плану: '
-                                        '${formatSmartDate(entry.nextDate, pattern: 'd MMMM yyyy', locale: 'ru')}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall!
-                                            .copyWith(color: context.subtitleColor),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Edit button
-                                if (_editingEntry == null)
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.edit_outlined,
-                                      size: 18,
-                                      color: accent.withAlpha(180),
-                                    ),
-                                    onPressed: () =>
-                                        _editTreatment(context, entry),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 32,
-                                      minHeight: 32,
-                                    ),
-                                  ),
-                                // Delete button
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: ThemeColors.dangerZone,
-                                  ),
-                                  onPressed: () => _delete(entry),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                ),
-                              ],
+                            subtitle: Text(
+                              'Следующая по плану: '
+                              '${formatSmartDate(entry.nextDate, pattern: 'd MMMM yyyy', locale: 'ru')}',
+                              style: Theme.of(context).textTheme.bodySmall!
+                                  .copyWith(color: context.subtitleColor),
+                            ),
+                            trailing: Icon(
+                              Icons.chevron_right,
+                              color: secondaryColor,
                             ),
                           ),
                         ),
@@ -708,10 +696,7 @@ class _IconPickerTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            SoftRoundedIcon(
-              icon: kind.icon,
-              color: Color(color!),
-            ),
+            SoftRoundedIcon(icon: kind.icon, color: Color(color!)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -735,9 +720,9 @@ class _IconPickerTile extends StatelessWidget {
               ),
             ),
             if (onTap != null)
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: ThemeColors.border,
+                color: context.watch<AppearanceController>().secondaryColor,
                 size: 22,
               ),
           ],

@@ -484,7 +484,7 @@ class HealthBadgeTile extends StatelessWidget {
           trailing: canDismiss
               ? IconButton(
                   icon: const Icon(Icons.close, size: 18),
-                  color: ThemeColors.border,
+                  color: context.watch<AppearanceController>().secondaryColor,
                   tooltip: 'Скрыть',
                   onPressed: onDismiss,
                 )

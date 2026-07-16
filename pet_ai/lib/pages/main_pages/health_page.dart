@@ -1241,7 +1241,11 @@ class _TreatmentStatusTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             children: [
-              SoftRoundedIcon(icon: kind.icon, color: lastEntry?.displayColor ?? kind.color, size: 22),
+              SoftRoundedIcon(
+                icon: kind.icon,
+                color: lastEntry?.displayColor ?? kind.color,
+                size: 22,
+              ),
 
               const SizedBox(width: 12),
               // Label + dates
@@ -1499,6 +1503,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
     final scheduledToday = widget.reminder.isScheduledForDay(now);
     final status = _todayStatus();
     final accent = context.watch<AppearanceController>().primaryColor;
+    final secondaryColor = context.watch<AppearanceController>().secondaryColor;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -1547,7 +1552,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                   padding: const EdgeInsets.all(8),
                   child: Icon(
                     Icons.chevron_right,
-                    color: ThemeColors.secondary,
+                    color: secondaryColor,
                     size: 26,
                   ),
                 )
@@ -1563,7 +1568,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                           : Icons.radio_button_unchecked,
                       color: _takenToday
                           ? ThemeColors.ok.mainColor
-                          : ThemeColors.secondary,
+                          : secondaryColor,
                       size: 26,
                     ),
                   ),
@@ -1588,7 +1593,7 @@ class _NextScheduledBadge extends StatelessWidget {
         ? 'Следующий ${formatSmartDate(next, pattern: 'd MMMM')}'
         : reminder.frequencyLabel;
     return SoftGlassBadge(
-      color: ThemeColors.secondary,
+      color: context.watch<AppearanceController>().secondaryColor,
       icon: Icons.schedule,
       label: label,
       selected: false,

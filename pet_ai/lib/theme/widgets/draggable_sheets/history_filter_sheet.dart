@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import 'package:pet_satellite/models/history_filter.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
-import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 
@@ -150,6 +149,6 @@ class _RowDivider extends StatelessWidget {
   Widget build(BuildContext context) => Divider(
     height: 1,
     indent: 46,
-    color: ThemeColors.border.withAlpha(60),
+    color: context.watch<AppearanceController>().secondaryColor.withAlpha(60),
   );
 }

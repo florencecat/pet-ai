@@ -1820,7 +1820,7 @@ class _AttachmentPickerSheetState extends State<_AttachmentPickerSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: ThemeColors.border.withAlpha(120),
+                    color: context.watch<AppearanceController>().secondaryColor.withAlpha(120),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -2055,9 +2055,9 @@ class _PickRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.add_circle_outline,
-                  color: ThemeColors.border,
+                  color: context.watch<AppearanceController>().secondaryColor,
                   size: 20,
                 ),
               ],

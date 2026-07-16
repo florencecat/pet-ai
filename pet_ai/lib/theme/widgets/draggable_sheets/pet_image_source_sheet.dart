@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:provider/provider.dart';
 
 /// Нижний лист выбора источника фото питомца: камера или галерея.
 /// Единый лист — используется и на странице редактирования профиля, и в
@@ -22,7 +24,7 @@ Future<ImageSource?> showPetImageSourceSheet(BuildContext context) {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: ThemeColors.border.withAlpha(120),
+              color: context.watch<AppearanceController>().secondaryColor.withAlpha(120),
               borderRadius: BorderRadius.circular(2),
             ),
           ),

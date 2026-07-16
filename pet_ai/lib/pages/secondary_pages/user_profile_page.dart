@@ -637,7 +637,7 @@ class _VerifiedBadge extends StatelessWidget {
 class _Separator extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
-      Divider(height: 1, indent: 46, color: ThemeColors.border.withAlpha(50));
+      Divider(height: 1, indent: 46, color: context.watch<AppearanceController>().secondaryColor.withAlpha(50));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

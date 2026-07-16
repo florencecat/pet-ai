@@ -532,7 +532,7 @@ class _MoodFrequencyChart extends StatelessWidget {
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(color: ThemeColors.border),
+            border: Border.all(color: context.watch<AppearanceController>().secondaryColor),
           ),
           barTouchData: BarTouchData(
             enabled: true,

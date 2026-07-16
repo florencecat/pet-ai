@@ -57,7 +57,7 @@ class WeightChart extends StatelessWidget {
             ),
             borderData: FlBorderData(
               show: true,
-              border: Border.all(color: ThemeColors.border),
+              border: Border.all(color: context.watch<AppearanceController>().secondaryColor),
             ),
             lineTouchData: LineTouchData(
               // Маркер на выбранной точке в фирменном цвете.

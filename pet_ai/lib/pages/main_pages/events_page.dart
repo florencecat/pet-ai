@@ -151,13 +151,13 @@ class EventsPageState extends State<EventsPage> {
     final allIds = _allProfiles.map((p) => p.id).toSet();
     final eventIds = event.petIds.toSet();
     if (allIds.length > 1 && eventIds.containsAll(allIds)) {
-      return [('Все', ThemeColors.border)];
+      return [('Все', context.watch<AppearanceController>().secondaryColor)];
     }
     return event.petIds
         .map(
           (id) => (
             _petNames[id] ?? 'Питомец',
-            _petColors[id] ?? ThemeColors.border,
+            _petColors[id] ?? context.watch<AppearanceController>().secondaryColor,
           ),
         )
         .toList();
@@ -882,7 +882,7 @@ class _EventTileCard extends StatelessWidget {
                   Container(
                     width: 1,
                     margin: const EdgeInsets.symmetric(horizontal: 12),
-                    color: ThemeColors.border.withAlpha(60),
+                    color: context.watch<AppearanceController>().secondaryColor.withAlpha(60),
                   ),
                 ],
 
