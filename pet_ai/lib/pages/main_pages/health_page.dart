@@ -911,7 +911,7 @@ class HealthPageState extends State<HealthPage> {
                                     child: _PillReminderTile(
                                       reminder: r,
                                       petId: _profile!.id,
-                                      onReload: () => {},
+                                      onReload: () => _initScreen(),
                                       onTap: () =>
                                           _openPillReminder(context, r),
                                     ),
@@ -1526,11 +1526,10 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                     ),
                     const SizedBox(height: 2),
                     if (status != null)
-                      SoftGlassBadge(
+                      _AnimatedStatusBadge(
                         color: status.color,
                         icon: status.icon,
                         label: status.label,
-                        selected: false,
                       )
                     else
                       _NextScheduledBadge(reminder: widget.reminder),
@@ -1550,21 +1549,11 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                   ),
                 )
               else if (scheduledToday)
-                GestureDetector(
-                  onTap: _toggleTaken,
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      _takenToday
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      color: _takenToday
-                          ? ThemeColors.ok.mainColor
-                          : secondaryColor,
-                      size: 26,
-                    ),
-                  ),
+                _PillCheckToggle(
+                  taken: _takenToday,
+                  takenColor: ThemeColors.ok.mainColor,
+                  idleColor: secondaryColor,
+                  onToggle: _toggleTaken,
                 ),
             ],
           ),
@@ -1590,6 +1579,205 @@ class _NextScheduledBadge extends StatelessWidget {
       icon: Icons.schedule,
       label: label,
       selected: false,
+    );
+  }
+}
+
+// ─── Премиальный тогл приёма таблетки ────────────────────────────────────────
+//
+// При отметке приёма иконка «выпрыгивает» с упругим оверщутом, а вокруг
+// расходится тающее кольцо‑«взрыв». Под пальцем — лёгкое вдавливание.
+// Тактильный отклик: приём — medium, отмена — деликатный selection.
+
+class _PillCheckToggle extends StatefulWidget {
+  final bool taken;
+  final Color takenColor;
+  final Color idleColor;
+  final VoidCallback onToggle;
+
+  const _PillCheckToggle({
+    required this.taken,
+    required this.takenColor,
+    required this.idleColor,
+    required this.onToggle,
+  });
+
+  @override
+  State<_PillCheckToggle> createState() => _PillCheckToggleState();
+}
+
+class _PillCheckToggleState extends State<_PillCheckToggle>
+    with TickerProviderStateMixin {
+  // «Взрыв» + упругий поп при отметке приёма.
+  late final AnimationController _pop;
+  // Лёгкое вдавливание под пальцем.
+  late final AnimationController _press;
+
+  static const _size = 26.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pop = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
+      value: 1.0,
+    );
+    _press = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 130),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_PillCheckToggle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.taken != oldWidget.taken) {
+      _pop.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    _press.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    // widget.taken — состояние ДО переключения: сейчас непринято → приём.
+    if (widget.taken) {
+      HapticFeedback.selectionClick();
+    } else {
+      HapticFeedback.mediumImpact();
+    }
+    widget.onToggle();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _press.forward(),
+      onTapUp: (_) => _press.reverse(),
+      onTapCancel: () => _press.reverse(),
+      onTap: _handleTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_pop, _press]),
+          builder: (context, _) {
+            final press = 1.0 - _press.value * 0.16;
+            final popT = _pop.value;
+            final color = widget.taken ? widget.takenColor : widget.idleColor;
+
+            // Упругий «поп» только при отметке приёма.
+            final iconScale = widget.taken
+                ? 0.55 + Curves.elasticOut.transform(popT) * 0.45
+                : 1.0;
+
+            return SizedBox(
+              width: _size,
+              height: _size,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  if (widget.taken && popT < 1.0) _burst(popT),
+                  Transform.scale(
+                    scale: press * iconScale,
+                    child: Icon(
+                      widget.taken
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: color,
+                      size: _size,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _burst(double t) {
+    final scale = 0.5 + Curves.easeOut.transform(t) * 1.1;
+    final opacity = (1.0 - t).clamp(0.0, 1.0) * 0.5;
+    return Opacity(
+      opacity: opacity,
+      child: Transform.scale(
+        scale: scale,
+        child: Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: widget.takenColor, width: 2.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Бейдж статуса с анимацией смены ─────────────────────────────────────────
+//
+// При смене статуса (цвет / иконка / текст) старый бейдж плавно уходит, а
+// новый «выезжает» с упругим масштабом — плюс деликатный тактильный тик.
+
+class _AnimatedStatusBadge extends StatefulWidget {
+  final Color color;
+  final IconData? icon;
+  final String label;
+
+  const _AnimatedStatusBadge({
+    required this.color,
+    this.icon,
+    required this.label,
+  });
+
+  @override
+  State<_AnimatedStatusBadge> createState() => _AnimatedStatusBadgeState();
+}
+
+class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge> {
+  @override
+  void didUpdateWidget(_AnimatedStatusBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final changed =
+        oldWidget.label != widget.label ||
+        oldWidget.color != widget.color ||
+        oldWidget.icon != widget.icon;
+    if (changed) HapticFeedback.selectionClick();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 160),
+      switchInCurve: Curves.easeOutBack,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.75, end: 1.0).animate(animation),
+          child: child,
+        ),
+      ),
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: Alignment.centerLeft,
+        children: [...previousChildren, ?currentChild],
+      ),
+      child: SoftGlassBadge(
+        key: ValueKey(Object.hash(widget.label, widget.color, widget.icon)),
+        color: widget.color,
+        icon: widget.icon,
+        label: widget.label,
+        selected: false,
+      ),
     );
   }
 }
