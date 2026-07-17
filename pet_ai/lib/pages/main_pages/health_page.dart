@@ -1355,9 +1355,13 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
   @override
   void initState() {
     super.initState();
-    _active = List.from(widget.active);
+    _active = List.from(widget.active)..sort(_bySeverity);
     _dismissed = List.from(widget.dismissed);
   }
+
+  /// Сортировка по важности: danger → warning → info → ok.
+  int _bySeverity(HealthBadge a, HealthBadge b) =>
+      b.severity.index.compareTo(a.severity.index);
 
   Future<void> _dismiss(HealthBadge badge) async {
     if (badge.id == null || widget.onDismiss == null) return;
@@ -1375,7 +1379,9 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
     if (!mounted) return;
     setState(() {
       _dismissed.removeWhere((b) => b.id == badge.id);
-      _active.add(badge);
+      _active
+        ..add(badge)
+        ..sort(_bySeverity);
     });
   }
 
