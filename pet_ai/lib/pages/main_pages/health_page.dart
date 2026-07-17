@@ -153,6 +153,8 @@ class HealthPageState extends State<HealthPage> {
     setState(() {
       _profile = profile;
       _isLoadingProfile = false;
+
+      _weightExpanded = _profile!.weightHistory.entries.isNotEmpty;
     });
 
     final weightStatus = profile.weightHistory.lastWeightString();
@@ -1675,6 +1677,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                         color: status.color,
                         icon: status.icon,
                         label: status.label,
+                        onChanged: (_) => widget.onTap(),
                       )
                     else
                       _NextScheduledBadge(reminder: widget.reminder),
@@ -1877,11 +1880,13 @@ class _AnimatedStatusBadge extends StatefulWidget {
   final Color color;
   final IconData? icon;
   final String label;
+  final ValueChanged<bool>? onChanged;
 
   const _AnimatedStatusBadge({
     required this.color,
     this.icon,
     required this.label,
+    this.onChanged,
   });
 
   @override
@@ -1921,6 +1926,7 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge> {
         color: widget.color,
         icon: widget.icon,
         label: widget.label,
+        onChanged: widget.onChanged,
         selected: false,
       ),
     );

@@ -142,9 +142,10 @@ class _PillDialogState extends State<PillDialog> {
   }
 
   Future<void> _addSchedule() async {
+    final hour = _form.schedules.isNotEmpty ? _form.schedules.last.hour + 1 : 9;
     final picked = await showTimePicker(
       context: context,
-      initialTime: const TimeOfDay(hour: 9, minute: 0),
+      initialTime: TimeOfDay(hour: hour, minute: 0),
     );
     if (picked == null) return;
     final added = PillSchedule.fromTimeOfDay(picked);

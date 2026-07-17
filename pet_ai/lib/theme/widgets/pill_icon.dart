@@ -149,7 +149,10 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: context.watch<AppearanceController>().secondaryColor.withAlpha(120),
+                    color: context
+                        .watch<AppearanceController>()
+                        .secondaryColor
+                        .withAlpha(120),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -179,6 +182,7 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
+                      alignment: WrapAlignment.center,
                       children: PillColors.palette.map((c) {
                         final value = PillColors.toValue(c);
                         final selected = value == _color;
@@ -244,7 +248,10 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                               border: Border.all(
                                 color: selected
                                     ? c
-                                    : context.watch<AppearanceController>().secondaryColor.withAlpha(60),
+                                    : context
+                                          .watch<AppearanceController>()
+                                          .secondaryColor
+                                          .withAlpha(60),
                                 width: selected ? 2 : 1,
                               ),
                             ),
@@ -254,26 +261,38 @@ class _PillIconPickerSheetState extends State<_PillIconPickerSheet> {
                                 Icon(
                                   k.icon,
                                   size: 24,
-                                  color: selected ? c : context.watch<AppearanceController>().secondaryColor,
+                                  color: selected
+                                      ? c
+                                      : context
+                                            .watch<AppearanceController>()
+                                            .secondaryColor,
                                 ),
                                 const SizedBox(height: 6),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 4,
                                   ),
-                                  child: Text(
-                                    k.name,
-                                    style: theme.textTheme.bodySmall!.copyWith(
-
-                                      color: selected
-                                          ? context
-                                                .watch<AppearanceController>()
-                                                .secondaryColor
-                                          : context.watch<AppearanceController>().secondaryColor,
+                                  child: FittedBox(
+                                    child: Text(
+                                      k.name,
+                                      style: theme.textTheme.bodySmall!
+                                          .copyWith(
+                                            color: selected
+                                                ? context
+                                                      .watch<
+                                                        AppearanceController
+                                                      >()
+                                                      .secondaryColor
+                                                : context
+                                                      .watch<
+                                                        AppearanceController
+                                                      >()
+                                                      .secondaryColor,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],

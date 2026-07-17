@@ -25,8 +25,6 @@ class PillKind {
         return FontAwesome.tablets;
       case 'rm4pf2ni3l99r4b': // Жидкость
         return FontAwesome.prescription_bottle;
-      case 'lv3or9euunqavjq': // Препарат местного действия
-        return FontAwesome.hand_holding_medical;
       case 'o21zqz6cfs3dcs4': // Гель
         return FontAwesome.pump_medical;
       case '2k0u98csxnvsh8o': // Ингалятор
@@ -57,10 +55,6 @@ class PillKind {
   static const capsule = PillKind(id: 'qyamefo3gztqwg1', name: 'Капсула');
   static const pill = PillKind(id: 'c1855lfnv3bni66', name: 'Таблетка');
   static const fluid = PillKind(id: 'rm4pf2ni3l99r4b', name: 'Жидкость');
-  static const localAction = PillKind(
-    id: 'lv3or9euunqavjq',
-    name: 'Препарат местного действия',
-  );
   static const gel = PillKind(id: 'o21zqz6cfs3dcs4', name: 'Гель');
   static const inhalation = PillKind(id: '2k0u98csxnvsh8o', name: 'Ингалятор');
   static const injection = PillKind(id: 'unku1v40f48p4l4', name: 'Инъекция');
@@ -77,7 +71,6 @@ class PillKind {
     capsule,
     pill,
     fluid,
-    localAction,
     gel,
     inhalation,
     injection,
@@ -99,8 +92,6 @@ class PillKind {
         return pill;
       case 'rm4pf2ni3l99r4b':
         return fluid;
-      case 'lv3or9euunqavjq':
-        return localAction;
       case 'o21zqz6cfs3dcs4':
         return gel;
       case '2k0u98csxnvsh8o':
@@ -198,8 +189,6 @@ class DoseUnit {
         return const [application, none];
       case 'htv28sijgs6dagw': // Пластырь
         return const [piece, none];
-      case 'lv3or9euunqavjq': // Препарат местного действия
-        return const [application, piece, none];
       default:
         return const [tablet, ml, mg, drop, piece, unit, application, none];
     }
