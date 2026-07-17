@@ -19,6 +19,7 @@ import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/mood_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
@@ -288,6 +289,18 @@ class HealthPageState extends State<HealthPage> {
     if (mounted) await _initScreen();
   }
 
+  void _openEvent(BuildContext context, Event event) async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventSheet(event: event),
+    );
+    if (mounted) await _initScreen();
+  }
+
   /// Открывает тот же sheet препаратов, но сразу на карточке курса — «назад»
   /// внутри sheet ведёт к списку.
   void _openPillReminder(BuildContext context, Pill reminder) async {
@@ -358,7 +371,9 @@ class HealthPageState extends State<HealthPage> {
   /// Sort order: overdue danger first (most overdue = earliest date first),
   /// then warning (soonest upcoming within remindBeforeDays / 7d),
   /// then info (any future event, nearest first).
-  HealthBadge? _nextHealthAlert() {
+  ({HealthBadge badge, VoidCallback onOpen})? _nextHealthAlert(
+    BuildContext context,
+  ) {
     if (_profile == null) return null;
 
     final now = DateTime.now();
@@ -373,6 +388,7 @@ class HealthPageState extends State<HealthPage> {
             DateTime date,
             HealthBadgeSeverity severity,
             IconData icon,
+            VoidCallback onOpen,
           })
         >[];
 
@@ -416,6 +432,7 @@ class HealthPageState extends State<HealthPage> {
         date: next,
         severity: severity,
         icon: t.kind.icon,
+        onOpen: () => _openTreatment(context, t),
       ));
     }
 
@@ -455,6 +472,7 @@ class HealthPageState extends State<HealthPage> {
         date: eventDay,
         severity: severity,
         icon: e.style.icon,
+        onOpen: () => _openEvent(context, e),
       ));
     }
 
@@ -474,11 +492,14 @@ class HealthPageState extends State<HealthPage> {
     });
 
     final top = candidates.first;
-    return HealthBadge(
-      title: top.title,
-      subtitle: top.subtitle,
-      severity: top.severity,
-      icon: top.icon,
+    return (
+      badge: HealthBadge(
+        title: top.title,
+        subtitle: top.subtitle,
+        severity: top.severity,
+        icon: top.icon,
+      ),
+      onOpen: top.onOpen,
     );
   }
 
@@ -495,7 +516,7 @@ class HealthPageState extends State<HealthPage> {
 
     // Nearest time-bound health event (treatment nextDate or health category event)
     final topAlert = (!_isLoadingProfile && !_isLoadingEvents)
-        ? _nextHealthAlert()
+        ? _nextHealthAlert(context)
         : null;
 
     // Weight chart entries filtered by period
@@ -563,7 +584,7 @@ class HealthPageState extends State<HealthPage> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              _AlertBanner(badge: topAlert),
+              _AlertBanner(badge: topAlert.badge, onTap: topAlert.onOpen),
               const SizedBox(height: 16),
             ],
 
@@ -1047,13 +1068,14 @@ class _HealthScoreBadge extends StatelessWidget {
 
 class _AlertBanner extends StatelessWidget {
   final HealthBadge badge;
+  final VoidCallback? onTap;
 
-  const _AlertBanner({required this.badge});
+  const _AlertBanner({required this.badge, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {},
+      onTap: onTap,
       child: GlassPlate(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
