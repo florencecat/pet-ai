@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';

@@ -27,9 +27,25 @@ class EventsPage extends StatefulWidget {
 }
 
 class EventsPageState extends State<EventsPage> {
+  /// Форматы календаря от большего к меньшему — по этому порядку идут оба
+  /// жеста смены формата: вертикальный свайп внутри TableCalendar и ручка под
+  /// ним. Задан явно, чтобы ручка не разъехалась с умолчанием пакета.
+  static const _formats = {
+    CalendarFormat.month: 'Месяц',
+    CalendarFormat.twoWeeks: '2 недели',
+    CalendarFormat.week: 'Неделя',
+  };
+
+  /// Порог жеста ручки. Совпадает с порогом свайпа по самому календарю
+  /// ([TableCalendar.simpleSwipeConfig]), чтобы жест ощущался одинаково.
+  static const _handleSwipeThreshold = 25.0;
+
   CalendarFormat _format = CalendarFormat.month;
   late DateTime _focusedDay;
   DateTime? _selectedDay;
+
+  /// Начало вертикального жеста по ручке; null — шаг за этот жест уже сделан.
+  double? _handleDragStart;
 
   bool _isLoadingEvents = true;
   bool _showAllPets = false;
@@ -109,6 +125,15 @@ class EventsPageState extends State<EventsPage> {
       _petColors = petColors;
       _petNames = petNames;
     });
+  }
+
+  /// Меняет формат календаря на шаг: [collapse] — к более компактному виду.
+  /// Ровно то же, что делает вертикальный свайп внутри календаря.
+  void _stepFormat({required bool collapse}) {
+    final formats = _formats.keys.toList();
+    final next = formats.indexOf(_format) + (collapse ? 1 : -1);
+    if (next < 0 || next >= formats.length) return;
+    setState(() => _format = formats[next]);
   }
 
   /// Events for the selected day.
@@ -351,6 +376,7 @@ class EventsPageState extends State<EventsPage> {
                         firstDay: DateTime.utc(2024),
                         lastDay: DateTime.utc(2030),
                         calendarFormat: _format,
+                        availableCalendarFormats: _formats,
                         calendarBuilders: CalendarBuilders(
                           markerBuilder: (context, day, events) {
                             if (events.isEmpty) return const SizedBox();
@@ -430,7 +456,24 @@ class EventsPageState extends State<EventsPage> {
                           setState(() => _format = format);
                         },
                       ),
-                      DragHandle(),
+                      // Ручка тянет формат календаря: вверх — схлопнуть,
+                      // вниз — развернуть. Шаг делается один раз за жест, как
+                      // только палец прошёл порог, — а не по его окончании,
+                      // чтобы календарь отзывался сразу.
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onVerticalDragStart: (details) =>
+                            _handleDragStart = details.localPosition.dy,
+                        onVerticalDragUpdate: (details) {
+                          final start = _handleDragStart;
+                          if (start == null) return;
+                          final shift = details.localPosition.dy - start;
+                          if (shift.abs() < _handleSwipeThreshold) return;
+                          _handleDragStart = null;
+                          _stepFormat(collapse: shift < 0);
+                        },
+                        child: const DragHandle(),
+                      ),
                     ],
                   ),
                 ),
