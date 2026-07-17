@@ -172,7 +172,8 @@ class EventsPageState extends State<EventsPage> {
         .map(
           (id) => (
             _petNames[id] ?? 'Питомец',
-            _petColors[id] ?? context.watch<AppearanceController>().secondaryColor,
+            _petColors[id] ??
+                context.watch<AppearanceController>().secondaryColor,
           ),
         )
         .toList();
@@ -242,15 +243,18 @@ class EventsPageState extends State<EventsPage> {
     }
   }
 
-  Future<void> _deleteEvent(Event event) async {
+  /// Подтверждает и удаляет событие из хранилища, но НЕ перезагружает список —
+  /// список обновляет плитка после своей анимации исчезновения. Возвращает
+  /// `true`, если удаление подтверждено и выполнено.
+  Future<bool> _deleteEvent(Event event) async {
     final confirmed = await confirmDelete(
       context,
       title: 'Удалить «${event.name}»?',
       message: event.origin.deleteWarning,
     );
-    if (!confirmed) return;
+    if (!confirmed) return false;
     await EventService().deleteEvent(event);
-    _refresh();
+    return true;
   }
 
   // ── Build ───────────────────────────────────────────────────────────────────
@@ -294,10 +298,7 @@ class EventsPageState extends State<EventsPage> {
                         'События',
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
-                      Text(
-                        monthLabel,
-                        style: context.subtitleMediumStyle,
-                      ),
+                      Text(monthLabel, style: context.subtitleMediumStyle),
                     ],
                   ),
                 ),
@@ -477,92 +478,106 @@ class EventsPageState extends State<EventsPage> {
               const SizedBox(height: 20),
 
               // ── Day events ───────────────────────────────────────────────
-              if (_selectedDay != null) ...[
-                Text(
-                  formatSmartDate(_selectedDay!, pattern: 'dd MMMM', locale: 'ru-RU'),
-                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                    fontWeight: FontWeight.w600,
+              // Смена питомца проигрывает «желейную» (упругую) анимацию всего
+              // блока — по изменению [_showAllPets].
+              if (_selectedDay != null)
+                _JellySwitch(
+                  trigger: _showAllPets,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        formatSmartDate(
+                          _selectedDay!,
+                          pattern: 'dd MMMM',
+                          locale: 'ru-RU',
+                        ),
+                        style: Theme.of(context).textTheme.titleMedium!
+                            .copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      if (filtered.isEmpty)
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(height: 32),
+                            Icon(
+                              Icons.event_busy_outlined,
+                              size: 72,
+                              color: context
+                                  .watch<AppearanceController>()
+                                  .secondaryColor
+                                  .withAlpha(60),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Нет событий.',
+                                  style: Theme.of(context).textTheme.titleLarge!
+                                      .copyWith(
+                                        inherit: true,
+                                        color: context
+                                            .watch<AppearanceController>()
+                                            .secondaryColor
+                                            .withAlpha(60),
+                                      ),
+                                ),
+                                TextButton(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsetsGeometry.all(5),
+                                  ),
+                                  onPressed: _openCreateSheet,
+                                  child: Text(
+                                    'Создать',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge!
+                                        .copyWith(
+                                          inherit: true,
+                                          color: context
+                                              .watch<AppearanceController>()
+                                              .primaryColor
+                                              .withAlpha(192),
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )
+                      else
+                        ...filtered.map(
+                          (e) => Padding(
+                            key: ValueKey(
+                              '${e.id}_${_selectedDay!.toIso8601String()}',
+                            ),
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _SwipeableEventTile(
+                              event: e,
+                              petBadges: _petBadgesFor(e),
+                              selectedDate: _selectedDay,
+                              onTap: () => _openViewSheet(e),
+                              onEdit: () => _openEditSheet(e),
+                              onDelete: () => _deleteEvent(e),
+                              onCompleteToggle: (wasCompleted) async {
+                                final profileId = await PetProfileService()
+                                    .getActiveProfileId();
+                                if (profileId != null) {
+                                  await EventService().toggleCompleted(
+                                    profileId,
+                                    e,
+                                    _selectedDay!,
+                                  );
+                                }
+                              },
+                              onChanged: _refresh,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                if (filtered.isEmpty)
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(height: 32),
-                      Icon(
-                        Icons.event_busy_outlined,
-                        size: 72,
-                        color: context
-                            .watch<AppearanceController>()
-                            .secondaryColor
-                            .withAlpha(60),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Нет событий.',
-                            style: Theme.of(context).textTheme.titleLarge!
-                                .copyWith(
-                                  inherit: true,
-                                  color: context
-                                      .watch<AppearanceController>()
-                                      .secondaryColor
-                                      .withAlpha(60),
-                                ),
-                          ),
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsetsGeometry.all(5),
-                            ),
-                            onPressed: _openCreateSheet,
-                            child: Text(
-                              'Создать',
-                              style: Theme.of(context).textTheme.titleLarge!
-                                  .copyWith(
-                                    inherit: true,
-                                    color: context
-                                        .watch<AppearanceController>()
-                                        .primaryColor
-                                        .withAlpha(192),
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                else
-                  ...filtered.map(
-                    (e) => Padding(
-                      key: ValueKey(
-                        '${e.id}_${_selectedDay!.toIso8601String()}',
-                      ),
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _SwipeableEventTile(
-                        event: e,
-                        petBadges: _petBadgesFor(e),
-                        selectedDate: _selectedDay,
-                        onTap: () => _openViewSheet(e),
-                        onEdit: () => _openEditSheet(e),
-                        onDelete: () => _deleteEvent(e),
-                        onCompletedChanged: (val) async {
-                          final profileId = await PetProfileService()
-                              .getActiveProfileId();
-                          if (profileId != null) {
-                            await EventService().toggleCompleted(
-                              profileId,
-                              e,
-                              _selectedDay!,
-                            );
-                            _refresh();
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-              ],
             ],
           ),
         ),
@@ -640,14 +655,27 @@ class _PetSelectorChip extends StatelessWidget {
 
 // ── Swipeable wrapper ────────────────────────────────────────────────────────
 
+/// Тип спецэффекта, который сейчас проигрывает плитка.
+enum _TileFx { none, completing, deleting }
+
 class _SwipeableEventTile extends StatefulWidget {
   final Event event;
   final List<(String, Color)> petBadges;
   final DateTime? selectedDate;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final ValueChanged<bool>? onCompletedChanged;
+
+  /// Подтверждает и удаляет событие из хранилища. Возвращает `true`, если
+  /// удаление подтверждено — тогда плитка проигрывает анимацию исчезновения.
+  final Future<bool> Function()? onDelete;
+
+  /// Переключает статус выполнения в хранилище (без перезагрузки списка).
+  /// [wasCompleted] — состояние до нажатия (true → снимаем отметку).
+  final Future<void> Function(bool wasCompleted)? onCompleteToggle;
+
+  /// Просит родителя перезагрузить список — после того как плитка отыграла
+  /// свою анимацию.
+  final VoidCallback? onChanged;
 
   const _SwipeableEventTile({
     required this.event,
@@ -656,7 +684,8 @@ class _SwipeableEventTile extends StatefulWidget {
     this.onTap,
     this.onEdit,
     this.onDelete,
-    this.onCompletedChanged,
+    this.onCompleteToggle,
+    this.onChanged,
   });
 
   @override
@@ -664,7 +693,7 @@ class _SwipeableEventTile extends StatefulWidget {
 }
 
 class _SwipeableEventTileState extends State<_SwipeableEventTile>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const double _btnWidth = 66.0;
   static const double _btnGap = 8.0;
   static const double _sidePad = 12.0;
@@ -675,13 +704,19 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
   late final Animation<double> _slide;
   bool _revealed = false;
 
+  // Спецэффект строки: отметка «выполнено» / удаление.
+  late final AnimationController _fxCtrl;
+  _TileFx _fx = _TileFx.none;
+
   @override
   void initState() {
     super.initState();
 
     _actionsCount = widget.event.completable ? 3 : 2;
     _actionWidth =
-        _btnWidth * _actionsCount + _sidePad * 2 + _btnGap * (_actionsCount - 1);
+        _btnWidth * _actionsCount +
+        _sidePad * 2 +
+        _btnGap * (_actionsCount - 1);
 
     _ctrl = AnimationController(
       vsync: this,
@@ -691,11 +726,17 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
       begin: 0,
       end: -_actionWidth,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+
+    _fxCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
+    );
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _fxCtrl.dispose();
     super.dispose();
   }
 
@@ -716,9 +757,45 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
     if (dx > 6 && _revealed) _close();
   }
 
+  /// Проигрывает fx-анимацию до конца. Возвращает `false`, если виджет
+  /// размонтирован во время анимации (тикер отменён) — тогда продолжать нельзя.
+  Future<bool> _playFx() async {
+    try {
+      await _fxCtrl.forward(from: 0);
+    } catch (_) {
+      return false;
+    }
+    return mounted;
+  }
+
+  Future<void> _handleComplete() async {
+    final was = widget.event.isCompletedOn(widget.selectedDate!);
+    _close();
+    await widget.onCompleteToggle?.call(was);
+    if (!mounted) return;
+    // Празднуем только отметку «выполнено», а не её снятие.
+    if (!was) {
+      triggerHaptic(HapticStrength.medium);
+      setState(() => _fx = _TileFx.completing);
+      if (!await _playFx()) return;
+      setState(() => _fx = _TileFx.none);
+    }
+    widget.onChanged?.call();
+  }
+
+  Future<void> _handleDelete() async {
+    _close();
+    final ok = await widget.onDelete?.call() ?? false;
+    if (!ok || !mounted) return;
+    triggerHaptic(HapticStrength.heavy);
+    setState(() => _fx = _TileFx.deleting);
+    if (!await _playFx()) return;
+    widget.onChanged?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final tile = GestureDetector(
       onHorizontalDragUpdate: _onHorizontalDrag,
       onTap: _revealed ? _close : null,
       behavior: HitTestBehavior.translucent,
@@ -739,12 +816,7 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
                     icon: Icons.check,
                     color: ThemeColors.positiveDynamics,
                     label: 'Выполнить',
-                    onTap: () {
-                      _close();
-                      widget.onCompletedChanged?.call(
-                        widget.event.isCompletedOn(widget.selectedDate!),
-                      );
-                    },
+                    onTap: _handleComplete,
                   ),
 
                 _ActionBtn(
@@ -760,10 +832,7 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
                   icon: Icons.delete_outline,
                   color: ThemeColors.dangerZone,
                   label: 'Удалить',
-                  onTap: () {
-                    _close();
-                    widget.onDelete?.call();
-                  },
+                  onTap: _handleDelete,
                 ),
               ],
             ),
@@ -783,8 +852,150 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
               onTap: _revealed ? _close : widget.onTap,
             ),
           ),
+
+          // Праздничный «штамп» при отметке выполненным.
+          if (_fx == _TileFx.completing)
+            Positioned.fill(child: _CompleteBurst(animation: _fxCtrl)),
         ],
       ),
+    );
+
+    // При удалении строка упруго схлопывается: уезжает вправо, уменьшается,
+    // гаснет и «сворачивает» свою высоту.
+    return AnimatedBuilder(
+      animation: _fxCtrl,
+      builder: (context, child) {
+        if (_fx != _TileFx.deleting) return child!;
+        final t = Curves.easeInCubic.transform(_fxCtrl.value);
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: (1 - t).clamp(0.0, 1.0),
+            child: Opacity(
+              opacity: (1 - t).clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(64 * t, 0),
+                child: Transform.scale(
+                  scale: 1 - 0.06 * t,
+                  alignment: Alignment.centerRight,
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      child: tile,
+    );
+  }
+}
+
+// ── Праздничный «штамп» отметки выполненным ─────────────────────────────────
+
+/// Зелёный кружок с галочкой, который упруго «впечатывается» поверх карточки
+/// и мягко гаснет. Проигрывается один раз по [animation] (0 → 1).
+class _CompleteBurst extends StatelessWidget {
+  final Animation<double> animation;
+
+  const _CompleteBurst({required this.animation});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, _) {
+          final t = animation.value;
+          final pop = Curves.elasticOut.transform(t.clamp(0.0, 1.0));
+          // Быстро появляемся, держимся, затем плавно гаснем к концу.
+          final appear = Curves.easeOut.transform((t / 0.25).clamp(0.0, 1.0));
+          final fadeOut =
+              1 - Curves.easeIn.transform(((t - 0.65) / 0.35).clamp(0.0, 1.0));
+          final opacity = (appear * fadeOut).clamp(0.0, 1.0);
+          return Opacity(
+            opacity: opacity,
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: ThemeColors.positiveDynamics.withAlpha(36),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Transform.scale(
+                scale: 0.4 + 0.6 * pop,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: ThemeColors.positiveDynamics,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── «Желейный» переключатель контента ───────────────────────────────────────
+
+/// Проигрывает упругую (elastic) анимацию масштаба + прозрачности при каждой
+/// смене [trigger]. Используется для «дорогого» перехода при переключении
+/// питомца на странице событий.
+class _JellySwitch extends StatefulWidget {
+  final Object trigger;
+  final Widget child;
+
+  const _JellySwitch({required this.trigger, required this.child});
+
+  @override
+  State<_JellySwitch> createState() => _JellySwitchState();
+}
+
+class _JellySwitchState extends State<_JellySwitch>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 640),
+  )..forward();
+
+  @override
+  void didUpdateWidget(covariant _JellySwitch old) {
+    super.didUpdateWidget(old);
+    if (old.trigger != widget.trigger) _ctrl.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final t = _ctrl.value.clamp(0.0, 1.0);
+        // elasticOut даёт мягкий «желейный» доводчик с лёгким перелётом.
+        final scale = 0.9 + 0.1 * Curves.elasticOut.transform(t);
+        final opacity = Curves.easeOut.transform(t);
+        return Opacity(
+          opacity: opacity,
+          child: Transform.scale(
+            scale: scale,
+            alignment: Alignment.topCenter,
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }
@@ -906,7 +1117,10 @@ class _EventTileCard extends StatelessWidget {
                   Container(
                     width: 1,
                     margin: const EdgeInsets.symmetric(horizontal: 12),
-                    color: context.watch<AppearanceController>().secondaryColor.withAlpha(60),
+                    color: context
+                        .watch<AppearanceController>()
+                        .secondaryColor
+                        .withAlpha(60),
                   ),
                 ],
 
