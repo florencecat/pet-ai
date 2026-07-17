@@ -6,6 +6,7 @@ import 'cloud_sync_service.dart';
 import 'notification_service.dart';
 import 'pet_profile_service.dart';
 import 'pill_reminder_service.dart';
+import 'treatment_service.dart';
 import 'package:pet_satellite/models/event.dart';
 
 class EventService {
@@ -147,7 +148,7 @@ class EventService {
   }
 
   /// Переключает выполнение события для конкретного дня.
-  /// Если событие связано с препаратом ([EventSource.pill]), синхронизирует
+  /// Если событие связано с препаратом ([PillOrigin]), синхронизирует
   /// статус с [Pill.takenDates] — чтобы отметка в календаре
   /// отражалась и на странице Здоровья, и наоборот.
   Future<void> toggleCompleted(String petId, Event event, DateTime day) async {
@@ -156,7 +157,7 @@ class EventService {
 
     // Направление событие → препарат. Единственная (awaited) точка синхронизации:
     // событие уже сохранено выше, поэтому обратный вызов на событие не нужен.
-    if (event.source == EventSource.pill) {
+    if (event.fromPill) {
       await PillReminderService().applyEventCompletion(
         event,
         day,
@@ -198,7 +199,13 @@ class EventService {
     return events.where((e) => e.occursOn(day)).toList();
   }
 
-  Future<void> deleteEvent(Event event) async {
+  /// Удаляет событие — вместе с породившим его объектом ([Event.origin]):
+  /// удаление в календаре и на странице Здоровья означает одно и то же.
+  ///
+  /// [deleteOrigin]`: false` — для вызовов из самих сервисов-родителей: свой
+  /// объект они правят сами, и обратный вызов зациклил бы стороны (тот же
+  /// приём, что и `syncEvent: false` в [PillReminderService]).
+  Future<void> deleteEvent(Event event, {bool deleteOrigin = true}) async {
     final all = await _loadAll();
     all.removeWhere((e) => e.id == event.id);
     await _persistAll(all);
@@ -209,6 +216,44 @@ class EventService {
 
     // Fire-and-forget remote delete.
     CloudSyncService.instance.deleteAsync('events', event.id);
+
+    if (deleteOrigin) await _deleteOrigin(event);
+  }
+
+  /// Удаляет события, созданные объектом [sourceId]. Родителя не трогает —
+  /// вызывается из его собственного удаления.
+  Future<void> deleteBySource(String petId, String sourceId) async {
+    final events = await loadEvents(petId);
+    for (final e in events.where((e) => e.origin.sourceId == sourceId)) {
+      await deleteEvent(e, deleteOrigin: false);
+    }
+  }
+
+  /// Удаляет объект, породивший [event].
+  ///
+  /// Рекурсия ограничена: свои события родители убирают через [deleteBySource]
+  /// и `deleteOrigin: false`, обратно в эту ветку они не заходят.
+  Future<void> _deleteOrigin(Event event) async {
+    // Сгенерированное событие всегда принадлежит ровно одному питомцу — тому,
+    // чьему объекту оно обязано появлением.
+    if (event.petIds.isEmpty) return;
+    final petId = event.petIds.first;
+
+    switch (event.origin) {
+      case ManualOrigin():
+      case AiOrigin():
+        break; // родителя нет — удалять больше нечего
+      case PillOrigin(:final pillId):
+        await PillReminderService().deleteSchedule(
+          petId: petId,
+          pillId: pillId,
+          eventId: event.id,
+        );
+      case TreatmentOrigin(:final entryId):
+        await TreatmentService().deleteTreatment(petId, entryId);
+      case NoteOrigin(:final noteId):
+        await PetProfileService().deleteNoteEntry(petId, noteId);
+    }
   }
 
   // ─── Очистка ──────────────────────────────────────────────────────────────

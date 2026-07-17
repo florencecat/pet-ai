@@ -90,8 +90,7 @@ Event goodEventEntity() {
     remindBeforeValue: 2,
     remind: true,
     petIds: ['pet_a', 'pet_b'],
-    source: EventSource.pill,
-    sourceId: 'pill_1',
+    origin: const PillOrigin('pill_1'),
     styleKindId: PillKind.capsule.id,
     color: 0xFF112233,
   );
@@ -114,8 +113,10 @@ void validateEvent(Event a, Event b) {
   expect(a.remindBeforeVariant, b.remindBeforeVariant);
   expect(a.remindBeforeValue, b.remindBeforeValue);
   expect(a.remind, b.remind);
-  expect(a.source, b.source);
-  expect(a.sourceId, b.sourceId);
+  // EventOrigin не переопределяет ==, поэтому сравниваем тип источника и id
+  // родителя — ровно то, что уезжает в хранилище парой source/source_id.
+  expect(a.origin.runtimeType, b.origin.runtimeType);
+  expect(a.origin.sourceId, b.origin.sourceId);
   expect(a.styleKindId, b.styleKindId);
   expect(a.color, b.color);
   expect(a.symptomTag, b.symptomTag);

@@ -158,7 +158,7 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
     if (!confirmed) return;
     await TreatmentService().deleteTreatment(
       widget.profile.id,
-      widget.editingEntry!,
+      widget.editingEntry!.id,
     );
     if (mounted) {
       Navigator.of(context).pop(true);

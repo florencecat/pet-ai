@@ -46,41 +46,88 @@ extension RepeatIntervalX on RepeatInterval {
   }
 }
 
-/// Источник создания события.
-/// Позволяет связать событие с породившим его объектом (препарат, вакцина, заметка)
-/// и применить контекстно-корректное поведение (синхронизация статуса, UI).
-enum EventSource { manual, pill, treatment, note, ai }
+/// Объект, породивший событие. Связывает событие с препаратом, обработкой или
+/// заметкой — по этой связи идёт синхронизация отметок и удаление в обе стороны.
+///
+/// Источник, которому нужен id родителя, без id не существует: пара
+/// `source` + `sourceId?` позволяла записать «событие из препарата без
+/// препарата», и такая связь уже дважды терялась молча. Разбор origin —
+/// исчерпывающий switch, поэтому новый источник забыть нельзя.
+sealed class EventOrigin {
+  const EventOrigin();
+}
 
-extension EventSourceX on EventSource {
-  String get caption {
-    switch (this) {
-      case EventSource.manual: return '';
-      case EventSource.pill: return 'Из таблетки';
-      case EventSource.treatment: return 'Из обработки';
-      case EventSource.note: return 'Из заметок';
-      case EventSource.ai: return 'Сделано с помощью ИИ';
-    }
-  }
+/// Создано пользователем вручную — родителя нет.
+final class ManualOrigin extends EventOrigin {
+  const ManualOrigin();
+}
 
-  Color get color {
-    switch (this) {
-      case EventSource.pill: return const Color(0xFF5C6BC0);
-      case EventSource.treatment: return const Color(0xFF00897B);
-      case EventSource.manual:
-      case EventSource.note:
-      case EventSource.ai: return ThemeColors.border;
-    }
-  }
+/// Предложено ИИ-ассистентом — дальше живёт само по себе.
+final class AiOrigin extends EventOrigin {
+  const AiOrigin();
+}
 
-  IconData get icon {
-    switch (this) {
-      case EventSource.manual: return Icons.circle ;
-      case EventSource.pill: return Icons.medication_outlined;
-      case EventSource.treatment: return Icons.vaccines_outlined;
-      case EventSource.note: return Icons.note_outlined;
-      case EventSource.ai: return Icons.auto_awesome;
-    }
-  }
+/// Приём препарата [Pill.id]. У курса событий столько же, сколько времён
+/// приёма, поэтому какое из них чьё, знает только [PillSchedule.eventId].
+final class PillOrigin extends EventOrigin {
+  final String pillId;
+  const PillOrigin(this.pillId);
+}
+
+/// Обработка или прививка [TreatmentEntry.id].
+final class TreatmentOrigin extends EventOrigin {
+  final String entryId;
+  const TreatmentOrigin(this.entryId);
+}
+
+/// Заметка [NoteEntry.id].
+final class NoteOrigin extends EventOrigin {
+  final String noteId;
+  const NoteOrigin(this.noteId);
+}
+
+extension EventOriginX on EventOrigin {
+  /// id породившего объекта. null — событие ни с чем не связано.
+  String? get sourceId => switch (this) {
+    PillOrigin(:final pillId) => pillId,
+    TreatmentOrigin(:final entryId) => entryId,
+    NoteOrigin(:final noteId) => noteId,
+    ManualOrigin() || AiOrigin() => null,
+  };
+
+  String get caption => switch (this) {
+    ManualOrigin() => '',
+    PillOrigin() => 'Из таблетки',
+    TreatmentOrigin() => 'Из обработки',
+    NoteOrigin() => 'Из заметок',
+    AiOrigin() => 'Сделано с помощью ИИ',
+  };
+
+  Color get color => switch (this) {
+    PillOrigin() => const Color(0xFF5C6BC0),
+    TreatmentOrigin() => const Color(0xFF00897B),
+    ManualOrigin() || NoteOrigin() || AiOrigin() => ThemeColors.border,
+  };
+
+  IconData get icon => switch (this) {
+    ManualOrigin() => Icons.circle,
+    PillOrigin() => Icons.medication_outlined,
+    TreatmentOrigin() => Icons.vaccines_outlined,
+    NoteOrigin() => Icons.note_outlined,
+    AiOrigin() => Icons.auto_awesome,
+  };
+
+  /// Предупреждение перед удалением события: вместе с ним уходит и родитель,
+  /// поэтому «удалится только событие» — неправда для всех источников, кроме
+  /// ручного и ИИ.
+  String get deleteWarning => switch (this) {
+    ManualOrigin() ||
+    AiOrigin() => 'Событие будет удалено без возможности восстановления.',
+    PillOrigin() =>
+      'Этот приём будет убран из курса. Если он последний — удалится весь курс.',
+    TreatmentOrigin() => 'Вместе с событием удалится запись об обработке.',
+    NoteOrigin() => 'Вместе с событием удалится заметка.',
+  };
 }
 
 /// Иконка + цвет для единообразного отображения события в списках.
@@ -240,7 +287,7 @@ class Event with Remindable implements PbEntity {
 
   bool remind;
 
-  String get caption => category.name.isNotEmpty ? category.name : source.caption;
+  String get caption => category.name.isNotEmpty ? category.name : origin.caption;
 
   /// Даты выполнения в формате "yyyy-MM-dd" — отдельно для каждого вхождения
   Set<String> completedDates;
@@ -267,16 +314,12 @@ class Event with Remindable implements PbEntity {
   @override
   int remindBeforeValue;
 
-  /// Откуда создано событие (вручную, препарат, вакцина, заметка).
-  final EventSource source;
-
-  /// ID связанного объекта: для [EventSource.pill] — PillReminder.id,
-  /// для [EventSource.treatment] — не используется (link хранится в TreatmentEntry.eventId).
-  final String? sourceId;
+  /// Объект, породивший событие (см. [EventOrigin]).
+  final EventOrigin origin;
 
   /// Идентификатор «вида» источника, выбранного пользователем — определяет
-  /// иконку: для [EventSource.pill] — [PillKind.id], для
-  /// [EventSource.treatment] — [TreatmentKind.name]. null — иконка по умолчанию.
+  /// иконку: для [PillOrigin] — [PillKind.id], для [TreatmentOrigin] —
+  /// [TreatmentKind.name]. null — иконка по умолчанию.
   String? styleKindId;
 
   /// Выбранный пользователем цвет иконки (ARGB int). null — цвет по умолчанию.
@@ -294,8 +337,7 @@ class Event with Remindable implements PbEntity {
     this.remindBeforeValue = 0,
     this.remind = true,
     List<String>? petIds,
-    this.source = EventSource.manual,
-    this.sourceId,
+    this.origin = const ManualOrigin(),
     this.styleKindId,
     this.color,
   }) : id = generateId(),
@@ -316,26 +358,28 @@ class Event with Remindable implements PbEntity {
     required this.remindBeforeValue,
     this.allDay = false,
     this.remind = true,
-    this.source = EventSource.manual,
-    this.sourceId,
+    this.origin = const ManualOrigin(),
     this.symptomTag,
     this.styleKindId,
     this.color,
   });
 
-  Event.fromNote({required this.name, required this.dateTime, this.symptomTag})
-    : id = generateId(),
-      category = EventCategories.empty,
-      completedDates = {},
-      petIds = [],
-      repeat = RepeatInterval.none,
-      customDays = const [],
-      allDay = false,
-      remindBeforeVariant = RemindBeforeVariant.days,
-      remindBeforeValue = 0,
-      remind = false,
-      source = EventSource.note,
-      sourceId = null;
+  Event.fromNote({
+    required String noteId,
+    required this.name,
+    required this.dateTime,
+    this.symptomTag,
+  }) : id = generateId(),
+       origin = NoteOrigin(noteId),
+       category = EventCategories.empty,
+       completedDates = {},
+       petIds = [],
+       repeat = RepeatInterval.none,
+       customDays = const [],
+       allDay = false,
+       remindBeforeVariant = RemindBeforeVariant.days,
+       remindBeforeValue = 0,
+       remind = false;
 
   Event.empty()
     : id = generateId(),
@@ -350,10 +394,9 @@ class Event with Remindable implements PbEntity {
       remindBeforeVariant = RemindBeforeVariant.days,
       remindBeforeValue = 0,
       remind = true,
-      source = EventSource.manual,
-      sourceId = null;
+      origin = const ManualOrigin();
 
-  bool get completable => remind && source != EventSource.note;
+  bool get completable => remind && origin is! NoteOrigin;
 
   /// Единый стиль отображения события (иконка + цвет) — определяется по
   /// источнику создания, чтобы списки получали оформление единообразно,
@@ -362,15 +405,15 @@ class Event with Remindable implements PbEntity {
   EventStyle get style {
     final defaultColor = ThemeColors.primary.withAlpha(128);
     final chosenColor = color != null ? Color(color!) : null;
-    switch (source) {
-      case EventSource.note:
+    switch (origin) {
+      case NoteOrigin():
         // Иконка и цвет шаблона заметки (симптома), выбранного пользователем.
         final tag = symptomTag != null ? SymptomTags.byId(symptomTag!) : null;
         return EventStyle(
           icon: tag?.icon ?? Icons.event_note_outlined,
           color: chosenColor ?? tag?.color ?? defaultColor,
         );
-      case EventSource.pill:
+      case PillOrigin():
         // Вид препарата (PillKind) и цвет, выбранные пользователем.
         final kind = (styleKindId != null && styleKindId!.isNotEmpty)
             ? PillKind.byId(styleKindId!)
@@ -381,7 +424,7 @@ class Event with Remindable implements PbEntity {
               : Icons.medication_outlined,
           color: chosenColor ?? category.color,
         );
-      case EventSource.treatment:
+      case TreatmentOrigin():
         // Вид обработки (TreatmentKind) и цвет, выбранные пользователем.
         TreatmentKind? kind;
         if (styleKindId != null) {
@@ -396,9 +439,9 @@ class Event with Remindable implements PbEntity {
           icon: kind?.icon ?? Icons.vaccines_outlined,
           color: chosenColor ?? kind?.color ?? category.color,
         );
-      case EventSource.manual:
+      case ManualOrigin():
         return EventStyle(icon: category.icon, color: category.color);
-      case EventSource.ai:
+      case AiOrigin():
         return EventStyle(icon: category.icon, gradient: ThemeColors.gradientColors);
     }
   }
@@ -407,10 +450,10 @@ class Event with Remindable implements PbEntity {
   /// обратной совместимости.
   Color? get categoryColor => style.color;
 
-  bool get fromNote => source == EventSource.note;
-  bool get fromTreatment => source == EventSource.treatment;
-  bool get fromPill => source == EventSource.pill;
-  bool get manual => source == EventSource.manual;
+  bool get fromNote => origin is NoteOrigin;
+  bool get fromTreatment => origin is TreatmentOrigin;
+  bool get fromPill => origin is PillOrigin;
+  bool get manual => origin is ManualOrigin;
 
   /// Форматирует дату как ключ "yyyy-MM-dd"
   static String dateKey(DateTime date) =>
@@ -513,9 +556,9 @@ class Event with Remindable implements PbEntity {
     'remindBeforeVariant': remindBeforeVariant.name,
     'remindBeforeMinutes': remindBeforeValue,
     'remind': remind,
-    'source': source.name,
+    'source': origin.source.name,
     if (symptomTag != null) 'symptomTag': symptomTag,
-    if (sourceId != null) 'sourceId': sourceId,
+    if (origin.sourceId?.isNotEmpty ?? false) 'sourceId': origin.sourceId,
     if (styleKindId != null) 'styleKindId': styleKindId,
     if (color != null) 'color': color,
   };
@@ -535,8 +578,8 @@ class Event with Remindable implements PbEntity {
     'remind_before_variant': remindBeforeVariant.name,
     'remind_before_value': remindBeforeValue,
     'remind': remind,
-    'source': source.name,
-    if (sourceId != null) 'source_id': sourceId,
+    'source': origin.source.name,
+    if (origin.sourceId?.isNotEmpty ?? false) 'source_id': origin.sourceId,
     'completed_dates': completedDates.toList(),
     if (symptomTag != null) 'symptom_tag': symptomTag,
     if (styleKindId != null) 'style_kind': styleKindId,
@@ -558,11 +601,6 @@ class Event with Remindable implements PbEntity {
     final petIds =
         (json['petIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
         [];
-
-    final source = EventSource.values.firstWhere(
-      (s) => s.name == (json['source'] as String?),
-      orElse: () => EventSource.manual,
-    );
 
     final remindBeforeVariant = RemindBeforeVariant.values.firstWhere(
       (s) => s.name == (json['remindBeforeVariant'] as String?),
@@ -589,13 +627,51 @@ class Event with Remindable implements PbEntity {
       remindBeforeVariant: remindBeforeVariant,
       remindBeforeValue: json['remindBeforeMinutes'] as int? ?? 0,
       remind: json['remind'] as bool? ?? true,
-      source: source,
-      sourceId: json['sourceId'] as String?,
+      origin: _originFromWire(
+        json['source'] as String?,
+        json['sourceId'] as String?,
+      ),
       symptomTag: json['symptomTag'] as String?,
       styleKindId: json['styleKindId'] as String?,
       color: (json['color'] as num?)?.toInt(),
     );
   }
+}
+
+/// Хранимое представление [EventOrigin]. И локальный JSON (`source`/`sourceId`),
+/// и колонки PocketBase (`source`/`source_id`) — плоская пара «тип + id»;
+/// формат менять нельзя, поэтому sealed-класс раскладывается в неё при записи
+/// и собирается обратно при чтении.
+enum _EventSource { manual, pill, treatment, note, ai }
+
+extension _OriginWire on EventOrigin {
+  _EventSource get source => switch (this) {
+    ManualOrigin() => _EventSource.manual,
+    PillOrigin() => _EventSource.pill,
+    TreatmentOrigin() => _EventSource.treatment,
+    NoteOrigin() => _EventSource.note,
+    AiOrigin() => _EventSource.ai,
+  };
+}
+
+/// Собирает [EventOrigin] из хранимой пары.
+///
+/// [id] пуст у событий, записанных до появления [EventOrigin]: обработки и
+/// заметки его не проставляли. Тип источника у них известен и определяет вид
+/// события в списках, поэтому origin восстанавливается с пустым id — родителя
+/// по нему не найти, но и выглядеть созданными вручную они не должны.
+EventOrigin _originFromWire(String? source, String? id) {
+  final linkId = id ?? '';
+  return switch (_EventSource.values.firstWhere(
+    (s) => s.name == source,
+    orElse: () => _EventSource.manual,
+  )) {
+    _EventSource.manual => const ManualOrigin(),
+    _EventSource.pill => PillOrigin(linkId),
+    _EventSource.treatment => TreatmentOrigin(linkId),
+    _EventSource.note => NoteOrigin(linkId),
+    _EventSource.ai => const AiOrigin(),
+  };
 }
 
 class _EventCodec extends PbCodec<Event> {
@@ -615,7 +691,7 @@ class _EventCodec extends PbCodec<Event> {
       petIds: [profileId],
       repeat: RepeatIntervalX.fromAi(data['repeat'] as String?),
       customDays: const [],
-      source: EventSource.ai
+      origin: const AiOrigin(),
     );
   }
 
@@ -653,13 +729,10 @@ class _EventCodec extends PbCodec<Event> {
     ),
     remindBeforeValue: (data['remind_before_value'] as num?)?.toInt() ?? 0,
     remind: data['remind'] as bool? ?? true,
-    source: EventSource.values.firstWhere(
-      (s) => s.name == (data['source'] as String?),
-      orElse: () => EventSource.manual,
+    origin: _originFromWire(
+      data['source'] as String?,
+      data['source_id'] as String?,
     ),
-    sourceId: (data['source_id'] as String?)?.isEmpty ?? true
-        ? null
-        : data['source_id'] as String,
     symptomTag: (data['symptom_tag'] as String?)?.isEmpty ?? true
         ? null
         : data['symptom_tag'] as String,

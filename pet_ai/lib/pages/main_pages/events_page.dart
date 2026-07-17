@@ -230,8 +230,8 @@ class EventsPageState extends State<EventsPage> {
   Future<void> _deleteEvent(Event event) async {
     final confirmed = await confirmDelete(
       context,
-      title: 'Удалить событие?',
-      message: '«${event.name}» будет удалено без возможности восстановления.',
+      title: 'Удалить «${event.name}»?',
+      message: event.origin.deleteWarning,
     );
     if (!confirmed) return;
     await EventService().deleteEvent(event);
@@ -400,7 +400,7 @@ class EventsPageState extends State<EventsPage> {
                         ),
                         eventLoader: (day) => _events.where((e) {
                           if (!e.occursOn(day)) return false;
-                          if (e.source == EventSource.pill) return false;
+                          if (e.fromPill) return false;
                           if (e.isCompletedOn(day)) return false;
                           return true;
                         }).toList(),
@@ -864,7 +864,7 @@ class _EventTileCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (event.source != EventSource.note) ...[
+                if (!event.fromNote) ...[
                   // ── Time ─────────────────────────────────────────────────
                   Expanded(
                     flex: 1,

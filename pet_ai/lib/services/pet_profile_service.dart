@@ -490,19 +490,16 @@ class PetProfileService {
     }
   }
 
-  Future<void> deleteNoteEntry(String petId, DateTime date) async {
+  /// Удаляет заметку вместе с её событием в календаре.
+  Future<void> deleteNoteEntry(String petId, String noteId) async {
     final profile = await loadProfile(petId);
-    if (profile != null) {
-      final ids = profile.noteHistory.entries
-          .where((e) => e.date == date)
-          .map((e) => e.id)
-          .toList();
-      profile.noteHistory.deleteEntry(date);
-      await saveProfile(profile);
-      for (final id in ids) {
-        CloudSyncService.instance.deleteAsync('notes', id);
-      }
-    }
+    if (profile == null) return;
+
+    final removed = profile.noteHistory.deleteById(noteId);
+    if (removed == null) return;
+    await saveProfile(profile);
+    CloudSyncService.instance.deleteAsync('notes', removed.id);
+    await EventService().deleteBySource(petId, removed.id);
   }
 
   Future<void> clearWeightHistory(String petId) async {

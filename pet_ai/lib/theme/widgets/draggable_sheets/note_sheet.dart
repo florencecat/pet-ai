@@ -191,8 +191,8 @@ class _NoteSheetState extends State<NoteSheet> {
   Future<void> _delete(NoteEntry entry) async {
     final confirmed = await confirmDelete(context, title: 'Удалить заметку?');
     if (!confirmed) return;
-    await PetProfileService().deleteNoteEntry(widget.profile.id, entry.date);
-    if (mounted) setState(() => _history.deleteEntry(entry.date));
+    await PetProfileService().deleteNoteEntry(widget.profile.id, entry.id);
+    if (mounted) setState(() => _history.deleteById(entry.id));
   }
 
   @override

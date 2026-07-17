@@ -165,7 +165,7 @@ class _EventSheetState extends State<EventSheet> {
     final confirmed = await confirmDelete(
       context,
       title: 'Удалить событие?',
-      message: 'Событие будет удалено без возможности восстановления.',
+      message: event.origin.deleteWarning,
     );
     if (!confirmed) return;
     await EventService().deleteEvent(event);
@@ -387,9 +387,9 @@ class _EventSheetState extends State<EventSheet> {
               _CategoryTag(category: event.category),
 
             // Source badge
-            if (event.source != EventSource.manual) ...[
+            if (!event.manual) ...[
               const SizedBox(height: 6),
-              _SourceTag(source: event.source),
+              _SourceTag(origin: event.origin),
             ],
           ],
         ),
@@ -943,30 +943,30 @@ class _CategoryTag extends StatelessWidget {
 }
 
 class _SourceTag extends StatelessWidget {
-  final EventSource source;
-  const _SourceTag({required this.source});
+  final EventOrigin origin;
+  const _SourceTag({required this.origin});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: source.color.withAlpha(64),
-        gradient: source == EventSource.ai
+        color: origin.color.withAlpha(64),
+        gradient: origin is AiOrigin
             ? LinearGradient(colors: ThemeColors.gradientColors)
             : null,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: source.color.withAlpha(50)),
+        border: Border.all(color: origin.color.withAlpha(50)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(source.icon, size: 12, color: source.color.withAlpha(180)),
+          Icon(origin.icon, size: 12, color: origin.color.withAlpha(180)),
           const SizedBox(width: 4),
           Text(
-            source.caption,
+            origin.caption,
             style: TextStyle(
-              color: source.color.withAlpha(200),
+              color: origin.color.withAlpha(200),
               fontWeight: FontWeight.w500,
             ),
           ),

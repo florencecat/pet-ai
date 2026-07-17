@@ -263,10 +263,8 @@ class HomePageState extends State<HomePage> {
     for (final e in _allEvents) {
       // Pill/treatment events are shown on the health page by default; on the
       // timeline only when explicitly enabled in the history filter.
-      if (e.source == EventSource.pill && !_filter.upcomingPills) continue;
-      if (e.source == EventSource.treatment && !_filter.upcomingTreatments) {
-        continue;
-      }
+      if (e.fromPill && !_filter.upcomingPills) continue;
+      if (e.fromTreatment && !_filter.upcomingTreatments) continue;
 
       if (e.repeat == RepeatInterval.none) {
         if (!e.isCompletedOn(e.dateTime) &&
@@ -332,8 +330,7 @@ class HomePageState extends State<HomePage> {
     // timeline and are shown on the health page).
     if (_filter.completedEvents) {
       for (final event in _allEvents) {
-        if (event.source == EventSource.pill) continue;
-        if (event.source == EventSource.treatment) continue;
+        if (event.fromPill || event.fromTreatment) continue;
         for (final dateStr in event.completedDates) {
           final parts = dateStr.split('-');
           if (parts.length == 3) {
@@ -398,7 +395,7 @@ class HomePageState extends State<HomePage> {
     final items = <_TimelineItem>[];
 
     for (final e in _allEvents) {
-      if (e.source == EventSource.note) continue;
+      if (e.fromNote) continue;
 
       if (e.repeat == RepeatInterval.none) {
         final cutoff = today.subtract(const Duration(days: 30));
