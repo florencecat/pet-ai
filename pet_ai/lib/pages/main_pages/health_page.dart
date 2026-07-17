@@ -623,9 +623,9 @@ class HealthPageState extends State<HealthPage> {
               titleContent: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Вес', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Вес', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(width: 8),
-                  Text('•', style: Theme.of(context).textTheme.titleLarge),
+                  Text('•', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(width: 4),
                   PopupMenuButton<HistoryPeriod>(
                     initialValue: _chartPeriod,
@@ -651,7 +651,7 @@ class HealthPageState extends State<HealthPage> {
                         const SizedBox(width: 4),
                         Text(
                           _periodLabel(_chartPeriod),
-                          style: Theme.of(context).textTheme.titleLarge!
+                          style: Theme.of(context).textTheme.titleMedium!
                               .copyWith(
                                 color: context
                                     .watch<AppearanceController>()
@@ -721,9 +721,16 @@ class HealthPageState extends State<HealthPage> {
                 setState(() => _treatmentsExpanded = !_treatmentsExpanded);
                 _saveSectionState(_kTreatmentsExpanded, _treatmentsExpanded);
               },
-              titleContent: Text(
-                'Прививки и обработки',
-                style: Theme.of(context).textTheme.titleLarge,
+              titleContent: Row(
+                spacing: 8,
+                children: [
+                  Text(
+                    'Прививки и обработки',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (!_treatmentsExpanded)
+                    CountBadge(count: activeTreatments.length),
+                ],
               ),
               // "Добавить" hidden when list is empty — the empty state already
               // has its own inline "Добавить" link.
@@ -841,9 +848,16 @@ class HealthPageState extends State<HealthPage> {
                 setState(() => _pillsExpanded = !_pillsExpanded);
                 _saveSectionState(_kPillsExpanded, _pillsExpanded);
               },
-              titleContent: Text(
-                'Препараты',
-                style: Theme.of(context).textTheme.titleLarge,
+              titleContent: Row(
+                spacing: 8,
+                children: [
+                  Text(
+                    'Препараты',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (activeReminders != null && !_pillsExpanded)
+                    CountBadge(count: activeReminders.length),
+                ],
               ),
               trailing: activeReminders != null && activeReminders.isNotEmpty
                   ? TextButton.icon(
@@ -1436,7 +1450,7 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
                         ),
                         if (!_dismissedExpanded) ...[
                           const SizedBox(width: 8),
-                          _countBadge(context, _dismissed.length),
+                          CountBadge(count: _dismissed.length),
                         ],
                       ],
                     ),
@@ -1472,24 +1486,6 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
       ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
     ),
   );
-
-  Widget _countBadge(BuildContext context, int count) {
-    final color = context.watch<AppearanceController>().secondaryColor;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withAlpha(28),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        '$count',
-        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
 
   Widget _emptyState(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 48),

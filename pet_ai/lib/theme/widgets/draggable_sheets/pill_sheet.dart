@@ -731,12 +731,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
         children: [
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           if (!expanded)
-            Text(
-              '( ${reminders.length} )',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium!.copyWith(color: accent.withAlpha(192)),
-            ),
+            CountBadge(count: reminders.length),
         ],
       ),
       body: Column(

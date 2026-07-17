@@ -807,3 +807,28 @@ class InfoGlassPlate extends StatelessWidget {
     );
   }
 }
+
+class CountBadge extends StatelessWidget {
+  final int count;
+
+  const CountBadge({super.key, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.watch<AppearanceController>().secondaryColor;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withAlpha(28),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Text(
+        '$count',
+        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}

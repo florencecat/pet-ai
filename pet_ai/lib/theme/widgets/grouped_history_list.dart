@@ -82,15 +82,7 @@ class _GroupedHistoryListState<T extends BaseEntry>
                     ),
                     const SizedBox(width: 6),
                     if (!expanded)
-                      Text(
-                        '( ${items.length.toString()} )',
-                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                          color: context
-                              .watch<AppearanceController>()
-                              .primaryColor
-                              .withAlpha(192),
-                        ),
-                      ),
+                      CountBadge(count: widget.entries.length)
                   ],
                 ),
                 body: Padding(
