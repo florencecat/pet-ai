@@ -1,7 +1,15 @@
 import 'package:flutter/foundation.dart';
 
 /// Фичи, настройку которых можно скрыть за гейтом, пока они «пилятся».
-enum Feature { cloudSync, userCity }
+enum Feature {
+  cloudSync,
+  userCity,
+  dataExport,
+  biometrics,
+  aiAdvices,
+  helpFAQ,
+  rateUs
+}
 
 /// Гейт фич приложения.
 ///
@@ -28,6 +36,9 @@ class FeatureFlags {
   static const Map<Feature, bool> _enabledWhenGated = {
     Feature.cloudSync: false,
     Feature.userCity: false,
+    Feature.dataExport: false,
+    Feature.biometrics: false,
+    Feature.aiAdvices: false,
   };
 
   /// Оверрайды для тестов (в проде остаются null).
