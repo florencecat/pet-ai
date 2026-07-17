@@ -321,7 +321,6 @@ class GlassBadge extends StatelessWidget {
       label: Text(
         name,
         style: TextStyle(
-
           fontWeight: FontWeight.w600,
           color: color.withAlpha(200),
         ),
@@ -849,11 +848,12 @@ class SoftGlassButton extends StatelessWidget {
     required this.onTap,
     this.color,
     this.subtitle,
-   });
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = this.color ?? context.watch<AppearanceController>().primaryColor;
+    final color =
+        this.color ?? context.watch<AppearanceController>().primaryColor;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -880,9 +880,38 @@ class SoftGlassButton extends StatelessWidget {
               ),
             ),
             if (subtitle != null)
-              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: color.withAlpha(172),
-              ),)
+              Text(
+                subtitle!,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall!.copyWith(color: color.withAlpha(172)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class InfoGlassPlate extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const InfoGlassPlate({super.key, required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftGlassPlate(
+      color: color.withAlpha(30),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 26, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+            ),
           ],
         ),
       ),

@@ -209,6 +209,9 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.purpose == TreatmentDialogPurpose.edit;
+    final hasCategory = widget.profile.treatmentHistory.entries.any(
+      (e) => e.kind == _kind,
+    );
 
     return AlertDialog(
       actionsAlignment: isEdit
@@ -275,6 +278,13 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
                     ? _openIconPicker
                     : null,
               ),
+              if (!hasCategory)
+                InfoGlassPlate(
+                  color: _color != null
+                      ? Color(_color!)
+                      : context.watch<AppearanceController>().primaryColor,
+                  label: 'Будет создана новая категория обработок',
+                ),
               TextField(
                 controller: _nameCtrl,
                 decoration: baseInputDecoration(context, hint: 'Название'),

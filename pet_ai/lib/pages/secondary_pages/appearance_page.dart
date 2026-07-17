@@ -51,30 +51,9 @@ class AppearancePage extends StatelessWidget {
 
                 if (appearance.usePetColor) ...[
                   const SizedBox(height: 12),
-                  SoftGlassPlate(
-                    color: appearance.petColor.withAlpha(30),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 18,
-                            color: appearance.petColor,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Изменить цвет питомца можно в его профиле.',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  InfoGlassPlate(
+                    label: 'Изменить цвет питомца можно в его профиле.',
+                    color: appearance.petColor,
                   ),
                 ],
               ],
