@@ -479,7 +479,7 @@ class EventsPageState extends State<EventsPage> {
               // ── Day events ───────────────────────────────────────────────
               if (_selectedDay != null) ...[
                 Text(
-                  _dayLabel(_selectedDay!),
+                  formatSmartDate(_selectedDay!, pattern: 'dd MMMM', locale: 'ru-RU'),
                   style: Theme.of(context).textTheme.titleMedium!.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -896,8 +896,7 @@ class _EventTileCard extends StatelessWidget {
               children: [
                 if (!event.fromNote) ...[
                   // ── Time ─────────────────────────────────────────────────
-                  Expanded(
-                    flex: 1,
+                  FittedBox(
                     child: Text(
                       time,
                       style: Theme.of(context).textTheme.titleLarge!.copyWith(
