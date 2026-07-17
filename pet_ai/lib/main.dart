@@ -105,6 +105,16 @@ class PetHealthApp extends StatelessWidget {
             ],
             supportedLocales: const [Locale('en'), Locale('ru')],
             locale: const Locale('ru'),
+            // Глобально скрываем клавиатуру при тапе мимо полей ввода. Оборачивает
+            // весь Navigator (включая модальные листы), поэтому не нужно вешать
+            // GestureDetector на каждый экран. translucent + onTap не мешают
+            // дочерним кнопкам: тап по интерактиву достаётся ему, а по пустому
+            // месту — снимает фокус.
+            builder: (context, child) => GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+              child: child,
+            ),
             home: const MainPage(),
           );
         },
