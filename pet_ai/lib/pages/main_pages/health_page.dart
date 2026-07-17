@@ -62,7 +62,9 @@ class HealthPageState extends State<HealthPage> {
   // Period for the inline weight chart
   HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
 
-  bool _weightExpanded = true;
+  /// Явное действие пользователя со свёрткой секции «Вес». `null` — пользователь
+  /// ещё не трогал секцию, тогда её раскрытие определяется по объёму истории.
+  bool? _weightExpanded;
   bool _treatmentsExpanded = true;
   bool _pillsExpanded = true;
 
@@ -81,7 +83,7 @@ class HealthPageState extends State<HealthPage> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _weightExpanded = prefs.getBool(_kWeightExpanded) ?? true;
+      _weightExpanded = prefs.getBool(_kWeightExpanded);
       _treatmentsExpanded = prefs.getBool(_kTreatmentsExpanded) ?? true;
       _pillsExpanded = prefs.getBool(_kPillsExpanded) ?? true;
     });
@@ -523,6 +525,12 @@ class HealthPageState extends State<HealthPage> {
     final weightEntries =
         _profile?.weightHistory.filterByPeriod(_chartPeriod) ?? [];
 
+    // Секцию с графиком показываем раскрытой, только если записей достаточно
+    // для осмысленного графика (пустая история или пара записей — сворачиваем).
+    // Явный тап пользователя по секции важнее этой проверки.
+    final weightEntryCount = _profile?.weightHistory.entries.length ?? 0;
+    final weightExpanded = _weightExpanded ?? (weightEntryCount > 2);
+
     final activeReminders =
         _profile?.pillReminders.where((r) => r.isActive).toList()
           ?..sort((a, b) => a.name.compareTo(b.name));
@@ -642,10 +650,11 @@ class HealthPageState extends State<HealthPage> {
 
             // ── Вес ──────────────────────────────────────────────────────────
             CollapsibleSection(
-              expanded: _weightExpanded,
+              expanded: weightExpanded,
               onToggle: () {
-                setState(() => _weightExpanded = !_weightExpanded);
-                _saveSectionState(_kWeightExpanded, _weightExpanded);
+                final next = !weightExpanded;
+                setState(() => _weightExpanded = next);
+                _saveSectionState(_kWeightExpanded, next);
               },
               titleContent: Row(
                 mainAxisSize: MainAxisSize.min,
