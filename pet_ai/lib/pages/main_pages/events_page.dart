@@ -569,14 +569,6 @@ class EventsPageState extends State<EventsPage> {
       ),
     );
   }
-
-  String _dayLabel(DateTime day) {
-    final now = DateTime.now();
-    if (isSameDay(day, now)) return 'Сегодня';
-    if (isSameDay(day, now.add(const Duration(days: 1)))) return 'Завтра';
-    if (isSameDay(day, now.subtract(const Duration(days: 1)))) return 'Вчера';
-    return DateFormat('d MMMM', 'ru_RU').format(day);
-  }
 }
 
 // ── Pet selector chip (full-width) ───────────────────────────────────────────

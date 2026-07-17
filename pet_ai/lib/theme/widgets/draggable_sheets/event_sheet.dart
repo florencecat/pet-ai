@@ -607,6 +607,7 @@ class _EventSheetState extends State<EventSheet> {
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
           onChanged: (val) => setState(() {
             _allDay = val;
+            _selectedTime = null;
             // У события «на весь день» нет времени суток — напоминание считается
             // только в целых днях (доставка в час из настроек уведомлений).
             if (val && _remindBeforeVariant != RemindBeforeVariant.days) {
