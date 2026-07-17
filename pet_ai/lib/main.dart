@@ -134,7 +134,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   Color? _healthScoreColor;
 
   /// Одноразовый показ уведомления о сборе диагностики за сессию.
-  bool _crashConsentChecked = false;
+  // Static: гвард переживает пересоздание состояния (переключение питомца,
+  // пересборка дерева после онбординга), чтобы окно не показалось дважды.
+  static bool _crashConsentChecked = false;
 
   @override
   void initState() {
@@ -262,6 +264,12 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     final ctx = PetHealthApp.navigatorKey.currentContext;
     if (ctx == null || !ctx.mounted) return;
 
+    // Помечаем показанным сразу, до открытия окна: иначе повторный триггер
+    // (пока пользователь не закрыл диалог) снова увидит isNoticeShown == false
+    // и откроет второе такое же окно.
+    await crash.markNoticeShown();
+    if (!ctx.mounted) return;
+
     final keepEnabled = await showDialog<bool>(
       context: ctx,
       barrierDismissible: false,
@@ -308,7 +316,6 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     if (keepEnabled == false) {
       await crash.setEnabled(false);
     }
-    await crash.markNoticeShown();
   }
 
   /// Единая реакция на смену активного питомца — из любого места приложения
