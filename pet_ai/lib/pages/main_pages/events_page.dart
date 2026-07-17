@@ -10,6 +10,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
@@ -256,7 +257,6 @@ class EventsPageState extends State<EventsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final primaryColor = context.watch<AppearanceController>().primaryColor;
     final monthLabel = DateFormat('MMMM yyyy', 'ru_RU').format(_focusedDay);
@@ -281,40 +281,36 @@ class EventsPageState extends State<EventsPage> {
         decoration: context.watch<AppearanceController>().gradientDecoration,
         child: InlineLoading(
           isLoading: _isLoadingEvents,
-          child: ListView(
-            clipBehavior: Clip.none,
-            padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 120),
+          child: PinnableHeaderView(
+            bottomPadding: 120,
+            header: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'События',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      Text(
+                        monthLabel,
+                        style: context.subtitleMediumStyle,
+                      ),
+                    ],
+                  ),
+                ),
+                GlassPlate(
+                  padding: 4,
+                  child: IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: _openSearchSheet,
+                  ),
+                ),
+              ],
+            ),
             children: [
-              // ── Header ───────────────────────────────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'События',
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        Text(
-                          monthLabel,
-                          style: context.subtitleMediumStyle,
-                        ),
-                      ],
-                    ),
-                  ),
-                  GlassPlate(
-                    padding: 4,
-                    child: IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: _openSearchSheet,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
               // ── Pet selector ─────────────────────────────────────────────
               if (_allProfiles.length > 1) ...[
                 GlassPlate(

@@ -46,6 +46,21 @@ class AppearancePage extends StatelessWidget {
                       ),
                       iconColor: appearance.petColor,
                     ),
+                    const SettingsCardDivider(),
+                    SettingsRow(
+                      icon: Icons.vertical_align_top,
+                      label: 'Закреплённый заголовок',
+                      subtitle:
+                          'Заголовок страницы остаётся на месте — скроллится только содержимое',
+                      trailing: OutlinedSwitch(
+                        value: appearance.pinnedHeader,
+                        onChanged: (v) async => await context
+                            .read<AppearanceController>()
+                            .setPinnedHeader(v),
+                      ),
+                      iconColor: appearance.petColor,
+                      last: true,
+                    ),
                   ],
                 ),
 

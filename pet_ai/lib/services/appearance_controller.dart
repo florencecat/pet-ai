@@ -8,10 +8,15 @@ import 'package:pet_satellite/theme/app_colors.dart';
 class AppearanceController extends ChangeNotifier {
   bool _loaded = false;
   bool _usePetColor = true;
+  bool _pinnedHeader = true;
   ColorPalette _profilePalette = ThemeColors.defaultProfilePalette;
 
   bool get loaded => _loaded;
   bool get usePetColor => _usePetColor;
+
+  /// Заголовок страницы закреплён сверху — скроллится только содержимое.
+  /// Читается [PinnableHeaderView].
+  bool get pinnedHeader => _pinnedHeader;
 
   /// Цвет активного питомца (всегда загружен, независимо от usePetColor).
   ColorPalette get petPalette => _profilePalette;
@@ -46,6 +51,7 @@ class AppearanceController extends ChangeNotifier {
 
   Future<void> load() async {
     _usePetColor = await AppearanceService().getUsePetColor();
+    _pinnedHeader = await AppearanceService().getPinnedHeader();
     final profile = await PetProfileService().loadActiveProfile();
     if (profile != null) _profilePalette = profile.palette;
     _loaded = true;
@@ -55,6 +61,12 @@ class AppearanceController extends ChangeNotifier {
   Future<void> setUsePetColor(bool value) async {
     _usePetColor = value;
     await AppearanceService().setUsePetColor(value);
+    notifyListeners();
+  }
+
+  Future<void> setPinnedHeader(bool value) async {
+    _pinnedHeader = value;
+    await AppearanceService().setPinnedHeader(value);
     notifyListeners();
   }
 

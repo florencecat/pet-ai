@@ -18,6 +18,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dar
 import 'package:pet_satellite/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/home_pet_avatar.dart';
+import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -448,7 +449,6 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     // Аватар адаптируется под ширину экрана (больше на планшетах), в разумных
     // пределах.
     final double avatarDiameter = (MediaQuery.sizeOf(context).width * 0.2)
@@ -459,57 +459,53 @@ class HomePageState extends State<HomePage> {
       backgroundColor: ThemeColors.white,
       body: Container(
         decoration: context.watch<AppearanceController>().gradientDecoration,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
+        child: PinnableHeaderView(
+          header: Row(
+            children: [
+              Expanded(
+                child: _isLoadingProfile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          SkeletonText(width: 90, height: 13),
+                          SizedBox(height: 7),
+                          SkeletonText(width: 200, height: 22),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _user != null
+                                ? '${_timeGreeting()}, ${_user!.name}!'
+                                : '${_timeGreeting()},',
+                            style: context.subtitleMediumStyle,
+                          ),
+                          Text(
+                            'как там ${_profile!.name}?🐾',
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  inherit: true,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ],
+                      ),
+              ),
+              // Кнопка настроек
+              GlassCard(
+                callback: () => _openSettings(context),
+                child: Icon(
+                  Icons.settings_outlined,
+                  color: context
+                      .watch<AppearanceController>()
+                      .secondaryColor
+                      .withAlpha(180),
+                ),
+              ),
+            ],
+          ),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _isLoadingProfile
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            SkeletonText(width: 90, height: 13),
-                            SizedBox(height: 7),
-                            SkeletonText(width: 200, height: 22),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _user != null
-                                  ? '${_timeGreeting()}, ${_user!.name}!'
-                                  : '${_timeGreeting()},',
-                              style: context.subtitleMediumStyle,
-                            ),
-                            Text(
-                              'как там ${_profile!.name}?🐾',
-                              style: Theme.of(context).textTheme.titleLarge!
-                                  .copyWith(
-                                    inherit: true,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ],
-                        ),
-                ),
-                // Кнопка настроек
-                GlassCard(
-                  callback: () => _openSettings(context),
-                  child: Icon(
-                    Icons.settings_outlined,
-                    color: context
-                        .watch<AppearanceController>()
-                        .secondaryColor
-                        .withAlpha(180),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
             GlassCard(
               padding: 0,
               callback: () => _openProfile(context),

@@ -25,6 +25,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/weight_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -484,8 +485,6 @@ class HealthPageState extends State<HealthPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-
     ({String caption, String label, ColorPalette palette, IconData icon})?
     healthScore;
 
@@ -518,42 +517,37 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: ThemeColors.white,
       body: Container(
         decoration: context.watch<AppearanceController>().gradientDecoration,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
-          children: [
-            // ── Header ───────────────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Здоровье'),
-                      if (_profile != null)
-                        Text(
-                          _profile!.name,
-                          style: Theme.of(context).textTheme.headlineMedium!
-                              .copyWith(
-                                inherit: true,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                    ],
-                  ),
+        child: PinnableHeaderView(
+          header: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Здоровье'),
+                    if (_profile != null)
+                      Text(
+                        _profile!.name,
+                        style: Theme.of(context).textTheme.headlineMedium!
+                            .copyWith(
+                              inherit: true,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                  ],
                 ),
+              ),
 
-                if (healthScore != null)
-                  _HealthScoreBadge(
-                    score: healthScore,
-                    onTap: _healthBadges.isNotEmpty
-                        ? () => _openRecommendations(context, _healthBadges)
-                        : null,
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
+              if (healthScore != null)
+                _HealthScoreBadge(
+                  score: healthScore,
+                  onTap: _healthBadges.isNotEmpty
+                      ? () => _openRecommendations(context, _healthBadges)
+                      : null,
+                ),
+            ],
+          ),
+          children: [
             // ── Nearest upcoming health event ─────────────────────────────
             if (topAlert != null) ...[
               Padding(
