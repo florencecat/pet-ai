@@ -1277,6 +1277,10 @@ class _VetCardSheet extends StatelessWidget {
           _buildMoodWeek(context),
 
           const SizedBox(height: 16),
+          _sectionTitle(context, 'Таблетки'),
+          _buildPills(context),
+
+          const SizedBox(height: 16),
           _sectionTitle(context, 'Прививки и обработки'),
           _buildTreatments(context),
 
@@ -1425,6 +1429,104 @@ class _VetCardSheet extends StatelessWidget {
     );
   }
 
+  Widget _buildPills(BuildContext context) {
+    final pills = profile.pillReminders;
+    if (pills.isEmpty) {
+      return GlassPlate(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Нет записей о таблетках',
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              color: context
+                  .watch<AppearanceController>()
+                  .secondaryColor
+                  .withAlpha(153),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: pills
+              .map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        spacing: 10,
+                        children: [
+                          if (p.kind != null)
+                            Icon(
+                              p.kind!.icon,
+                              size: 14,
+                              color: p.color != null
+                                  ? Color(p.color!)
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor,
+                            ),
+                          Text(
+                            p.name,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor,
+                                ),
+                          ),
+                          Text(p.timeLabel,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                              color: context
+                                  .watch<AppearanceController>()
+                                  .secondaryColor.withAlpha(128),
+                            ),)
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            formatSmartDate(p.startDate),
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor
+                                      .withAlpha(153),
+                                ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (p.endDate != null)
+                            Text(
+                              '→ ${formatSmartDate(p.endDate!)}',
+                              style: Theme.of(context).textTheme.bodySmall!
+                                  .copyWith(
+                                    color: context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor
+                                        .withAlpha(153),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTreatments(BuildContext context) {
     final treatments = profile.treatmentHistory.entries;
     if (treatments.isEmpty) {
@@ -1480,7 +1582,7 @@ class _VetCardSheet extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            t.displayName,
+                            t.name,
                             style: Theme.of(context).textTheme.bodySmall!
                                 .copyWith(
                                   color: context
