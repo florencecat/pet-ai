@@ -140,11 +140,10 @@ class HealthPageState extends State<HealthPage> {
   }
 
   Future<void> _initScreen() async {
-    setState(() {
-      _isLoadingProfile = true;
-      _isLoadingEvents = true;
-    });
-
+    // Не сбрасываем флаги загрузки в true на повторных обновлениях (возврат с
+    // листа, переключение вкладки): иначе контент схлопывается в скелетоны и
+    // тут же разворачивается обратно — экран «дёргается». Скелетоны нужны лишь
+    // при самой первой загрузке, когда флаги и так true по умолчанию.
     final profile = await PetProfileService().loadActiveProfile();
     if (profile == null) {
       if (mounted) setState(() => _isLoadingProfile = false);
