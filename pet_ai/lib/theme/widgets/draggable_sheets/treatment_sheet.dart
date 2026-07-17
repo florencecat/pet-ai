@@ -557,6 +557,10 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
               final i = mapEntry.key;
               final entry = mapEntry.value;
               final isLast = i == _entries.length - 1;
+              // Интервал (в днях) до следующей, более старой обработки.
+              final gapDays = isLast
+                  ? 0
+                  : _dayGap(entry.date, _entries[i + 1].date);
 
               return IntrinsicHeight(
                 child: Row(
@@ -567,22 +571,44 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                       width: 54,
                       child: Column(
                         children: [
-                          Text(
-                            formatSmartDate(
-                              entry.date,
-                              pattern: entry.date.year == DateTime.now().year
-                                  ? 'd MMMM'
-                                  : 'd MMMM yyyy',
-                              locale: 'ru',
-                            ),
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall!
-                                .copyWith(
-                                  height: 1.2,
-                                  color: i == 0 ? kindColor : secondaryColor,
+                          // Верхняя половина: линия к предыдущей (более новой)
+                          // записи + подпись даты вплотную над точкой.
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: i == 0
+                                      ? const SizedBox.shrink()
+                                      : Center(
+                                          child: Container(
+                                            width: 2,
+                                            color: secondaryColor,
+                                          ),
+                                        ),
                                 ),
+                                Text(
+                                  formatSmartDate(
+                                    entry.date,
+                                    pattern:
+                                        entry.date.year == DateTime.now().year
+                                        ? 'd MMMM'
+                                        : 'd MMMM yyyy',
+                                    locale: 'ru',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodySmall!
+                                      .copyWith(
+                                        height: 1.2,
+                                        color: i == 0
+                                            ? kindColor
+                                            : secondaryColor,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          // Точка — напротив центра карточки.
                           Container(
                             width: 10,
                             height: 10,
@@ -596,25 +622,42 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                               ),
                             ),
                           ),
-                          if (!isLast)
-                            Expanded(
-                              child: Center(
-                                child: Container(
-                                  width: 2,
-                                  decoration: BoxDecoration(
-                                    gradient: i == 0
-                                        ? LinearGradient(
-                                            begin: AlignmentGeometry.topCenter,
-                                            end: AlignmentGeometry.bottomCenter,
-                                            stops: [0.4, 1.0],
-                                            colors: [kindColor, secondaryColor],
-                                          )
-                                        : null,
-                                    color: i != 0 ? secondaryColor : null,
+                          // Нижняя половина: линия к следующей (более старой)
+                          // записи + бейдж с интервалом между обработками.
+                          Expanded(
+                            child: isLast
+                                ? const SizedBox.shrink()
+                                : Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Center(
+                                        child: Container(
+                                          width: 2,
+                                          decoration: BoxDecoration(
+                                            gradient: i == 0
+                                                ? LinearGradient(
+                                                    begin: Alignment.topCenter,
+                                                    end: Alignment.bottomCenter,
+                                                    stops: const [0.4, 1.0],
+                                                    colors: [
+                                                      kindColor,
+                                                      secondaryColor,
+                                                    ],
+                                                  )
+                                                : null,
+                                            color: i != 0
+                                                ? secondaryColor
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                      _GapBadge(
+                                        days: gapDays,
+                                        color: secondaryColor,
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ),
-                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -659,6 +702,13 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
     );
   }
 
+  /// Разница в целых днях между двумя записями (без учёта времени суток).
+  static int _dayGap(DateTime a, DateTime b) {
+    final da = DateTime(a.year, a.month, a.day);
+    final db = DateTime(b.year, b.month, b.day);
+    return da.difference(db).inDays;
+  }
+
   static String _daysWord(int n) {
     final mod10 = n % 10;
     final mod100 = n % 100;
@@ -670,6 +720,37 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/// Небольшой бейдж с интервалом между соседними обработками («12д», «>30 д.»).
+class _GapBadge extends StatelessWidget {
+  final int days;
+  final Color color;
+
+  const _GapBadge({required this.days, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = days > 30 ? '>30 д.' : '$daysд';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        // Непрозрачный фон, чтобы бейдж «разрывал» линию таймлайна.
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withAlpha(60)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          height: 1.0,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
 
 /// Тайл выбора вида + цвета обработки (открывает [showTreatmentIconPicker]).
 class _IconPickerTile extends StatelessWidget {
