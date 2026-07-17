@@ -2,6 +2,103 @@
 
 ---
 
+## v0.6.0 — Event Sync, Pickers & UI Polish
+
+### Features
+
+#### Treatments & Events
+
+* Synced calendar events with pills, treatments, and notes
+* Reworked the treatments UI/UX
+* Split pill listing from pill creation and smoothed draggable-sheet interactions
+* Animated the pill sheet and moved deletion into a confirmation dialog
+* Animated pill status updates after toggling
+* Announced the new treatment category with an info panel
+* Added a drag handle to the calendar
+
+#### Health & Tracking
+
+* Split health recommendations into active and dismissed sections
+* Added pill details to the vet card
+
+#### AI Assistant
+
+* Send full pet context to the AI assistant
+
+#### Registration & Profiles
+
+* Reused profile widgets in the registration summary and added optional data cards
+* Added permanent profile deletion
+
+#### Notes & Diary
+
+* Split entry creation from listing for diaries and notes
+
+#### Documents
+
+* Separated file history from file upload
+
+#### UI & UX
+
+* Added pinned headers to the home, health, and events pages
+* Replaced action bubbles with iOS-style capsules
+* Added a custom animated picker for dose unit and reminder variant
+* Added an animated picker to event creation
+* Unified input field styling
+* Added a refined count badge
+
+### Improvements
+
+* Gated not-yet-ready features (AI advice, biometrics, export, help, rate us) behind flags
+* Gated cloud sync and profile city behind release feature flags
+* Replaced the custom date spinner with the native Cupertino picker
+* Improved event usability and source-based captions
+* Refactored pill taking and event synchronization
+* Hid empty fields on the vet card
+* Introduced a custom switch widget
+* Improved text styles across the app
+* Standardized font sizes and constraints
+* Refined text color usage and added missing fonts
+* Bundled the Rubik font
+* UI becomes more adaptive to small screens
+
+### Fixes
+
+* Fixed treatment duplication
+* Fixed overdue logic and used the parent color for synced events
+* Improved pill-taking reliability
+* Fixed a race condition when completing pills and pill events
+* Fixed endless pill notifications
+* Added validation and a weight limit to pill creation
+* Included repeating events
+* Used the "remind before" variant in the event view
+* Improved cloud sync (upsert instead of wipe, remove stale entities)
+* Synced files and chats for authenticated users
+* Fixed profile sync after delete, switch, and create
+* Fixed syncing of custom breeds
+* Fixed the client sending the wrong timezone
+* Fixed a null path when exporting all profiles
+* Fixed pop scope blocking profile deletion
+* Fixed notification ID collisions
+* Sent quiet notifications (no sound or haptics) instead of skipping them
+* Reduced save frequency while streaming AI responses
+* Sent a properly encoded message array to the AI
+* Added crash-reporting opt-out and anonymized reports
+* Protected stored files
+* Fixed pet and pill serialization
+* Fixed gender and mood entry serialization
+* Handled pets with an empty breed
+* Polished the final onboarding step
+* Hid "restore from server" when already authenticated during onboarding
+* Hid the logout action when unauthorized
+* Fixed the title layout in draggable sheets
+* Refreshed the home page after opening the note sheet
+* Fixed avatar background showing transparent instead of white
+* Adjusted date picker limits
+* Shrank the notification icon and improved event-saving stability
+
+---
+
 ## v0.5.1 — Avatar preview, context actions
 
 ## v0.5.0 — Food Diary, History Insights & Sync Polish
