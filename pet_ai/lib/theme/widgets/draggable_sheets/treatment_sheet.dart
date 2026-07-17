@@ -142,10 +142,18 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
   }
 
   Future<void> _delete() async {
+    // Категория обработки определяется видом, а для прививок — ещё и названием.
+    // «Последняя запись» должна считаться по этому же ключу, иначе удаление
+    // последней прививки в категории не покажет подтверждение.
+    final editing = widget.editingEntry!;
     final last =
-        widget.profile.treatmentHistory.entries
-            .where((e) => e.kind == widget.editingEntry!.kind)
-            .length ==
+        widget.profile.treatmentHistory.entries.where((e) {
+          if (e.kind != editing.kind) return false;
+          if (editing.kind == TreatmentKind.vaccine) {
+            return e.name == editing.name;
+          }
+          return true;
+        }).length ==
         1;
     final confirmed = await confirmDelete(
       context,
