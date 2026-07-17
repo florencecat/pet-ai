@@ -5,9 +5,11 @@ import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
+import 'package:pet_satellite/theme/widgets/animated_option_picker.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/toast.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
@@ -69,7 +71,6 @@ class EventSheet extends StatefulWidget {
 }
 
 class _EventSheetState extends State<EventSheet> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
@@ -164,7 +165,7 @@ class _EventSheetState extends State<EventSheet> {
     final confirmed = await confirmDelete(
       context,
       title: 'Удалить событие?',
-      message: 'Событие будет удалено без возможности восстановления.',
+      message: event.origin.deleteWarning,
     );
     if (!confirmed) return;
     await EventService().deleteEvent(event);
@@ -197,12 +198,23 @@ class _EventSheetState extends State<EventSheet> {
   }
 
   bool _verifyForm() {
-    final hasError =
-        !_formKey.currentState!.validate() ||
-        _selectedDate == null ||
-        (!_allDay && _selectedTime == null) ||
-        _selectedCategory == null;
-    return !hasError;
+    if (_nameController.text.isEmpty) {
+      showAppToast(context, 'Введите название');
+      return false;
+    }
+    if (_selectedCategory == null) {
+      showAppToast(context, 'Выберите категорию');
+      return false;
+    }
+    if (_selectedDate == null) {
+      showAppToast(context, 'Выберите дату');
+      return false;
+    }
+    if (!_allDay && _selectedTime == null) {
+      showAppToast(context, 'Выберите время');
+      return false;
+    }
+    return true;
   }
 
   void _submitForm() {
@@ -287,7 +299,6 @@ class _EventSheetState extends State<EventSheet> {
       maxSize: 0.95,
       actions: _buildActions(editable),
       body: Form(
-        key: _formKey,
         child: Column(
           children: [
             if (EventSheetModeX(_mode).isEditable)
@@ -363,7 +374,9 @@ class _EventSheetState extends State<EventSheet> {
               style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                 fontWeight: FontWeight.w700,
                 decoration: isCompleted ? TextDecoration.lineThrough : null,
-                color: isCompleted ? context.watch<AppearanceController>().secondaryColor : null,
+                color: isCompleted
+                    ? context.watch<AppearanceController>().secondaryColor
+                    : null,
               ),
             ),
 
@@ -374,9 +387,9 @@ class _EventSheetState extends State<EventSheet> {
               _CategoryTag(category: event.category),
 
             // Source badge
-            if (event.source != EventSource.manual) ...[
+            if (!event.manual) ...[
               const SizedBox(height: 6),
-              _SourceTag(source: event.source),
+              _SourceTag(origin: event.origin),
             ],
           ],
         ),
@@ -448,6 +461,8 @@ class _EventSheetState extends State<EventSheet> {
   // ─── Edit/Create Mode ──────────────────────────────────────────────────────
 
   List<Widget> _buildEditableContent() {
+    final accent = context.watch<AppearanceController>().primaryColor;
+
     return [
       GlassPlate(
         useShadow: false,
@@ -455,13 +470,14 @@ class _EventSheetState extends State<EventSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: TextFormField(
             controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Название',
+            decoration: InputDecoration(
+              label: Text(
+                'Название',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
               border: InputBorder.none,
             ),
-            style: Theme.of(context).textTheme.bodyMedium,
-            validator: (v) =>
-                v == null || v.isEmpty ? 'Введите название' : null,
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
         ),
       ),
@@ -472,37 +488,33 @@ class _EventSheetState extends State<EventSheet> {
         useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: DropdownButtonFormField<String>(
-            validator: (v) =>
-                v == null || v.isEmpty ? 'Выберите категорию' : null,
-            decoration: const InputDecoration(
-              labelText: 'Категория',
-              border: InputBorder.none,
-            ),
-            dropdownColor: Colors.white,
-            initialValue: widget.event?.category.id,
-            style: Theme.of(context).textTheme.bodyMedium,
-            items: EventCategories.all
-                .skip(1)
-                .map(
-                  (c) => DropdownMenuItem(
-                    value: c.id,
-                    child: Row(
-                      children: [
-                        Icon(c.icon, color: c.color),
-                        const SizedBox(width: 8),
-                        Text(
-                          c.name,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
+          child: AnimatedOptionPicker<EventCategory>(
+            value: _selectedCategory,
+            accentColor: accent,
             onChanged: (v) => setState(() {
-              if (v != null) _selectedCategory = EventCategories.byId(v);
+              _selectedCategory = v;
             }),
+            options: EventCategories.all
+                .skip(1)
+                .map((c) => PickerOption(value: c, icon: c.icon, label: c.name))
+                .toList(),
+            child: Expanded(
+              child: Container(
+                height: 48,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    if (_selectedCategory != null)
+                      Icon(_selectedCategory!.icon, color: accent),
+                    Text(
+                      _selectedCategory?.name ?? 'Категория',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -560,11 +572,9 @@ class _EventSheetState extends State<EventSheet> {
                       Icon(
                         Icons.access_time,
                         size: 18,
-                        color: _selectedTime == null
-                            ? ThemeColors.dangerZone
-                            : context
-                                  .watch<AppearanceController>()
-                                  .primaryColor,
+                        color: context
+                            .watch<AppearanceController>()
+                            .primaryColor,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -597,6 +607,7 @@ class _EventSheetState extends State<EventSheet> {
           activeThumbColor: context.watch<AppearanceController>().primaryColor,
           onChanged: (val) => setState(() {
             _allDay = val;
+            _selectedTime = null;
             // У события «на весь день» нет времени суток — напоминание считается
             // только в целых днях (доставка в час из настроек уведомлений).
             if (val && _remindBeforeVariant != RemindBeforeVariant.days) {
@@ -685,92 +696,67 @@ class _EventSheetState extends State<EventSheet> {
         useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          child: Row(
-            children: [
-              // Растягиваем подпись на всю свободную ширину: контролы прижаты
-              // к правому краю и плитка заполняется целиком на широких экранах,
-              // а на узких подпись сжимается вместо переполнения.
-              Expanded(
-                child: Text(
+          child: FittedBox(
+            child: Row(
+              children: [
+                Text(
                   'Напомнить за',
                   style: Theme.of(context).textTheme.bodyLarge,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline),
-                color: context.watch<AppearanceController>().primaryColor,
-                onPressed: _remindBeforeValue > 0
-                    ? () => setState(
-                        () => _remindBeforeValue -=
-                            _remindBeforeVariant == RemindBeforeVariant.minutes
-                            ? 5
-                            : 1,
-                      )
-                    : null,
-              ),
-              SizedBox(
-                width: 25,
-                child: Text(
-                  '$_remindBeforeValue',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                color: context.watch<AppearanceController>().primaryColor,
-                onPressed: _remindBeforeValue < 120
-                    ? () => setState(
-                        () => _remindBeforeValue +=
-                            _remindBeforeVariant == RemindBeforeVariant.minutes
-                            ? 5
-                            : 1,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 8),
-              PopupMenuButton<RemindBeforeVariant>(
-                initialValue: _remindBeforeVariant,
-                // Для all-day доступны только дни — час доставки задаётся
-                // глобально в настройках уведомлений.
-                enabled: !_allDay,
-                itemBuilder: (_) =>
-                    (_allDay
-                            ? const [RemindBeforeVariant.days]
-                            : RemindBeforeVariant.values)
-                        .map(
-                          (v) => PopupMenuItem(value: v, child: Text(v.label)),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  color: context.watch<AppearanceController>().primaryColor,
+                  onPressed: _remindBeforeValue > 0
+                      ? () => setState(
+                          () => _remindBeforeValue -=
+                              _remindBeforeVariant ==
+                                  RemindBeforeVariant.minutes
+                              ? 5
+                              : 1,
                         )
-                        .toList(),
-                onSelected: (v) => setState(() {
-                  if (v != _remindBeforeVariant) {
-                    _remindBeforeValue = 0;
-                  }
-                  _remindBeforeVariant = v;
-                }),
-                enableFeedback: true,
-                child: Row(
-                  children: [
-                    Text(
-                      _remindBeforeVariant.declension(_remindBeforeValue),
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    if (!_allDay)
-                      Icon(
-                        Icons.expand_more,
-                        size: 24,
-                        color: context
-                            .watch<AppearanceController>()
-                            .secondaryColor,
-                      ),
-                  ],
+                      : null,
                 ),
-              ),
-            ],
+                SizedBox(
+                  width: 25,
+                  child: Text(
+                    '$_remindBeforeValue',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: context.watch<AppearanceController>().primaryColor,
+                  onPressed: _remindBeforeValue < 120
+                      ? () => setState(
+                          () => _remindBeforeValue +=
+                              _remindBeforeVariant ==
+                                  RemindBeforeVariant.minutes
+                              ? 5
+                              : 1,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 8),
+
+                AnimatedOptionPicker<RemindBeforeVariant>(
+                  value: _remindBeforeVariant,
+                  options: RemindBeforeVariant.values
+                      .map((v) => PickerOption(value: v, label: v.label))
+                      .toList(),
+                  onChanged: (v) => setState(() {
+                    _remindBeforeVariant = v;
+                  }),
+                  child: Text(
+                    _remindBeforeVariant.declension(_remindBeforeValue),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -906,7 +892,6 @@ class _EventSheetState extends State<EventSheet> {
                           child: Text(
                             WeekDays.labels[day]!,
                             style: TextStyle(
-
                               fontWeight: FontWeight.w600,
                               color: selected
                                   ? Colors.white
@@ -952,7 +937,6 @@ class _CategoryTag extends StatelessWidget {
           Text(
             category.name,
             style: TextStyle(
-
               fontWeight: FontWeight.w600,
               color: category.color,
             ),
@@ -964,31 +948,30 @@ class _CategoryTag extends StatelessWidget {
 }
 
 class _SourceTag extends StatelessWidget {
-  final EventSource source;
-  const _SourceTag({required this.source});
+  final EventOrigin origin;
+  const _SourceTag({required this.origin});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: source.color.withAlpha(64),
-        gradient: source == EventSource.ai
+        color: origin.color.withAlpha(64),
+        gradient: origin is AiOrigin
             ? LinearGradient(colors: ThemeColors.gradientColors)
             : null,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: source.color.withAlpha(50)),
+        border: Border.all(color: origin.color.withAlpha(50)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(source.icon, size: 12, color: source.color.withAlpha(180)),
+          Icon(origin.icon, size: 12, color: origin.color.withAlpha(180)),
           const SizedBox(width: 4),
           Text(
-            source.caption,
+            origin.caption,
             style: TextStyle(
-
-              color: source.color.withAlpha(200),
+              color: origin.color.withAlpha(200),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1028,9 +1011,11 @@ class _InfoRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     sublabel!,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall!.copyWith(color: context.watch<AppearanceController>().secondaryColor),
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
+                    ),
                   ),
                 ],
               ],
@@ -1079,7 +1064,6 @@ class _PetsInfoRow extends StatelessWidget {
                 child: Text(
                   p.name.isEmpty ? 'Питомец' : p.name,
                   style: TextStyle(
-
                     fontWeight: FontWeight.w600,
                     color: p.palette.mainColor,
                   ),
@@ -1125,7 +1109,11 @@ class _CompletionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         color: isCompleted ? accent : Colors.white,
         border: Border.all(
-          color: isCompleted ? accent : context.watch<AppearanceController>().secondaryColor.withAlpha(100),
+          color: isCompleted
+              ? accent
+              : context.watch<AppearanceController>().secondaryColor.withAlpha(
+                  100,
+                ),
         ),
         boxShadow: isCompleted
             ? [

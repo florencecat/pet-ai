@@ -595,14 +595,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: 'Русский',
                 onTap: null, // stub
                 iconColor: ac.primaryColor,
-              ),
-              SettingsCardDivider(),
-              SettingsRow(
-                icon: Icons.straighten_outlined,
-                label: 'Единицы',
-                subtitle: 'кг · км',
-                onTap: null, // stub
-                iconColor: ac.primaryColor,
                 last: true,
               ),
             ],
@@ -626,16 +618,19 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (mounted) setState(() => _autoCreateEntities = v);
                   },
                 ),
+                last: !FeatureFlags.isEnabled(Feature.aiAdvices)
               ),
-              SettingsCardDivider(),
-              SettingsRow(
-                icon: Icons.lightbulb_outline,
-                label: 'Советы помощника',
-                subtitle: 'Не чаще раза в день',
-                onTap: null, // stub
-                iconColor: ac.primaryColor,
-                last: true,
-              ),
+              if (FeatureFlags.isEnabled(Feature.aiAdvices)) ...[
+                SettingsCardDivider(),
+                SettingsRow(
+                  icon: Icons.lightbulb_outline,
+                  label: 'Советы помощника',
+                  subtitle: 'Не чаще раза в день',
+                  onTap: null, // stub
+                  iconColor: ac.primaryColor,
+                  last: true,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 24),
@@ -658,21 +653,25 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 SettingsCardDivider(),
               ],
-              SettingsRow(
-                icon: Icons.download_outlined,
-                label: 'Экспорт данных',
-                subtitle: 'Скоро',
-                onTap: null,
-                iconColor: ac.primaryColor,
-              ),
-              SettingsCardDivider(),
-              SettingsRow(
-                icon: Icons.fingerprint,
-                label: 'Биометрия при входе',
-                onTap: null,
-                iconColor: ac.primaryColor,
-              ),
-              SettingsCardDivider(),
+              if (FeatureFlags.isEnabled(Feature.dataExport)) ...[
+                SettingsRow(
+                  icon: Icons.download_outlined,
+                  label: 'Экспорт данных',
+                  subtitle: 'Скоро',
+                  onTap: null,
+                  iconColor: ac.primaryColor,
+                ),
+                SettingsCardDivider(),
+              ],
+              if (FeatureFlags.isEnabled(Feature.biometrics)) ...[
+                SettingsRow(
+                  icon: Icons.fingerprint,
+                  label: 'Биометрия при входе',
+                  onTap: null,
+                  iconColor: ac.primaryColor,
+                ),
+                SettingsCardDivider(),
+              ],
               SettingsRow(
                 icon: Icons.delete_sweep_outlined,
                 label: 'Подтверждать удаление',
@@ -706,7 +705,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 8),
           SettingsCard(
             children: [
-              if (kDebugMode) ...[
+              if (FeatureFlags.isEnabled(Feature.helpFAQ)) ...[
                 SettingsRow(
                   icon: Icons.help_outline,
                   label: 'Помощь и FAQ',
@@ -715,6 +714,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   trailing: settingsChevronIcon(ac.primaryColor.withAlpha(140)),
                 ),
                 SettingsCardDivider(),
+              ],
+              if (FeatureFlags.isEnabled(Feature.rateUs)) ...[
                 SettingsRow(
                   icon: Icons.star_outline,
                   label: 'Оценить приложение',
@@ -749,7 +750,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   iconColor: ThemeColors.dangerZone,
                   labelColor: ThemeColors.dangerZone,
                   last: true,
-                )
+                ),
             ],
           ),
           const SizedBox(height: 24),
@@ -829,7 +830,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.upload_outlined,
                   label: 'Загрузить на сервер',
                   subtitle: _user != null ? null : 'Требуется вход',
-                  iconColor: _user != null ? Colors.blue : context.watch<AppearanceController>().secondaryColor,
+                  iconColor: _user != null
+                      ? Colors.blue
+                      : context.watch<AppearanceController>().secondaryColor,
                   onTap: _user != null ? () => _syncPushAll(context) : null,
                 ),
                 SettingsCardDivider(),
@@ -837,7 +840,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.download_outlined,
                   label: 'Скачать с сервера',
                   subtitle: _user != null ? null : 'Требуется вход',
-                  iconColor: _user != null ? Colors.blue : context.watch<AppearanceController>().secondaryColor,
+                  iconColor: _user != null
+                      ? Colors.blue
+                      : context.watch<AppearanceController>().secondaryColor,
                   onTap: _user != null ? () => _syncPullAll(context) : null,
                   last: true,
                 ),
@@ -952,7 +957,11 @@ class _SyncCard extends StatelessWidget {
       label: 'Облачная синхронизация',
       subtitle: _statusLabel,
       trailing: isAuthenticated && sync.isSyncing != true
-          ? OutlinedSwitch(value: syncEnabled, onChanged: onToggle, activeThumbColor: _statusColor)
+          ? OutlinedSwitch(
+              value: syncEnabled,
+              onChanged: onToggle,
+              activeThumbColor: _statusColor,
+            )
           : null,
     );
   }

@@ -326,7 +326,7 @@ class HealthAnalyzer {
 
     // ── Просроченные прививки из PetEvent ───────────────────────────────
     final overdueVaccinations = events
-        .where((e) => e.category.id == 'vaccination' && e.isOverdue)
+        .where((e) => e.category.id == 'vaccination' && e.isOverdueOn(DateTime.now()))
         .toList();
     for (final v in overdueVaccinations) {
       addBadge(
@@ -342,7 +342,7 @@ class HealthAnalyzer {
 
     // ── Просроченные события ────────────────────────────────────────────
     final overdueEvents = events
-        .where((e) => e.isOverdue && e.category.id != 'vaccination')
+        .where((e) => e.isOverdueOn(DateTime.now()) && e.category.id != 'vaccination')
         .toList();
     if (overdueEvents.isNotEmpty) {
       addBadge(

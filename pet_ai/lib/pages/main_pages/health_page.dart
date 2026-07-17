@@ -26,6 +26,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/weight_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -154,6 +155,8 @@ class HealthPageState extends State<HealthPage> {
     setState(() {
       _profile = profile;
       _isLoadingProfile = false;
+
+      _weightExpanded = _profile!.weightHistory.entries.isNotEmpty;
     });
 
     final weightStatus = profile.weightHistory.lastWeightString();
@@ -506,8 +509,6 @@ class HealthPageState extends State<HealthPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-
     ({String caption, String label, ColorPalette palette, IconData icon})?
     healthScore;
 
@@ -546,42 +547,37 @@ class HealthPageState extends State<HealthPage> {
       backgroundColor: ThemeColors.white,
       body: Container(
         decoration: context.watch<AppearanceController>().gradientDecoration,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
-          children: [
-            // ── Header ───────────────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Здоровье'),
-                      if (_profile != null)
-                        Text(
-                          _profile!.name,
-                          style: Theme.of(context).textTheme.headlineMedium!
-                              .copyWith(
-                                inherit: true,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                    ],
-                  ),
+        child: PinnableHeaderView(
+          header: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Здоровье'),
+                    if (_profile != null)
+                      Text(
+                        _profile!.name,
+                        style: Theme.of(context).textTheme.headlineMedium!
+                            .copyWith(
+                              inherit: true,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                  ],
                 ),
+              ),
 
-                if (healthScore != null)
-                  _HealthScoreBadge(
-                    score: healthScore,
-                    onTap: _healthBadges.isNotEmpty
-                        ? () => _openRecommendations(context, _healthBadges)
-                        : null,
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
+              if (healthScore != null)
+                _HealthScoreBadge(
+                  score: healthScore,
+                  onTap: _healthBadges.isNotEmpty
+                      ? () => _openRecommendations(context, _healthBadges)
+                      : null,
+                ),
+            ],
+          ),
+          children: [
             // ── Nearest upcoming health event ─────────────────────────────
             if (topAlert != null) ...[
               Padding(
@@ -658,9 +654,9 @@ class HealthPageState extends State<HealthPage> {
               titleContent: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Вес', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Вес', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(width: 8),
-                  Text('•', style: Theme.of(context).textTheme.titleLarge),
+                  Text('•', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(width: 4),
                   PopupMenuButton<HistoryPeriod>(
                     initialValue: _chartPeriod,
@@ -686,7 +682,7 @@ class HealthPageState extends State<HealthPage> {
                         const SizedBox(width: 4),
                         Text(
                           _periodLabel(_chartPeriod),
-                          style: Theme.of(context).textTheme.titleLarge!
+                          style: Theme.of(context).textTheme.titleMedium!
                               .copyWith(
                                 color: context
                                     .watch<AppearanceController>()
@@ -756,9 +752,16 @@ class HealthPageState extends State<HealthPage> {
                 setState(() => _treatmentsExpanded = !_treatmentsExpanded);
                 _saveSectionState(_kTreatmentsExpanded, _treatmentsExpanded);
               },
-              titleContent: Text(
-                'Прививки и обработки',
-                style: Theme.of(context).textTheme.titleLarge,
+              titleContent: Row(
+                spacing: 8,
+                children: [
+                  Text(
+                    'Прививки и обработки',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (!_treatmentsExpanded)
+                    CountBadge(count: activeTreatments.length),
+                ],
               ),
               // "Добавить" hidden when list is empty — the empty state already
               // has its own inline "Добавить" link.
@@ -876,9 +879,16 @@ class HealthPageState extends State<HealthPage> {
                 setState(() => _pillsExpanded = !_pillsExpanded);
                 _saveSectionState(_kPillsExpanded, _pillsExpanded);
               },
-              titleContent: Text(
-                'Препараты',
-                style: Theme.of(context).textTheme.titleLarge,
+              titleContent: Row(
+                spacing: 8,
+                children: [
+                  Text(
+                    'Препараты',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (activeReminders != null && !_pillsExpanded)
+                    CountBadge(count: activeReminders.length),
+                ],
               ),
               trailing: activeReminders != null && activeReminders.isNotEmpty
                   ? TextButton.icon(
@@ -1478,7 +1488,7 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
                         ),
                         if (!_dismissedExpanded) ...[
                           const SizedBox(width: 8),
-                          _countBadge(context, _dismissed.length),
+                          CountBadge(count: _dismissed.length),
                         ],
                       ],
                     ),
@@ -1514,24 +1524,6 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
       ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
     ),
   );
-
-  Widget _countBadge(BuildContext context, int count) {
-    final color = context.watch<AppearanceController>().secondaryColor;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withAlpha(28),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        '$count',
-        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
 
   Widget _emptyState(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 48),
@@ -1721,6 +1713,7 @@ class _PillReminderTileState extends State<_PillReminderTile> {
                         color: status.color,
                         icon: status.icon,
                         label: status.label,
+                        onChanged: (_) => widget.onTap(),
                       )
                     else
                       _NextScheduledBadge(reminder: widget.reminder),
@@ -1923,11 +1916,13 @@ class _AnimatedStatusBadge extends StatefulWidget {
   final Color color;
   final IconData? icon;
   final String label;
+  final ValueChanged<bool>? onChanged;
 
   const _AnimatedStatusBadge({
     required this.color,
     this.icon,
     required this.label,
+    this.onChanged,
   });
 
   @override
@@ -1967,6 +1962,7 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge> {
         color: widget.color,
         icon: widget.icon,
         label: widget.label,
+        onChanged: widget.onChanged,
         selected: false,
       ),
     );

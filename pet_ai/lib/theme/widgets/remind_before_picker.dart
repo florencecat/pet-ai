@@ -44,7 +44,7 @@ class RemindBeforePicker extends StatelessWidget {
     final theme = Theme.of(context);
     final canPickVariant = variants.length > 1;
 
-    return Row(
+    return FittedBox(child:  Row(
       children: [
         Text(label, style: theme.textTheme.bodyLarge),
         const SizedBox(width: 8),
@@ -90,6 +90,6 @@ class RemindBeforePicker extends StatelessWidget {
           ),
         ),
       ],
-    );
+    ));
   }
 }

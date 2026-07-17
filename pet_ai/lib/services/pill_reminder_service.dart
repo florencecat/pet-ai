@@ -65,10 +65,35 @@ class PillReminderService {
     await PetProfileService().saveProfile(profile);
     CloudSyncService.instance.deleteAsync('pills', reminder.id);
 
-    // sourceId покрывает события всех времён приёма разом.
-    final all = await EventService().loadEvents(petId);
-    for (final e in all.where((e) => e.sourceId == reminder.id)) {
-      await EventService().deleteEvent(e);
+    // PillOrigin покрывает события всех времён приёма разом.
+    await EventService().deleteBySource(petId, reminder.id);
+  }
+
+  /// Убирает из курса время приёма, событие которого удалили из календаря
+  /// (направление событие → курс).
+  ///
+  /// Удаляется только этот приём: у курса событий столько же, сколько времён
+  /// приёма, и снос всего курса из-за одного из них пользователь не заказывал.
+  /// Последнее время приёма — курса больше нет.
+  Future<void> deleteSchedule({
+    required String petId,
+    required String pillId,
+    required String eventId,
+  }) async {
+    final pill = await _find(petId, pillId);
+    if (pill == null) return; // курс уже удалён
+
+    final remaining = pill.schedules
+        .where((s) => s.eventId != eventId)
+        .toList();
+    // Связь потерялась: правя курс, событие можно снести не то. Пусть его
+    // заново заведёт _syncEvents при следующей правке.
+    if (remaining.length == pill.schedules.length) return;
+
+    if (remaining.isEmpty) {
+      await delete(petId: petId, reminder: pill);
+    } else {
+      await update(petId: petId, updated: pill.copyWith(schedules: remaining));
     }
   }
 
@@ -106,8 +131,10 @@ class PillReminderService {
 
     final all = await EventService().loadEvents(petId);
 
+    // deleteOrigin: false — курс уже приведён к нужному виду вызывающим, и
+    // удалять его из-за собственной же правки нельзя.
     for (final e in all.where((e) => staleEventIds.contains(e.id))) {
-      await EventService().deleteEvent(e);
+      await EventService().deleteEvent(e, deleteOrigin: false);
     }
 
     // Курс перевели в «по требованию»: события удалены выше, обнуляем и ссылки
@@ -145,15 +172,14 @@ class PillReminderService {
       dateTime: _firstOccurrence(pill, schedule),
       petIds: [petId],
       // Связь с курсом для двусторонней синхронизации отметок.
-      source: EventSource.pill,
-      sourceId: pill.id,
+      origin: PillOrigin(pill.id),
     );
     _applyPill(event, pill: pill, schedule: schedule);
     return event;
   }
 
-  /// Переносит поля курса на событие. [Event.source]/[Event.sourceId] не
-  /// трогаем — они final и уже указывают на этот курс.
+  /// Переносит поля курса на событие. [Event.origin] не трогаем — он final и
+  /// уже указывает на этот курс.
   void _applyPill(
     Event event, {
     required Pill pill,
@@ -238,13 +264,11 @@ class PillReminderService {
     DateTime day,
     bool completed,
   ) async {
-    final pillId = event.sourceId;
-    if (event.source != EventSource.pill ||
-        pillId == null ||
-        pillId.isEmpty ||
-        event.petIds.isEmpty) {
+    final origin = event.origin;
+    if (origin is! PillOrigin || origin.pillId.isEmpty || event.petIds.isEmpty) {
       return;
     }
+    final pillId = origin.pillId;
 
     final petId = event.petIds.first;
     final pill = await _find(petId, pillId);

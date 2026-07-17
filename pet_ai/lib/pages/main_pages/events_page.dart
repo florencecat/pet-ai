@@ -10,6 +10,7 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
@@ -27,9 +28,25 @@ class EventsPage extends StatefulWidget {
 }
 
 class EventsPageState extends State<EventsPage> {
+  /// Форматы календаря от большего к меньшему — по этому порядку идут оба
+  /// жеста смены формата: вертикальный свайп внутри TableCalendar и ручка под
+  /// ним. Задан явно, чтобы ручка не разъехалась с умолчанием пакета.
+  static const _formats = {
+    CalendarFormat.month: 'Месяц',
+    CalendarFormat.twoWeeks: '2 недели',
+    CalendarFormat.week: 'Неделя',
+  };
+
+  /// Порог жеста ручки. Совпадает с порогом свайпа по самому календарю
+  /// ([TableCalendar.simpleSwipeConfig]), чтобы жест ощущался одинаково.
+  static const _handleSwipeThreshold = 25.0;
+
   CalendarFormat _format = CalendarFormat.month;
   late DateTime _focusedDay;
   DateTime? _selectedDay;
+
+  /// Начало вертикального жеста по ручке; null — шаг за этот жест уже сделан.
+  double? _handleDragStart;
 
   bool _isLoadingEvents = true;
   bool _showAllPets = false;
@@ -111,6 +128,15 @@ class EventsPageState extends State<EventsPage> {
     });
   }
 
+  /// Меняет формат календаря на шаг: [collapse] — к более компактному виду.
+  /// Ровно то же, что делает вертикальный свайп внутри календаря.
+  void _stepFormat({required bool collapse}) {
+    final formats = _formats.keys.toList();
+    final next = formats.indexOf(_format) + (collapse ? 1 : -1);
+    if (next < 0 || next >= formats.length) return;
+    setState(() => _format = formats[next]);
+  }
+
   /// Events for the selected day.
   List<Event> get _filteredDayEvents {
     if (_selectedDay == null) return [];
@@ -131,17 +157,6 @@ class EventsPageState extends State<EventsPage> {
       }
     }
     return false;
-  }
-
-  /// Marker dot color for a calendar event.
-  Color _markerColor(Event event) {
-    if (_showAllPets && event.petIds.isNotEmpty) {
-      return _petColors[event.petIds.first] ?? event.category.color;
-    }
-    if (!event.manual) {
-      return context.watch<AppearanceController>().secondaryColor;
-    }
-    return event.category.color;
   }
 
   /// Pet name + color pairs for an event's badge row.
@@ -230,8 +245,8 @@ class EventsPageState extends State<EventsPage> {
   Future<void> _deleteEvent(Event event) async {
     final confirmed = await confirmDelete(
       context,
-      title: 'Удалить событие?',
-      message: '«${event.name}» будет удалено без возможности восстановления.',
+      title: 'Удалить «${event.name}»?',
+      message: event.origin.deleteWarning,
     );
     if (!confirmed) return;
     await EventService().deleteEvent(event);
@@ -242,7 +257,6 @@ class EventsPageState extends State<EventsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final primaryColor = context.watch<AppearanceController>().primaryColor;
     final monthLabel = DateFormat('MMMM yyyy', 'ru_RU').format(_focusedDay);
@@ -267,40 +281,36 @@ class EventsPageState extends State<EventsPage> {
         decoration: context.watch<AppearanceController>().gradientDecoration,
         child: InlineLoading(
           isLoading: _isLoadingEvents,
-          child: ListView(
-            clipBehavior: Clip.none,
-            padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 120),
+          child: PinnableHeaderView(
+            bottomPadding: 120,
+            header: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'События',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      Text(
+                        monthLabel,
+                        style: context.subtitleMediumStyle,
+                      ),
+                    ],
+                  ),
+                ),
+                GlassPlate(
+                  padding: 4,
+                  child: IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: _openSearchSheet,
+                  ),
+                ),
+              ],
+            ),
             children: [
-              // ── Header ───────────────────────────────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'События',
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        Text(
-                          monthLabel,
-                          style: context.subtitleMediumStyle,
-                        ),
-                      ],
-                    ),
-                  ),
-                  GlassPlate(
-                    padding: 4,
-                    child: IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: _openSearchSheet,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
               // ── Pet selector ─────────────────────────────────────────────
               if (_allProfiles.length > 1) ...[
                 GlassPlate(
@@ -362,6 +372,7 @@ class EventsPageState extends State<EventsPage> {
                         firstDay: DateTime.utc(2024),
                         lastDay: DateTime.utc(2030),
                         calendarFormat: _format,
+                        availableCalendarFormats: _formats,
                         calendarBuilders: CalendarBuilders(
                           markerBuilder: (context, day, events) {
                             if (events.isEmpty) return const SizedBox();
@@ -379,7 +390,9 @@ class EventsPageState extends State<EventsPage> {
                                       width: 8,
                                       height: 8,
                                       decoration: BoxDecoration(
-                                        color: _markerColor(e),
+                                        // Тот же цвет, что у карточки события.
+                                        color:
+                                            e.style.color ?? e.category.color,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -400,7 +413,7 @@ class EventsPageState extends State<EventsPage> {
                         ),
                         eventLoader: (day) => _events.where((e) {
                           if (!e.occursOn(day)) return false;
-                          if (e.source == EventSource.pill) return false;
+                          if (e.fromPill) return false;
                           if (e.isCompletedOn(day)) return false;
                           return true;
                         }).toList(),
@@ -439,7 +452,24 @@ class EventsPageState extends State<EventsPage> {
                           setState(() => _format = format);
                         },
                       ),
-                      DragHandle(),
+                      // Ручка тянет формат календаря: вверх — схлопнуть,
+                      // вниз — развернуть. Шаг делается один раз за жест, как
+                      // только палец прошёл порог, — а не по его окончании,
+                      // чтобы календарь отзывался сразу.
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onVerticalDragStart: (details) =>
+                            _handleDragStart = details.localPosition.dy,
+                        onVerticalDragUpdate: (details) {
+                          final start = _handleDragStart;
+                          if (start == null) return;
+                          final shift = details.localPosition.dy - start;
+                          if (shift.abs() < _handleSwipeThreshold) return;
+                          _handleDragStart = null;
+                          _stepFormat(collapse: shift < 0);
+                        },
+                        child: const DragHandle(),
+                      ),
                     ],
                   ),
                 ),
@@ -449,7 +479,7 @@ class EventsPageState extends State<EventsPage> {
               // ── Day events ───────────────────────────────────────────────
               if (_selectedDay != null) ...[
                 Text(
-                  _dayLabel(_selectedDay!),
+                  formatSmartDate(_selectedDay!, pattern: 'dd MMMM', locale: 'ru-RU'),
                   style: Theme.of(context).textTheme.titleMedium!.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -538,14 +568,6 @@ class EventsPageState extends State<EventsPage> {
         ),
       ),
     );
-  }
-
-  String _dayLabel(DateTime day) {
-    final now = DateTime.now();
-    if (isSameDay(day, now)) return 'Сегодня';
-    if (isSameDay(day, now.add(const Duration(days: 1)))) return 'Завтра';
-    if (isSameDay(day, now.subtract(const Duration(days: 1)))) return 'Вчера';
-    return DateFormat('d MMMM', 'ru_RU').format(day);
   }
 }
 
@@ -847,7 +869,7 @@ class _EventTileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final overdue = event.isOverdue;
+    final overdue = event.isOverdueOn(_effectiveDate);
     final time = event.allDay
         ? 'Весь\nдень'
         : DateFormat('HH:mm').format(event.dateTime);
@@ -864,10 +886,9 @@ class _EventTileCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (event.source != EventSource.note) ...[
+                if (!event.fromNote) ...[
                   // ── Time ─────────────────────────────────────────────────
-                  Expanded(
-                    flex: 1,
+                  FittedBox(
                     child: Text(
                       time,
                       style: Theme.of(context).textTheme.titleLarge!.copyWith(

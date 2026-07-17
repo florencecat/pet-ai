@@ -47,6 +47,26 @@ void main() {
         Event.codec.fromPocketBase(jsonRoundTrip(e.toPocketBase(''))),
       );
     });
+
+    // Событие, записанное до появления EventOrigin: тип источника в хранилище
+    // есть, id родителя — нет. Родителя по такому не найти, но выглядеть и
+    // вести себя как созданное вручную (редактируемое, с иконкой категории)
+    // оно не должно.
+    test('json без sourceId остаётся событием заметки', () {
+      final restored = Event.fromJson({
+        'id': 'ev_legacy',
+        'name': 'Отказ от еды',
+        'category': EventCategories.empty.id,
+        'dateTime': '2025-01-04T10:00:00.000',
+        'source': 'note',
+        'symptomTag': SymptomTags.refusedFood.id,
+      });
+
+      expect(restored.origin, isA<NoteOrigin>());
+      expect(restored.manual, isFalse);
+      // Пустой id обратно в хранилище не уезжает — формат не меняется.
+      expect(restored.toJson().containsKey('sourceId'), isFalse);
+    });
   });
 
   group('Pill round-trip', () {

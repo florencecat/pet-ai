@@ -124,6 +124,11 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
     }
 
     setState(() => _saving = true);
+
+    if (widget.purpose == TreatmentDialogPurpose.edit) {
+      await TreatmentService().deleteTreatment(widget.profile.id, widget.editingEntry!.id);
+    }
+
     await TreatmentService().addTreatment(
       petId: widget.profile.id,
       kind: _kind,
@@ -166,7 +171,7 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
     if (!confirmed) return;
     await TreatmentService().deleteTreatment(
       widget.profile.id,
-      widget.editingEntry!,
+      widget.editingEntry!.id,
     );
     if (mounted) {
       Navigator.of(context).pop(true);
@@ -217,6 +222,9 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.purpose == TreatmentDialogPurpose.edit;
+    final hasCategory = widget.profile.treatmentHistory.entries.any(
+      (e) => e.kind == _kind,
+    );
 
     return AlertDialog(
       actionsAlignment: isEdit
@@ -283,6 +291,13 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
                     ? _openIconPicker
                     : null,
               ),
+              if (!hasCategory)
+                InfoGlassPlate(
+                  color: _color != null
+                      ? Color(_color!)
+                      : context.watch<AppearanceController>().primaryColor,
+                  label: 'Будет создана новая категория обработок',
+                ),
               TextField(
                 controller: _nameCtrl,
                 decoration: baseInputDecoration(context, hint: 'Название'),

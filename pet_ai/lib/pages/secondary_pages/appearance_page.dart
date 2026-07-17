@@ -46,35 +46,29 @@ class AppearancePage extends StatelessWidget {
                       ),
                       iconColor: appearance.petColor,
                     ),
+                    const SettingsCardDivider(),
+                    SettingsRow(
+                      icon: Icons.vertical_align_top,
+                      label: 'Закреплённый заголовок',
+                      subtitle:
+                          'Заголовок страницы остаётся на месте — скроллится только содержимое',
+                      trailing: OutlinedSwitch(
+                        value: appearance.pinnedHeader,
+                        onChanged: (v) async => await context
+                            .read<AppearanceController>()
+                            .setPinnedHeader(v),
+                      ),
+                      iconColor: appearance.petColor,
+                      last: true,
+                    ),
                   ],
                 ),
 
                 if (appearance.usePetColor) ...[
                   const SizedBox(height: 12),
-                  SoftGlassPlate(
-                    color: appearance.petColor.withAlpha(30),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 18,
-                            color: appearance.petColor,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Изменить цвет питомца можно в его профиле.',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  InfoGlassPlate(
+                    label: 'Изменить цвет питомца можно в его профиле.',
+                    color: appearance.petColor,
                   ),
                 ],
               ],

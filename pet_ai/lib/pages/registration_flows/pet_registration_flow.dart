@@ -16,6 +16,8 @@ import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/pet_breed_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
+import 'package:pet_satellite/theme/app_text_styles.dart';
+import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';
@@ -1546,22 +1548,7 @@ class _OnboardingField extends StatelessWidget {
       style: Theme.of(context).textTheme.bodyMedium,
       minLines: 1,
       maxLines: 3,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        isDense: true,
-        labelStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: ac.secondaryColor.withAlpha(172),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: ac.primaryColor.withAlpha(92)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: ac.secondaryColor),
-        ),
-      ),
+      decoration: baseInputDecoration(context, hint: hint, textStyle: context.subtitleStyle, useBorder: true),
     );
   }
 }

@@ -97,8 +97,13 @@ class TreatmentEntry with Remindable implements BaseEntry {
   final int remindBeforeValue;
   @override
   final RemindBeforeVariant remindBeforeVariant;
-  /// id связанного PetEvent (для возможной отмены/перепланирования).
-  final String? eventId;
+  /// id связанного события календаря. Проставляется сразу после его создания:
+  /// событию нужен id записи ([TreatmentOrigin]), а записи — id события,
+  /// поэтому одно из полей дозаполняется вторым шагом.
+  ///
+  /// С появлением [TreatmentOrigin] поле избыточно, но по нему находятся
+  /// события записей, заведённых раньше: им source_id не проставляли.
+  String? eventId;
 
   /// Пользовательский цвет иконки (ARGB int). null — цвет по типу ([kind.color]).
   final int? color;

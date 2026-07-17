@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pet_satellite/models/history.dart';
-import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
-import 'package:provider/provider.dart';
 
 /// Список записей дневника, сгруппированный по календарной дате.
 ///
@@ -82,15 +80,7 @@ class _GroupedHistoryListState<T extends BaseEntry>
                     ),
                     const SizedBox(width: 6),
                     if (!expanded)
-                      Text(
-                        '( ${items.length.toString()} )',
-                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                          color: context
-                              .watch<AppearanceController>()
-                              .primaryColor
-                              .withAlpha(192),
-                        ),
-                      ),
+                      CountBadge(count: widget.entries.length)
                   ],
                 ),
                 body: Padding(

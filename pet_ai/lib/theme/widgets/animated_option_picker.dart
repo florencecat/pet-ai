@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -19,10 +21,15 @@ class PickerOption<T> {
 /// анимацией и покадровым появлением пунктов, отдаёт тактильный отклик при
 /// открытии и выборе, а шеврон плавно переворачивается.
 ///
+/// Направление раскрытия выбирается при открытии: если снизу места не хватает
+/// (пикер у нижнего края экрана или из-под него вылезла клавиатура), меню
+/// уходит вверх. Высота в любом случае ограничена свободным местом — если
+/// пунктов больше, чем влезает, список скроллится.
+///
 /// Значение хранит вызывающий — виджет только показывает [value] и сообщает
 /// о выборе через [onChanged].
 class AnimatedOptionPicker<T> extends StatefulWidget {
-  final T value;
+  final T? value;
   final List<PickerOption<T>> options;
   final ValueChanged<T> onChanged;
 
@@ -58,10 +65,24 @@ class AnimatedOptionPicker<T> extends StatefulWidget {
 
 class _AnimatedOptionPickerState<T> extends State<AnimatedOptionPicker<T>>
     with SingleTickerProviderStateMixin {
+  /// Зазор между триггером и карточкой меню, он же отступ от краёв экрана.
+  static const double _gap = 6;
+  static const double _screenMargin = 8;
+  static const double _maxMenuHeight = 320;
+
+  /// Меньше уже не карточка, а щель: если и столько не влезает, лучше
+  /// вылезти за край, чем показать полоску в один пиксель.
+  static const double _minMenuHeight = 96;
+
   final LayerLink _link = LayerLink();
   late final AnimationController _ctrl;
   OverlayEntry? _entry;
   bool _isOpen = false;
+
+  /// Раскрываться вверх. Решается в [_openMenu] — позиция триггера к этому
+  /// моменту уже известна, а внутри оверлея её узнать неоткуда.
+  bool _openUp = false;
+  double _menuMaxHeight = _maxMenuHeight;
 
   @override
   void initState() {
@@ -81,9 +102,53 @@ class _AnimatedOptionPickerState<T> extends State<AnimatedOptionPicker<T>>
     super.dispose();
   }
 
+  /// Высота карточки до её вёрстки: все пункты одинаковые, так что считаем по
+  /// одной строке. Оценка нужна только чтобы выбрать сторону — от промаха
+  /// меню не сломается, высоту всё равно ограничит [_menuMaxHeight].
+  double _estimateMenuHeight() {
+    final style = Theme.of(context).textTheme.bodyLarge!;
+    final textHeight = MediaQuery.textScalerOf(
+      context,
+    ).scale(style.fontSize ?? 16);
+    // Строка: паддинги 11 сверху и снизу + маржины 1 + контент (текст либо
+    // иконка 18). Карточка: паддинги 6 сверху и снизу + рамка.
+    final rowHeight = math.max(textHeight * 1.35, 18.0) + 24;
+    return widget.options.length * rowHeight + 14;
+  }
+
+  /// Выбирает сторону и предел высоты по свободному месту вокруг триггера.
+  void _resolveMenuPlacement() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final triggerTop = box.localToGlobal(Offset.zero).dy;
+    final triggerBottom = triggerTop + box.size.height;
+
+    // Геометрию берём у view, а не у ближайшего MediaQuery: Scaffold вырезает
+    // viewInsets из данных для body, и через MediaQuery.of клавиатуры не видно
+    // — меню раскрывалось прямо под неё. Оверлей же рисуется поверх всего, в
+    // координатах экрана, так что и мерить надо экран.
+    final view = MediaQueryData.fromView(View.of(context));
+    // Клавиатура (viewInsets) съедает низ так же, как край экрана.
+    final bottomLimit =
+        view.size.height - view.viewInsets.bottom - _screenMargin;
+    final topLimit = view.padding.top + _screenMargin;
+
+    final spaceBelow = bottomLimit - triggerBottom - _gap;
+    final spaceAbove = triggerTop - topLimit - _gap;
+
+    final wanted = math.min(_estimateMenuHeight(), _maxMenuHeight);
+    // Вверх — только если снизу не помещается и сверху места больше.
+    _openUp = spaceBelow < wanted && spaceAbove > spaceBelow;
+
+    final available = _openUp ? spaceAbove : spaceBelow;
+    _menuMaxHeight = available.clamp(_minMenuHeight, _maxMenuHeight);
+  }
+
   void _openMenu() {
     if (!widget.enabled || _entry != null) return;
     HapticFeedback.selectionClick();
+    _resolveMenuPlacement();
     _entry = OverlayEntry(builder: (_) => _buildOverlay());
     Overlay.of(context).insert(_entry!);
     setState(() => _isOpen = true);
@@ -109,6 +174,12 @@ class _AnimatedOptionPickerState<T> extends State<AnimatedOptionPicker<T>>
   }
 
   Widget _buildOverlay() {
+    // Вверх карточка растёт сама: цепляем её низ к верху триггера, и высота
+    // набирается в противоположную сторону — знать её заранее не нужно.
+    final anchor = _openUp ? Alignment.bottomRight : Alignment.topRight;
+    final targetAnchor = _openUp ? Alignment.topRight : Alignment.bottomRight;
+    final offset = Offset(0, _openUp ? -_gap : _gap);
+
     return Stack(
       children: [
         // Барьер: тап мимо меню закрывает его.
@@ -121,11 +192,11 @@ class _AnimatedOptionPickerState<T> extends State<AnimatedOptionPicker<T>>
         CompositedTransformFollower(
           link: _link,
           showWhenUnlinked: false,
-          targetAnchor: Alignment.bottomRight,
-          followerAnchor: Alignment.topRight,
-          offset: const Offset(0, 6),
+          targetAnchor: targetAnchor,
+          followerAnchor: anchor,
+          offset: offset,
           child: Align(
-            alignment: Alignment.topRight,
+            alignment: anchor,
             child: AnimatedBuilder(
               animation: _ctrl,
               builder: (context, child) {
@@ -135,7 +206,8 @@ class _AnimatedOptionPickerState<T> extends State<AnimatedOptionPicker<T>>
                   opacity: v,
                   child: Transform.scale(
                     scale: scale,
-                    alignment: Alignment.topRight,
+                    // Растём из триггера, а не из воздуха.
+                    alignment: anchor,
                     child: child,
                   ),
                 );
@@ -156,7 +228,7 @@ class _AnimatedOptionPickerState<T> extends State<AnimatedOptionPicker<T>>
         constraints: BoxConstraints(
           minWidth: widget.minMenuWidth,
           maxWidth: 280,
-          maxHeight: 320,
+          maxHeight: _menuMaxHeight,
         ),
         child: IntrinsicWidth(
           child: Container(
@@ -196,14 +268,16 @@ class _AnimatedOptionPickerState<T> extends State<AnimatedOptionPicker<T>>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, child) {
-        // Покадровое появление: каждый следующий пункт чуть позже предыдущего.
-        final start = total <= 1 ? 0.0 : (index / total) * 0.45;
+        // Покадровое появление: пункты разбегаются от триггера, поэтому при
+        // раскрытии вверх очередь идёт снизу вверх, а сдвиг — в другую сторону.
+        final order = _openUp ? total - 1 - index : index;
+        final start = total <= 1 ? 0.0 : (order / total) * 0.45;
         final local = ((_ctrl.value - start) / (1 - start)).clamp(0.0, 1.0);
         final eased = Curves.easeOut.transform(local);
         return Opacity(
           opacity: eased,
           child: Transform.translate(
-            offset: Offset(0, (1 - eased) * 10),
+            offset: Offset(0, (1 - eased) * (_openUp ? -10 : 10)),
             child: child,
           ),
         );

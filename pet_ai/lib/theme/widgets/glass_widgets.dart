@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
@@ -181,116 +180,6 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-class GlassEventCard extends StatelessWidget {
-  final VoidCallback? callback;
-  final Event event;
-  final IconData? trailingIcon;
-  final VoidCallback? trailingCallback;
-  final ValueChanged<bool>? onCompletedChanged;
-
-  /// Дата вхождения, для которой проверяется/переключается статус выполнения.
-  /// Если не задана — используется event.dateTime.
-  final DateTime? selectedDate;
-
-  /// Цвет профиля питомца (для режима «все питомцы»)
-  final Color? petColor;
-
-  /// Имя питомца (для режима «все питомцы»)
-  final String? petName;
-
-  const GlassEventCard({
-    super.key,
-    required this.event,
-    this.callback,
-    this.trailingIcon,
-    this.trailingCallback,
-    this.onCompletedChanged,
-    this.selectedDate,
-    this.petColor,
-    this.petName,
-  });
-
-  DateTime get _effectiveDate => selectedDate ?? event.dateTime;
-
-  bool get _isCompleted => event.isCompletedOn(_effectiveDate);
-
-  @override
-  Widget build(BuildContext context) {
-    final overdue = event.isOverdue;
-    final cardColor = overdue ? const Color(0xFFFFAD96) : Colors.white;
-
-    return Padding(
-      padding: EdgeInsetsGeometry.symmetric(vertical: 8),
-      child: GlassPlate(
-        color: cardColor,
-        child: Pressable(
-          onTap: callback == null ? null : () => callback!(),
-          haptic: HapticStrength.light,
-          child: ListTile(
-            leading: onCompletedChanged != null
-                ? Pressable(
-                    onTap: () => onCompletedChanged!(!_isCompleted),
-                    haptic: HapticStrength.selection,
-                    scale: 0.9,
-                    child: Icon(
-                      _isCompleted
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      color: _isCompleted
-                          ? context.watch<AppearanceController>().primaryColor
-                          : event.style.color,
-                      size: 28,
-                    ),
-                  )
-                : Icon(event.style.icon, color: event.style.color),
-            title: Text(
-              event.name,
-              style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                inherit: true,
-                color: context.watch<AppearanceController>().secondaryColor,
-                decoration: _isCompleted ? TextDecoration.lineThrough : null,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  overdue
-                      ? '⚠ ${formatSmartDateTime(event.dateTime)}'
-                      : formatSmartDateTime(event.dateTime),
-                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    inherit: true,
-                    color: overdue
-                        ? const Color(0xFFB85C00)
-                        : context.watch<AppearanceController>().secondaryColor,
-                    fontWeight: overdue ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-                if (petName != null) ...[
-                  const SizedBox(height: 3),
-                  GlassBadge(
-                    name: petName!,
-                    color:
-                        petColor ??
-                        context.watch<AppearanceController>().primaryColor,
-                  ),
-                ],
-              ],
-            ),
-            trailing: trailingIcon != null
-                ? IconButton(
-                    onPressed: trailingCallback,
-                    icon: Icon(trailingIcon),
-                  )
-                : null,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class GlassBadge extends StatelessWidget {
   final Icon? icon;
   final String name;
@@ -321,7 +210,6 @@ class GlassBadge extends StatelessWidget {
       label: Text(
         name,
         style: TextStyle(
-
           fontWeight: FontWeight.w600,
           color: color.withAlpha(200),
         ),
@@ -849,11 +737,12 @@ class SoftGlassButton extends StatelessWidget {
     required this.onTap,
     this.color,
     this.subtitle,
-   });
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = this.color ?? context.watch<AppearanceController>().primaryColor;
+    final color =
+        this.color ?? context.watch<AppearanceController>().primaryColor;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -880,10 +769,64 @@ class SoftGlassButton extends StatelessWidget {
               ),
             ),
             if (subtitle != null)
-              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: color.withAlpha(172),
-              ),)
+              Text(
+                subtitle!,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall!.copyWith(color: color.withAlpha(172)),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class InfoGlassPlate extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const InfoGlassPlate({super.key, required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftGlassPlate(
+      color: color.withAlpha(30),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 26, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CountBadge extends StatelessWidget {
+  final int count;
+
+  const CountBadge({super.key, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.watch<AppearanceController>().secondaryColor;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withAlpha(28),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Text(
+        '$count',
+        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

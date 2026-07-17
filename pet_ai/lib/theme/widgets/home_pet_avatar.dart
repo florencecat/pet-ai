@@ -29,7 +29,7 @@ Widget petAvatarCircle(
     height: diameter,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: 0.3),
+      color: Colors.white,
       border: Border.all(color: petColor, width: borderWidth),
       boxShadow: glow
           ? [

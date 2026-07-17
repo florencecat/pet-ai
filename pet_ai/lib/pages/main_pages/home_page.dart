@@ -18,6 +18,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dar
 import 'package:pet_satellite/theme/widgets/draggable_sheets/note_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/home_pet_avatar.dart';
+import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/pages/secondary_pages/pet_profile_page.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -263,10 +264,8 @@ class HomePageState extends State<HomePage> {
     for (final e in _allEvents) {
       // Pill/treatment events are shown on the health page by default; on the
       // timeline only when explicitly enabled in the history filter.
-      if (e.source == EventSource.pill && !_filter.upcomingPills) continue;
-      if (e.source == EventSource.treatment && !_filter.upcomingTreatments) {
-        continue;
-      }
+      if (e.fromPill && !_filter.upcomingPills) continue;
+      if (e.fromTreatment && !_filter.upcomingTreatments) continue;
 
       if (e.repeat == RepeatInterval.none) {
         if (!e.isCompletedOn(e.dateTime) &&
@@ -332,8 +331,7 @@ class HomePageState extends State<HomePage> {
     // timeline and are shown on the health page).
     if (_filter.completedEvents) {
       for (final event in _allEvents) {
-        if (event.source == EventSource.pill) continue;
-        if (event.source == EventSource.treatment) continue;
+        if (event.fromPill || event.fromTreatment) continue;
         for (final dateStr in event.completedDates) {
           final parts = dateStr.split('-');
           if (parts.length == 3) {
@@ -398,7 +396,7 @@ class HomePageState extends State<HomePage> {
     final items = <_TimelineItem>[];
 
     for (final e in _allEvents) {
-      if (e.source == EventSource.note) continue;
+      if (e.fromNote) continue;
 
       if (e.repeat == RepeatInterval.none) {
         final cutoff = today.subtract(const Duration(days: 30));
@@ -451,7 +449,6 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     // Аватар адаптируется под ширину экрана (больше на планшетах), в разумных
     // пределах.
     final double avatarDiameter = (MediaQuery.sizeOf(context).width * 0.2)
@@ -462,57 +459,53 @@ class HomePageState extends State<HomePage> {
       backgroundColor: ThemeColors.white,
       body: Container(
         decoration: context.watch<AppearanceController>().gradientDecoration,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, topPadding + 16, 16, 100),
+        child: PinnableHeaderView(
+          header: Row(
+            children: [
+              Expanded(
+                child: _isLoadingProfile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          SkeletonText(width: 90, height: 13),
+                          SizedBox(height: 7),
+                          SkeletonText(width: 200, height: 22),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _user != null
+                                ? '${_timeGreeting()}, ${_user!.name}!'
+                                : '${_timeGreeting()},',
+                            style: context.subtitleMediumStyle,
+                          ),
+                          Text(
+                            'как там ${_profile!.name}?🐾',
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  inherit: true,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ],
+                      ),
+              ),
+              // Кнопка настроек
+              GlassCard(
+                callback: () => _openSettings(context),
+                child: Icon(
+                  Icons.settings_outlined,
+                  color: context
+                      .watch<AppearanceController>()
+                      .secondaryColor
+                      .withAlpha(180),
+                ),
+              ),
+            ],
+          ),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _isLoadingProfile
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            SkeletonText(width: 90, height: 13),
-                            SizedBox(height: 7),
-                            SkeletonText(width: 200, height: 22),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _user != null
-                                  ? '${_timeGreeting()}, ${_user!.name}!'
-                                  : '${_timeGreeting()},',
-                              style: context.subtitleMediumStyle,
-                            ),
-                            Text(
-                              'как там ${_profile!.name}?🐾',
-                              style: Theme.of(context).textTheme.titleLarge!
-                                  .copyWith(
-                                    inherit: true,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ],
-                        ),
-                ),
-                // Кнопка настроек
-                GlassCard(
-                  callback: () => _openSettings(context),
-                  child: Icon(
-                    Icons.settings_outlined,
-                    color: context
-                        .watch<AppearanceController>()
-                        .secondaryColor
-                        .withAlpha(180),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
             GlassCard(
               padding: 0,
               callback: () => _openProfile(context),
@@ -686,7 +679,9 @@ class HomePageState extends State<HomePage> {
             const SizedBox(height: 16),
 
             // ── Таймлайн ────────────────────────────────────────────────────
-            Row(
+        FittedBox(
+          child:
+          Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
@@ -727,7 +722,7 @@ class HomePageState extends State<HomePage> {
                   ),
                 ),
               ],
-            ),
+            )),
 
             const SizedBox(height: 12),
 
@@ -1284,6 +1279,10 @@ class _VetCardSheet extends StatelessWidget {
           _buildMoodWeek(context),
 
           const SizedBox(height: 16),
+          _sectionTitle(context, 'Таблетки'),
+          _buildPills(context),
+
+          const SizedBox(height: 16),
           _sectionTitle(context, 'Прививки и обработки'),
           _buildTreatments(context),
 
@@ -1432,6 +1431,104 @@ class _VetCardSheet extends StatelessWidget {
     );
   }
 
+  Widget _buildPills(BuildContext context) {
+    final pills = profile.pillReminders;
+    if (pills.isEmpty) {
+      return GlassPlate(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Нет записей о таблетках',
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              color: context
+                  .watch<AppearanceController>()
+                  .secondaryColor
+                  .withAlpha(153),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GlassPlate(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: pills
+              .map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        spacing: 10,
+                        children: [
+                          if (p.kind != null)
+                            Icon(
+                              p.kind!.icon,
+                              size: 14,
+                              color: p.color != null
+                                  ? Color(p.color!)
+                                  : context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor,
+                            ),
+                          Text(
+                            p.name,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor,
+                                ),
+                          ),
+                          Text(p.timeLabel,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                              color: context
+                                  .watch<AppearanceController>()
+                                  .secondaryColor.withAlpha(128),
+                            ),)
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            formatSmartDate(p.startDate),
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: context
+                                      .watch<AppearanceController>()
+                                      .secondaryColor
+                                      .withAlpha(153),
+                                ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (p.endDate != null)
+                            Text(
+                              '→ ${formatSmartDate(p.endDate!)}',
+                              style: Theme.of(context).textTheme.bodySmall!
+                                  .copyWith(
+                                    color: context
+                                        .watch<AppearanceController>()
+                                        .secondaryColor
+                                        .withAlpha(153),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTreatments(BuildContext context) {
     final treatments = profile.treatmentHistory.entries;
     if (treatments.isEmpty) {
@@ -1487,7 +1584,7 @@ class _VetCardSheet extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            t.displayName,
+                            t.name,
                             style: Theme.of(context).textTheme.bodySmall!
                                 .copyWith(
                                   color: context

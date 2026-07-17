@@ -36,6 +36,17 @@ class TreatmentService {
       nextDate.year, nextDate.month, nextDate.day, 10, 0,
     );
 
+    // Запись заводим первой: событию нужен её id, чтобы знать своего родителя.
+    final entry = TreatmentEntry(
+      date: date,
+      kind: kind,
+      name: name,
+      nextDate: nextDate,
+      remindBeforeValue: remindBeforeValue,
+      remindBeforeVariant: remindBeforeVariant,
+      color: color,
+    );
+
     final event = Event(
       name: eventName,
       category: EventCategories.vaccination,
@@ -45,24 +56,14 @@ class TreatmentService {
       remindBeforeValue: remindBeforeValue,
       remindBeforeVariant: remindBeforeVariant,
       petIds: [petId],
-      source: EventSource.treatment,
+      origin: TreatmentOrigin(entry.id),
       // Иконка/цвет события = выбранные пользователем вид и цвет обработки.
       styleKindId: kind.name,
       color: color,
     );
 
     await EventService().createEvent(event);
-
-    final entry = TreatmentEntry(
-      date: date,
-      kind: kind,
-      name: name,
-      nextDate: nextDate,
-      remindBeforeValue: remindBeforeValue,
-      remindBeforeVariant: remindBeforeVariant,
-      eventId: event.id,
-      color: color,
-    );
+    entry.eventId = event.id;
 
     profile.treatmentHistory.add(entry);
     await PetProfileService().saveProfile(profile);
@@ -77,36 +78,25 @@ class TreatmentService {
     return entry;
   }
 
-  /// Удалить запись о мероприятии (и связанное событие, если ещё актуально).
-  Future<void> deleteTreatment(String petId, TreatmentEntry entry) async {
+  /// Удалить запись о мероприятии вместе с её событием в календаре.
+  Future<void> deleteTreatment(String petId, String entryId) async {
     final profile = await PetProfileService().loadProfile(petId);
     if (profile == null) return;
 
-    final removed = profile.treatmentHistory.entries
-        .where(
-          (e) =>
-              e.date == entry.date &&
-              e.kind == entry.kind &&
-              e.name == entry.name,
-        )
-        .map((e) => e.id)
-        .toList();
-    profile.treatmentHistory.entries.removeWhere(
-      (e) => e.date == entry.date && e.kind == entry.kind && e.name == entry.name,
-    );
+    final removed = profile.treatmentHistory.deleteById(entryId);
+    if (removed == null) return;
     await PetProfileService().saveProfile(profile);
+    CloudSyncService.instance.deleteAsync('treatments', removed.id);
 
-    for (final id in removed) {
-      CloudSyncService.instance.deleteAsync('treatments', id);
-    }
+    await EventService().deleteBySource(petId, removed.id);
 
-    if (entry.eventId != null) {
-      // Найдём и удалим связанное событие
-      final all = await EventService().loadEvents(petId);
-      final matching = all.where((e) => e.id == entry.eventId).toList();
-      for (final e in matching) {
-        await EventService().deleteEvent(e);
-      }
+    // Записи, заведённые до появления TreatmentOrigin, не проставляли событию
+    // source_id — их событие находится только по обратной ссылке.
+    final legacyEventId = removed.eventId;
+    if (legacyEventId == null) return;
+    final legacyEvent = await EventService().findById(legacyEventId);
+    if (legacyEvent != null) {
+      await EventService().deleteEvent(legacyEvent, deleteOrigin: false);
     }
   }
 }

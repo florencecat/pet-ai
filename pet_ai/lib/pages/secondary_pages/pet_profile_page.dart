@@ -736,29 +736,10 @@ class _PaletteSection extends StatelessWidget {
         ),
         if (paletteChanged &&
             !context.watch<AppearanceController>().usePetColor)
-          SoftGlassPlate(
-            color: context.watch<AppearanceController>().primaryColor.withAlpha(
-              30,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: context.watch<AppearanceController>().primaryColor,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Применить цвет профиля активного питомца как основной цвет приложения можно в настройках',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          InfoGlassPlate(
+            color: context.watch<AppearanceController>().primaryColor,
+            label:
+                'Применить цвет профиля активного питомца как основной цвет приложения можно в настройках',
           ),
       ],
     );

@@ -169,6 +169,7 @@ class NoteHistory extends History<NoteEntry> {
     final profileId = await PetProfileService().getActiveProfileId();
     if (profileId != null) {
       final eventFromNote = Event.fromNote(
+        noteId: entry.id,
         name: text,
         dateTime: date,
         symptomTag: symptomId,
