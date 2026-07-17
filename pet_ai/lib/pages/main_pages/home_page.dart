@@ -679,7 +679,9 @@ class HomePageState extends State<HomePage> {
             const SizedBox(height: 16),
 
             // ── Таймлайн ────────────────────────────────────────────────────
-            Row(
+        FittedBox(
+          child:
+          Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
@@ -720,7 +722,7 @@ class HomePageState extends State<HomePage> {
                   ),
                 ),
               ],
-            ),
+            )),
 
             const SizedBox(height: 12),
 

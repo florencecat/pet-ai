@@ -695,63 +695,67 @@ class _EventSheetState extends State<EventSheet> {
         useShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          child: Row(
-            children: [
-              Text(
-                'Напомнить за',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline),
-                color: context.watch<AppearanceController>().primaryColor,
-                onPressed: _remindBeforeValue > 0
-                    ? () => setState(
-                        () => _remindBeforeValue -=
-                            _remindBeforeVariant == RemindBeforeVariant.minutes
-                            ? 5
-                            : 1,
-                      )
-                    : null,
-              ),
-              SizedBox(
-                width: 25,
-                child: Text(
-                  '$_remindBeforeValue',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                color: context.watch<AppearanceController>().primaryColor,
-                onPressed: _remindBeforeValue < 120
-                    ? () => setState(
-                        () => _remindBeforeValue +=
-                            _remindBeforeVariant == RemindBeforeVariant.minutes
-                            ? 5
-                            : 1,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 8),
-
-              AnimatedOptionPicker<RemindBeforeVariant>(
-                value: _remindBeforeVariant,
-                options: RemindBeforeVariant.values
-                    .map((v) => PickerOption(value: v, label: v.label))
-                    .toList(),
-                onChanged: (v) => setState(() {
-                  _remindBeforeVariant = v;
-                }),
-                child: Text(
-                  _remindBeforeVariant.declension(_remindBeforeValue),
+          child: FittedBox(
+            child: Row(
+              children: [
+                Text(
+                  'Напомнить за',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  color: context.watch<AppearanceController>().primaryColor,
+                  onPressed: _remindBeforeValue > 0
+                      ? () => setState(
+                          () => _remindBeforeValue -=
+                              _remindBeforeVariant ==
+                                  RemindBeforeVariant.minutes
+                              ? 5
+                              : 1,
+                        )
+                      : null,
+                ),
+                SizedBox(
+                  width: 25,
+                  child: Text(
+                    '$_remindBeforeValue',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: context.watch<AppearanceController>().primaryColor,
+                  onPressed: _remindBeforeValue < 120
+                      ? () => setState(
+                          () => _remindBeforeValue +=
+                              _remindBeforeVariant ==
+                                  RemindBeforeVariant.minutes
+                              ? 5
+                              : 1,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 8),
+
+                AnimatedOptionPicker<RemindBeforeVariant>(
+                  value: _remindBeforeVariant,
+                  options: RemindBeforeVariant.values
+                      .map((v) => PickerOption(value: v, label: v.label))
+                      .toList(),
+                  onChanged: (v) => setState(() {
+                    _remindBeforeVariant = v;
+                  }),
+                  child: Text(
+                    _remindBeforeVariant.declension(_remindBeforeValue),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
