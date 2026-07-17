@@ -687,9 +687,15 @@ class _EventSheetState extends State<EventSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
             children: [
-              Text(
-                'Напомнить за',
-                style: Theme.of(context).textTheme.bodyLarge,
+              // Растягиваем подпись на всю свободную ширину: контролы прижаты
+              // к правому краю и плитка заполняется целиком на широких экранах,
+              // а на узких подпись сжимается вместо переполнения.
+              Expanded(
+                child: Text(
+                  'Напомнить за',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 8),
               IconButton(
