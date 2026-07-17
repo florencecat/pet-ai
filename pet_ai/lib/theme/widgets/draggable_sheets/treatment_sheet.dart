@@ -124,6 +124,11 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
     }
 
     setState(() => _saving = true);
+
+    if (widget.purpose == TreatmentDialogPurpose.edit) {
+      await TreatmentService().deleteTreatment(widget.profile.id, widget.editingEntry!.id);
+    }
+
     await TreatmentService().addTreatment(
       petId: widget.profile.id,
       kind: _kind,
