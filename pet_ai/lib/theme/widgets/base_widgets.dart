@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 InputDecoration baseInputDecoration(
   BuildContext context, {
+    TextStyle? textStyle,
   Widget? prefixIcon,
   String? hint,
   Widget? suffixIcon,
@@ -14,7 +15,7 @@ InputDecoration baseInputDecoration(
   final secondaryColor = context.watch<AppearanceController>().secondaryColor;
   return InputDecoration(
     labelText: hint,
-    labelStyle: AppTheme.lightTheme.textTheme.bodyLarge!.copyWith(
+    labelStyle: textStyle ?? AppTheme.lightTheme.textTheme.bodyLarge!.copyWith(
       inherit: true,
       color: secondaryColor.withAlpha(128),
     ),
