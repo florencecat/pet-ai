@@ -133,17 +133,6 @@ class EventsPageState extends State<EventsPage> {
     return false;
   }
 
-  /// Marker dot color for a calendar event.
-  Color _markerColor(Event event) {
-    if (_showAllPets && event.petIds.isNotEmpty) {
-      return _petColors[event.petIds.first] ?? event.category.color;
-    }
-    if (!event.manual) {
-      return context.watch<AppearanceController>().secondaryColor;
-    }
-    return event.category.color;
-  }
-
   /// Pet name + color pairs for an event's badge row.
   /// Returns [("Все", grey)] when the event covers all known pets.
   List<(String, Color)> _petBadgesFor(Event event) {
@@ -379,7 +368,9 @@ class EventsPageState extends State<EventsPage> {
                                       width: 8,
                                       height: 8,
                                       decoration: BoxDecoration(
-                                        color: _markerColor(e),
+                                        // Тот же цвет, что у карточки события.
+                                        color:
+                                            e.style.color ?? e.category.color,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -847,7 +838,7 @@ class _EventTileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final overdue = event.isOverdue;
+    final overdue = event.isOverdueOn(_effectiveDate);
     final time = event.allDay
         ? 'Весь\nдень'
         : DateFormat('HH:mm').format(event.dateTime);

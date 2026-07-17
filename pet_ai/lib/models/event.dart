@@ -475,15 +475,25 @@ class Event with Remindable implements PbEntity {
     }
   }
 
-  /// Просрочено: не повторяется, дата в прошлом, не выполнено на эту дату
-  bool get isOverdue {
-    if (repeat != RepeatInterval.none) return false;
-    if (!remind) return false;
-    final eventDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
-    final today = DateTime.now();
-    final todayDay = DateTime(today.year, today.month, today.day);
-    return eventDay.isBefore(todayDay) && !isCompletedOn(dateTime);
+  /// Просрочено на [day]: вхождение уже прошло и не отмечено выполненным.
+  ///
+  /// День задаётся явно, потому что просрочено всегда конкретное вхождение:
+  /// у курса препарата пропущен отдельный приём, а не курс целиком. Списки,
+  /// показывающие событие в контексте дня, обязаны спрашивать про этот день —
+  /// иначе повторяющиеся события не помечаются пропущенными никогда.
+  bool isOverdueOn(DateTime day) {
+    if (!completable) return false;
+    final target = DateTime(day.year, day.month, day.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return target.isBefore(today) && !isCompletedOn(day);
   }
+
+  /// Просрочено как таковое — там, где событие показано вне контекста дня
+  /// (поиск, бейджи здоровья). У повторяющегося всегда есть следующее
+  /// вхождение, поэтому целиком просроченным оно не бывает.
+  bool get isOverdue =>
+      repeat == RepeatInterval.none && isOverdueOn(dateTime);
 
   void assign(
     String? name,
