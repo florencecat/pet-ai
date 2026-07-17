@@ -22,7 +22,7 @@ class PickerOption<T> {
 /// Значение хранит вызывающий — виджет только показывает [value] и сообщает
 /// о выборе через [onChanged].
 class AnimatedOptionPicker<T> extends StatefulWidget {
-  final T value;
+  final T? value;
   final List<PickerOption<T>> options;
   final ValueChanged<T> onChanged;
 
