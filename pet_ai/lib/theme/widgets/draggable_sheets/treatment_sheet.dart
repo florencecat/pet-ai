@@ -126,7 +126,10 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
     setState(() => _saving = true);
 
     if (widget.purpose == TreatmentDialogPurpose.edit) {
-      await TreatmentService().deleteTreatment(widget.profile.id, widget.editingEntry!.id);
+      await TreatmentService().deleteTreatment(
+        widget.profile.id,
+        widget.editingEntry!.id,
+      );
     }
 
     await TreatmentService().addTreatment(
@@ -583,7 +586,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
               // Интервал (в днях) до следующей, более старой обработки.
               final gapDays = isLast
                   ? 0
-                  : _dayGap(entry.date, _entries[i + 1].date);
+                  : _dayGap(entry, _entries[i + 1]);
 
               return IntrinsicHeight(
                 child: Row(
@@ -674,10 +677,10 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                                           ),
                                         ),
                                       ),
-                                      _GapBadge(
-                                        days: gapDays,
-                                        color: secondaryColor,
-                                      ),
+                                      if (gapDays > 0)
+                                        _GapBadge(
+                                          days: gapDays,
+                                        ),
                                     ],
                                   ),
                           ),
@@ -726,10 +729,11 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
   }
 
   /// Разница в целых днях между двумя записями (без учёта времени суток).
-  static int _dayGap(DateTime a, DateTime b) {
-    final da = DateTime(a.year, a.month, a.day);
-    final db = DateTime(b.year, b.month, b.day);
-    return da.difference(db).inDays;
+  static int _dayGap(TreatmentEntry current, TreatmentEntry prev) {
+    if (current.date.isBefore(prev.nextDate)) {
+      return 0;
+    }
+    return current.date.difference(prev.nextDate).inDays;
   }
 
   static String _daysWord(int n) {
@@ -747,12 +751,12 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
 /// Небольшой бейдж с интервалом между соседними обработками («12д», «>30 д.»).
 class _GapBadge extends StatelessWidget {
   final int days;
-  final Color color;
 
-  const _GapBadge({required this.days, required this.color});
+  const _GapBadge({required this.days});
 
   @override
   Widget build(BuildContext context) {
+    final color = ThemeColors.dangerZone;
     final label = days > 30 ? '>30 д.' : '$daysд';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -760,7 +764,7 @@ class _GapBadge extends StatelessWidget {
         // Непрозрачный фон, чтобы бейдж «разрывал» линию таймлайна.
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withAlpha(60)),
+        border: Border.all(color: color, width: 2),
       ),
       child: Text(
         label,
