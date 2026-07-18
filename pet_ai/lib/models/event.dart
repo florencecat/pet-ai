@@ -453,6 +453,7 @@ class Event with Remindable implements PbEntity {
   bool get fromNote => origin is NoteOrigin;
   bool get fromTreatment => origin is TreatmentOrigin;
   bool get fromPill => origin is PillOrigin;
+  bool get fromAssistant => origin is AiOrigin;
   bool get manual => origin is ManualOrigin;
 
   /// Форматирует дату как ключ "yyyy-MM-dd"

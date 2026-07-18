@@ -288,7 +288,7 @@ class _EventSheetState extends State<EventSheet> {
   Widget build(BuildContext context) {
     // For pill/treatment events opened in view mode, disable editing
     // (those records are managed via the Health page).
-    final editable = widget.event == null || widget.event!.manual;
+    final editable = widget.event == null || widget.event!.manual || widget.event!.fromAssistant;
 
     return DraggableSheet(
       centerTitle: true,
