@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -51,6 +52,10 @@ class EventsPageState extends State<EventsPage> {
   bool _isLoadingEvents = true;
   bool _showAllPets = false;
 
+  /// Растёт при каждой смене питомца — сигнал списку событий проиграть
+  /// исчезновение старых карточек и появление новых.
+  int _petSwitchToken = 0;
+
   List<Event> _events = [];
   List<Pet> _allProfiles = [];
   Pet? _activeProfile;
@@ -87,8 +92,11 @@ class EventsPageState extends State<EventsPage> {
 
   void _refresh() async => await _loadEvents();
 
-  Future<void> _loadEvents() async {
-    setState(() => _isLoadingEvents = true);
+  /// [petSwitch] — перезагрузка вызвана сменой питомца: не показываем общий
+  /// индикатор загрузки (чтобы был виден переход списка) и по завершении
+  /// дёргаем [_petSwitchToken].
+  Future<void> _loadEvents({bool petSwitch = false}) async {
+    if (!petSwitch) setState(() => _isLoadingEvents = true);
 
     final allProfiles = await PetProfileService().loadAllProfiles();
     final activeId = await PetProfileService().getActiveProfileId();
@@ -125,6 +133,7 @@ class EventsPageState extends State<EventsPage> {
       _activeProfile = activeProfile;
       _petColors = petColors;
       _petNames = petNames;
+      if (petSwitch) _petSwitchToken++;
     });
   }
 
@@ -257,6 +266,45 @@ class EventsPageState extends State<EventsPage> {
     return true;
   }
 
+  /// Заглушка «нет событий» с кнопкой создания.
+  Widget _buildEmptyState(BuildContext context) {
+    final ac = context.watch<AppearanceController>();
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(height: 32),
+        Icon(
+          Icons.event_busy_outlined,
+          size: 72,
+          color: ac.secondaryColor.withAlpha(60),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Нет событий.',
+              style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                inherit: true,
+                color: ac.secondaryColor.withAlpha(60),
+              ),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(padding: EdgeInsetsGeometry.all(5)),
+              onPressed: _openCreateSheet,
+              child: Text(
+                'Создать',
+                style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                  inherit: true,
+                  color: ac.primaryColor.withAlpha(192),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
@@ -313,48 +361,37 @@ class EventsPageState extends State<EventsPage> {
             ),
             children: [
               // ── Pet selector ─────────────────────────────────────────────
+              // Сегментированный переключатель: выбранная «пилюля» плавно
+              // переезжает между питомцами, растягиваясь по ходу движения.
               if (_allProfiles.length > 1) ...[
                 GlassPlate(
                   padding: 8,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _PetSelectorChip(
-                          label: _activeProfile?.name.isNotEmpty == true
-                              ? _activeProfile!.name
-                              : 'Текущий',
-                          selected: !_showAllPets,
-                          color:
-                              _activeProfile?.palette.mainColor ?? primaryColor,
-                          hasEvents: _hasEventsInFocusedMonth(
-                            _activeProfile?.id,
-                          ),
-                          onTap: () {
-                            if (_showAllPets) {
-                              setState(() => _showAllPets = false);
-                              _loadEvents();
-                            }
-                          },
-                        ),
+                  child: _PetSegmentedSwitch(
+                    selectedIndex: _showAllPets ? 1 : 0,
+                    segments: [
+                      _PetSegment(
+                        label: _activeProfile?.name.isNotEmpty == true
+                            ? _activeProfile!.name
+                            : 'Текущий',
+                        color:
+                            _activeProfile?.palette.mainColor ?? primaryColor,
+                        hasEvents: _hasEventsInFocusedMonth(_activeProfile?.id),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _PetSelectorChip(
-                          label: 'Все питомцы',
-                          selected: _showAllPets,
-                          color: context
-                              .watch<AppearanceController>()
-                              .secondaryColor,
-                          hasEvents: _hasEventsInFocusedMonth(null),
-                          onTap: () {
-                            if (!_showAllPets) {
-                              setState(() => _showAllPets = true);
-                              _loadEvents();
-                            }
-                          },
-                        ),
+                      _PetSegment(
+                        label: 'Все питомцы',
+                        color: context
+                            .watch<AppearanceController>()
+                            .secondaryColor,
+                        hasEvents: _hasEventsInFocusedMonth(null),
                       ),
                     ],
+                    onChanged: (index) {
+                      final all = index == 1;
+                      if (all != _showAllPets) {
+                        setState(() => _showAllPets = all);
+                        _loadEvents(petSwitch: true);
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -478,105 +515,50 @@ class EventsPageState extends State<EventsPage> {
               const SizedBox(height: 20),
 
               // ── Day events ───────────────────────────────────────────────
-              // Смена питомца проигрывает «желейную» (упругую) анимацию всего
-              // блока — по изменению [_showAllPets].
               if (_selectedDay != null)
-                _JellySwitch(
-                  trigger: _showAllPets,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        formatSmartDate(
-                          _selectedDay!,
-                          pattern: 'dd MMMM',
-                          locale: 'ru-RU',
-                        ),
-                        style: Theme.of(context).textTheme.titleMedium!
-                            .copyWith(fontWeight: FontWeight.w600),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      formatSmartDate(
+                        _selectedDay!,
+                        pattern: 'dd MMMM',
+                        locale: 'ru-RU',
                       ),
-                      const SizedBox(height: 8),
-                      if (filtered.isEmpty)
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(height: 32),
-                            Icon(
-                              Icons.event_busy_outlined,
-                              size: 72,
-                              color: context
-                                  .watch<AppearanceController>()
-                                  .secondaryColor
-                                  .withAlpha(60),
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Нет событий.',
-                                  style: Theme.of(context).textTheme.titleLarge!
-                                      .copyWith(
-                                        inherit: true,
-                                        color: context
-                                            .watch<AppearanceController>()
-                                            .secondaryColor
-                                            .withAlpha(60),
-                                      ),
-                                ),
-                                TextButton(
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsetsGeometry.all(5),
-                                  ),
-                                  onPressed: _openCreateSheet,
-                                  child: Text(
-                                    'Создать',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge!
-                                        .copyWith(
-                                          inherit: true,
-                                          color: context
-                                              .watch<AppearanceController>()
-                                              .primaryColor
-                                              .withAlpha(192),
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        )
-                      else
-                        ...filtered.map(
-                          (e) => Padding(
-                            key: ValueKey(
-                              '${e.id}_${_selectedDay!.toIso8601String()}',
-                            ),
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _SwipeableEventTile(
-                              event: e,
-                              petBadges: _petBadgesFor(e),
-                              selectedDate: _selectedDay,
-                              onTap: () => _openViewSheet(e),
-                              onEdit: () => _openEditSheet(e),
-                              onDelete: () => _deleteEvent(e),
-                              onCompleteToggle: (wasCompleted) async {
-                                final profileId = await PetProfileService()
-                                    .getActiveProfileId();
-                                if (profileId != null) {
-                                  await EventService().toggleCompleted(
-                                    profileId,
-                                    e,
-                                    _selectedDay!,
-                                  );
-                                }
-                              },
-                              onChanged: _refresh,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _DayEvents(
+                      events: filtered,
+                      // Смена питомца → исчезновение старых, затем появление
+                      // новых. Смена дня → только появление.
+                      switchToken: _petSwitchToken,
+                      enterToken: _selectedDay!,
+                      emptyBuilder: _buildEmptyState,
+                      itemBuilder: (event) => _SwipeableEventTile(
+                        event: event,
+                        petBadges: _petBadgesFor(event),
+                        selectedDate: _selectedDay,
+                        onTap: () => _openViewSheet(event),
+                        onEdit: () => _openEditSheet(event),
+                        onDelete: () => _deleteEvent(event),
+                        onCompleteToggle: (wasCompleted) async {
+                          final profileId = await PetProfileService()
+                              .getActiveProfileId();
+                          if (profileId != null) {
+                            await EventService().toggleCompleted(
+                              profileId,
+                              event,
+                              _selectedDay!,
+                            );
+                          }
+                        },
+                        onChanged: _refresh,
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),
@@ -586,63 +568,187 @@ class EventsPageState extends State<EventsPage> {
   }
 }
 
-// ── Pet selector chip (full-width) ───────────────────────────────────────────
+// ── Сегментированный переключатель питомцев ──────────────────────────────────
 
-class _PetSelectorChip extends StatelessWidget {
+/// Один сегмент переключателя: подпись, цвет выделения и метка «есть события».
+class _PetSegment {
   final String label;
-  final bool selected;
   final Color color;
   final bool hasEvents;
-  final VoidCallback onTap;
 
-  const _PetSelectorChip({
+  const _PetSegment({
     required this.label,
-    required this.selected,
     required this.color,
     required this.hasEvents,
-    required this.onTap,
+  });
+}
+
+/// Горизонтальный сегментированный контрол. Выделенная «пилюля» плавно
+/// переезжает к выбранному сегменту, причём ведущий её край опережает
+/// ведомый — за счёт этого пилюля в движении заметно растягивается, а к концу
+/// снова стягивается до ширины сегмента. Цвет пилюли перетекает от старого
+/// сегмента к новому.
+class _PetSegmentedSwitch extends StatefulWidget {
+  final int selectedIndex;
+  final List<_PetSegment> segments;
+  final ValueChanged<int> onChanged;
+
+  const _PetSegmentedSwitch({
+    required this.selectedIndex,
+    required this.segments,
+    required this.onChanged,
   });
 
   @override
+  State<_PetSegmentedSwitch> createState() => _PetSegmentedSwitchState();
+}
+
+class _PetSegmentedSwitchState extends State<_PetSegmentedSwitch>
+    with SingleTickerProviderStateMixin {
+  static const double _height = 42;
+
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+    value: 1,
+  );
+
+  late int _from = widget.selectedIndex;
+  late int _to = widget.selectedIndex;
+
+  @override
+  void didUpdateWidget(covariant _PetSegmentedSwitch old) {
+    super.didUpdateWidget(old);
+    if (widget.selectedIndex != _to) {
+      _from = _to;
+      _to = widget.selectedIndex;
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  static double _lerp(double a, double b, double t) => a + (b - a) * t;
+
+  @override
   Widget build(BuildContext context) {
+    final count = widget.segments.length;
+
+    return SizedBox(
+      height: _height,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segW = constraints.maxWidth / count;
+
+          return AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) {
+              final t = _ctrl.value.clamp(0.0, 1.0);
+              final movingRight = _to > _from;
+
+              // Ведущий край движется быстрее ведомого — пилюля растягивается.
+              final leadT = Curves.easeOut.transform(t);
+              final trailT = Curves.easeInOut.transform(t);
+
+              final fromLeft = _from * segW;
+              final toLeft = _to * segW;
+              final fromRight = fromLeft + segW;
+              final toRight = toLeft + segW;
+
+              final double left, right;
+              if (movingRight) {
+                right = _lerp(fromRight, toRight, leadT);
+                left = _lerp(fromLeft, toLeft, trailT);
+              } else {
+                left = _lerp(fromLeft, toLeft, leadT);
+                right = _lerp(fromRight, toRight, trailT);
+              }
+
+              final pillColor = Color.lerp(
+                widget.segments[_from].color,
+                widget.segments[_to].color,
+                t,
+              )!;
+
+              return Stack(
+                children: [
+                  // Выделенная пилюля.
+                  Positioned(
+                    top: 0,
+                    bottom: 0,
+                    left: left,
+                    width: (right - left).clamp(0.0, constraints.maxWidth),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: pillColor.withAlpha(210),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+
+                  // Подписи сегментов поверх пилюли.
+                  Row(
+                    children: [
+                      for (var i = 0; i < count; i++)
+                        Expanded(child: _buildLabel(i, t)),
+                    ],
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLabel(int index, double t) {
+    final seg = widget.segments[index];
+    // Насколько сегмент сейчас «под пилюлей»: 0 — цвет питомца, 1 — белый.
+    final double sel;
+    if (index == _to) {
+      sel = t;
+    } else if (index == _from) {
+      sel = 1 - t;
+    } else {
+      sel = 0;
+    }
+
+    final textColor = Color.lerp(seg.color.withAlpha(200), Colors.white, sel)!;
+    final dotColor = Color.lerp(
+      seg.color.withAlpha(220),
+      Colors.white.withAlpha(220),
+      sel,
+    )!;
+
     return Pressable(
-      onTap: onTap,
+      onTap: () => widget.onChanged(index),
       haptic: HapticStrength.selection,
       scale: 0.94,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? color.withAlpha(200) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? color : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
+      child: SizedBox.expand(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 220),
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : color.withAlpha(200),
+            Flexible(
+              child: Text(
+                seg.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
               ),
-              child: Text(label),
             ),
-            if (hasEvents) ...[
+            if (seg.hasEvents) ...[
               const SizedBox(width: 6),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
+              Container(
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: selected
-                      ? Colors.white.withAlpha(200)
-                      : color.withAlpha(220),
+                  color: dotColor,
                 ),
               ),
             ],
@@ -860,27 +966,24 @@ class _SwipeableEventTileState extends State<_SwipeableEventTile>
       ),
     );
 
-    // При удалении строка упруго схлопывается: уезжает вправо, уменьшается,
-    // гаснет и «сворачивает» свою высоту.
+    // При удалении строка сначала плавно гаснет на месте, затем мягко
+    // «сворачивает» свою высоту — без сдвига вбок.
     return AnimatedBuilder(
       animation: _fxCtrl,
       builder: (context, child) {
         if (_fx != _TileFx.deleting) return child!;
-        final t = Curves.easeInCubic.transform(_fxCtrl.value);
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.topCenter,
-            heightFactor: (1 - t).clamp(0.0, 1.0),
-            child: Opacity(
-              opacity: (1 - t).clamp(0.0, 1.0),
-              child: Transform.translate(
-                offset: Offset(64 * t, 0),
-                child: Transform.scale(
-                  scale: 1 - 0.06 * t,
-                  alignment: Alignment.centerRight,
-                  child: child,
-                ),
-              ),
+        final t = _fxCtrl.value.clamp(0.0, 1.0);
+        final fade = Curves.easeOut.transform((t / 0.6).clamp(0.0, 1.0));
+        final collapse = Curves.easeInOut.transform(
+          ((t - 0.45) / 0.55).clamp(0.0, 1.0),
+        );
+        return Opacity(
+          opacity: (1 - fade).clamp(0.0, 1.0),
+          child: ClipRect(
+            child: Align(
+              alignment: Alignment.topCenter,
+              heightFactor: (1 - collapse).clamp(0.0, 1.0),
+              child: child,
             ),
           ),
         );
@@ -943,32 +1046,93 @@ class _CompleteBurst extends StatelessWidget {
   }
 }
 
-// ── «Желейный» переключатель контента ───────────────────────────────────────
+// ── Список событий дня с каскадным появлением/исчезновением ───────────────────
 
-/// Проигрывает упругую (elastic) анимацию масштаба + прозрачности при каждой
-/// смене [trigger]. Используется для «дорогого» перехода при переключении
-/// питомца на странице событий.
-class _JellySwitch extends StatefulWidget {
-  final Object trigger;
-  final Widget child;
+enum _Phase { entering, exiting }
 
-  const _JellySwitch({required this.trigger, required this.child});
+/// Показывает события выбранного дня с каскадной анимацией: карточки по одной
+/// «выезжают» снизу при появлении и уходят вниз при исчезновении.
+///
+/// - Смена [switchToken] (сменили питомца) → сперва проигрывается исчезновение
+///   текущих карточек (реверс появления, снизу вверх), затем появление новых.
+/// - Смена [enterToken] (сменили день) → только появление.
+/// - Тихие обновления (удаление/отметка «выполнено») меняют список без общей
+///   анимации — свою анимацию отыгрывает сама карточка.
+class _DayEvents extends StatefulWidget {
+  final List<Event> events;
+  final Object switchToken;
+  final Object enterToken;
+  final Widget Function(Event event) itemBuilder;
+  final WidgetBuilder emptyBuilder;
+
+  const _DayEvents({
+    required this.events,
+    required this.switchToken,
+    required this.enterToken,
+    required this.itemBuilder,
+    required this.emptyBuilder,
+  });
 
   @override
-  State<_JellySwitch> createState() => _JellySwitchState();
+  State<_DayEvents> createState() => _DayEventsState();
 }
 
-class _JellySwitchState extends State<_JellySwitch>
+class _DayEventsState extends State<_DayEvents>
     with SingleTickerProviderStateMixin {
+  /// Доля таймлайна, которую занимает анимация одной карточки; оставшаяся часть
+  /// раздаётся как задержки старта, чтобы карточки шли одна за другой.
+  static const double _itemFrac = 0.62;
+  static const double _shift = 24;
+
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 640),
-  )..forward();
+    duration: const Duration(milliseconds: 350),
+  );
+
+  late List<Event> _shown = widget.events;
+  _Phase _phase = _Phase.entering;
 
   @override
-  void didUpdateWidget(covariant _JellySwitch old) {
+  void initState() {
+    super.initState();
+    _ctrl.addStatusListener((status) {
+      // Как только доиграло исчезновение — показываем новые с появлением.
+      if (status == AnimationStatus.completed && _phase == _Phase.exiting) {
+        _enterNew();
+      }
+    });
+    _ctrl.forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DayEvents old) {
     super.didUpdateWidget(old);
-    if (old.trigger != widget.trigger) _ctrl.forward(from: 0);
+    if (widget.switchToken != old.switchToken) {
+      if (_shown.isNotEmpty) {
+        setState(() => _phase = _Phase.exiting);
+        _ctrl.forward(from: 0);
+      } else {
+        _enterNew();
+      }
+    } else if (widget.enterToken != old.enterToken) {
+      _enterNew();
+    } else if (!listEquals(_shown, widget.events)) {
+      // Первое наполнение пустого списка тоже показываем с появлением.
+      if (_shown.isEmpty && widget.events.isNotEmpty) {
+        _enterNew();
+      } else {
+        setState(() => _shown = widget.events);
+      }
+    }
+  }
+
+  void _enterNew() {
+    if (!mounted) return;
+    setState(() {
+      _shown = widget.events;
+      _phase = _Phase.entering;
+    });
+    _ctrl.forward(from: 0);
   }
 
   @override
@@ -977,25 +1141,58 @@ class _JellySwitchState extends State<_JellySwitch>
     super.dispose();
   }
 
+  double _startFor(int idx, int n) =>
+      n <= 1 ? 0 : (1 - _itemFrac) * (idx / (n - 1));
+
   @override
   Widget build(BuildContext context) {
+    if (_shown.isEmpty) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+        child: widget.emptyBuilder(context),
+      );
+    }
+
+    final n = _shown.length;
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (context, child) {
-        final t = _ctrl.value.clamp(0.0, 1.0);
-        // elasticOut даёт мягкий «желейный» доводчик с лёгким перелётом.
-        final scale = 0.9 + 0.1 * Curves.elasticOut.transform(t);
-        final opacity = Curves.easeOut.transform(t);
-        return Opacity(
-          opacity: opacity,
-          child: Transform.scale(
-            scale: scale,
-            alignment: Alignment.topCenter,
-            child: child,
-          ),
+      builder: (context, _) {
+        final exiting = _phase == _Phase.exiting;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < n; i++) _item(i, n, _ctrl.value, exiting),
+          ],
         );
       },
-      child: widget.child,
+    );
+  }
+
+  Widget _item(int i, int n, double t, bool exiting) {
+    // При исчезновении карточки уходят в обратном порядке — снизу вверх.
+    final order = exiting ? (n - 1 - i) : i;
+    final local = ((t - _startFor(order, n)) / _itemFrac).clamp(0.0, 1.0);
+    final eased = Curves.easeOut.transform(local);
+
+    final double opacity, dy;
+    if (exiting) {
+      opacity = 1 - eased;
+      dy = _shift * eased;
+    } else {
+      opacity = eased;
+      dy = _shift * (1 - eased);
+    }
+
+    return Opacity(
+      key: ValueKey(_shown[i].id),
+      opacity: opacity,
+      child: Transform.translate(
+        offset: Offset(0, dy),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: widget.itemBuilder(_shown[i]),
+        ),
+      ),
     );
   }
 }
