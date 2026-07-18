@@ -414,28 +414,46 @@ class EventsPageState extends State<EventsPage> {
                         calendarBuilders: CalendarBuilders(
                           markerBuilder: (context, day, events) {
                             if (events.isEmpty) return const SizedBox();
+                            final hiddenCount = events.length - 3;
                             return Positioned(
                               bottom: 4,
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: events.take(3).map((event) {
-                                  final e = event as Event;
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                    ),
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        // Тот же цвет, что у карточки события.
-                                        color:
-                                            e.style.color ?? e.category.color,
-                                        shape: BoxShape.circle,
+                                children: [
+                                  ...events.take(hiddenCount > 0 ? 2 : 3).map((
+                                    event,
+                                  ) {
+                                    final e = event as Event;
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 2,
+                                      ),
+                                      child: Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          // Тот же цвет, что у карточки события.
+                                          color:
+                                              e.style.color ?? e.category.color,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                  if (hiddenCount > 0)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 2,
+                                      ),
+                                      child: Text(
+                                        '+${hiddenCount + 1}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall!
+                                            .copyWith(fontSize: 11, height: 0.1),
                                       ),
                                     ),
-                                  );
-                                }).toList(),
+                                ],
                               ),
                             );
                           },
@@ -451,7 +469,6 @@ class EventsPageState extends State<EventsPage> {
                         ),
                         eventLoader: (day) => _events.where((e) {
                           if (!e.occursOn(day)) return false;
-                          if (e.fromPill) return false;
                           if (e.isCompletedOn(day)) return false;
                           return true;
                         }).toList(),
