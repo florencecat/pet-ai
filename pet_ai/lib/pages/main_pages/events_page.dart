@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -16,7 +17,9 @@ import 'package:pet_satellite/theme/widgets/pressable.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/calendar_filter_sheet.dart';
 import 'package:pet_satellite/models/event.dart';
+import 'package:pet_satellite/models/calendar_filter.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
 class EventsPage extends StatefulWidget {
@@ -62,6 +65,9 @@ class EventsPageState extends State<EventsPage> {
   Map<String, Color> _petColors = {};
   Map<String, String> _petNames = {};
 
+  /// Что показывать в календаре (типы событий, прошедшие/выполненные/повторы).
+  CalendarFilter _calendarFilter = const CalendarFilter.defaults();
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +75,13 @@ class EventsPageState extends State<EventsPage> {
     _focusedDay = initial;
     _selectedDay = initial;
     _loadEvents();
+    _loadCalendarFilter();
+  }
+
+  Future<void> _loadCalendarFilter() async {
+    final filter = await CalendarFilter.load();
+    if (!mounted) return;
+    setState(() => _calendarFilter = filter);
   }
 
   @override
@@ -146,10 +159,31 @@ class EventsPageState extends State<EventsPage> {
     setState(() => _format = formats[next]);
   }
 
-  /// Events for the selected day.
+  /// Events for the selected day. Список дня показывает ВСЕ события выбранного
+  /// дня — фильтр отображения касается только меток в самом календаре, иначе
+  /// скрытые события стало бы невозможно увидеть.
   List<Event> get _filteredDayEvents {
     if (_selectedDay == null) return [];
     return _events.where((e) => e.occursOn(_selectedDay!)).toList();
+  }
+
+  /// Проходит ли вхождение события на [day] фильтр меток календаря.
+  bool _passesCalendarFilter(Event e, DateTime day) {
+    final f = _calendarFilter;
+    if (!f.showPills && e.fromPill) return false;
+    if (!f.showTreatments && e.fromTreatment) return false;
+    if (!f.showNotes && e.fromNote) return false;
+    if (!f.showRepeating && e.repeat != RepeatInterval.none) return false;
+    if (!f.showCompleted && e.isCompletedOn(day)) return false;
+    if (!f.showPast && _isPastDay(day)) return false;
+    return true;
+  }
+
+  /// [day] раньше сегодняшнего (по календарной дате).
+  bool _isPastDay(DateTime day) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return DateTime(day.year, day.month, day.day).isBefore(today);
   }
 
   /// Whether any event occurs in [_focusedDay]'s month for the given [petId].
@@ -189,6 +223,20 @@ class EventsPageState extends State<EventsPage> {
   }
 
   // ── Sheet helpers ───────────────────────────────────────────────────────────
+
+  void _openCalendarFilter() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CalendarFilterSheet(
+        filter: _calendarFilter,
+        onChanged: (f) => setState(() => _calendarFilter = f),
+      ),
+    );
+  }
 
   void _openSearchSheet() {
     showModalBottomSheet<void>(
@@ -309,26 +357,11 @@ class EventsPageState extends State<EventsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final primaryColor = context.watch<AppearanceController>().primaryColor;
     final monthLabel = DateFormat('MMMM yyyy', 'ru_RU').format(_focusedDay);
     final filtered = _filteredDayEvents;
 
     return Scaffold(
-      floatingActionButton: Padding(
-        padding: EdgeInsetsGeometry.only(bottom: bottomPadding),
-        child: FloatingActionButton(
-          onPressed: () {
-            triggerHaptic(HapticStrength.medium);
-            _openCreateSheet();
-          },
-          backgroundColor: primaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-      ),
       body: Container(
         decoration: context.watch<AppearanceController>().gradientDecoration,
         child: InlineLoading(
@@ -352,9 +385,22 @@ class EventsPageState extends State<EventsPage> {
                 ),
                 GlassPlate(
                   padding: 4,
-                  child: IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: _openSearchSheet,
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.list, color: context.titleColor),
+                        onPressed: _openCalendarFilter,
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.search, color: context.titleColor),
+                        onPressed: _openSearchSheet,
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.add, color: context.titleColor),
+                        onPressed: _openCreateSheet,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -450,7 +496,10 @@ class EventsPageState extends State<EventsPage> {
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodySmall!
-                                            .copyWith(fontSize: 11, height: 0.1),
+                                            .copyWith(
+                                              fontSize: 11,
+                                              height: 0.1,
+                                            ),
                                       ),
                                     ),
                                 ],
@@ -467,11 +516,13 @@ class EventsPageState extends State<EventsPage> {
                         daysOfWeekStyle: DaysOfWeekStyle(
                           weekdayStyle: Theme.of(context).textTheme.bodySmall!,
                         ),
-                        eventLoader: (day) => _events.where((e) {
-                          if (!e.occursOn(day)) return false;
-                          if (e.isCompletedOn(day)) return false;
-                          return true;
-                        }).toList(),
+                        eventLoader: (day) => _events
+                            .where(
+                              (e) =>
+                                  e.occursOn(day) &&
+                                  _passesCalendarFilter(e, day),
+                            )
+                            .toList(),
                         calendarStyle: CalendarStyle(
                           todayDecoration: const BoxDecoration(
                             color: Colors.transparent,
@@ -1476,20 +1527,22 @@ class _EventSearchSheetState extends State<_EventSearchSheet> {
               controller: _ctrl,
               autofocus: true,
               onChanged: (q) => setState(() => _query = q),
-              decoration: InputDecoration(
-                hintText: 'Название события или категория...',
-                prefixIcon: const Icon(Icons.search),
+              decoration: baseInputDecoration(
+                context,
+                prefixIcon: Icon(Icons.search, color: context.titleColor),
+                hint: 'Название события или категория...',
                 suffixIcon: _query.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          _ctrl.clear();
-                          setState(() => _query = '');
-                        },
+                    ? Padding(
+                        padding: EdgeInsetsGeometry.symmetric(horizontal: 6),
+                        child: IconButton(
+                          icon: Icon(Icons.close, color: context.titleColor),
+                          onPressed: () {
+                            _ctrl.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
                       )
                     : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),

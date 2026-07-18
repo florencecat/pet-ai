@@ -43,6 +43,7 @@ InputDecoration baseInputDecoration(
       )
           : BorderSide.none,
     ),
+    prefixIcon: prefixIcon,
     suffixIcon: suffixIcon,
   );
 }
