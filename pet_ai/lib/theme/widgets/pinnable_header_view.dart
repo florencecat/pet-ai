@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:provider/provider.dart';
 
@@ -48,7 +49,20 @@ class _PinnableHeaderViewState extends State<PinnableHeaderView> {
   /// на переключении флага, а не на каждом пикселе скролла.
   bool _onScroll(ScrollNotification notification) {
     final scrolled = notification.metrics.pixels > 0;
-    if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+    if (scrolled == _scrolled) return false;
+
+    // Уведомление о скролле иногда прилетает прямо во время build/layout —
+    // например, когда TableCalendar меняет формат в том же кадре (тянем ручку).
+    // setState в этот момент запрещён, поэтому откладываем его на конец кадра.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      setState(() => _scrolled = scrolled);
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrolled != scrolled) {
+          setState(() => _scrolled = scrolled);
+        }
+      });
+    }
     return false;
   }
 
