@@ -322,6 +322,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
               _paletteChanged = true;
             });
             await _savePalette();
+            await _saveProfile();
           },
           primaryColor: ac.primaryColor,
           paletteChanged: _paletteChanged,
