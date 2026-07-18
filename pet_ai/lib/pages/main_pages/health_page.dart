@@ -27,6 +27,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dar
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
+import 'package:pet_satellite/theme/widgets/profile_switcher_sheet.dart';
 import 'package:pet_satellite/theme/widgets/weight_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,6 +46,9 @@ class HealthPageState extends State<HealthPage> {
   List<Event> _events = [];
   bool _isLoadingProfile = true;
   bool _isLoadingEvents = true;
+
+  /// Есть ли из чего выбирать — от этого зависит показ переключателя профилей.
+  bool _hasMultipleProfiles = false;
 
   String? _weightStatus;
   double? _weightDynamics;
@@ -146,8 +150,14 @@ class HealthPageState extends State<HealthPage> {
     // тут же разворачивается обратно — экран «дёргается». Скелетоны нужны лишь
     // при самой первой загрузке, когда флаги и так true по умолчанию.
     final profile = await PetProfileService().loadActiveProfile();
+    final hasMultipleProfiles = await PetProfileService().hasMultipleProfiles();
     if (profile == null) {
-      if (mounted) setState(() => _isLoadingProfile = false);
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+          _hasMultipleProfiles = hasMultipleProfiles;
+        });
+      }
       return;
     }
 
@@ -155,6 +165,7 @@ class HealthPageState extends State<HealthPage> {
     setState(() {
       _profile = profile;
       _isLoadingProfile = false;
+      _hasMultipleProfiles = hasMultipleProfiles;
 
       _weightExpanded = _profile!.weightHistory.entries.isNotEmpty;
     });
@@ -563,13 +574,39 @@ class HealthPageState extends State<HealthPage> {
                   children: [
                     Text('Здоровье'),
                     if (_profile != null)
-                      Text(
-                        _profile!.name,
-                        style: Theme.of(context).textTheme.headlineMedium!
-                            .copyWith(
-                              inherit: true,
-                              fontWeight: FontWeight.w900,
+                      // Имя питомца открывает переключатель профилей, когда есть
+                      // из чего выбирать.
+                      GestureDetector(
+                        onTap: _hasMultipleProfiles
+                            ? () => showProfileSwitcher(context)
+                            : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                _profile!.name,
+                                style: Theme.of(context).textTheme.headlineMedium!
+                                    .copyWith(
+                                      inherit: true,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
                             ),
+                            if (_hasMultipleProfiles) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.unfold_more,
+                                size: 22,
+                                color: context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                   ],
                 ),
