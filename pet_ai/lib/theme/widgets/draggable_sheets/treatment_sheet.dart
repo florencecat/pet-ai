@@ -510,6 +510,20 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
       onBack: () => Navigator.of(context).pop(true),
       initialSize: null,
       maxSize: 0.85,
+      actions: [
+        TextButton(
+          onPressed: _clearHistory,
+          style: TextButton.styleFrom(
+            overlayColor: ThemeColors.dangerZone.withAlpha(128),
+          ),
+          child: Text(
+            'Удалить всё',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium!.copyWith(color: ThemeColors.dangerZone),
+          ),
+        ),
+      ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -762,6 +776,24 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
     if (mod10 == 1) return 'день';
     if (mod10 >= 2 && mod10 <= 4) return 'дня';
     return 'дней';
+  }
+
+  Future<void> _clearHistory() async {
+    final result = await confirmDelete(
+      context,
+      title: 'Очистить историю?',
+      ignorePreferences: true,
+      message: 'Будут удалены все записи категории $_title.',
+    );
+
+    if (result) {
+      for (var entry in _entries) {
+        await TreatmentService().deleteTreatment(widget.profile.id, entry.id);
+      }
+    }
+    if (mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 }
 
