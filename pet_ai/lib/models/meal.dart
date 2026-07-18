@@ -248,9 +248,66 @@ class _MealEntryCodec extends PbCodec<MealEntry> {
   );
 }
 
+/// Переход на новый корм в дневнике питания. Фиксируется только для готовых
+/// кормов (сухой/влажный): натуралка и лакомства «маркой» не меняются.
+///
+/// Это вычисляемая пометка (не отдельная запись в хранилище): она всегда
+/// согласована с реальными записями и переобновляется при их правке/удалении.
+class FoodSwitch {
+  /// Дата записи, где впервые появился новый корм.
+  final DateTime date;
+  final FoodKind kind;
+
+  /// Предыдущий корм этого же типа и новый, на который перешли.
+  final String fromName;
+  final String toName;
+
+  const FoodSwitch({
+    required this.date,
+    required this.kind,
+    required this.fromName,
+    required this.toName,
+  });
+}
+
 class MealHistory extends History<MealEntry> {
   MealHistory({required super.entries});
   MealHistory.empty() : super.empty();
+
+  /// Переходы на новый корм: для сухого и влажного корма по отдельности
+  /// отслеживается название, и как только оно меняется относительно
+  /// предыдущей по времени записи того же типа — фиксируется [FoodSwitch].
+  /// Первый корм каждого типа — точка отсчёта, а не переход.
+  List<FoodSwitch> foodSwitches() {
+    final commercial =
+        entries
+            .where(
+              (e) =>
+                  (e.kind == FoodKind.dry || e.kind == FoodKind.wet) &&
+                  e.foodName.trim().isNotEmpty,
+            )
+            .toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
+
+    final lastNameByKind = <FoodKind, String>{};
+    final switches = <FoodSwitch>[];
+    for (final e in commercial) {
+      final name = e.foodName.trim();
+      final prev = lastNameByKind[e.kind];
+      if (prev != null && prev.toLowerCase() != name.toLowerCase()) {
+        switches.add(
+          FoodSwitch(
+            date: e.date,
+            kind: e.kind,
+            fromName: prev,
+            toName: name,
+          ),
+        );
+      }
+      lastNameByKind[e.kind] = name;
+    }
+    return switches;
+  }
 
   /// Добавляет новую запись питания или, если запись с таким [id] уже есть
   /// (редактирование), заменяет её. В один приём пищи можно записать несколько

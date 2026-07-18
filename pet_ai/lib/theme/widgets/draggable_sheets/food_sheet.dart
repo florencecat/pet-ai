@@ -363,10 +363,22 @@ class _FoodSheetState extends State<FoodSheet> {
     if (mounted) setState(() => _history.deleteById(entry.id));
   }
 
+  /// Переходы на новый корм, сгруппированные по дню — чтобы показать сообщение
+  /// под заголовком соответствующей даты в истории.
+  Map<DateTime, List<FoodSwitch>> _switchesByDay() {
+    final map = <DateTime, List<FoodSwitch>>{};
+    for (final s in _history.foodSwitches()) {
+      final key = DateTime(s.date.year, s.date.month, s.date.day);
+      map.putIfAbsent(key, () => []).add(s);
+    }
+    return map;
+  }
+
   @override
   Widget build(BuildContext context) {
     final entries = _history.entries;
     final accent = context.watch<AppearanceController>().primaryColor;
+    final switchesByDay = _switchesByDay();
 
     return DraggableSheet(
       title: 'Дневник питания',
@@ -445,6 +457,20 @@ class _FoodSheetState extends State<FoodSheet> {
                 if (byTime != 0) return byTime;
                 return a.date.compareTo(b.date);
               },
+              // Сообщение(я) о переходе на новый корм — под заголовком даты.
+              groupHeaderBuilder: (context, day, _) {
+                final switches = switchesByDay[day];
+                if (switches == null || switches.isEmpty) return null;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var j = 0; j < switches.length; j++) ...[
+                      if (j > 0) const SizedBox(height: 8),
+                      _FoodSwitchBanner(info: switches[j]),
+                    ],
+                  ],
+                );
+              },
               itemBuilder: (context, e) => _FoodEntryCard(
                 entry: e,
                 onEdit: () => _showAddDialog(editEntry: e),
@@ -522,6 +548,52 @@ class _KindSelector extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+// ─── Food switch banner (переход на новый корм) ──────────────────────────────
+
+/// Консистентное сообщение о переходе на новый готовый корм (сухой/влажный).
+/// Показывается под заголовком даты, в цвете соответствующего типа корма.
+class _FoodSwitchBanner extends StatelessWidget {
+  final FoodSwitch info;
+
+  const _FoodSwitchBanner({required this.info});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = info.kind.color;
+    return SoftGlassPlate(
+      color: color.withAlpha(30),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            SoftRoundedIcon(icon: Icons.swap_horiz, color: color, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Переход на новый корм',
+                    style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: context.watch<AppearanceController>().secondaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${info.kind.label} · ${info.fromName} → ${info.toName}',
+                    style: context.subtitleStyle,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

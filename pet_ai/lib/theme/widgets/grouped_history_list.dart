@@ -16,11 +16,18 @@ class GroupedHistoryList<T extends BaseEntry> extends StatefulWidget {
   final Widget Function(BuildContext context, T entry) itemBuilder;
   final int Function(T a, T b)? sortWithinGroup;
 
+  /// Необязательная «шапка» группы — виджет под заголовком даты, над записями
+  /// этого дня (например, сообщение о переходе на новый корм). Возврат null —
+  /// шапки нет. [dayItems] уже отсортированы порядком группы.
+  final Widget? Function(BuildContext context, DateTime day, List<T> dayItems)?
+  groupHeaderBuilder;
+
   const GroupedHistoryList({
     super.key,
     required this.entries,
     required this.itemBuilder,
     this.sortWithinGroup,
+    this.groupHeaderBuilder,
   });
 
   @override
@@ -59,6 +66,11 @@ class _GroupedHistoryListState<T extends BaseEntry>
               final day = days[i];
               final items = groups[day]!..sort(compare);
               final expanded = !_collapsed.contains(day);
+              final header = widget.groupHeaderBuilder?.call(
+                context,
+                day,
+                items,
+              );
 
               return CollapsibleSection(
                 expanded: expanded,
@@ -86,7 +98,13 @@ class _GroupedHistoryListState<T extends BaseEntry>
                 body: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (header != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: header,
+                        ),
                       for (final e in items)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
