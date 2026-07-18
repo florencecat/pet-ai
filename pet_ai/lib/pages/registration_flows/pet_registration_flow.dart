@@ -223,7 +223,10 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
     // Переносим выбранное фото в постоянный каталог приложения (id уже есть).
     if (_photo != null) {
       try {
-        final path = await PetProfileService().saveAvatar(profile.id, _photo!.path);
+        final path = await PetProfileService().saveAvatar(
+          profile.id,
+          _photo!.path,
+        );
         profile.profileImage = File(path);
       } catch (_) {
         // Если не удалось — оставляем временный путь (не критично).
@@ -715,7 +718,7 @@ class _Step1 extends StatelessWidget {
                     !GetIt.instance<AuthService>().isAuthenticated) ...[
                   const SizedBox(height: 24),
                   _RestoreCloudLink(onTap: onRestore),
-                ]
+                ],
               ],
             ),
           ),
@@ -1281,20 +1284,15 @@ class _Step4State extends State<_Step4> {
                   color: const Color(0xFFE8B86A),
                   filled: widget.weightCtrl.text.trim().isNotEmpty,
                   child: Row(
+                    spacing: 8,
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: _OnboardingField(
                           controller: widget.weightCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(
+                          hint: 'Например, 4.2',
+                          onChanged: () => setState(() {}),
+                          inputType: const TextInputType.numberWithOptions(
                             decimal: true,
-                          ),
-                          onChanged: (_) => setState(() {}),
-                          cursorColor: ac.secondaryColor,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                          decoration: const InputDecoration(
-                            hintText: 'Например, 4.2',
-                            isDense: true,
-                            border: InputBorder.none,
                           ),
                         ),
                       ),
@@ -1363,7 +1361,9 @@ class _Step4State extends State<_Step4> {
                                   const SizedBox(width: 6),
                                   Text(
                                     kind.shortLabel,
-                                    style: Theme.of(context).textTheme.bodySmall!
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall!
                                         .copyWith(
                                           color: selected
                                               ? kind.color
@@ -1396,14 +1396,12 @@ class _Step4State extends State<_Step4> {
                     children: [
                       _OnboardingField(
                         controller: widget.allergiesCtrl,
-                        label: 'Аллергии',
                         hint: 'Например, курица, пыльца',
                         onChanged: () => setState(() {}),
                       ),
                       const SizedBox(height: 10),
                       _OnboardingField(
                         controller: widget.chronicCtrl,
-                        label: 'Хронические болезни',
                         hint: 'Например, МКБ',
                         onChanged: () => setState(() {}),
                       ),
@@ -1462,7 +1460,7 @@ class _OptionalExpandCardState extends State<_OptionalExpandCard> {
           color: active
               ? widget.color.withAlpha(128)
               : ac.primaryColor.withAlpha(92),
-          width: 1.5,
+          width: 2,
         ),
       ),
       child: Column(
@@ -1527,15 +1525,15 @@ class _OptionalExpandCardState extends State<_OptionalExpandCard> {
 
 class _OnboardingField extends StatelessWidget {
   final TextEditingController controller;
-  final String label;
   final String hint;
   final VoidCallback onChanged;
+  final TextInputType? inputType;
 
   const _OnboardingField({
     required this.controller,
-    required this.label,
     required this.hint,
     required this.onChanged,
+    this.inputType,
   });
 
   @override
@@ -1545,10 +1543,18 @@ class _OnboardingField extends StatelessWidget {
       controller: controller,
       onChanged: (_) => onChanged(),
       cursorColor: ac.secondaryColor,
+      keyboardType: inputType,
       style: Theme.of(context).textTheme.bodyMedium,
       minLines: 1,
       maxLines: 3,
-      decoration: baseInputDecoration(context, hint: hint, textStyle: context.subtitleStyle, useBorder: true),
+      decoration: baseInputDecoration(
+        context,
+        hint: hint,
+        textStyle: Theme.of(
+          context,
+        ).textTheme.bodyMedium!.copyWith(color: context.subtitleColor),
+        useBorder: true,
+      ),
     );
   }
 }
