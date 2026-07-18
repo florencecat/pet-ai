@@ -1364,17 +1364,24 @@ class _EventTileCard extends StatelessWidget {
               children: [
                 if (!event.fromNote) ...[
                   // ── Time ─────────────────────────────────────────────────
-                  FittedBox(
-                    child: Text(
-                      time,
-                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                        color: overdue
-                            ? ThemeColors.dangerZone
-                            : context
-                                  .watch<AppearanceController>()
-                                  .secondaryColor,
+                  // Фиксированная ширина, чтобы сплиттер стоял на одном месте у
+                  // всех карточек (время и «Весь день» имеют разную ширину, и
+                  // без этого вертикальные линии не выстраиваются в ряд).
+                  SizedBox(
+                    width: 52,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        time,
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                          color: overdue
+                              ? ThemeColors.dangerZone
+                              : context
+                                    .watch<AppearanceController>()
+                                    .secondaryColor,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ),
 
