@@ -13,6 +13,8 @@ class WeightChart extends StatelessWidget {
   final List<WeightEntry> entries;
   final double height;
 
+  static const int minHistoryLength = 2;
+
   const WeightChart({super.key, required this.entries, this.height = 200});
 
   List<FlSpot> _buildSpots() {
@@ -27,7 +29,7 @@ class WeightChart extends StatelessWidget {
     if (entries.isEmpty) {
       return const ChartPlaceholder(message: 'История веса пока пуста');
     }
-    if (entries.length <= 2) {
+    if (entries.length <= minHistoryLength) {
       return const ChartPlaceholder(
         message: 'Слишком мало записей для графика',
       );

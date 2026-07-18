@@ -167,7 +167,11 @@ class HealthPageState extends State<HealthPage> {
       _isLoadingProfile = false;
       _hasMultipleProfiles = hasMultipleProfiles;
 
-      _weightExpanded = _profile!.weightHistory.entries.isNotEmpty;
+      if (_profile!.weightHistory.entries.isNotEmpty &&
+          _profile!.weightHistory.entries.length >
+              WeightChart.minHistoryLength) {
+        _weightExpanded = false;
+      }
     });
 
     final weightStatus = profile.weightHistory.lastWeightString();
