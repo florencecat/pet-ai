@@ -75,11 +75,16 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
 
   Future<void> _openIconPicker() async {
     final accent = context.read<AppearanceController>().primaryColor;
+    // При создании новой прививки нельзя занять цвет уже существующей группы.
+    final disabledColors = widget.purpose == TreatmentDialogPurpose.create
+        ? widget.profile.treatmentHistory.vaccineColors()
+        : <int>{};
     final result = await showTreatmentIconPicker(
       context,
       initialKind: _kind,
       initialColor: _color,
       accent: accent,
+      disabledColors: disabledColors,
     );
     if (result != null) {
       setState(() {
@@ -118,9 +123,25 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
   }
 
   Future<void> _save() async {
-    if (_kind == TreatmentKind.vaccine && _nameCtrl.text.trim().isEmpty) {
-      showAppToast(context, 'Введите название прививки');
-      return;
+    if (_kind == TreatmentKind.vaccine) {
+      if (_nameCtrl.text.trim().isEmpty) {
+        showAppToast(context, 'Введите название прививки');
+        return;
+      }
+      // Новая прививка не должна занимать цвет другой группы прививок.
+      if (widget.purpose == TreatmentDialogPurpose.create &&
+          _color != null &&
+          widget.profile.treatmentHistory.vaccineColors().contains(_color)) {
+        showAppToast(context, 'Этот цвет уже занят другой прививкой');
+        return;
+      }
+      // Пока что запрет на добавление прививок с повторяющимся названием
+      if (widget.profile.treatmentHistory.vaccineGroups().any(
+        (v) => v.name == _nameCtrl.text,
+      )) {
+        showAppToast(context, 'Прививка с таким уже названием существует');
+        return;
+      }
     }
 
     setState(() => _saving = true);
@@ -303,6 +324,9 @@ class _CreateTreatmentState extends State<CreateTreatmentDialog> {
                 ),
               TextField(
                 controller: _nameCtrl,
+                // В append имя переиспользуется из группы — менять его нельзя,
+                // иначе запись уйдёт в другую группу.
+                readOnly: widget.purpose == TreatmentDialogPurpose.append,
                 decoration: baseInputDecoration(context, hint: 'Название'),
               ),
             ],
@@ -571,7 +595,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
           SoftGlassButton(
             icon: Icons.add_circle_outline_rounded,
             title: 'Добавить новую запись',
-            subtitle: 'В категорию "${widget.kind.label}"',
+            subtitle: 'В категорию "$_title"',
             onTap: () => _createTreatment(context, latest!),
           ),
 
@@ -584,9 +608,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
               final entry = mapEntry.value;
               final isLast = i == _entries.length - 1;
               // Интервал (в днях) до следующей, более старой обработки.
-              final gapDays = isLast
-                  ? 0
-                  : _dayGap(entry, _entries[i + 1]);
+              final gapDays = isLast ? 0 : _dayGap(entry, _entries[i + 1]);
 
               return IntrinsicHeight(
                 child: Row(
@@ -677,10 +699,7 @@ class _TreatmentDetailSheetState extends State<TreatmentDetailSheet> {
                                           ),
                                         ),
                                       ),
-                                      if (gapDays > 0)
-                                        _GapBadge(
-                                          days: gapDays,
-                                        ),
+                                      if (gapDays > 0) _GapBadge(days: gapDays),
                                     ],
                                   ),
                           ),

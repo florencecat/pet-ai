@@ -537,9 +537,16 @@ class HealthPageState extends State<HealthPage> {
 
     List<TreatmentEntry> activeTreatments = [];
     for (var kind in TreatmentKind.values) {
-      final entry = _profile?.treatmentHistory.lastOfKind(kind);
-      if (entry != null) {
-        activeTreatments.add(entry);
+      if (kind == TreatmentKind.vaccine) {
+        // Прививки разбиваются по названию — по карточке на каждую группу.
+        activeTreatments.addAll(
+          _profile?.treatmentHistory.vaccineGroups() ?? const [],
+        );
+      } else {
+        final entry = _profile?.treatmentHistory.lastOfKind(kind);
+        if (entry != null) {
+          activeTreatments.add(entry);
+        }
       }
     }
 
@@ -1331,7 +1338,8 @@ class _TreatmentStatusTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      kind.label,
+                      // Для прививок — название группы, для остального — тип.
+                      lastEntry?.displayName ?? kind.label,
                       style: Theme.of(context).textTheme.titleSmall!.copyWith(
                         fontWeight: FontWeight.w600,
                       ),

@@ -46,11 +46,16 @@ class TreatmentIconSelection {
 }
 
 /// Пикер вида (тип обработки) + цвета. Возвращает null при отмене.
+///
+/// [disabledColors] — цвета (ARGB int), которые нельзя выбрать для прививки
+/// (kind=vaccine): они уже заняты другими группами прививок. На остальные виды
+/// обработок ограничение не распространяется.
 Future<TreatmentIconSelection?> showTreatmentIconPicker(
   BuildContext context, {
   required TreatmentKind initialKind,
   int? initialColor,
   required Color accent,
+  Set<int> disabledColors = const {},
 }) {
   return showModalBottomSheet<TreatmentIconSelection>(
     context: context,
@@ -61,6 +66,7 @@ Future<TreatmentIconSelection?> showTreatmentIconPicker(
       initialKind: initialKind,
       initialColor: initialColor,
       accent: accent,
+      disabledColors: disabledColors,
     ),
   );
 }
@@ -69,11 +75,13 @@ class _TreatmentIconPickerSheet extends StatefulWidget {
   final TreatmentKind initialKind;
   final int? initialColor;
   final Color accent;
+  final Set<int> disabledColors;
 
   const _TreatmentIconPickerSheet({
     required this.initialKind,
     required this.initialColor,
     required this.accent,
+    this.disabledColors = const {},
   });
 
   @override
@@ -85,12 +93,26 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
   late TreatmentKind _kind;
   late int _color;
 
+  /// Занят ли цвет для текущего вида. Ограничение работает только для прививок.
+  bool _isDisabled(int value) =>
+      _kind == TreatmentKind.vaccine && widget.disabledColors.contains(value);
+
+  /// Первый незанятый цвет палитры (для авто-переключения на доступный).
+  int _firstAvailableColor() {
+    for (final c in PillColors.palette) {
+      final v = PillColors.toValue(c);
+      if (!widget.disabledColors.contains(v)) return v;
+    }
+    return _color;
+  }
+
   @override
   void initState() {
     super.initState();
     _kind = widget.initialKind;
     _color =
         widget.initialColor ?? PillColors.toValue(PillColors.palette.first);
+    if (_isDisabled(_color)) _color = _firstAvailableColor();
   }
 
   @override
@@ -149,37 +171,49 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                       children: PillColors.palette.map((c) {
                         final value = PillColors.toValue(c);
                         final selected = value == _color;
+                        final disabled = _isDisabled(value);
                         return GestureDetector(
-                          onTap: () => setState(() => _color = value),
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: c,
-                              border: Border.all(
-                                color: selected
-                                    ? Colors.white
-                                    : Colors.transparent,
-                                width: 2.5,
+                          onTap: disabled
+                              ? null
+                              : () => setState(() => _color = value),
+                          child: Opacity(
+                            opacity: disabled ? 0.3 : 1,
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: c,
+                                border: Border.all(
+                                  color: selected
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  width: 2.5,
+                                ),
+                                boxShadow: selected
+                                    ? [
+                                        BoxShadow(
+                                          color: c.withAlpha(140),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
                               ),
-                              boxShadow: selected
-                                  ? [
-                                      BoxShadow(
-                                        color: c.withAlpha(140),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
+                              child: disabled
+                                  ? const Icon(
+                                      Icons.block,
+                                      color: Colors.white,
+                                      size: 18,
+                                    )
+                                  : selected
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 18,
+                                    )
                                   : null,
                             ),
-                            child: selected
-                                ? const Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 18,
-                                  )
-                                : null,
                           ),
                         );
                       }).toList(),
@@ -201,7 +235,14 @@ class _TreatmentIconPickerSheetState extends State<_TreatmentIconPickerSheet> {
                         final selected = k == _kind;
                         final c = Color(_color);
                         return GestureDetector(
-                          onTap: () => setState(() => _kind = k),
+                          onTap: () => setState(() {
+                            _kind = k;
+                            // Переключились на прививку, а текущий цвет занят —
+                            // сразу берём первый доступный.
+                            if (_isDisabled(_color)) {
+                              _color = _firstAvailableColor();
+                            }
+                          }),
                           child: Container(
                             decoration: BoxDecoration(
                               color: selected

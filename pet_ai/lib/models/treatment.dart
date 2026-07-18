@@ -229,6 +229,26 @@ class TreatmentHistory extends History<TreatmentEntry> {
     return filtered;
   }
 
+  /// Прививки (kind=vaccine) сгруппированы по названию: по одной — последней —
+  /// записи на каждое уникальное название. Отсортированы по названию.
+  List<TreatmentEntry> vaccineGroups() {
+    final byName = <String, TreatmentEntry>{};
+    for (final e in entries) {
+      if (e.kind != TreatmentKind.vaccine) continue;
+      final existing = byName[e.name];
+      if (existing == null || e.date.isAfter(existing.date)) {
+        byName[e.name] = e;
+      }
+    }
+    return byName.values.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  }
+
+  /// Цвета (ARGB int), уже занятые группами прививок — по одному на название.
+  /// По ним проверяется уникальность цвета при создании новой прививки.
+  Set<int> vaccineColors() =>
+      vaccineGroups().map((e) => e.displayColor.toARGB32()).toSet();
+
   static final treatmentSerializer = HistorySerializer<TreatmentEntry>(
     fromJson: TreatmentEntry.fromJson,
   );
