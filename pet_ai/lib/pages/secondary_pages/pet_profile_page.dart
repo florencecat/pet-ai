@@ -155,6 +155,7 @@ class _PetProfilePageState extends State<PetProfilePage> {
     final result = await _showCastrationSheet(
       context,
       castrated: _profile!.castrated,
+      gender: _profile!.gender,
       date: _profile!.castratedDate,
     );
     if (result != null) {
@@ -811,6 +812,7 @@ Future<void> _showGenderSheet(
 Future<(bool, DateTime?)?> _showCastrationSheet(
   BuildContext context, {
   required bool castrated,
+  required Gender gender,
   DateTime? date,
 }) async {
   return showModalBottomSheet<(bool, DateTime?)>(
@@ -818,7 +820,8 @@ Future<(bool, DateTime?)?> _showCastrationSheet(
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black54,
     isScrollControlled: true,
-    builder: (ctx) => _CastrationSheet(castrated: castrated, date: date),
+    builder: (ctx) =>
+        _CastrationSheet(castrated: castrated, gender: gender, date: date),
   );
 }
 
@@ -1071,7 +1074,12 @@ class _GenderSheetState extends State<_GenderSheet> {
 class _CastrationSheet extends StatefulWidget {
   final bool castrated;
   final DateTime? date;
-  const _CastrationSheet({required this.castrated, this.date});
+  final Gender gender;
+  const _CastrationSheet({
+    required this.castrated,
+    required this.gender,
+    this.date,
+  });
 
   @override
   State<_CastrationSheet> createState() => _CastrationSheetState();
@@ -1141,7 +1149,12 @@ class _CastrationSheetState extends State<_CastrationSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Стерилизован(а)', style: theme.textTheme.bodyMedium),
+                Text(
+                  widget.gender == Gender.female
+                      ? 'Стерилизована'
+                      : 'Стерилизован',
+                  style: theme.textTheme.bodyMedium,
+                ),
                 OutlinedSwitch(
                   value: _castrated,
                   onChanged: (v) => setState(() {
