@@ -16,7 +16,6 @@ import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
-import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
@@ -26,6 +25,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/health_trackers.dart';
 import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/profile_switcher_sheet.dart';
 import 'package:pet_satellite/theme/widgets/weight_chart.dart';
@@ -54,6 +54,7 @@ class HealthPageState extends State<HealthPage> {
   double? _weightDynamics;
   String? _moodStatus;
   String? _foodStatus;
+  String? _foodName;
 
   /// Ids of health badges the user has dismissed.
   Set<String> _dismissedBadgeIds = {};
@@ -73,6 +74,13 @@ class HealthPageState extends State<HealthPage> {
   bool _treatmentsExpanded = true;
   bool _pillsExpanded = true;
 
+  /// Настройки блока трекеров: закреплённые (до 2) и сколько показывать под
+  /// закреплёнными (1–4). Персистятся отдельно ([HealthTrackersConfig]).
+  List<HealthTrackerId> _pinnedTrackers = List.of(
+    HealthTrackersConfig.defaultPinned,
+  );
+  int _trackerVisibleCount = HealthTrackersConfig.defaultCount;
+
   static const _kWeightExpanded = 'health_section_weight';
   static const _kTreatmentsExpanded = 'health_section_treatments';
   static const _kPillsExpanded = 'health_section_pills';
@@ -86,11 +94,14 @@ class HealthPageState extends State<HealthPage> {
 
   Future<void> _loadSectionStates() async {
     final prefs = await SharedPreferences.getInstance();
+    final trackersConfig = await HealthTrackersConfig.load();
     if (!mounted) return;
     setState(() {
       _weightExpanded = prefs.getBool(_kWeightExpanded);
       _treatmentsExpanded = prefs.getBool(_kTreatmentsExpanded) ?? true;
       _pillsExpanded = prefs.getBool(_kPillsExpanded) ?? true;
+      _pinnedTrackers = trackersConfig.pinned;
+      _trackerVisibleCount = trackersConfig.visibleCount;
     });
   }
 
@@ -177,6 +188,7 @@ class HealthPageState extends State<HealthPage> {
     final weightStatus = profile.weightHistory.lastWeightString();
     final weightDynamics = profile.weightHistory.weightDynamic();
     final foodStatus = await PetProfileService().lastFoodString();
+    final foodName = profile.foodHistory.lastEntry?.foodName;
     final moodStatus = await PetProfileService().lastMoodString();
     final events = await EventService().loadEvents(profile.id);
     final dismissedBadgeIds = await HealthAnalyzer.loadDismissed(_profile!.id);
@@ -198,6 +210,7 @@ class HealthPageState extends State<HealthPage> {
       _weightStatus = weightStatus;
       _weightDynamics = weightDynamics;
       _foodStatus = foodStatus;
+      _foodName = foodName;
       _moodStatus = moodStatus;
       _dismissedBadgeIds = dismissedSet;
       _healthBadges = healthBadges;
@@ -522,6 +535,63 @@ class HealthPageState extends State<HealthPage> {
     );
   }
 
+  // ── Trackers ─────────────────────────────────────────────────────────────
+
+  /// Собирает трекеры в каноническом порядке. Реальные — вес/питание/настроение
+  /// (открывают свои листы), плейсхолдеры — прогулки/течка/симптом.
+  List<HealthTrackerWidget> _buildTrackers() {
+    final p = _profile;
+    final lastMood = p?.moodHistory.lastEntry;
+    return [
+      WeightTracker(
+        empty: p == null || p.weightHistory.entries.isEmpty,
+        value: _weightStatus,
+        dynamics: _weightDynamics,
+        onTap: p != null ? () => _openWeightHistory(context) : null,
+      ),
+      FoodTracker(
+        empty: p == null || p.foodHistory.entries.isEmpty,
+        value: _foodStatus,
+        foodName: _foodName,
+        onTap: p != null ? () => _openFoodHistory(context) : null,
+      ),
+      MoodTracker(
+        empty: p == null || p.moodHistory.entries.isEmpty,
+        value: _moodStatus,
+        icon: lastMood?.mood.icon ?? Icons.sentiment_very_satisfied_outlined,
+        dateLabel: lastMood != null
+            ? '${formatSmartDate(lastMood.date, pattern: 'd MMMM')} · ${lastMood.dayPart.label}'
+            : null,
+        onTap: p != null ? () => _openMoodHistory(context) : null,
+      ),
+      WalkTracker(),
+      HeatTracker(),
+      SymptomTracker(),
+    ];
+  }
+
+  void _openConfigureTrackers(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ConfigureTrackersSheet(
+        trackers: _buildTrackers(),
+        initialPinned: _pinnedTrackers,
+        initialCount: _trackerVisibleCount,
+        onChanged: (pinned, count) {
+          setState(() {
+            _pinnedTrackers = List.of(pinned);
+            _trackerVisibleCount = count;
+          });
+          HealthTrackersConfig.save(pinned, count);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ({String caption, String label, ColorPalette palette, IconData icon})?
@@ -592,7 +662,9 @@ class HealthPageState extends State<HealthPage> {
                             Flexible(
                               child: Text(
                                 _profile!.name,
-                                style: Theme.of(context).textTheme.headlineMedium!
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium!
                                     .copyWith(
                                       inherit: true,
                                       fontWeight: FontWeight.w900,
@@ -639,54 +711,12 @@ class HealthPageState extends State<HealthPage> {
               const SizedBox(height: 16),
             ],
 
-            // ── Сегодня ───────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 8),
-              child: Text(
-                'Сегодня',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-
-            IntrinsicHeight(
-              child: Row(
-                spacing: 8,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _HealthActionButton(
-                    callback: () => _openWeightHistory(context),
-                    icon: FontAwesome.weight,
-                    iconColor: ThemeColors.weightIconColor,
-                    caption: _weightStatus,
-                    bottomWidget: _weightDynamics != null
-                        ? dynamicsBadge(_weightDynamics!, context.subtitleStyle)
-                        : null,
-                  ),
-                  _HealthActionButton(
-                    callback: () => _openMoodHistory(context),
-                    icon: _profile?.moodHistory.lastEntry != null
-                        ? _profile!.moodHistory.lastEntry!.mood.icon
-                        : Icons.sentiment_very_satisfied_outlined,
-                    iconColor: ThemeColors.moodIconColor,
-                    caption: _moodStatus,
-                    bottomWidget:
-                        _profile != null &&
-                            _profile!.moodHistory.lastEntry != null
-                        ? Text(
-                            '${formatSmartDate(_profile!.moodHistory.lastEntry!.date, pattern: 'd MMMM')}'
-                            ' · ${_profile!.moodHistory.lastEntry!.dayPart.label}',
-                            style: context.subtitleStyle,
-                          )
-                        : null,
-                  ),
-                  _HealthActionButton(
-                    callback: () => _openFoodHistory(context),
-                    icon: Icons.fastfood,
-                    iconColor: ThemeColors.foodIconColor,
-                    caption: _foodStatus,
-                  ),
-                ],
-              ),
+            // ── Мои трекеры ───────────────────────────────────────────────
+            HealthTrackersSection(
+              trackers: _buildTrackers(),
+              pinnedIds: _pinnedTrackers,
+              visibleCount: _trackerVisibleCount,
+              onConfigure: () => _openConfigureTrackers(context),
             ),
 
             const SizedBox(height: 20),
@@ -1176,58 +1206,6 @@ class _AlertBanner extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Кнопка быстрого действия ─────────────────────────────────────────────────
-
-class _HealthActionButton extends StatelessWidget {
-  final VoidCallback callback;
-  final IconData icon;
-  final Color iconColor;
-  final String? caption;
-  final Widget? bottomWidget;
-
-  const _HealthActionButton({
-    required this.callback,
-    required this.icon,
-    required this.iconColor,
-    required this.caption,
-    this.bottomWidget,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final softIcon = SoftRoundedIcon(icon: icon, color: iconColor, size: 18);
-
-    return Expanded(
-      child: GlassCard(
-        transparent: true,
-        padding: 16,
-        callback: callback,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [softIcon]),
-            const SizedBox(height: 8),
-            if (caption != null)
-              Text(
-                caption!,
-                textAlign: TextAlign.left,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium!.copyWith(inherit: true, fontSize: 16),
-              ),
-
-            if (bottomWidget != null) ...[
-              const SizedBox(height: 6),
-              bottomWidget!,
-            ],
-          ],
         ),
       ),
     );

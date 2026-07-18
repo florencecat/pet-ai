@@ -783,13 +783,14 @@ class SoftGlassButton extends StatelessWidget {
 }
 
 class InfoGlassPlate extends StatelessWidget {
-  final Color color;
+  final Color? color;
   final String label;
 
-  const InfoGlassPlate({super.key, required this.color, required this.label});
+  const InfoGlassPlate({super.key, this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.watch<AppearanceController>().primaryColor;
     return SoftGlassPlate(
       color: color.withAlpha(30),
       child: Padding(
