@@ -803,24 +803,3 @@ class _ConfigRow extends StatelessWidget {
     );
   }
 }
-
-class _EmptyHintPlate extends StatelessWidget {
-  final String text;
-
-  const _EmptyHintPlate({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassPlate(
-      useShadow: false,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: context.subtitleStyle,
-        ),
-      ),
-    );
-  }
-}
