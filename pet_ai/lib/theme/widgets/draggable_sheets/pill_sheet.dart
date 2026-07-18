@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/remindable.dart';
@@ -26,6 +27,7 @@ import 'package:pet_satellite/services/pb_service.dart';
 class _PillFormState {
   final TextEditingController nameCtrl;
   final TextEditingController doseAmountCtrl;
+  final TextEditingController descCtrl;
   PillKind? kind;
   int? color;
   DoseUnit doseUnit;
@@ -51,6 +53,7 @@ class _PillFormState {
     this.color,
     String doseAmount = '',
     DoseUnit? doseUnit,
+    String? description,
     this.doseUnitTouched = false,
     this.frequency = PillFrequencyType.daily,
     Set<int>? weekdays,
@@ -62,6 +65,7 @@ class _PillFormState {
     this.remindBeforeVariant = RemindBeforeVariant.minutes,
   }) : nameCtrl = TextEditingController(text: name),
        doseAmountCtrl = TextEditingController(text: doseAmount),
+       descCtrl = TextEditingController(text: description),
        doseUnit = doseUnit ?? DoseUnit.forKind(kind).first,
        weekdays = weekdays ?? {1, 2, 3, 4, 5},
        schedules = schedules ?? [PillSchedule(hour: 9, minute: 0)],
@@ -74,6 +78,7 @@ class _PillFormState {
     color: r.color,
     doseAmount: r.doseValue == 0 ? '' : r.doseValue.toString(),
     doseUnit: r.doseUnit,
+    description: r.description,
     // Если у препарата уже задана единица — считаем её выбранной пользователем,
     // чтобы не сбросить при смене вида.
     doseUnitTouched: r.doseUnit.id != 'none',
@@ -93,6 +98,7 @@ class _PillFormState {
   void dispose() {
     nameCtrl.dispose();
     doseAmountCtrl.dispose();
+    descCtrl.dispose();
   }
 }
 
@@ -236,6 +242,7 @@ class _PillDialogState extends State<PillDialog> {
     setState(() => _saving = true);
 
     final name = _form.nameCtrl.text.trim();
+    final description = _form.descCtrl.text.trim();
     // Пересоздавать расписания нельзя: вместе с ними потерялись бы id (а с ним
     // отметки о приёме) и eventId (связь с событием календаря).
     final schedules = List.of(_form.schedules)
@@ -257,6 +264,7 @@ class _PillDialogState extends State<PillDialog> {
           color: _form.color,
           doseValue: _form.doseValue,
           doseUnit: _form.doseUnit,
+          description: description,
           frequencyType: _form.frequency,
           weekdays: weekdays,
           schedules: schedules,
@@ -278,6 +286,7 @@ class _PillDialogState extends State<PillDialog> {
         color: _form.color,
         doseValue: _form.doseValue,
         doseUnit: _form.doseUnit,
+        description: description,
         frequencyType: _form.frequency,
         weekdays: weekdays,
         schedules: schedules,
@@ -731,8 +740,7 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
         spacing: 4,
         children: [
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          if (!expanded)
-            CountBadge(count: reminders.length),
+          if (!expanded) CountBadge(count: reminders.length),
         ],
       ),
       body: Column(
@@ -815,6 +823,22 @@ class _PillReminderSheetState extends State<PillReminderSheet> {
                       ? Color(reminder.color!)
                       : accent,
                   label: reminder.kind!.name,
+                ),
+                Divider(
+                  height: 1,
+                  indent: 46,
+                  color: context
+                      .watch<AppearanceController>()
+                      .secondaryColor
+                      .withAlpha(60),
+                ),
+              ],
+              if (reminder.description != null &&
+                  reminder.description!.isNotEmpty) ...[
+                _DetailRow(
+                  icon: Icons.description_outlined,
+                  iconColor: accent,
+                  label: reminder.description!,
                 ),
                 Divider(
                   height: 1,
@@ -1124,7 +1148,14 @@ class _PillForm extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         _DoseField(form: form, accent: accent, onChanged: onChanged),
-
+        const SizedBox(height: 10),
+        TextField(
+          controller: form.descCtrl,
+          decoration: baseInputDecoration(context, hint: 'Описание приёма'),
+          maxLines: 3,
+          textCapitalization: TextCapitalization.sentences,
+          maxLength: 100,
+        ),
         const SizedBox(height: 12),
         Text('Периодичность', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 6),

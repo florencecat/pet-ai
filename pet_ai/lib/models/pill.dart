@@ -388,6 +388,9 @@ class Pill with Remindable implements PbEntity {
   /// Для остальных видов всегда пустой.
   final List<PillIntake> intakes;
 
+  /// Описание таблетки, способа приема, доп. сведения по дозировке и т.д.
+  final String? description;
+
   /// «Напомнить за» до каждого приёма (по умолчанию — точно во время приёма).
   @override
   final int remindBeforeValue;
@@ -410,6 +413,7 @@ class Pill with Remindable implements PbEntity {
     this.color,
     this.doseValue = 0,
     this.doseUnit = DoseUnit.none,
+    this.description,
     required this.frequencyType,
     required this.weekdays,
     required this.schedules,
@@ -536,6 +540,7 @@ class Pill with Remindable implements PbEntity {
     bool clearColor = false,
     int? doseValue,
     DoseUnit? doseUnit,
+    String? description,
     PillFrequencyType? frequencyType,
     List<int>? weekdays,
     List<PillSchedule>? schedules,
@@ -553,6 +558,7 @@ class Pill with Remindable implements PbEntity {
     color: clearColor ? null : (color ?? this.color),
     doseValue: doseValue ?? this.doseValue,
     doseUnit: doseUnit ?? this.doseUnit,
+    description: description ?? this.description,
     frequencyType: frequencyType ?? this.frequencyType,
     weekdays: weekdays ?? this.weekdays,
     schedules: schedules ?? this.schedules,
@@ -614,6 +620,9 @@ class Pill with Remindable implements PbEntity {
       color: _parseColor(json['color']),
       doseValue: _parseDoseValue(json['doseValue'], json['dose']),
       doseUnit: _parseDoseUnit(json['doseUnit'], json['dose']),
+      description: json['description'] != null
+          ? json['description'] as String
+          : null,
       frequencyType: frequencyType,
       weekdays: (json['weekdays'] as List<dynamic>?)?.cast<int>() ?? [],
       schedules: schedules,
@@ -686,6 +695,7 @@ class Pill with Remindable implements PbEntity {
     'color': color,
     'doseValue': doseValue,
     'doseUnit': doseUnit.id,
+    'description': description,
     // Legacy-зеркало для старых сборок, читающих строковую дозу.
     'dose': doseLabel,
     'frequencyType': frequencyType.name,
@@ -711,6 +721,7 @@ class Pill with Remindable implements PbEntity {
     "pet": ownerId,
     "dose_value": doseValue,
     "dose_unit": doseUnit.id,
+    'description': description,
     // Legacy-зеркало (human-readable) для старых клиентов.
     "dose": doseLabel,
     "frequency": frequencyType.name,
@@ -787,6 +798,7 @@ class _PillReminderCodec extends PbCodec<Pill> {
       color: Pill._parseColor(data['color']),
       doseValue: Pill._parseDoseValue(data['dose_value'], data['dose']),
       doseUnit: Pill._parseDoseUnit(data['dose_unit'], data['dose']),
+      description: data['description'] as String,
       frequencyType: frequencyType,
       weekdays: weekdays,
       schedules: schedules,
