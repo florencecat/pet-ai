@@ -375,31 +375,36 @@ class _HealthTrackersSectionState extends State<HealthTrackersSection> {
         ),
 
         // ── Закреплённые (крупно) ───────────────────────────────────────────
-        if (pinned.isNotEmpty) ...[
-          _PinnedGrid(pinned: pinned),
-          const SizedBox(height: 12),
-        ],
+        // Всегда два слота: пустые показываем как карточки-заглушки.
+        _PinnedGrid(pinned: pinned, onConfigure: widget.onConfigure),
+        const SizedBox(height: 12),
 
         // ── Компактный список остальных ─────────────────────────────────────
+        // AnimatedSize плавно тянет высоту при разворачивании/сворачивании.
         if (visible.isNotEmpty || hiddenCount > 0)
           GlassPlate(
             useShadow: false,
             padding: 0,
-            child: Column(
-              children: [
-                for (var i = 0; i < visible.length; i++) ...[
-                  if (i > 0) const _RowDivider(),
-                  visible[i].mini(context),
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: Column(
+                children: [
+                  for (var i = 0; i < visible.length; i++) ...[
+                    if (i > 0) const _RowDivider(),
+                    visible[i].mini(context),
+                  ],
+                  if (hiddenCount > 0 || _expanded) ...[
+                    const _RowDivider(),
+                    _ExpandToggle(
+                      expanded: _expanded,
+                      hiddenCount: hiddenCount,
+                      onTap: () => setState(() => _expanded = !_expanded),
+                    ),
+                  ],
                 ],
-                if (hiddenCount > 0 || _expanded) ...[
-                  const _RowDivider(),
-                  _ExpandToggle(
-                    expanded: _expanded,
-                    hiddenCount: hiddenCount,
-                    onTap: () => setState(() => _expanded = !_expanded),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
       ],
@@ -409,20 +414,69 @@ class _HealthTrackersSectionState extends State<HealthTrackersSection> {
 
 class _PinnedGrid extends StatelessWidget {
   final List<HealthTrackerWidget> pinned;
+  final VoidCallback onConfigure;
 
-  const _PinnedGrid({required this.pinned});
+  const _PinnedGrid({required this.pinned, required this.onConfigure});
 
   @override
   Widget build(BuildContext context) {
-    if (pinned.length == 1) return pinned.first.expanded(context);
+    final slots = <Widget>[];
+    for (var i = 0; i < HealthTrackersConfig.maxPinned; i++) {
+      if (i > 0) slots.add(const SizedBox(width: 12));
+      slots.add(
+        Expanded(
+          child: i < pinned.length
+              ? pinned[i].expanded(context)
+              : _PinnedPlaceholderCard(onTap: onConfigure),
+        ),
+      );
+    }
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: pinned[0].expanded(context)),
-          const SizedBox(width: 12),
-          Expanded(child: pinned[1].expanded(context)),
-        ],
+        children: slots,
+      ),
+    );
+  }
+}
+
+/// Заглушка пустого слота закреплённого трекера — пунктирная карточка в стиле
+/// приложения. Тап открывает лист настройки.
+class _PinnedPlaceholderCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _PinnedPlaceholderCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final secondary = context.watch<AppearanceController>().secondaryColor;
+    return Pressable(
+      haptic: HapticStrength.selection,
+      scale: 0.97,
+      onTap: onTap,
+      child: _DashedCard(
+        minHeight: 92,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.push_pin_outlined,
+              size: 20,
+              color: secondary.withAlpha(150),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Закрепить трекер',
+              style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                inherit: true,
+                fontSize: 16,
+                color: secondary.withAlpha(160),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -572,7 +626,11 @@ class HealthTrackerRow extends StatelessWidget {
         ),
         subtitle: tracker.miniSubtitle(context),
         trailing: Icon(
-          !tracker.available ? null : tracker.empty ? Icons.add : Icons.chevron_right,
+          !tracker.available
+              ? null
+              : tracker.empty
+              ? Icons.add
+              : Icons.chevron_right,
           size: tracker.empty && tracker.available ? 20 : 22,
           color: secondary.withAlpha(160),
         ),
@@ -589,6 +647,130 @@ void _activate(BuildContext context, HealthTrackerWidget tracker) {
   } else if (!tracker.available) {
     showAppToast(context, 'Трекер «${tracker.title}» скоро появится');
   }
+}
+
+// ─── Пунктирная карточка ─────────────────────────────────────────────────────
+
+/// Прямоугольная карточка со скруглением и пунктирной обводкой — «в духе стиля
+/// приложения». [active] подсвечивает её (используется как цель перетаскивания).
+class _DashedCard extends StatelessWidget {
+  final Widget child;
+  final bool active;
+  final EdgeInsets padding;
+  final double minHeight;
+
+  const _DashedCard({
+    required this.child,
+    this.active = false,
+    this.padding = const EdgeInsets.all(14),
+    this.minHeight = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final base = context.watch<AppearanceController>().primaryColor;
+    final borderColor = active ? base : base.withAlpha(110);
+    return DashedBorder(
+      color: borderColor,
+      radius: 20,
+      strokeWidth: 1.6,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: minHeight),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: active ? base.withAlpha(20) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Пунктирная скруглённая рамка вокруг [child].
+class DashedBorder extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  final double radius;
+  final double strokeWidth;
+  final double dash;
+  final double gap;
+
+  const DashedBorder({
+    super.key,
+    required this.child,
+    required this.color,
+    this.radius = 20,
+    this.strokeWidth = 1.5,
+    this.dash = 6,
+    this.gap = 5,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashedRRectPainter(
+        color: color,
+        radius: radius,
+        strokeWidth: strokeWidth,
+        dash: dash,
+        gap: gap,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _DashedRRectPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+  final double strokeWidth;
+  final double dash;
+  final double gap;
+
+  _DashedRRectPainter({
+    required this.color,
+    required this.radius,
+    required this.strokeWidth,
+    required this.dash,
+    required this.gap,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final rrect = RRect.fromRectAndRadius(
+      (Offset(strokeWidth / 2, strokeWidth / 2) &
+          Size(size.width - strokeWidth, size.height - strokeWidth)),
+      Radius.circular(radius),
+    );
+    final path = Path()..addRRect(rrect);
+    for (final metric in path.computeMetrics()) {
+      var dist = 0.0;
+      while (dist < metric.length) {
+        final next = dist + dash;
+        canvas.drawPath(
+          metric.extractPath(dist, next.clamp(0.0, metric.length)),
+          paint,
+        );
+        dist = next + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter old) =>
+      old.color != color ||
+      old.radius != radius ||
+      old.strokeWidth != strokeWidth ||
+      old.dash != dash ||
+      old.gap != gap;
 }
 
 // ─── Лист настройки трекеров ──────────────────────────────────────────────────
@@ -618,16 +800,24 @@ class _ConfigureTrackersSheetState extends State<ConfigureTrackersSheet> {
   HealthTrackerWidget _byId(HealthTrackerId id) =>
       widget.trackers.firstWhere((t) => t.id == id);
 
-  void _togglePin(HealthTrackerWidget t) {
-    if (_pinned.contains(t.id)) {
-      setState(() => _pinned.remove(t.id));
-    } else {
-      if (_pinned.length >= HealthTrackersConfig.maxPinned) {
-        showAppToast(context, 'Можно закрепить не более 2 трекеров');
-        return;
-      }
-      setState(() => _pinned.add(t.id));
+  void _togglePin(HealthTrackerWidget t) =>
+      _pinned.contains(t.id) ? _unpin(t) : _pin(t);
+
+  /// Закрепляет трекер, если есть место. Возвращает false и показывает тост,
+  /// когда лимит закреплённых исчерпан.
+  bool _pin(HealthTrackerWidget t) {
+    if (_pinned.contains(t.id)) return true;
+    if (_pinned.length >= HealthTrackersConfig.maxPinned) {
+      showAppToast(context, 'Можно закрепить не более 2 трекеров');
+      return false;
     }
+    setState(() => _pinned.add(t.id));
+    widget.onChanged(_pinned, _count);
+    return true;
+  }
+
+  void _unpin(HealthTrackerWidget t) {
+    setState(() => _pinned.remove(t.id));
     widget.onChanged(_pinned, _count);
   }
 
@@ -654,22 +844,23 @@ class _ConfigureTrackersSheetState extends State<ConfigureTrackersSheet> {
           Text('Закреплённые', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'До 2 трекеров показываются крупными плитками',
+            'До 2 трекеров крупными плитками. Коснитесь пина или перетащите '
+            'трекер в пустой слот.',
             style: context.subtitleStyle,
           ),
           const SizedBox(height: 8),
-          if (pinnedTrackers.isEmpty)
-            InfoGlassPlate(label: 'Нажмите на трекер ниже, чтобы закрепить его')
-          else
-            for (final t in pinnedTrackers)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _ConfigRow(
-                  tracker: t,
-                  pinned: true,
-                  onTap: () => _togglePin(t),
-                ),
-              ),
+          // Всегда два слота: занятые — строкой, пустые — целью перетаскивания.
+          for (var i = 0; i < HealthTrackersConfig.maxPinned; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: i < pinnedTrackers.length
+                  ? _ConfigRow(
+                      tracker: pinnedTrackers[i],
+                      pinned: true,
+                      onTap: () => _togglePin(pinnedTrackers[i]),
+                    )
+                  : _PinnedDropSlot(onAccept: (id) => _pin(_byId(id))),
+            ),
 
           const SizedBox(height: 16),
 
@@ -689,10 +880,19 @@ class _ConfigureTrackersSheetState extends State<ConfigureTrackersSheet> {
           for (final t in rest)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _ConfigRow(
-                tracker: t,
-                pinned: false,
-                onTap: () => _togglePin(t),
+              child: LongPressDraggable<HealthTrackerId>(
+                data: t.id,
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                feedback: _DragFeedback(tracker: t),
+                childWhenDragging: Opacity(
+                  opacity: 0.35,
+                  child: _ConfigRow(tracker: t, pinned: false, onTap: () {}),
+                ),
+                child: _ConfigRow(
+                  tracker: t,
+                  pinned: false,
+                  onTap: () => _togglePin(t),
+                ),
               ),
             ),
         ],
@@ -797,6 +997,99 @@ class _ConfigRow extends StatelessWidget {
             pinned ? Icons.push_pin : Icons.push_pin_outlined,
             size: 20,
             color: pinned ? primary : secondary.withAlpha(120),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Пустой слот закреплённого трекера в листе настройки — принимает перетащенный
+/// трекер (в дополнение к тапу по пину).
+class _PinnedDropSlot extends StatelessWidget {
+  final ValueChanged<HealthTrackerId> onAccept;
+
+  const _PinnedDropSlot({required this.onAccept});
+
+  @override
+  Widget build(BuildContext context) {
+    final secondary = context.watch<AppearanceController>().secondaryColor;
+    final primary = context.watch<AppearanceController>().primaryColor;
+
+    return DragTarget<HealthTrackerId>(
+      onWillAcceptWithDetails: (_) => true,
+      onAcceptWithDetails: (d) => onAccept(d.data),
+      builder: (context, candidate, rejected) {
+        final active = candidate.isNotEmpty;
+        return _DashedCard(
+          active: active,
+          minHeight: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Icon(
+                active ? Icons.push_pin : Icons.add,
+                size: 20,
+                color: active ? primary : secondary.withAlpha(150),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  active
+                      ? 'Отпустите, чтобы закрепить'
+                      : 'Перетащите трекер сюда',
+                  style: context.subtitleStyle,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// «Летящая» карточка трекера под пальцем при перетаскивании.
+class _DragFeedback extends StatelessWidget {
+  final HealthTrackerWidget tracker;
+
+  const _DragFeedback({required this.tracker});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: SizedBox(
+        width: 220,
+        child: GlassPlate(
+          transparent: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                SoftRoundedIcon(
+                  icon: tracker.icon,
+                  color: tracker.color,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    tracker.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.push_pin,
+                  size: 18,
+                  color: context.watch<AppearanceController>().primaryColor,
+                ),
+              ],
+            ),
           ),
         ),
       ),
