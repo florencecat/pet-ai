@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
@@ -10,8 +11,10 @@ import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
+import 'package:pet_satellite/theme/widgets/date_input.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
+import 'package:pet_satellite/theme/widgets/toast.dart';
 import 'package:provider/provider.dart';
 
 class FileUploadDialog extends StatefulWidget {
@@ -143,17 +146,12 @@ class _FileUploadDialogState extends State<FileUploadDialog> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Укажите дату документа')));
+      showAppToast(context, 'Укажите дату документа');
       return;
     }
     if (_pickedFilePath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Прикрепите файл или сделайте снимок')),
-      );
+      showAppToast(context, 'Прикрепите файл или сделайте снимок');
       return;
     }
 
@@ -185,9 +183,10 @@ class _FileUploadDialogState extends State<FileUploadDialog> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка сохранения: $e')));
+        showAppToast(context, 'Ошибка сохранения');
+        if (kDebugMode) {
+          print('failed to save document: $e');
+        }
       }
       error = true;
     } finally {
@@ -229,32 +228,30 @@ class _FileUploadDialogState extends State<FileUploadDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: baseInputDecoration(context, hint: 'Название документа'),
+                decoration: baseInputDecoration(
+                  context,
+                  hint: 'Название документа',
+                ),
                 style: Theme.of(context).textTheme.bodyMedium,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Введите название' : null,
                 textCapitalization: TextCapitalization.sentences,
               ),
 
               const SizedBox(height: 8),
 
-              // Date
-              TextFormField(
-                keyboardType: TextInputType.none,
+              SmartDateInput(
                 onTap: _selectDate,
+                onTodayTap: () {
+                  setState(() {
+                    _selectedDate = DateTime.now();
+                    _dateController.text = formatSmartDate(
+                      _selectedDate!,
+                      pattern: 'dd MMMM',
+                      locale: 'ru-RU',
+                    );
+                  });
+                },
                 controller: _dateController,
-                decoration: baseInputDecoration(
-                  context,
-                  hint: 'Дата документа',
-                  suffixIcon: Icon(
-                    Icons.calendar_today,
-                    color: Theme.of(context).dividerColor,
-                    size: 18,
-                  ),
-                ),
-                style: Theme.of(context).textTheme.bodyMedium,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Выберите дату' : null,
+                hint: 'Дата документа',
               ),
 
               const SizedBox(height: 12),

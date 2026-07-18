@@ -13,6 +13,7 @@ import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/breed_selector.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
+import 'package:pet_satellite/theme/widgets/date_input.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/pet_image_source_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pressable.dart';
@@ -1079,12 +1080,19 @@ class _CastrationSheet extends StatefulWidget {
 class _CastrationSheetState extends State<_CastrationSheet> {
   late bool _castrated;
   DateTime? _date;
+  final _dateController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _castrated = widget.castrated;
     _date = widget.date;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _dateController.dispose();
   }
 
   Future<void> _pickDate() async {
@@ -1097,11 +1105,6 @@ class _CastrationSheetState extends State<_CastrationSheet> {
       locale: const Locale('ru'),
     );
     if (picked != null) setState(() => _date = picked);
-  }
-
-  String get _dateLabel {
-    if (_date == null) return 'Указать дату';
-    return DateFormat('d MMMM yyyy', 'ru_RU').format(_date!);
   }
 
   @override
@@ -1145,6 +1148,7 @@ class _CastrationSheetState extends State<_CastrationSheet> {
                     _castrated = v;
                     if (!v) {
                       _date = null;
+                      _dateController.text = '';
                     }
                   }),
                 ),
@@ -1153,28 +1157,20 @@ class _CastrationSheetState extends State<_CastrationSheet> {
           ),
           if (_castrated) ...[
             const SizedBox(height: 12),
-            GlassPlate(
-              padding: 16,
-              child: Pressable(
-                onTap: _pickDate,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 18,
-                      color: ac.primaryColor,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(_dateLabel, style: theme.textTheme.bodyMedium),
-                    const Spacer(),
-                    Icon(
-                      Icons.chevron_right,
-                      size: 18,
-                      color: ac.primaryColor.withAlpha(140),
-                    ),
-                  ],
-                ),
-              ),
+            SmartDateInput(
+              onTap: _pickDate,
+              onTodayTap: () {
+                setState(() {
+                  _date = DateTime.now();
+                  _dateController.text = formatSmartDate(
+                    _date!,
+                    pattern: 'dd MMMM',
+                    locale: 'ru-RU',
+                  );
+                });
+              },
+              controller: _dateController,
+              hint: 'Дата кастрации',
             ),
           ],
           const SizedBox(height: 20),
