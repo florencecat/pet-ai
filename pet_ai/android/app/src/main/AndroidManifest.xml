@@ -65,6 +65,13 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+
+        <!-- Требуется speech_to_text при targetSdk >= 30: без этого package
+             visibility скрывает от приложения все RecognitionService, и
+             распознавание речи считается недоступным на любом устройстве. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
+        </intent>
     </queries>
 
     <uses-permission android:name="android.permission.INTERNET"/>
