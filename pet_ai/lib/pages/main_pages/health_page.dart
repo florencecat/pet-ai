@@ -594,7 +594,8 @@ class HealthPageState extends State<HealthPage> {
         deltaToAvg: _walkDelta,
         onTap: p != null ? () => _openWalkHistory(context) : null,
       ),
-      HeatTracker(),
+      if (p!.gender == Gender.female)
+        HeatTracker(),
       SymptomTracker(),
     ];
   }
