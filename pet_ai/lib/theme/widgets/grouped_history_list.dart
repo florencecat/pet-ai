@@ -91,27 +91,23 @@ class _GroupedHistoryListState<T extends BaseEntry>
                       ),
                     ),
                     const SizedBox(width: 6),
-                    if (!expanded)
-                      CountBadge(count: widget.entries.length)
+                    if (!expanded) CountBadge(count: widget.entries.length),
                   ],
                 ),
-                body: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (header != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: header,
-                        ),
-                      for (final e in items)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: widget.itemBuilder(context, e),
-                        ),
-                    ],
-                  ),
+                body: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (header != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: header,
+                      ),
+                    for (final e in items)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: widget.itemBuilder(context, e),
+                      ),
+                  ],
                 ),
               );
             },

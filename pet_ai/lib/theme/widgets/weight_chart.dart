@@ -4,18 +4,24 @@ import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
-import 'package:pet_satellite/theme/widgets/chart_placeholder.dart';
+import 'package:pet_satellite/theme/widgets/empty_state_label.dart';
 import 'package:provider/provider.dart';
 
 /// Reusable weight line chart.
 /// Pass a pre-filtered [entries] list; the widget handles rendering.
 class WeightChart extends StatelessWidget {
   final List<WeightEntry> entries;
+  final VoidCallback onAddWeight;
   final double height;
 
   static const int minHistoryLength = 2;
 
-  const WeightChart({super.key, required this.entries, this.height = 200});
+  const WeightChart({
+    super.key,
+    required this.entries,
+    this.height = 200,
+    required this.onAddWeight,
+  });
 
   List<FlSpot> _buildSpots() {
     return List.generate(
@@ -27,12 +33,20 @@ class WeightChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
-      return const ChartPlaceholder(message: 'История веса пока пуста');
+      return Padding(padding: EdgeInsetsGeometry.all(12), child: Center(
+        child: EmptyStateLabel(
+          message: 'История веса пуста.',
+          onCreateTap: onAddWeight,
+        ),
+      ));
     }
     if (entries.length <= minHistoryLength) {
-      return const ChartPlaceholder(
-        message: 'Слишком мало записей для графика',
-      );
+      return Padding(padding: EdgeInsetsGeometry.all(12), child: Center(
+        child: EmptyStateLabel(
+          message: 'Слишком мало записей для графика.',
+          onCreateTap: onAddWeight,
+        ),
+      ));
     }
 
     final spots = _buildSpots();
@@ -59,7 +73,9 @@ class WeightChart extends StatelessWidget {
             ),
             borderData: FlBorderData(
               show: true,
-              border: Border.all(color: context.watch<AppearanceController>().secondaryColor),
+              border: Border.all(
+                color: context.watch<AppearanceController>().secondaryColor,
+              ),
             ),
             lineTouchData: LineTouchData(
               // Маркер на выбранной точке в фирменном цвете.
@@ -106,7 +122,10 @@ class WeightChart extends StatelessWidget {
                   return LineTooltipItem(
                     '${spot.y.toStringAsFixed(1)} кг',
                     Theme.of(context).textTheme.titleSmall!.copyWith(
-                      color: Provider.of<AppearanceController>(context, listen: false).secondaryColor,
+                      color: Provider.of<AppearanceController>(
+                        context,
+                        listen: false,
+                      ).secondaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                     children: date.isEmpty

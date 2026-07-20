@@ -212,33 +212,30 @@ class _BirthdaySheetState extends State<BirthdaySheet>
               'Подробно о возрасте',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            body: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: GlassPlate(
-                padding: 0,
-                child: Column(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.hourglass_bottom_rounded,
-                      label: 'Полный возраст',
-                      value: _fullAgeLabel(),
-                    ),
+            body: GlassPlate(
+              padding: 0,
+              child: Column(
+                children: [
+                  _InfoRow(
+                    icon: Icons.hourglass_bottom_rounded,
+                    label: 'Полный возраст',
+                    value: _fullAgeLabel(),
+                  ),
+                  const _RowDivider(),
+                  _InfoRow(
+                    icon: Icons.event_rounded,
+                    label: 'Дата рождения',
+                    value: DateFormat('d MMMM yyyy', 'ru').format(_birth),
+                  ),
+                  if (_humanAge != null) ...[
                     const _RowDivider(),
                     _InfoRow(
-                      icon: Icons.event_rounded,
-                      label: 'Дата рождения',
-                      value: DateFormat('d MMMM yyyy', 'ru').format(_birth),
+                      icon: Icons.people_alt_rounded,
+                      label: 'В человеческих годах',
+                      value: '≈ $_humanAge ${_yearsWord(_humanAge!)}',
                     ),
-                    if (_humanAge != null) ...[
-                      const _RowDivider(),
-                      _InfoRow(
-                        icon: Icons.people_alt_rounded,
-                        label: 'В человеческих годах',
-                        value: '≈ $_humanAge ${_yearsWord(_humanAge!)}',
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -375,7 +372,9 @@ class _CountdownCard extends StatelessWidget {
                     '${DateFormat('EEEE, d MMMM', 'ru').format(nextDate)} · '
                     'исполнится $ageAtNext',
                     style: theme.textTheme.bodySmall!.copyWith(
-                      color: context.watch<AppearanceController>().secondaryColor,
+                      color: context
+                          .watch<AppearanceController>()
+                          .secondaryColor,
                     ),
                   ),
                 ],

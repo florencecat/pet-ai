@@ -25,6 +25,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/walk_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
+import 'package:pet_satellite/theme/widgets/empty_state_label.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/health_trackers.dart';
 import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
@@ -230,7 +231,7 @@ class HealthPageState extends State<HealthPage> {
 
   // ── Sheet openers ──────────────────────────────────────────────────────────
 
-  void _openWeightHistory(BuildContext context) async {
+  void _openWeightHistory() async {
     if (_profile == null) return;
     await showModalBottomSheet<bool>(
       context: context,
@@ -283,7 +284,7 @@ class HealthPageState extends State<HealthPage> {
     if (mounted) await _initScreen();
   }
 
-  void _createTreatment(BuildContext context) async {
+  void _createTreatment() async {
     final added = await showAdaptiveDialog<bool>(
       context: context,
       builder: (_) => CreateTreatmentDialog(profile: _profile!),
@@ -570,7 +571,7 @@ class HealthPageState extends State<HealthPage> {
         empty: p == null || p.weightHistory.entries.isEmpty,
         value: _weightStatus,
         dynamics: _weightDynamics,
-        onTap: p != null ? () => _openWeightHistory(context) : null,
+        onTap: p != null ? _openWeightHistory : null,
       ),
       FoodTracker(
         empty: p == null || p.foodHistory.entries.isEmpty,
@@ -812,7 +813,7 @@ class HealthPageState extends State<HealthPage> {
                 ],
               ),
               trailing: TextButton.icon(
-                onPressed: () => _openWeightHistory(context),
+                onPressed: _openWeightHistory,
                 label: Text(
                   'Детали',
                   style: Theme.of(
@@ -825,13 +826,17 @@ class HealthPageState extends State<HealthPage> {
               body: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 8),
                   GlassPlate(
+                    useShadow: false,
                     child: Padding(
                       padding: EdgeInsetsGeometry.all(6),
                       child: Column(
                         children: [
-                          WeightChart(entries: weightEntries, height: 180),
+                          WeightChart(
+                            entries: weightEntries,
+                            height: 180,
+                            onAddWeight: _openWeightHistory,
+                          ),
                           if (_profile != null &&
                               _profile!.weightHistory.entries.length >= 3)
                             Padding(
@@ -886,15 +891,12 @@ class HealthPageState extends State<HealthPage> {
                         Icons.chevron_right,
                         color: context.subtitleColor,
                       ),
-                      onPressed: _profile != null
-                          ? () => _createTreatment(context)
-                          : null,
+                      onPressed: _profile != null ? _createTreatment : null,
                     )
                   : null,
               body: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 12),
                   InlineLoading(
                     isLoading: _isLoadingProfile,
                     child: _profile == null
@@ -911,53 +913,10 @@ class HealthPageState extends State<HealthPage> {
                                     .secondaryColor
                                     .withAlpha(60),
                               ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Нет прививок.',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge!
-                                        .copyWith(
-                                          inherit: true,
-                                          color: context
-                                              .watch<AppearanceController>()
-                                              .secondaryColor
-                                              .withAlpha(60),
-                                        ),
-                                  ),
-                                  TextButton(
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsetsGeometry.all(5),
-                                    ),
-                                    onPressed: () => _createTreatment(context),
-                                    child: Row(
-                                      spacing: 1,
-                                      children: [
-                                        Text(
-                                          'Добавить',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge!
-                                              .copyWith(
-                                                inherit: true,
-                                                color: context
-                                                    .watch<
-                                                      AppearanceController
-                                                    >()
-                                                    .primaryColor
-                                                    .withAlpha(192),
-                                              ),
-                                        ),
-                                        Icon(
-                                          Icons.chevron_right_rounded,
-                                          size: 28,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                              EmptyStateLabel(
+                                message: 'Нет прививок.',
+                                createMessage: 'Добавить',
+                                onCreateTap: _createTreatment,
                               ),
                             ],
                           )
@@ -1019,7 +978,6 @@ class HealthPageState extends State<HealthPage> {
               body: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 4),
                   InlineLoading(
                     isLoading: _isLoadingProfile,
                     child: _profile == null || activeReminders == null
@@ -1036,54 +994,9 @@ class HealthPageState extends State<HealthPage> {
                                     .secondaryColor
                                     .withAlpha(60),
                               ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Нет препаратов.',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge!
-                                        .copyWith(
-                                          inherit: true,
-                                          color: context
-                                              .watch<AppearanceController>()
-                                              .secondaryColor
-                                              .withAlpha(60),
-                                        ),
-                                  ),
-                                  TextButton(
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsetsGeometry.all(5),
-                                    ),
-                                    onPressed: () =>
-                                        _openPillReminders(context),
-                                    child: Row(
-                                      spacing: 1,
-                                      children: [
-                                        Text(
-                                          'Добавить',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge!
-                                              .copyWith(
-                                                inherit: true,
-                                                color: context
-                                                    .watch<
-                                                      AppearanceController
-                                                    >()
-                                                    .primaryColor
-                                                    .withAlpha(192),
-                                              ),
-                                        ),
-                                        Icon(
-                                          Icons.chevron_right_rounded,
-                                          size: 28,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                              EmptyStateLabel(
+                                message: 'Нет препаратов.',
+                                onCreateTap: () => _openPillReminders(context),
                               ),
                             ],
                           )
@@ -1549,21 +1462,18 @@ class _RecommendationsSheetState extends State<_RecommendationsSheet> {
                         ],
                       ],
                     ),
-                    body: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: _dismissed
-                            .map(
-                              (b) => HealthBadgeTile(
-                                badge: b,
-                                onRestore: widget.onRestore != null
-                                    ? () => _restore(b)
-                                    : null,
-                              ),
-                            )
-                            .toList(),
-                      ),
+                    body: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _dismissed
+                          .map(
+                            (b) => HealthBadgeTile(
+                              badge: b,
+                              onRestore: widget.onRestore != null
+                                  ? () => _restore(b)
+                                  : null,
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
                 ],

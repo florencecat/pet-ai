@@ -465,18 +465,21 @@ class CollapsibleSection extends StatelessWidget {
   /// Тело секции — показывается/скрывается с анимацией.
   final Widget body;
 
+  final double spacing;
+
   const CollapsibleSection({
     super.key,
     required this.expanded,
     required this.onToggle,
     required this.titleContent,
     this.trailing,
-    required this.body,
+    required this.body, this.spacing = 8,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      spacing: spacing,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── Строка заголовка ──────────────────────────────────────────────
@@ -800,7 +803,7 @@ class InfoGlassPlate extends StatelessWidget {
             Icon(Icons.info_outline, size: 26, color: color),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+              child: Text(label, style: context.subtitleStyle),
             ),
           ],
         ),

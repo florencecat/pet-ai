@@ -10,6 +10,7 @@ import 'package:pet_satellite/theme/widgets/appetite_stepper.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
+import 'package:pet_satellite/theme/widgets/empty_state_label.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/grouped_history_list.dart';
 import 'package:pet_satellite/theme/widgets/suggestion_list.dart';
@@ -399,43 +400,9 @@ class _FoodSheetState extends State<FoodSheet> {
                   size: 72,
                   color: accent.withAlpha(192),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Дневник пуст.',
-                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                        inherit: true,
-                        color: context
-                            .watch<AppearanceController>()
-                            .secondaryColor
-                            .withAlpha(60),
-                      ),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.all(5),
-                      ),
-                      onPressed: () => _showAddDialog(),
-                      child: Row(
-                        spacing: 1,
-                        children: [
-                          Text(
-                            'Добавить',
-                            style: Theme.of(context).textTheme.titleLarge!
-                                .copyWith(
-                                  inherit: true,
-                                  color: context
-                                      .watch<AppearanceController>()
-                                      .primaryColor
-                                      .withAlpha(192),
-                                ),
-                          ),
-                          Icon(Icons.chevron_right_rounded, size: 28),
-                        ],
-                      ),
-                    ),
-                  ],
+                EmptyStateLabel(
+                  message: 'Дневник пуст.',
+                  onCreateTap: () => _showAddDialog(),
                 ),
               ],
             )

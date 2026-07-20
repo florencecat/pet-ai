@@ -5,6 +5,7 @@ import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
+import 'package:pet_satellite/theme/widgets/empty_state_label.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pill_stepper.dart';
 import 'package:pet_satellite/theme/widgets/weight_chart.dart';
@@ -75,15 +76,20 @@ class _WeightDialogState extends State<WeightDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 8,
           children: [
             Text('Вес', style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 8),
             PillStepper(
               value: _weight,
               min: 0,
               max: 150,
               onChanged: (value) => setState(() => _weight = value),
             ),
+            if (widget.profile.weightHistory.hasTodayEntry())
+              InfoGlassPlate(
+                label:
+                    'Сегодня вы уже фиксировали вес. Новое значение перезапишет вес за сегодняшний день',
+              ),
           ],
         ),
       ),
@@ -104,6 +110,10 @@ class _WeightSheetState extends State<WeightSheet> {
   HistoryPeriod _period = HistoryPeriod.halfYear;
 
   late WeightHistory _history;
+
+  bool _chartExpanded = true;
+
+  bool _historyExpanded = true;
 
   @override
   void initState() {
@@ -158,43 +168,9 @@ class _WeightSheetState extends State<WeightSheet> {
                   size: 72,
                   color: accent.withAlpha(192),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Дневник пуст.',
-                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                        inherit: true,
-                        color: context
-                            .watch<AppearanceController>()
-                            .secondaryColor
-                            .withAlpha(60),
-                      ),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.all(5),
-                      ),
-                      onPressed: () => _showAddDialog(),
-                      child: Row(
-                        spacing: 1,
-                        children: [
-                          Text(
-                            'Добавить',
-                            style: Theme.of(context).textTheme.titleLarge!
-                                .copyWith(
-                                  inherit: true,
-                                  color: context
-                                      .watch<AppearanceController>()
-                                      .primaryColor
-                                      .withAlpha(192),
-                                ),
-                          ),
-                          Icon(Icons.chevron_right_rounded, size: 28),
-                        ],
-                      ),
-                    ),
-                  ],
+                EmptyStateLabel(
+                  message: 'Дневник пуст.',
+                  onCreateTap: () => _showAddDialog(),
                 ),
               ],
             )
@@ -209,63 +185,83 @@ class _WeightSheetState extends State<WeightSheet> {
 
             // ── History list ──────────────────────────────────────────────────
             if (_history.entries.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                'История',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.left,
-              ),
               const SizedBox(height: 8),
-
-              // ── Period selector ───────────────────────────────────────────────
-              SegmentedButton<HistoryPeriod>(
-                style: SegmentedButton.styleFrom(
-                  side: BorderSide(color: color, width: 2),
-                  foregroundColor: color,
-                  selectedBackgroundColor: color,
-                  selectedForegroundColor: Theme.of(
-                    context,
-                  ).colorScheme.surface,
+              CollapsibleSection(
+                expanded: _chartExpanded,
+                onToggle: () =>
+                    setState(() => _chartExpanded = !_chartExpanded),
+                titleContent: Text(
+                  'История',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.left,
                 ),
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(
-                    value: HistoryPeriod.month,
-                    label: Text('1 мес'),
-                  ),
-                  ButtonSegment(
-                    value: HistoryPeriod.halfYear,
-                    label: Text('6 мес'),
-                  ),
-                  ButtonSegment(value: HistoryPeriod.year, label: Text('Год')),
-                  ButtonSegment(value: HistoryPeriod.all, label: Text('Всё')),
-                ],
-                selected: {_period},
-                onSelectionChanged: (v) => setState(() => _period = v.first),
+                body: Column(
+                  spacing: 8,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ── Period selector ───────────────────────────────────────────────
+                    SegmentedButton<HistoryPeriod>(
+                      style: SegmentedButton.styleFrom(
+                        side: BorderSide(color: color, width: 2),
+                        foregroundColor: color,
+                        selectedBackgroundColor: color,
+                        selectedForegroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surface,
+                      ),
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: HistoryPeriod.month,
+                          label: Text('1 мес'),
+                        ),
+                        ButtonSegment(
+                          value: HistoryPeriod.halfYear,
+                          label: Text('6 мес'),
+                        ),
+                        ButtonSegment(
+                          value: HistoryPeriod.year,
+                          label: Text('Год'),
+                        ),
+                        ButtonSegment(
+                          value: HistoryPeriod.all,
+                          label: Text('Всё'),
+                        ),
+                      ],
+                      selected: {_period},
+                      onSelectionChanged: (v) =>
+                          setState(() => _period = v.first),
+                    ),
+                    // ── Chart ─────────────────────────────────────────────────────────
+                    WeightChart(entries: entries, onAddWeight: _showAddDialog),
+                  ],
+                ),
               ),
-
-              const SizedBox(height: 16),
-
-              // ── Chart ─────────────────────────────────────────────────────────
-              WeightChart(entries: entries),
 
               const SizedBox(height: 8),
 
-              Text(
-                'Список',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.left,
-              ),
-
-              const SizedBox(height: 8),
-
-              ...List.from(_history.entries.reversed).map<Widget>(
-                (e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _WeightEntryCard(
-                    entry: e as WeightEntry,
-                    onDelete: () => _deleteEntry(e),
-                  ),
+              CollapsibleSection(
+                expanded: _historyExpanded,
+                onToggle: () =>
+                    setState(() => _historyExpanded = !_historyExpanded),
+                titleContent: Text(
+                  'Список',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.left,
+                ),
+                body: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: List.from(_history.entries.reversed)
+                      .map<Widget>(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _WeightEntryCard(
+                            entry: e as WeightEntry,
+                            onDelete: () => _deleteEntry(e),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
             ],
@@ -285,6 +281,7 @@ class _WeightEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassPlate(
+      useShadow: false,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
