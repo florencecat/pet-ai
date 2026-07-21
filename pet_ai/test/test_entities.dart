@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/meal.dart';
+import 'package:pet_satellite/models/walk.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -281,6 +282,26 @@ void validateMeal(MealEntry a, MealEntry b) {
   expect(a.grams, b.grams);
   expect(a.foodName, b.foodName);
   expect(a.kind, b.kind);
+}
+
+// ─── WalkEntry ──────────────────────────────────────────────────────────────────
+
+WalkEntry goodWalkEntity() {
+  return WalkEntry(
+    id: 'walk_1',
+    date: DateTime(2025, 1, 3, 9, 15),
+    durationMinutes: 40,
+    walkTime: WalkTime.morning,
+    activities: const [WalkActivity.active, WalkActivity.dogGames],
+  );
+}
+
+void validateWalk(WalkEntry a, WalkEntry b) {
+  expect(a.id, b.id);
+  expect(a.date, b.date);
+  expect(a.durationMinutes, b.durationMinutes);
+  expect(a.walkTime, b.walkTime);
+  expect(a.activities, b.activities);
 }
 
 // ─── MoodEntry ──────────────────────────────────────────────────────────────────

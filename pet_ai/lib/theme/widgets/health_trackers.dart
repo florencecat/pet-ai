@@ -205,7 +205,33 @@ abstract class _PlaceholderTracker extends HealthTrackerWidget {
   String? get value => null;
 }
 
-class WalkTracker extends _PlaceholderTracker {
+/// Трекер прогулок. В расширенной и мини-плитке показывает комбинацию аналитики
+/// за сегодня (минуты + число прогулок + отклонение от среднего) — вместо
+/// отдельных виджетов статистики.
+class WalkTracker extends HealthTrackerWidget {
+  @override
+  final bool empty;
+
+  /// Суммарные минуты прогулок за сегодня.
+  final int todayMinutes;
+
+  /// Число прогулок за сегодня.
+  final int todayCount;
+
+  /// Отклонение сегодняшних минут от среднего в день (для бейджа «к среднему»).
+  final int deltaToAvg;
+
+  @override
+  final VoidCallback? onTap;
+
+  WalkTracker({
+    this.empty = true,
+    this.todayMinutes = 0,
+    this.todayCount = 0,
+    this.deltaToAvg = 0,
+    this.onTap,
+  });
+
   @override
   HealthTrackerId get id => HealthTrackerId.walk;
   @override
@@ -215,7 +241,57 @@ class WalkTracker extends _PlaceholderTracker {
   @override
   Color get color => const Color(0xFF3f8f6f);
   @override
+  bool get available => true;
+  @override
   String get emptyHint => 'Добавьте прогулку';
+  @override
+  String? get value => empty ? null : '$todayMinutes мин';
+
+  String get _countWord =>
+      declension(todayCount, 'прогулка', 'прогулки', 'прогулок');
+
+  Widget? _deltaBadge(BuildContext context) {
+    if (deltaToAvg == 0) return null;
+    final positive = deltaToAvg > 0;
+    final color = positive
+        ? ThemeColors.positiveDynamics
+        : ThemeColors.negativeDynamics;
+    return SoftGlassBadge(
+      color: color.withAlpha(128),
+      label: '${positive ? '+' : '−'}${deltaToAvg.abs()} мин',
+      labelStyle: context.subtitleStyle.copyWith(
+        inherit: true,
+        color: color,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  @override
+  Widget? expandedExtra(BuildContext context) {
+    if (empty) return null;
+    final badge = _deltaBadge(context);
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            '$todayCount $_countWord',
+            style: context.subtitleStyle,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (badge != null) ...[const SizedBox(width: 6), badge],
+      ],
+    );
+  }
+
+  @override
+  Widget miniSubtitle(BuildContext context) => empty
+      ? super.miniSubtitle(context)
+      : Text(
+          '$todayCount $_countWord · $todayMinutes мин',
+          style: context.subtitleStyle,
+        );
 }
 
 class HeatTracker extends _PlaceholderTracker {

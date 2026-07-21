@@ -23,6 +23,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/mood_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/walk_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/health_trackers.dart';
@@ -55,6 +56,9 @@ class HealthPageState extends State<HealthPage> {
   String? _moodStatus;
   String? _foodStatus;
   String? _foodName;
+  int _walkTodayMinutes = 0;
+  int _walkTodayCount = 0;
+  int _walkDelta = 0;
 
   /// Ids of health badges the user has dismissed.
   Set<String> _dismissedBadgeIds = {};
@@ -190,6 +194,9 @@ class HealthPageState extends State<HealthPage> {
     final foodStatus = await PetProfileService().lastFoodString();
     final foodName = profile.foodHistory.lastEntry?.foodName;
     final moodStatus = await PetProfileService().lastMoodString();
+    final walkTodayMinutes = profile.walkHistory.todayMinutes;
+    final walkTodayCount = profile.walkHistory.todayCount;
+    final walkDelta = profile.walkHistory.deltaToAverageToday;
     final events = await EventService().loadEvents(profile.id);
     final dismissedBadgeIds = await HealthAnalyzer.loadDismissed(_profile!.id);
     final healthBadges = await HealthAnalyzer.analyze(_profile!, events);
@@ -212,6 +219,9 @@ class HealthPageState extends State<HealthPage> {
       _foodStatus = foodStatus;
       _foodName = foodName;
       _moodStatus = moodStatus;
+      _walkTodayMinutes = walkTodayMinutes;
+      _walkTodayCount = walkTodayCount;
+      _walkDelta = walkDelta;
       _dismissedBadgeIds = dismissedSet;
       _healthBadges = healthBadges;
       _dismissedBadges = dismissedBadges;
@@ -256,6 +266,19 @@ class HealthPageState extends State<HealthPage> {
       enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => FoodSheet(profile: _profile!),
+    );
+    if (mounted) await _initScreen();
+  }
+
+  void _openWalkHistory(BuildContext context) async {
+    if (_profile == null) return;
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => WalkSheet(profile: _profile!),
     );
     if (mounted) await _initScreen();
   }
@@ -564,7 +587,13 @@ class HealthPageState extends State<HealthPage> {
             : null,
         onTap: p != null ? () => _openMoodHistory(context) : null,
       ),
-      WalkTracker(),
+      WalkTracker(
+        empty: p == null || p.walkHistory.entries.isEmpty,
+        todayMinutes: _walkTodayMinutes,
+        todayCount: _walkTodayCount,
+        deltaToAvg: _walkDelta,
+        onTap: p != null ? () => _openWalkHistory(context) : null,
+      ),
       HeatTracker(),
       SymptomTracker(),
     ];

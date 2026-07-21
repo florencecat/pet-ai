@@ -5,6 +5,7 @@ import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/species.dart';
 import 'package:pet_satellite/models/treatment.dart';
+import 'package:pet_satellite/models/walk.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/pet_breed_service.dart';
@@ -34,6 +35,7 @@ class Pet implements PbEntity {
   NoteHistory noteHistory;
   TreatmentHistory treatmentHistory;
   MealHistory foodHistory;
+  WalkHistory walkHistory;
   List<Pill> pillReminders;
   ColorPalette palette;
 
@@ -58,6 +60,7 @@ class Pet implements PbEntity {
        noteHistory = NoteHistory.empty(),
        treatmentHistory = TreatmentHistory.empty(),
        foodHistory = MealHistory.empty(),
+       walkHistory = WalkHistory.empty(),
        pillReminders = [],
        palette = ThemeColors.defaultProfilePalette;
 
@@ -82,6 +85,7 @@ class Pet implements PbEntity {
     required this.noteHistory,
     required this.treatmentHistory,
     required this.foodHistory,
+    required this.walkHistory,
     required this.pillReminders,
     required this.palette,
   });
@@ -109,6 +113,7 @@ class Pet implements PbEntity {
       treatmentHistory,
     ),
     'foodHistory': MealHistory.foodSerializer.toJsonList(foodHistory),
+    'walkHistory': WalkHistory.walkSerializer.toJsonList(walkHistory),
     'pillReminders': pillReminders.map((r) => r.toJson()).toList(),
     'palette': palette.toJson(),
   };
@@ -200,6 +205,13 @@ class Pet implements PbEntity {
                   .entries,
             )
           : MealHistory.empty(),
+      walkHistory: json['walkHistory'] != null
+          ? WalkHistory(
+              entries: WalkHistory.walkSerializer
+                  .fromJsonList(json['walkHistory'])
+                  .entries,
+            )
+          : WalkHistory.empty(),
       pillReminders:
           (json['pillReminders'] as List<dynamic>?)
               ?.map((e) => Pill.fromJson(e as Map<String, dynamic>))
@@ -302,6 +314,7 @@ class _PetCodec extends PbCodec<Pet> {
       noteHistory: NoteHistory.empty(),
       treatmentHistory: TreatmentHistory.empty(),
       foodHistory: MealHistory.empty(),
+      walkHistory: WalkHistory.empty(),
       pillReminders: [],
       palette: palette,
     );

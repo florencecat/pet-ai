@@ -23,6 +23,7 @@ import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/meal.dart';
 import 'package:pet_satellite/models/treatment.dart';
+import 'package:pet_satellite/models/walk.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
 
 class PetContextBuilder {
@@ -442,6 +443,38 @@ class PetProfileService {
         await saveProfile(profile);
         CloudSyncService.instance.deleteAsync('meals', entryId);
       }
+    }
+  }
+
+  // ── Прогулки ─────────────────────────────────────────────────────────────
+
+  Future<void> updateWalkHistory(String petId, WalkEntry entry) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      final saved = profile.walkHistory.addOrReplace(entry);
+      await saveProfile(profile);
+      // Fire-and-forget cloud push (saved хранит стабильный id для апсерта).
+      CloudSyncService.instance.pushAsync('walks', saved, petId);
+    }
+  }
+
+  /// Удаляет одну прогулку по её [entryId].
+  Future<void> deleteWalkEntryById(String petId, String entryId) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      final removed = profile.walkHistory.deleteById(entryId);
+      if (removed != null) {
+        await saveProfile(profile);
+        CloudSyncService.instance.deleteAsync('walks', entryId);
+      }
+    }
+  }
+
+  Future<void> clearWalkHistory(String petId) async {
+    final profile = await loadProfile(petId);
+    if (profile != null) {
+      profile.walkHistory.clear();
+      await saveProfile(profile);
     }
   }
 

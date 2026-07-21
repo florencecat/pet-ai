@@ -1363,10 +1363,6 @@ class _EventTileCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (!event.fromNote) ...[
-                  // ── Time ─────────────────────────────────────────────────
-                  // Фиксированная ширина, чтобы сплиттер стоял на одном месте у
-                  // всех карточек (время и «Весь день» имеют разную ширину, и
-                  // без этого вертикальные линии не выстраиваются в ряд).
                   SizedBox(
                     width: 52,
                     child: FittedBox(

@@ -11,12 +11,24 @@ class PillStepper extends StatefulWidget {
   final double min;
   final double max;
 
+  /// Подпись единицы измерения справа от значения (напр. «кг», «мин»).
+  final String unit;
+
+  /// Шаг изменения по кнопкам «+»/«−».
+  final double step;
+
+  /// Сколько знаков после запятой показывать/хранить (0 — целые значения).
+  final int decimals;
+
   const PillStepper({
     super.key,
     required this.value,
     required this.onChanged,
     this.min = 0,
     this.max = 999,
+    this.unit = 'кг',
+    this.step = 1.0,
+    this.decimals = 1,
   });
 
   @override
@@ -27,7 +39,10 @@ class _PillStepperState extends State<PillStepper> {
   late TextEditingController controller;
   late double weight;
 
-  final step = 1.0;
+  double get step => widget.step;
+  int get _decimals => widget.decimals;
+
+  String _format(double v) => v.toStringAsFixed(_decimals);
 
   @override
   void initState() {
@@ -35,16 +50,18 @@ class _PillStepperState extends State<PillStepper> {
 
     weight = widget.value;
 
-    controller = TextEditingController(text: weight.toStringAsFixed(1));
+    controller = TextEditingController(text: _format(weight));
   }
 
   void updateWeight(double newWeight) {
-    newWeight = (newWeight * 10).round() / 10;
+    // Округляем до нужного числа знаков после запятой (0/1/2 знака).
+    final rounder = [1, 10, 100][_decimals.clamp(0, 2)];
+    newWeight = (newWeight * rounder).round() / rounder;
     newWeight = newWeight.clamp(widget.min, widget.max).toDouble();
 
     setState(() {
       weight = newWeight;
-      controller.text = weight.toStringAsFixed(1);
+      controller.text = _format(weight);
     });
 
     widget.onChanged(weight);
@@ -128,7 +145,9 @@ class _PillStepperState extends State<PillStepper> {
                         ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+[.,]?\d?'),
+                            _decimals == 0
+                                ? RegExp(r'\d')
+                                : RegExp(r'^\d+[.,]?\d?'),
                           ),
                         ],
                         onChanged: onTextChanged,
@@ -146,7 +165,7 @@ class _PillStepperState extends State<PillStepper> {
               const SizedBox(width: 4),
 
               Text(
-                "кг",
+                widget.unit,
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge!.copyWith(fontSize: 26),

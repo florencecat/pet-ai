@@ -8,6 +8,7 @@ import 'package:pocketbase/pocketbase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/meal.dart';
+import 'package:pet_satellite/models/walk.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
@@ -361,6 +362,7 @@ class CloudSyncService extends ChangeNotifier {
         await _syncCollection('weights', p.id, p.weightHistory.entries);
         await _syncCollection('moods', p.id, p.moodHistory.entries);
         await _syncCollection('meals', p.id, p.foodHistory.entries);
+        await _syncCollection('walks', p.id, p.walkHistory.entries);
         await _syncCollection('notes', p.id, p.noteHistory.entries);
         await _syncCollection('treatments', p.id, p.treatmentHistory.entries);
         await _syncCollection('pills', p.id, p.pillReminders);
@@ -530,6 +532,9 @@ class CloudSyncService extends ChangeNotifier {
       );
       profile.foodHistory = MealHistory(
         entries: await _fetchAllAs('meals', petFilter, MealEntry.codec),
+      );
+      profile.walkHistory = WalkHistory(
+        entries: await _fetchAllAs('walks', petFilter, WalkEntry.codec),
       );
       profile.noteHistory = NoteHistory(
         entries: await _fetchAllAs('notes', petFilter, NoteEntry.codec),

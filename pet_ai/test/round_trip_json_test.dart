@@ -8,6 +8,7 @@ import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/suggested_event.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/user_profile.dart';
+import 'package:pet_satellite/models/walk.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'test_entities.dart';
 
@@ -129,6 +130,21 @@ void main() {
       validateMeal(
         m,
         MealEntry.codec.fromPocketBase(jsonRoundTrip(m.toPocketBase(''))),
+      );
+    });
+  });
+
+  group('WalkEntry round-trip', () {
+    test('json', () {
+      final w = goodWalkEntity();
+      validateWalk(w, WalkEntry.fromJson(jsonRoundTrip(w.toJson())));
+    });
+
+    test('pocketbase', () {
+      final w = goodWalkEntity();
+      validateWalk(
+        w,
+        WalkEntry.codec.fromPocketBase(jsonRoundTrip(w.toPocketBase(''))),
       );
     });
   });

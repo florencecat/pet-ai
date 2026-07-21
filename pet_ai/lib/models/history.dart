@@ -1,6 +1,6 @@
 import 'package:pet_satellite/services/pb_service.dart';
 
-enum HistoryPeriod { day, month, halfYear, year, all }
+enum HistoryPeriod { day, week, month, halfYear, year, all }
 
 abstract class BaseEntry implements PbEntity {
   /// Стабильный идентификатор записи (совпадает с record id в PocketBase).
@@ -48,6 +48,10 @@ class History<T extends BaseEntry> {
     switch (period) {
       case HistoryPeriod.day:
         final start = DateTime(now.year, now.month, now.day);
+        return entries.where((e) => e.date.isAfter(start)).toList();
+
+      case HistoryPeriod.week:
+        final start = now.subtract(const Duration(days: 7));
         return entries.where((e) => e.date.isAfter(start)).toList();
 
       case HistoryPeriod.month:
