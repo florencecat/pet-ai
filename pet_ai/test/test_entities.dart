@@ -330,6 +330,7 @@ NoteEntry goodNoteEntity() {
     date: DateTime(2025, 1, 4, 10, 0),
     note: 'Кот отказался от еды утром',
     symptomId: SymptomTags.refusedFood.id,
+    severity: SymptomSeverity.moderate,
   );
 }
 
@@ -338,6 +339,7 @@ void validateNote(NoteEntry a, NoteEntry b) {
   expect(a.date, b.date);
   expect(a.note, b.note);
   expect(a.symptomId, b.symptomId);
+  expect(a.severity, b.severity);
 }
 
 // ─── WeightEntry ──────────────────────────────────────────────────────────────

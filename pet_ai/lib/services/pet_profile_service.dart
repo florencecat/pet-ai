@@ -22,6 +22,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/meal.dart';
+import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/walk.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -508,18 +509,22 @@ class PetProfileService {
     }
   }
 
-  Future<void> addNote(String petId, String note, {String? symptomId}) async {
+  Future<void> addNote(
+    String petId,
+    String note, {
+    String? symptomId,
+    SymptomSeverity? severity,
+  }) async {
     final profile = await loadProfile(petId);
     if (profile != null) {
-      await profile.noteHistory.addNote(note, symptomId: symptomId);
+      final entry = await profile.noteHistory.addNote(
+        note,
+        symptomId: symptomId,
+        severity: severity,
+      );
       await saveProfile(profile);
-      // Fire-and-forget cloud push for the latest note entry.
-      final last = profile.noteHistory.entries.isNotEmpty
-          ? profile.noteHistory.entries.last
-          : null;
-      if (last != null) {
-        CloudSyncService.instance.pushAsync('notes', last, petId);
-      }
+      // Fire-and-forget cloud push for the created note entry.
+      CloudSyncService.instance.pushAsync('notes', entry, petId);
     }
   }
 

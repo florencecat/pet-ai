@@ -307,17 +307,70 @@ class HeatTracker extends _PlaceholderTracker {
   String get emptyHint => 'Зафиксируйте течку';
 }
 
-class SymptomTracker extends _PlaceholderTracker {
+/// Трекер симптомов. Его записи — заметки-симптомы (те же, что на главном
+/// экране). В плитке показывает последний отмеченный симптом и когда он был.
+class SymptomTracker extends HealthTrackerWidget {
+  @override
+  final bool empty;
+
+  /// Название последнего отмеченного симптома (напр. «Кашель»).
+  final String? lastLabel;
+
+  /// Иконка последнего симптома — для узнаваемости в плитке.
+  final IconData? lastIcon;
+
+  /// Дата последнего эпизода (готовая подпись).
+  final String? dateLabel;
+
+  /// Сколько симптомов активно (есть записи за последний месяц).
+  final int activeCount;
+
+  @override
+  final VoidCallback? onTap;
+
+  SymptomTracker({
+    this.empty = true,
+    this.lastLabel,
+    this.lastIcon,
+    this.dateLabel,
+    this.activeCount = 0,
+    this.onTap,
+  });
+
   @override
   HealthTrackerId get id => HealthTrackerId.symptom;
   @override
-  String get title => 'Симптом';
+  String get title => 'Симптомы';
   @override
-  IconData get icon => Icons.monitor_heart_outlined;
+  IconData get icon => lastIcon ?? Icons.monitor_heart_outlined;
   @override
   Color get color => const Color(0xFF7a5fd0);
   @override
+  bool get available => true;
+  @override
   String get emptyHint => 'Отметьте симптом';
+  @override
+  String? get value => empty ? null : lastLabel;
+  @override
+  Widget? expandedExtra(BuildContext context) =>
+      dateLabel != null ? Text(dateLabel!, style: context.subtitleStyle) : null;
+  @override
+  Widget miniSubtitle(BuildContext context) => empty
+      ? super.miniSubtitle(context)
+      : Row(
+          spacing: 6,
+          children: [
+            if (lastLabel != null)
+              Text(
+                lastLabel!,
+                style: context.subtitleStyle.copyWith(
+                  color: context.titleColor.withAlpha(220),
+                ),
+              ),
+            if (dateLabel != null)
+              Text(dateLabel!, style: context.subtitleStyle),
+          ],
+        );
 }
 
 // ─── Настройки трекеров (persist) ────────────────────────────────────────────

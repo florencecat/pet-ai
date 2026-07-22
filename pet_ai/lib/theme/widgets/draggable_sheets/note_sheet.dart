@@ -25,7 +25,6 @@ class _NoteDialogState extends State<NoteDialog> {
   final TextEditingController _controller = TextEditingController();
 
   bool _isSaving = false;
-  SymptomTag? _selectedSymptom;
 
   void _onVoiceText(String words) {
     setState(() {
@@ -38,18 +37,13 @@ class _NoteDialogState extends State<NoteDialog> {
 
   Future<void> _save() async {
     final text = _controller.text.trim();
-    if (text.isEmpty && _selectedSymptom == null) return;
+    if (text.isEmpty) return;
 
-    final noteText = text.isNotEmpty ? text : (_selectedSymptom?.label ?? '');
     setState(() => _isSaving = true);
 
     bool error = false;
     try {
-      await PetProfileService().addNote(
-        widget.profile.id,
-        noteText,
-        symptomId: _selectedSymptom?.id,
-      );
+      await PetProfileService().addNote(widget.profile.id, text);
     } catch (e) {
       error = true;
     } finally {
@@ -68,8 +62,7 @@ class _NoteDialogState extends State<NoteDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final hasContent =
-        _controller.text.trim().isNotEmpty || _selectedSymptom != null;
+    final hasContent = _controller.text.trim().isNotEmpty;
 
     return AlertDialog(
       actions: [
@@ -98,35 +91,6 @@ class _NoteDialogState extends State<NoteDialog> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Quick symptom chips ───────────────────────────────────────
-              Text(
-                'Быстрая фиксация симптома',
-                style: Theme.of(context).textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 6,
-                children: SymptomTags.all.map((tag) {
-                  return SoftGlassBadge(
-                    color: tag.color,
-                    icon: tag.icon,
-                    label: tag.label,
-                    selected: _selectedSymptom == tag,
-                    onChanged: (isSelected) {
-                      setState(() {
-                        _selectedSymptom = isSelected ? tag : null;
-                        _controller.text = isSelected ? tag.label : '';
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 16),
-
               // ── Text input + mic ──────────────────────────────────────────
               TextField(
                 controller: _controller,
@@ -249,7 +213,7 @@ class _NoteSheetState extends State<NoteSheet> {
             SoftGlassButton(
               icon: Icons.note_add_outlined,
               title: 'Добавить заметку',
-              subtitle: 'Фиксируйте симптомы и наблюдения',
+              subtitle: 'Быстрые заметки и наблюдения',
               onTap: _showAddDialog,
             ),
             const SizedBox(height: 16),

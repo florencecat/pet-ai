@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/mood.dart';
+import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
 import 'package:pet_satellite/models/weight.dart';
@@ -22,6 +23,7 @@ import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/food_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/mood_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/pill_sheet.dart';
+import 'package:pet_satellite/theme/widgets/draggable_sheets/symptom_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/treatment_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/walk_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/weight_sheet.dart';
@@ -60,6 +62,12 @@ class HealthPageState extends State<HealthPage> {
   int _walkTodayMinutes = 0;
   int _walkTodayCount = 0;
   int _walkDelta = 0;
+
+  bool _symptomEmpty = true;
+  String? _symptomLabel;
+  IconData? _symptomIcon;
+  String? _symptomDate;
+  int _symptomActiveCount = 0;
 
   /// Ids of health badges the user has dismissed.
   Set<String> _dismissedBadgeIds = {};
@@ -198,6 +206,21 @@ class HealthPageState extends State<HealthPage> {
     final walkTodayMinutes = profile.walkHistory.todayMinutes;
     final walkTodayCount = profile.walkHistory.todayCount;
     final walkDelta = profile.walkHistory.deltaToAverageToday;
+    // Симптомы: последний отмеченный эпизод (для плитки трекера).
+    NoteEntry? lastSymptom;
+    for (final e in profile.noteHistory.symptomEntries) {
+      if (lastSymptom == null || e.date.isAfter(lastSymptom.date)) {
+        lastSymptom = e;
+      }
+    }
+    final symptomTag = lastSymptom?.symptomTag;
+    final symptomEmpty = lastSymptom == null;
+    final symptomLabel = symptomTag?.label;
+    final symptomIcon = symptomTag?.icon;
+    final symptomDate = lastSymptom != null
+        ? formatSmartDate(lastSymptom.date, pattern: 'd MMMM')
+        : null;
+    final symptomActiveCount = profile.noteHistory.activeSymptomTags().length;
     final events = await EventService().loadEvents(profile.id);
     final dismissedBadgeIds = await HealthAnalyzer.loadDismissed(_profile!.id);
     final healthBadges = await HealthAnalyzer.analyze(_profile!, events);
@@ -223,6 +246,11 @@ class HealthPageState extends State<HealthPage> {
       _walkTodayMinutes = walkTodayMinutes;
       _walkTodayCount = walkTodayCount;
       _walkDelta = walkDelta;
+      _symptomEmpty = symptomEmpty;
+      _symptomLabel = symptomLabel;
+      _symptomIcon = symptomIcon;
+      _symptomDate = symptomDate;
+      _symptomActiveCount = symptomActiveCount;
       _dismissedBadgeIds = dismissedSet;
       _healthBadges = healthBadges;
       _dismissedBadges = dismissedBadges;
@@ -280,6 +308,19 @@ class HealthPageState extends State<HealthPage> {
       enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => WalkSheet(profile: _profile!),
+    );
+    if (mounted) await _initScreen();
+  }
+
+  void _openSymptomHistory(BuildContext context) async {
+    if (_profile == null) return;
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SymptomSheet(profile: _profile!),
     );
     if (mounted) await _initScreen();
   }
@@ -597,7 +638,14 @@ class HealthPageState extends State<HealthPage> {
       ),
       if (p!.gender == Gender.female)
         HeatTracker(),
-      SymptomTracker(),
+      SymptomTracker(
+        empty: _symptomEmpty,
+        lastLabel: _symptomLabel,
+        lastIcon: _symptomIcon,
+        dateLabel: _symptomDate,
+        activeCount: _symptomActiveCount,
+        onTap: p != null ? () => _openSymptomHistory(context) : null,
+      ),
     ];
   }
 
