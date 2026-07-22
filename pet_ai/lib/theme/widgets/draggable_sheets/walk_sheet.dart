@@ -57,9 +57,7 @@ class _WalkDialogState extends State<WalkDialog> {
         durationMinutes: _minutes,
         walkTime: _walkTime,
         // Порядок меток фиксирован объявлением enum — стабильная подпись.
-        activities: WalkActivity.values
-            .where(_activities.contains)
-            .toList(),
+        activities: WalkActivity.values.where(_activities.contains).toList(),
       );
       await PetProfileService().updateWalkHistory(widget.profile.id, entry);
     } catch (_) {
@@ -177,11 +175,13 @@ class _WalkDialogState extends State<WalkDialog> {
                 runSpacing: 8,
                 children: WalkActivity.values.map((a) {
                   final selected = _activities.contains(a);
-                  return _ActivityChip(
-                    activity: a,
+                  return SoftGlassBadge(
+                    color: selected ? accent : context.subtitleColor,
+                    label: a.label,
+                    icon: a.icon,
+                    size: 12,
                     selected: selected,
-                    accent: accent,
-                    onTap: () {
+                    onChanged: (v) {
                       HapticFeedback.selectionClick();
                       setState(() {
                         if (selected) {
@@ -449,11 +449,7 @@ class _WalkEntryCard extends StatelessWidget {
             shape: BoxShape.circle,
             color: _walkGreen.withAlpha(38),
           ),
-          child: const Icon(
-            Icons.directions_walk,
-            color: _walkGreen,
-            size: 22,
-          ),
+          child: const Icon(Icons.directions_walk, color: _walkGreen, size: 22),
         ),
         title: Text(
           '${entry.durationMinutes} мин',
@@ -466,7 +462,11 @@ class _WalkEntryCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 2),
           child: Row(
             children: [
-              Icon(entry.walkTime.icon, size: 13, color: secondary.withAlpha(160)),
+              Icon(
+                entry.walkTime.icon,
+                size: 13,
+                color: secondary.withAlpha(160),
+              ),
               const SizedBox(width: 4),
               Text(entry.walkTime.label, style: context.subtitleStyle),
               if (activities.isNotEmpty) ...[
