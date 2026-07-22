@@ -47,8 +47,8 @@ void main() async {
     ApiService(
       apiUrl: 'https://api.pet-sputnik.ru',
       aiUrl: 'https://ai.pet-sputnik.ru',
-      privacyUrl: 'https://pet-sputnik.ru',
-      termsUrl: 'https://pet-sputnik.ru',
+      privacyUrl: 'https://pet-sputnik.ru/legal/privacy-policy.html',
+      termsUrl: 'https://pet-sputnik.ru/legal/terms-of-use.html',
     ),
   );
   // PocketBase loads its auth token from SecureStorage asynchronously.
