@@ -202,58 +202,6 @@ class _WalkDialogState extends State<WalkDialog> {
   }
 }
 
-class _ActivityChip extends StatelessWidget {
-  final WalkActivity activity;
-  final bool selected;
-  final Color accent;
-  final VoidCallback onTap;
-
-  const _ActivityChip({
-    required this.activity,
-    required this.selected,
-    required this.accent,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final secondary = context.watch<AppearanceController>().secondaryColor;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          color: selected ? accent.withAlpha(38) : secondary.withAlpha(12),
-          border: Border.all(
-            color: selected ? accent : secondary.withAlpha(50),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              activity.icon,
-              size: 15,
-              color: selected ? accent : secondary.withAlpha(160),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              activity.label,
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                fontWeight: FontWeight.w700,
-                color: selected ? accent : secondary.withAlpha(200),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Лист «Дневник прогулок» (макет 2a) ──────────────────────────────────────
 
 class WalkSheet extends StatefulWidget {

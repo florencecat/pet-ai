@@ -114,9 +114,11 @@ class _HoldToTalkMicState extends State<HoldToTalkMic> {
     setState(() => _listening = true);
     await _speech.listen(
       onResult: (result) => widget.onText(result.recognizedWords),
-      localeId: 'ru_RU',
-      listenFor: const Duration(seconds: 60),
-      pauseFor: const Duration(seconds: 10),
+      listenOptions: stt.SpeechListenOptions(
+        localeId: 'ru_RU',
+        listenFor: const Duration(seconds: 60),
+        pauseFor: const Duration(seconds: 10),
+      ),
     );
   }
 
