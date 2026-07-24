@@ -11,11 +11,13 @@ import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/health_service.dart';
+import 'package:pet_satellite/services/onboarding_service.dart';
 import 'package:pet_satellite/services/pill_reminder_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
+import 'package:pet_satellite/theme/widgets/coach_marks.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/event_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/food_sheet.dart';
@@ -90,11 +92,24 @@ class HealthPageState extends State<HealthPage> {
   static const _kTreatmentsExpanded = 'health_section_treatments';
   static const _kPillsExpanded = 'health_section_pills';
 
+  // Виджеты, которые подсвечивает обучение (см. [maybeShowOnboarding]).
+  final _trackersKey = GlobalKey();
+  final _configureKey = GlobalKey();
+  final _treatmentsKey = GlobalKey();
+  final _pillsKey = GlobalKey();
+  final _healthScoreKey = GlobalKey();
+
+  /// Текущая загрузка экрана — обучение ждёт её, иначе подсвечивать нечего.
+  Future<void>? _loaded;
+
+  /// Обучение уже на экране — второй раз поверх него не открываем.
+  bool _onboardingRunning = false;
+
   @override
   void initState() {
     super.initState();
     _loadSectionStates();
-    _initScreen();
+    _loaded = _initScreen();
   }
 
   Future<void> _loadSectionStates() async {
@@ -115,7 +130,95 @@ class HealthPageState extends State<HealthPage> {
   }
 
   /// Called by [MainPage] via GlobalKey to reload data when the tab becomes active.
-  void refresh() => _initScreen();
+  void refresh() => _loaded = _initScreen();
+
+  /// Показывает обучение по экрану здоровья — один раз на установку.
+  ///
+  /// Вызывается [MainPage] при переходе на вкладку: страница живёт в
+  /// IndexedStack и создаётся вместе с главной, поэтому сама момент «пользователь
+  /// сюда пришёл» не отличает.
+  Future<void> maybeShowOnboarding() async {
+    if (_onboardingRunning) return;
+
+    final onboarding = OnboardingService();
+    if (await onboarding.isShown(OnboardingTour.health)) return;
+
+    // Дожидаемся данных: без них нет ни оценки здоровья в заголовке, ни
+    // содержимого секций — подсвечивать было бы нечего.
+    await _loaded;
+    if (!mounted || _profile == null) return;
+
+    _onboardingRunning = true;
+    // Помечаем показанным до открытия, а не после: иначе повторный триггер
+    // (пока пользователь не прошёл шаги) поднимет второй такой же слой.
+    await onboarding.markShown(OnboardingTour.health);
+    if (!mounted) {
+      _onboardingRunning = false;
+      return;
+    }
+
+    await showCoachMarks(
+      context,
+      steps: [
+        CoachMarkStep(
+          targetKey: _trackersKey,
+          icon: Icons.dashboard_customize_outlined,
+          iconColor: ThemeColors.weightIconColor,
+          title: 'Мои трекеры',
+          description:
+              'Дашборд здоровья: вес, питание, настроение, прогулки и другие '
+              'показатели. Крупные карточки сверху — закреплённые, остальные '
+              'идут компактным списком ниже. Тап по трекеру открывает историю '
+              'и добавление записи.',
+        ),
+        CoachMarkStep(
+          targetKey: _configureKey,
+          icon: Icons.push_pin_outlined,
+          iconColor: ThemeColors.moodIconColor,
+          title: 'Настроить',
+          description:
+              'Дашборд подстраивается под питомца: закрепите наверху два самых '
+              'важных трекера и выберите, сколько остальных показывать сразу.',
+          // Кнопка-«таблетка» — вырез повторяет её форму.
+          radius: 100,
+        ),
+        CoachMarkStep(
+          targetKey: _treatmentsKey,
+          icon: Icons.vaccines_outlined,
+          iconColor: ThemeColors.vetCardIconColor,
+          title: 'Прививки и обработки',
+          description:
+              'Прививки, обработки от блох и глистов — с датой последней '
+              'и расчётом следующей. Приложение напомнит заранее, когда придёт '
+              'срок повторить.',
+        ),
+        CoachMarkStep(
+          targetKey: _pillsKey,
+          icon: Icons.healing_outlined,
+          iconColor: ThemeColors.foodIconColor,
+          title: 'Препараты',
+          description:
+              'Курсы лекарств и витаминов с расписанием приёмов. Отмечайте '
+              'приём прямо здесь — приложение пришлёт уведомление и посчитает, '
+              'сколько осталось до конца курса.',
+        ),
+        CoachMarkStep(
+          targetKey: _healthScoreKey,
+          icon: Icons.favorite_outline,
+          iconColor: ThemeColors.notesIconColor,
+          title: 'Оценка здоровья',
+          description:
+              'Общий вывод по всем данным питомца: что в норме, а на что стоит '
+              'обратить внимание. Нажмите — покажем рекомендации и то, из чего '
+              'сложилась оценка.',
+          // Бейдж-«таблетка» — вырез повторяет его форму.
+          radius: 100,
+        ),
+      ],
+    );
+
+    _onboardingRunning = false;
+  }
 
   Future<void> _dismissBadge(String id) async {
     if (_profile == null) return;
@@ -744,6 +847,7 @@ class HealthPageState extends State<HealthPage> {
 
               if (healthScore != null)
                 _HealthScoreBadge(
+                  key: _healthScoreKey,
                   score: healthScore,
                   onTap: _healthBadges.isNotEmpty
                       ? () => _openRecommendations(context, _healthBadges)
@@ -767,6 +871,8 @@ class HealthPageState extends State<HealthPage> {
 
             // ── Мои трекеры ───────────────────────────────────────────────
             HealthTrackersSection(
+              key: _trackersKey,
+              configureKey: _configureKey,
               trackers: _buildTrackers(),
               pinnedIds: _pinnedTrackers,
               visibleCount: _trackerVisibleCount,
@@ -777,6 +883,7 @@ class HealthPageState extends State<HealthPage> {
 
             // ── Прививки и обработки ──────────────────────────────────────────
             CollapsibleSection(
+              key: _treatmentsKey,
               expanded: _treatmentsExpanded,
               onToggle: () {
                 setState(() => _treatmentsExpanded = !_treatmentsExpanded);
@@ -858,6 +965,7 @@ class HealthPageState extends State<HealthPage> {
 
             // ── Препараты ─────────────────────────────────────────────────────
             CollapsibleSection(
+              key: _pillsKey,
               expanded: _pillsExpanded,
               onToggle: () {
                 setState(() => _pillsExpanded = !_pillsExpanded);
@@ -951,7 +1059,7 @@ class _HealthScoreBadge extends StatelessWidget {
   score;
   final VoidCallback? onTap;
 
-  const _HealthScoreBadge({required this.score, this.onTap});
+  const _HealthScoreBadge({super.key, required this.score, this.onTap});
 
   @override
   Widget build(BuildContext context) {

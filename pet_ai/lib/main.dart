@@ -430,6 +430,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
               if (index == NavigationTab.health.index) {
                 _healthKey.currentState?.refresh();
                 _refreshHealthScore();
+                // Страница живёт в IndexedStack и создаётся вместе с главной,
+                // поэтому «пользователь пришёл сюда» знает только навигация.
+                _healthKey.currentState?.maybeShowOnboarding();
               }
               if (index == NavigationTab.calendar.index) {
                 _eventsKey.currentState?.refresh();

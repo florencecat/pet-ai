@@ -384,14 +384,15 @@ class _SettingsPageState extends State<SettingsPage> {
     return confirmed == true;
   }
 
-  /// Сбрасывает флаг показанного обучения. Подсказки поднимутся сразу при
-  /// возврате на главный экран — см. `HomePageState.refresh`.
+  /// Сбрасывает флаги показанного обучения. Подсказки поднимутся при следующем
+  /// заходе на экран — см. `HomePageState.refresh` и
+  /// `HealthPageState.maybeShowOnboarding`.
   Future<void> _resetOnboarding(BuildContext context) async {
-    await OnboardingService().resetHomeShown();
+    await OnboardingService().resetAll();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Обучение сброшено — вернитесь на главный экран'),
+        content: Text('Обучение сброшено — зайдите на главную и в «Здоровье»'),
       ),
     );
   }
@@ -785,7 +786,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 SettingsRow(
                   icon: Icons.school_outlined,
                   label: 'Сбросить обучение',
-                  subtitle: 'Показать подсказки на главном заново',
+                  subtitle: 'Показать подсказки на экранах заново',
                   iconColor: Colors.blue,
                   onTap: () => _resetOnboarding(context),
                 ),

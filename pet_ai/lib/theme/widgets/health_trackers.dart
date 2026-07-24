@@ -437,12 +437,16 @@ class HealthTrackersSection extends StatefulWidget {
   final int visibleCount;
   final VoidCallback onConfigure;
 
+  /// Ключ кнопки «Настроить» — по нему её подсвечивает обучение.
+  final Key? configureKey;
+
   const HealthTrackersSection({
     super.key,
     required this.trackers,
     required this.pinnedIds,
     required this.visibleCount,
     required this.onConfigure,
+    this.configureKey,
   });
 
   @override
@@ -486,6 +490,7 @@ class _HealthTrackersSectionState extends State<HealthTrackersSection> {
                 ),
               ),
               TextButton.icon(
+                key: widget.configureKey,
                 onPressed: widget.onConfigure,
                 label: Text(
                   'Настроить',

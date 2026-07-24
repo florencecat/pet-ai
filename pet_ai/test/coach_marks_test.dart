@@ -108,6 +108,91 @@ void main() {
     expect(find.text('Карточка для ветеринара'), findsNothing);
   });
 
+  testWidgets('доводит до цели, которую ленивый список ещё не построил', (
+    tester,
+  ) async {
+    // Экран здоровья: закреплённый заголовок вне списка + длинные секции, из
+    // которых нижняя далеко за пределами вьюпорта.
+    final headerKey = GlobalKey();
+    final topKey = GlobalKey();
+    final farKey = GlobalKey();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppearanceController>(
+        create: (_) => AppearanceController(),
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Column(
+                children: [
+                  SizedBox(key: headerKey, height: 60, width: 300),
+                  TextButton(
+                    onPressed: () => showCoachMarks(
+                      context,
+                      steps: [
+                        CoachMarkStep(
+                          targetKey: topKey,
+                          icon: Icons.dashboard_customize_outlined,
+                          iconColor: Colors.purple,
+                          title: 'Мои трекеры',
+                          description: 'Дашборд здоровья.',
+                        ),
+                        CoachMarkStep(
+                          targetKey: farKey,
+                          icon: Icons.healing_outlined,
+                          iconColor: Colors.blue,
+                          title: 'Препараты',
+                          description: 'Курсы лекарств.',
+                        ),
+                        CoachMarkStep(
+                          targetKey: headerKey,
+                          icon: Icons.favorite_outline,
+                          iconColor: Colors.teal,
+                          title: 'Оценка здоровья',
+                          description: 'Общий вывод по данным питомца.',
+                        ),
+                      ],
+                    ),
+                    child: const Text('go'),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        SizedBox(key: topKey, height: 300),
+                        // Целая «простыня» между секциями: нижняя цель заведомо
+                        // не построена на старте.
+                        for (var i = 0; i < 20; i++) const SizedBox(height: 200),
+                        SizedBox(key: farKey, height: 120),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(farKey.currentContext, isNull, reason: 'цель не должна быть готова');
+
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    expect(holeOf(tester)!.outerRect, rectOf(topKey).inflate(6));
+
+    await tester.tap(find.text('Далее'));
+    await tester.pumpAndSettle();
+    expect(find.text('Препараты'), findsOneWidget);
+    expect(holeOf(tester)!.outerRect, rectOf(farKey).inflate(6));
+
+    // Последний шаг — вне списка (закреплённый заголовок), к тому же выше
+    // текущей позиции прокрутки.
+    await tester.tap(find.text('Далее'));
+    await tester.pumpAndSettle();
+    expect(find.text('Оценка здоровья'), findsOneWidget);
+    expect(holeOf(tester)!.outerRect, rectOf(headerKey).inflate(6));
+  });
+
   testWidgets('слой перехватывает касания по экрану под ним', (tester) async {
     var tapped = false;
     await tester.pumpWidget(

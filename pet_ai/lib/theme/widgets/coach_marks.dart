@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/widgets/floating_navigation_bar.dart';
@@ -97,6 +98,10 @@ class _CoachMarksState extends State<_CoachMarks>
   /// не подсвечивать виджет, который карточка сама же и закрывает.
   final _cardKey = GlobalKey();
 
+  /// Список, в котором живут цели. Запоминаем с первого найденного шага: он
+  /// нужен, чтобы доводить до целей, которые ленивый список ещё не построил.
+  ScrollableState? _scrollable;
+
   int _index = 0;
   RRect? _from;
   RRect? _to;
@@ -141,16 +146,52 @@ class _CoachMarksState extends State<_CoachMarks>
     );
   }
 
+  /// Прокрутка завершается на последнем тике анимации, а раскладка с итоговым
+  /// смещением приезжает только следующим кадром — измерять цель можно после.
+  static Future<void> _settled() => SchedulerBinding.instance.endOfFrame;
+
+  /// Ищет цель шага, даже если ленивый список ещё не построил её.
+  ///
+  /// Такую цель нельзя показать через [Scrollable.ensureVisible] — у неё просто
+  /// нет контекста, — поэтому проматываем список с начала, пока она не
+  /// появится. Цели в закреплённом заголовке живут вне списка и находятся сразу.
+  Future<BuildContext?> _resolveTarget(GlobalKey key) async {
+    if (key.currentContext != null) return key.currentContext;
+
+    final position = _scrollable?.position;
+    if (position == null || !position.hasContentDimensions) return null;
+
+    Future<void> scrollTo(double offset) async {
+      await position.animateTo(
+        offset.clamp(0.0, position.maxScrollExtent),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+      );
+      await _settled();
+    }
+
+    // С начала — иначе цель выше текущей позиции осталась бы ненайденной.
+    await scrollTo(0);
+    while (mounted &&
+        key.currentContext == null &&
+        position.pixels < position.maxScrollExtent) {
+      await scrollTo(position.pixels + position.viewportDimension * 0.8);
+    }
+    return mounted ? key.currentContext : null;
+  }
+
   /// Подводит вырез к цели текущего шага, подкручивая список, если цель уехала
   /// за пределы свободной области.
   Future<void> _focusStep() async {
     final step = widget.steps[_index];
-    final targetContext = step.targetKey.currentContext;
-    if (targetContext == null) {
+    final targetContext = await _resolveTarget(step.targetKey);
+    if (!mounted) return;
+    if (targetContext == null || !targetContext.mounted) {
       // Экран перестроился и цели больше нет — обучение теряет смысл.
       _finish();
       return;
     }
+    _scrollable ??= Scrollable.maybeOf(targetContext);
 
     var rect = _rectOf(targetContext);
     final free = _freeArea();
@@ -163,6 +204,7 @@ class _CoachMarksState extends State<_CoachMarks>
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      await _settled();
       if (!mounted) return;
       // Пока крутился список, цель могла перестроиться — берём её заново.
       final settled = step.targetKey.currentContext;
@@ -297,22 +339,39 @@ class _CoachMarksState extends State<_CoachMarks>
                     index: _index,
                     color: primary,
                   ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: _finish,
-                    child: Text('Пропустить', style: context.subtitleStyle),
-                  ),
-                  const SizedBox(width: 4),
-                  FilledButton(
-                    onPressed: _next,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
+                  const SizedBox(width: 12),
+                  // Кнопки прижаты вправо и при нехватке места ужимают
+                  // «Пропустить» — на много шагов и крупном шрифте строка
+                  // иначе не влезает.
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: TextButton(
+                            onPressed: _finish,
+                            child: Text(
+                              'Пропустить',
+                              style: context.subtitleStyle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        FilledButton(
+                          onPressed: _next,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: Text(isLast ? 'Понятно' : 'Далее'),
+                        ),
+                      ],
                     ),
-                    child: Text(isLast ? 'Понятно' : 'Далее'),
                   ),
                 ],
               ),

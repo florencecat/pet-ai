@@ -97,13 +97,13 @@ class HomePageState extends State<HomePage> {
     if (_onboardingRunning) return;
 
     final onboarding = OnboardingService();
-    if (await onboarding.isHomeShown()) return;
+    if (await onboarding.isShown(OnboardingTour.home)) return;
     if (!mounted) return;
 
     _onboardingRunning = true;
     // Помечаем показанным до открытия, а не после: иначе повторный триггер
     // (пока пользователь не прошёл шаги) поднимет второй такой же слой.
-    await onboarding.markHomeShown();
+    await onboarding.markShown(OnboardingTour.home);
     if (!mounted) {
       _onboardingRunning = false;
       return;
