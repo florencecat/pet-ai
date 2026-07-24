@@ -3,12 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:pet_satellite/models/history.dart';
 import 'package:pet_satellite/models/mood.dart';
 import 'package:pet_satellite/models/note.dart';
 import 'package:pet_satellite/models/pill.dart';
 import 'package:pet_satellite/models/treatment.dart';
-import 'package:pet_satellite/models/weight.dart';
 import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/event_service.dart';
@@ -32,7 +30,6 @@ import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/health_trackers.dart';
 import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
 import 'package:pet_satellite/theme/widgets/profile_switcher_sheet.dart';
-import 'package:pet_satellite/theme/widgets/weight_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pet_satellite/models/pet_profile.dart';
@@ -78,12 +75,8 @@ class HealthPageState extends State<HealthPage> {
   /// «от которых отказались» в листе рекомендаций.
   List<HealthBadge> _dismissedBadges = [];
 
-  // Period for the inline weight chart
-  HistoryPeriod _chartPeriod = HistoryPeriod.halfYear;
-
   /// Явное действие пользователя со свёрткой секции «Вес». `null` — пользователь
   /// ещё не трогал секцию, тогда её раскрытие определяется по объёму истории.
-  bool? _weightExpanded;
   bool _treatmentsExpanded = true;
   bool _pillsExpanded = true;
 
@@ -94,7 +87,6 @@ class HealthPageState extends State<HealthPage> {
   );
   int _trackerVisibleCount = HealthTrackersConfig.defaultCount;
 
-  static const _kWeightExpanded = 'health_section_weight';
   static const _kTreatmentsExpanded = 'health_section_treatments';
   static const _kPillsExpanded = 'health_section_pills';
 
@@ -110,7 +102,6 @@ class HealthPageState extends State<HealthPage> {
     final trackersConfig = await HealthTrackersConfig.load();
     if (!mounted) return;
     setState(() {
-      _weightExpanded = prefs.getBool(_kWeightExpanded);
       _treatmentsExpanded = prefs.getBool(_kTreatmentsExpanded) ?? true;
       _pillsExpanded = prefs.getBool(_kPillsExpanded) ?? true;
       _pinnedTrackers = trackersConfig.pinned;
@@ -190,12 +181,6 @@ class HealthPageState extends State<HealthPage> {
       _profile = profile;
       _isLoadingProfile = false;
       _hasMultipleProfiles = hasMultipleProfiles;
-
-      if (_profile!.weightHistory.entries.isNotEmpty &&
-          _profile!.weightHistory.entries.length >
-              WeightChart.minHistoryLength) {
-        _weightExpanded = false;
-      }
     });
 
     final weightStatus = profile.weightHistory.lastWeightString();
@@ -685,16 +670,6 @@ class HealthPageState extends State<HealthPage> {
         ? _nextHealthAlert(context)
         : null;
 
-    // Weight chart entries filtered by period
-    final weightEntries =
-        _profile?.weightHistory.filterByPeriod(_chartPeriod) ?? [];
-
-    // Секцию с графиком показываем раскрытой, только если записей достаточно
-    // для осмысленного графика (пустая история или пара записей — сворачиваем).
-    // Явный тап пользователя по секции важнее этой проверки.
-    final weightEntryCount = _profile?.weightHistory.entries.length ?? 0;
-    final weightExpanded = _weightExpanded ?? (weightEntryCount > 2);
-
     final activeReminders =
         _profile?.pillReminders.where((r) => r.isActive).toList()
           ?..sort((a, b) => a.name.compareTo(b.name));
@@ -799,112 +774,6 @@ class HealthPageState extends State<HealthPage> {
             ),
 
             const SizedBox(height: 20),
-
-            // ── Вес ──────────────────────────────────────────────────────────
-            CollapsibleSection(
-              expanded: weightExpanded,
-              onToggle: () {
-                final next = !weightExpanded;
-                setState(() => _weightExpanded = next);
-                _saveSectionState(_kWeightExpanded, next);
-              },
-              titleContent: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Вес', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(width: 8),
-                  Text('•', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(width: 4),
-                  PopupMenuButton<HistoryPeriod>(
-                    initialValue: _chartPeriod,
-                    onSelected: (p) => setState(() => _chartPeriod = p),
-                    itemBuilder: (_) =>
-                        [
-                              HistoryPeriod.month,
-                              HistoryPeriod.halfYear,
-                              HistoryPeriod.year,
-                              HistoryPeriod.all,
-                            ]
-                            .map(
-                              (p) => PopupMenuItem(
-                                value: p,
-                                child: Text(_periodLabel(p)),
-                              ),
-                            )
-                            .toList(),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(width: 4),
-                        Text(
-                          _periodLabel(_chartPeriod),
-                          style: Theme.of(context).textTheme.titleMedium!
-                              .copyWith(
-                                color: context
-                                    .watch<AppearanceController>()
-                                    .secondaryColor,
-                              ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.expand_more,
-                          size: 24,
-                          color: context
-                              .watch<AppearanceController>()
-                              .secondaryColor,
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              trailing: TextButton.icon(
-                onPressed: _openWeightHistory,
-                label: Text(
-                  'Детали',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge!.copyWith(color: context.subtitleColor),
-                ),
-                icon: Icon(Icons.chevron_right, color: context.subtitleColor),
-                iconAlignment: IconAlignment.end,
-              ),
-              body: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GlassPlate(
-                    useShadow: false,
-                    child: Padding(
-                      padding: EdgeInsetsGeometry.all(6),
-                      child: Column(
-                        children: [
-                          WeightChart(
-                            entries: weightEntries,
-                            height: 180,
-                            onAddWeight: _openWeightHistory,
-                          ),
-                          if (_profile != null &&
-                              _profile!.weightHistory.entries.length >= 3)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 4,
-                                horizontal: 8,
-                              ),
-                              child: _WeightSummaryRow(
-                                history: _profile!.weightHistory,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
 
             // ── Прививки и обработки ──────────────────────────────────────────
             CollapsibleSection(
@@ -1073,21 +942,6 @@ class HealthPageState extends State<HealthPage> {
       ),
     );
   }
-
-  String _periodLabel(HistoryPeriod p) {
-    switch (p) {
-      case HistoryPeriod.month:
-        return '1 мес';
-      case HistoryPeriod.halfYear:
-        return '6 мес';
-      case HistoryPeriod.year:
-        return 'Год';
-      case HistoryPeriod.all:
-        return 'Всё';
-      default:
-        return '';
-    }
-  }
 }
 
 // ─── Оценка здоровья (кнопка в заголовке) ────────────────────────────────────
@@ -1199,75 +1053,6 @@ class _AlertBanner extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ─── Компактная сводка по весу (bottomWidget для кнопки веса) ────────────────
-
-class _WeightSummaryRow extends StatelessWidget {
-  final WeightHistory history;
-
-  const _WeightSummaryRow({required this.history});
-
-  @override
-  Widget build(BuildContext context) {
-    if (history.entries.isEmpty) return const SizedBox.shrink();
-
-    final weights = history.entries.map((e) => e.weight).toList();
-    final minW = weights.reduce((a, b) => a < b ? a : b);
-    final maxW = weights.reduce((a, b) => a > b ? a : b);
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _StatChip(
-          label: 'мин',
-          value: '${minW.toStringAsFixed(1)} кг',
-          color: ThemeColors.ok.mainColor,
-        ),
-        _StatChip(
-          label: 'макс',
-          value: '${maxW.toStringAsFixed(1)} кг',
-          color: ThemeColors.warning.mainColor,
-        ),
-      ],
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            fontSize: 9,
-            color: color.withAlpha(160),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            color: color,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 }
