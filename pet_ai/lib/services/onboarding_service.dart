@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Экраны, по которым показываем обучение (coach marks).
-enum OnboardingTour { home, health }
+enum OnboardingTour { home, health, events }
 
 /// Флаги показанного обучения.
 ///
@@ -13,6 +13,7 @@ class OnboardingService {
   static const _keys = {
     OnboardingTour.home: 'onboarding_home_shown',
     OnboardingTour.health: 'onboarding_health_shown',
+    OnboardingTour.events: 'onboarding_events_shown',
   };
 
   /// Показывали ли пользователю обучение по экрану [tour].

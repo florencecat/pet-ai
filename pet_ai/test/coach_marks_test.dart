@@ -193,6 +193,59 @@ void main() {
     expect(holeOf(tester)!.outerRect, rectOf(headerKey).inflate(6));
   });
 
+  testWidgets('карточка уходит наверх, если цель стоит на её месте', (
+    tester,
+  ) async {
+    // Цель у нижнего края и прокручивать нечего — карточка снизу закрыла бы
+    // подсветку.
+    final lowKey = GlobalKey();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppearanceController>(
+        create: (_) => AppearanceController(),
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Column(
+                children: [
+                  TextButton(
+                    onPressed: () => showCoachMarks(
+                      context,
+                      steps: [
+                        CoachMarkStep(
+                          targetKey: lowKey,
+                          icon: Icons.event_note_outlined,
+                          iconColor: Colors.brown,
+                          title: 'События выбранного дня',
+                          description: 'События выбранной в календаре даты.',
+                        ),
+                      ],
+                    ),
+                    child: const Text('go'),
+                  ),
+                  const Spacer(),
+                  SizedBox(key: lowKey, height: 40, width: 300),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+
+    final hole = holeOf(tester)!.outerRect;
+    expect(hole, rectOf(lowKey).inflate(6));
+
+    // Подсказка не должна перекрывать подсветку.
+    final card = tester.getRect(find.text('Пропустить'));
+    expect(card.overlaps(hole), isFalse);
+    expect(card.bottom, lessThan(hole.top));
+  });
+
   testWidgets('слой перехватывает касания по экрану под ним', (tester) async {
     var tapped = false;
     await tester.pumpWidget(

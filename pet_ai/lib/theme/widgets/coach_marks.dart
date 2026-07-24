@@ -105,6 +105,7 @@ class _CoachMarksState extends State<_CoachMarks>
   int _index = 0;
   RRect? _from;
   RRect? _to;
+  bool _cardOnTop = false;
   bool _finishing = false;
 
   @override
@@ -131,11 +132,32 @@ class _CoachMarksState extends State<_CoachMarks>
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
-  /// Область экрана между системной зоной сверху и карточкой-подсказкой снизу.
-  Rect? _freeArea() {
+  double get _safeTop => MediaQuery.paddingOf(context).top + 16;
+
+  double get _safeBottom =>
+      MediaQuery.paddingOf(context).bottom + FloatingNavigationBar.bottomInset;
+
+  /// Куда карточка-подсказка встанет при заданном значении [onTop]. Считаем от
+  /// её размера, а не от текущего положения: иначе выбор места зависел бы от
+  /// того, куда её увёл прошлый шаг.
+  Rect? _cardSlot({required bool onTop}) {
     final cardContext = _cardKey.currentContext;
     if (cardContext == null) return null;
     final card = _rectOf(cardContext);
+    if (card == null) return null;
+
+    final screen = MediaQuery.sizeOf(context);
+    return Rect.fromLTWH(
+      card.left,
+      onTop ? _safeTop : screen.height - _safeBottom - card.height,
+      card.width,
+      card.height,
+    );
+  }
+
+  /// Область экрана между системной зоной сверху и карточкой-подсказкой снизу.
+  Rect? _freeArea() {
+    final card = _cardSlot(onTop: false);
     if (card == null) return null;
 
     return Rect.fromLTRB(
@@ -144,6 +166,19 @@ class _CoachMarksState extends State<_CoachMarks>
       MediaQuery.sizeOf(context).width,
       card.top - 16,
     );
+  }
+
+  /// Карточка-подсказка не должна закрывать подсветку. Обычно она внизу, как в
+  /// макете, но если увести цель прокруткой не вышло (короткая страница,
+  /// закреплённый заголовок) — уводим наверх саму карточку.
+  bool _cardShouldGoUp(Rect target) {
+    final probe = target.inflate(16);
+    final atBottom = _cardSlot(onTop: false);
+    if (atBottom == null || !probe.overlaps(atBottom)) return false;
+
+    final atTop = _cardSlot(onTop: true);
+    // Наверху мешает не меньше — оставляем внизу, как в макете.
+    return atTop != null && !probe.overlaps(atTop);
   }
 
   /// Прокрутка завершается на последнем тике анимации, а раскладка с итоговым
@@ -225,6 +260,7 @@ class _CoachMarksState extends State<_CoachMarks>
       // Первый шаг просто проявляется вместе со слоем, дальше — переезжает.
       _from = _to ?? hole;
       _to = hole;
+      _cardOnTop = _cardShouldGoUp(rect!);
     });
     _move.forward(from: 0);
   }
@@ -252,8 +288,6 @@ class _CoachMarksState extends State<_CoachMarks>
 
   @override
   Widget build(BuildContext context) {
-    final bottom =
-        MediaQuery.paddingOf(context).bottom + FloatingNavigationBar.bottomInset;
     final primary = context.watch<AppearanceController>().primaryColor;
 
     return FadeTransition(
@@ -282,11 +316,19 @@ class _CoachMarksState extends State<_CoachMarks>
               ),
             ),
           ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: bottom,
-            child: _buildCard(context, primary),
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeInOut,
+            alignment: _cardOnTop
+                ? Alignment.topCenter
+                : Alignment.bottomCenter,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, _safeTop, 16, _safeBottom),
+              child: SizedBox(
+                width: double.infinity,
+                child: _buildCard(context, primary),
+              ),
+            ),
           ),
         ],
       ),
@@ -304,7 +346,7 @@ class _CoachMarksState extends State<_CoachMarks>
       child: AnimatedSize(
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeInOut,
-        alignment: Alignment.bottomCenter,
+        alignment: _cardOnTop ? Alignment.topCenter : Alignment.bottomCenter,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
           child: Column(

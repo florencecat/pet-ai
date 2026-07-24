@@ -6,10 +6,12 @@ import 'package:pet_satellite/theme/widgets/base_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:pet_satellite/services/event_service.dart';
+import 'package:pet_satellite/services/onboarding_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/theme/app_colors.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
+import 'package:pet_satellite/theme/widgets/coach_marks.dart';
 import 'package:pet_satellite/theme/widgets/confirm_delete.dart';
 import 'package:pet_satellite/theme/widgets/glass_widgets.dart';
 import 'package:pet_satellite/theme/widgets/pinnable_header_view.dart';
@@ -68,13 +70,25 @@ class EventsPageState extends State<EventsPage> {
   /// Что показывать в календаре (типы событий, прошедшие/выполненные/повторы).
   CalendarFilter _calendarFilter = const CalendarFilter.defaults();
 
+  // Виджеты, которые подсвечивает обучение (см. [maybeShowOnboarding]).
+  final _actionsKey = GlobalKey();
+  final _calendarKey = GlobalKey();
+  final _dayTitleKey = GlobalKey();
+
+  /// Текущая загрузка экрана — обучение ждёт её, иначе на календаре ещё нет
+  /// отметок событий, про которые оно рассказывает.
+  Future<void>? _loaded;
+
+  /// Обучение уже на экране — второй раз поверх него не открываем.
+  bool _onboardingRunning = false;
+
   @override
   void initState() {
     super.initState();
     final initial = widget.initialDate ?? DateTime.now();
     _focusedDay = initial;
     _selectedDay = initial;
-    _loadEvents();
+    _loaded = _loadEvents();
     _loadCalendarFilter();
   }
 
@@ -101,7 +115,74 @@ class EventsPageState extends State<EventsPage> {
   // ── Data helpers ────────────────────────────────────────────────────────────
 
   /// Called by [MainPage] via GlobalKey to reload data when the tab becomes active.
-  void refresh() => _loadEvents();
+  void refresh() => _loaded = _loadEvents();
+
+  /// Показывает обучение по календарю — один раз на установку.
+  ///
+  /// Вызывается [MainPage] при переходе на вкладку: страница живёт в
+  /// IndexedStack и создаётся вместе с главной, поэтому сама момент «пользователь
+  /// сюда пришёл» не отличает. Внутренние вызовы [refresh] (выбор дня, листание
+  /// месяцев) обучение не трогают.
+  Future<void> maybeShowOnboarding() async {
+    if (_onboardingRunning) return;
+
+    final onboarding = OnboardingService();
+    if (await onboarding.isShown(OnboardingTour.events)) return;
+
+    // Дожидаемся событий: без них на календаре нет отметок, про которые
+    // рассказывает второй шаг.
+    await _loaded;
+    if (!mounted) return;
+
+    _onboardingRunning = true;
+    // Помечаем показанным до открытия, а не после: иначе повторный триггер
+    // (пока пользователь не прошёл шаги) поднимет второй такой же слой.
+    await onboarding.markShown(OnboardingTour.events);
+    if (!mounted) {
+      _onboardingRunning = false;
+      return;
+    }
+
+    await showCoachMarks(
+      context,
+      steps: [
+        CoachMarkStep(
+          targetKey: _actionsKey,
+          icon: Icons.tune,
+          iconColor: ThemeColors.vetCardIconColor,
+          title: 'Фильтр, поиск и создание',
+          description:
+              'Слева — фильтр: какие типы событий показывать на календаре и '
+              'нужны ли прошедшие, выполненные и повторы. В центре — поиск по '
+              'всем событиям питомца. Справа — создание нового события.',
+        ),
+        CoachMarkStep(
+          targetKey: _calendarKey,
+          icon: Icons.calendar_month_outlined,
+          iconColor: ThemeColors.notesIconColor,
+          title: 'Календарь',
+          description:
+              'Точки под датой — события этого дня, цвет совпадает с типом '
+              'события; если их больше трёх, рядом появится «+N». Календарь '
+              'меняет размер: потяните за ручку под ним или свайпните по нему '
+              'вверх-вниз — месяц, две недели или одна.',
+        ),
+        CoachMarkStep(
+          targetKey: _dayTitleKey,
+          icon: Icons.event_note_outlined,
+          iconColor: ThemeColors.filesIconColor,
+          title: 'События выбранного дня',
+          description:
+              'Под этим заголовком — события того дня, который выбран в '
+              'календаре. Нажмите другую дату, и список сразу обновится.',
+          radius: 12,
+          inflate: 8,
+        ),
+      ],
+    );
+
+    _onboardingRunning = false;
+  }
 
   void _refresh() async => await _loadEvents();
 
@@ -384,6 +465,7 @@ class EventsPageState extends State<EventsPage> {
                   ),
                 ),
                 GlassPlate(
+                  key: _actionsKey,
                   padding: 4,
                   child: Row(
                     spacing: 8,
@@ -445,6 +527,7 @@ class EventsPageState extends State<EventsPage> {
 
               // ── Calendar ─────────────────────────────────────────────────
               GlassPlate(
+                key: _calendarKey,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
@@ -588,6 +671,7 @@ class EventsPageState extends State<EventsPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
+                      key: _dayTitleKey,
                       formatSmartDate(
                         _selectedDay!,
                         pattern: 'dd MMMM',

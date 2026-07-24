@@ -233,6 +233,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       _selectedIndex = NavigationTab.calendar;
       _eventsKey.currentState?.refresh();
     });
+    _eventsKey.currentState?.maybeShowOnboarding();
   }
 
   void _onOpenCalendarByEvent(DateTime eventDate) {
@@ -240,6 +241,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       _calendarInitialDate = eventDate;
       _selectedIndex = NavigationTab.calendar;
     });
+    _eventsKey.currentState?.maybeShowOnboarding();
   }
 
   Future<void> _checkProfile() async {
@@ -436,6 +438,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
               }
               if (index == NavigationTab.calendar.index) {
                 _eventsKey.currentState?.refresh();
+                _eventsKey.currentState?.maybeShowOnboarding();
               }
             },
           ),
