@@ -341,6 +341,7 @@ class _PetRegistrationFlowState extends State<PetRegistrationFlow> {
             if (s != _species) {
               _species = s;
               _breed = PetBreed.empty();
+              _breedCtrl.text = '';
               _breedInputAvaliable = _species != BuiltInSpecies.other;
             }
           }),
