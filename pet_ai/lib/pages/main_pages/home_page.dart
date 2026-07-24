@@ -7,11 +7,13 @@ import 'package:pet_satellite/models/event.dart';
 import 'package:pet_satellite/models/history_filter.dart';
 import 'package:pet_satellite/pages/secondary_pages/settings_page.dart';
 import 'package:pet_satellite/services/file_storage_service.dart';
+import 'package:pet_satellite/services/onboarding_service.dart';
 import 'package:pet_satellite/services/pet_profile_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
 import 'package:pet_satellite/theme/app_text_styles.dart';
 import 'package:pet_satellite/theme/font_awesome_icons.dart';
 import 'package:pet_satellite/theme/widgets/activity_indicator.dart';
+import 'package:pet_satellite/theme/widgets/coach_marks.dart';
 import 'package:pet_satellite/theme/widgets/skeleton.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/birthday_sheet.dart';
 import 'package:pet_satellite/theme/widgets/draggable_sheets/draggable_sheet.dart';
@@ -61,6 +63,14 @@ class HomePageState extends State<HomePage> {
   // «висел в воздухе» (он не часть Hero и остаётся на месте во время полёта).
   bool _avatarExpanded = false;
 
+  // Виджеты, которые подсвечивает обучение (см. [maybeShowOnboarding]).
+  final _vetCardKey = GlobalKey();
+  final _filesKey = GlobalKey();
+  final _notesKey = GlobalKey();
+
+  /// Обучение уже на экране — второй раз поверх него не открываем.
+  bool _onboardingRunning = false;
+
   @override
   void initState() {
     super.initState();
@@ -72,7 +82,68 @@ class HomePageState extends State<HomePage> {
 
   /// Called by [MainPage] via GlobalKey whenever the home tab becomes active,
   /// so that data added on other tabs (events, notes, etc.) is reflected here.
-  void refresh() => _initScreen();
+  void refresh() {
+    _initScreen();
+    // Возврат на главную — момент, когда сброшенный в отладке флаг обучения
+    // снова вступает в силу.
+    maybeShowOnboarding();
+  }
+
+  /// Показывает обучение по главному экрану — один раз на установку.
+  ///
+  /// Вызывается [MainPage] после уведомления о сборе диагностики (чтобы окна не
+  /// наложились друг на друга) и при каждом возврате на вкладку.
+  Future<void> maybeShowOnboarding() async {
+    if (_onboardingRunning) return;
+
+    final onboarding = OnboardingService();
+    if (await onboarding.isHomeShown()) return;
+    if (!mounted) return;
+
+    _onboardingRunning = true;
+    // Помечаем показанным до открытия, а не после: иначе повторный триггер
+    // (пока пользователь не прошёл шаги) поднимет второй такой же слой.
+    await onboarding.markHomeShown();
+    if (!mounted) {
+      _onboardingRunning = false;
+      return;
+    }
+
+    await showCoachMarks(
+      context,
+      steps: [
+        CoachMarkStep(
+          targetKey: _vetCardKey,
+          icon: FontAwesome.medkit,
+          iconColor: ThemeColors.vetCardIconColor,
+          title: 'Карточка для ветеринара',
+          description:
+              'Здесь находится актуальная информация по питомцу, собранная '
+              'в одном месте — пригодится на приёме, чтобы показать врачу.',
+        ),
+        CoachMarkStep(
+          targetKey: _filesKey,
+          icon: FontAwesome.file_alt,
+          iconColor: ThemeColors.filesIconColor,
+          title: 'Файлы',
+          description:
+              'Храните анализы, чеки и другие документы в одном месте.',
+        ),
+        CoachMarkStep(
+          targetKey: _notesKey,
+          icon: FontAwesome.notes_medical,
+          iconColor: ThemeColors.notesIconColor,
+          title: 'Заметка',
+          description:
+              'Записывайте всё необычное: что съел, как спал, что беспокоит. '
+              'Заметки попадут в карточку для ветеринара — на приёме не '
+              'придётся вспоминать.',
+        ),
+      ],
+    );
+
+    _onboardingRunning = false;
+  }
 
   Future<void> _initScreen() async {
     setState(() {
@@ -215,6 +286,8 @@ class HomePageState extends State<HomePage> {
       MaterialPageRoute(builder: (_) => const SettingsPage()),
     );
     await _initScreen();
+    // Флаг обучения могли сбросить в отладочной секции — проверяем на возврате.
+    await maybeShowOnboarding();
   }
 
   /// Нажатие по аватарке: раскрытие в центр с анимацией. Возвращает true, если
@@ -540,6 +613,7 @@ class HomePageState extends State<HomePage> {
             const SizedBox(height: 16),
 
             GlassCard(
+              key: _vetCardKey,
               callback: () => _openVetCard(context),
               child: ListTile(
                 minTileHeight: 50,
@@ -572,6 +646,7 @@ class HomePageState extends State<HomePage> {
               children: [
                 Expanded(
                   child: GlassCard(
+                    key: _filesKey,
                     callback: () => _openDocuments(context),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -612,6 +687,7 @@ class HomePageState extends State<HomePage> {
                 ),
                 Expanded(
                   child: GlassCard(
+                    key: _notesKey,
                     callback: () => _openNotes(context),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

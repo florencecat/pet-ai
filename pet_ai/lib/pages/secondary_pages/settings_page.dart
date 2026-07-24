@@ -16,6 +16,7 @@ import 'package:pet_satellite/services/cloud_sync_service.dart';
 import 'package:pet_satellite/services/crash_reporting_service.dart';
 import 'package:pet_satellite/services/event_service.dart';
 import 'package:pet_satellite/services/notification_service.dart';
+import 'package:pet_satellite/services/onboarding_service.dart';
 import 'package:pet_satellite/services/appearance_controller.dart';
 import 'package:pet_satellite/services/pb_service.dart';
 import 'package:pet_satellite/services/user_profile_service.dart';
@@ -381,6 +382,18 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
     return confirmed == true;
+  }
+
+  /// Сбрасывает флаг показанного обучения. Подсказки поднимутся сразу при
+  /// возврате на главный экран — см. `HomePageState.refresh`.
+  Future<void> _resetOnboarding(BuildContext context) async {
+    await OnboardingService().resetHomeShown();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Обучение сброшено — вернитесь на главный экран'),
+      ),
+    );
   }
 
   Future<void> _clearAppData(BuildContext context) async {
@@ -767,6 +780,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: 'Показать сейчас (звук/вибрация/heads-up)',
                   iconColor: Colors.blue,
                   onTap: () => NotificationService().showTestNotification(),
+                ),
+                SettingsCardDivider(),
+                SettingsRow(
+                  icon: Icons.school_outlined,
+                  label: 'Сбросить обучение',
+                  subtitle: 'Показать подсказки на главном заново',
+                  iconColor: Colors.blue,
+                  onTap: () => _resetOnboarding(context),
                 ),
                 SettingsCardDivider(),
                 SettingsRow(

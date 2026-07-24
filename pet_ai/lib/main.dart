@@ -253,10 +253,13 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     _refreshHealthScore();
     // Первичное уведомление о сборе диагностики показываем на главном экране —
     // после онбординга (у нового пользователя) либо сразу (при обновлении).
+    // Следом, не наслаиваясь на него, — обучение по главному экрану.
     if (hasProfile) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _maybeShowCrashConsent(),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _maybeShowCrashConsent();
+        if (!mounted || _selectedIndex != NavigationTab.home) return;
+        await _homeKey.currentState?.maybeShowOnboarding();
+      });
     }
   }
 
